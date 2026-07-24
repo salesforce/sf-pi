@@ -67,7 +67,7 @@ You can also manage this extension from the SF Pi home base:
 - **Commands:** `/sf-code-analyzer`
 - **LLM tools:** `code_analyzer`
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`
+- **Events/hooks:** `session_start`, `tool_result`, `agent_settled`, `session_shutdown`
 
 </details>
 

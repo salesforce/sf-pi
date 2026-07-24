@@ -155,7 +155,7 @@ class SlackConfigPanelComponent implements Focusable {
 
     lines.push(pad(` ${t.fg("error", "●")} ${t.fg("text", "Not configured")}`));
     lines.push(
-      pad(`   ${t.fg("warning", "Interactive credential entry is temporarily unavailable.")}`),
+      pad(`   ${t.fg("warning", "Run /login sf-slack for fixed-mask Pi-owned credential setup.")}`),
     );
     lines.push(
       pad(

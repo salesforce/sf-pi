@@ -38,7 +38,7 @@
  *   - Read-only except slack_canvas create/edit, slack_send, and slack_schedule
  *     schedule/delete
  *   - Uses existing Pi auth credentials, with an env fallback for automation
- *   - Disables new visible credential entry until Pi's secret prompt is secure
+ *   - Uses SF Pi's fixed-mask component while Pi owns persistence and logout
  */
 import type {
   ExtensionAPI,
@@ -59,9 +59,8 @@ import {
 import {
   detectTokenSource,
   getSlackToken,
-  loginSlack,
   oauthScopes,
-  refreshSlackToken,
+  sfSlackAuthController,
 } from "./lib/auth.ts";
 import {
   slackApi,
@@ -115,6 +114,7 @@ import {
 } from "../../lib/common/manager-actions.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
+import { registerLatestContextProjection } from "../../lib/common/session/active-branch-context.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import { buildSlackDoctor } from "./lib/extension-doctor.ts";
 import {
@@ -150,8 +150,7 @@ const SLACK_COMMAND_ACTIONS: SfPiCommandAction<SlackCommandAction>[] = [
   {
     value: "connect",
     label: "Connect to Slack",
-    description:
-      "Show temporary credential-entry containment and environment-variable setup guidance.",
+    description: "Prepare fixed-mask native login and environment-variable setup guidance.",
     group: "Connect",
   },
   {
@@ -199,6 +198,9 @@ const SLACK_COMMAND_ACTIONS: SfPiCommandAction<SlackCommandAction>[] = [
 
 export default function sfSlack(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-slack")) return;
+
+  let slackContextActive = false;
+  registerLatestContextProjection(pi, [SLACK_CONTEXT_ENTRY_TYPE], () => slackContextActive);
 
   let identity: SlackIdentity | null = null;
   // Last error captured by session_start / /sf-slack refresh, exposed via
@@ -441,15 +443,7 @@ export default function sfSlack(pi: ExtensionAPI) {
   }
 
   // ─── Auth provider registration ─────────────────────────────────────────────
-  pi.registerProvider(PROVIDER_NAME, {
-    apiKey: `$${ENV_TOKEN}`,
-    oauth: {
-      name: "SF Slack",
-      login: loginSlack,
-      refreshToken: refreshSlackToken,
-      getApiKey: (credentials) => credentials.access,
-    },
-  });
+  pi.registerProvider(sfSlackAuthController.provider);
 
   // ─── Helper: update footer status ───────────────────────────────────────────
   function updateStatus(
@@ -539,6 +533,7 @@ export default function sfSlack(pi: ExtensionAPI) {
   //      display names, but it is not first-turn correctness; raw IDs remain
   //      valid fallbacks.
   pi.on("session_start", async (_event, ctx) => {
+    sfSlackAuthController.bind(ctx.ui, ctx.mode);
     const generation = beginActiveSession(ctx);
     identity = null;
     missingGrantedScopeCount = 0;
@@ -640,6 +635,7 @@ export default function sfSlack(pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    sfSlackAuthController.clear();
     const wasActive = isActiveSession(ctx);
     endActiveSession(ctx);
     if (!wasActive) return;
@@ -674,32 +670,31 @@ export default function sfSlack(pi: ExtensionAPI) {
   // and would invalidate prompt cache on every call. Those metrics live in the
   // footer/widget where drift is cheap.
   pi.on("before_agent_start", async (event, ctx) => {
-    if (!identity) return;
-
-    // Only inject Slack context if at least one Slack tool is active in this session
+    // Only project Slack context while identity exists and at least one Slack
+    // tool is selected for this turn. Inactive turns filter prior workspace
+    // messages from model context without mutating the append-only session.
     const { systemPromptOptions } = event;
     const hasSlackTool = systemPromptOptions.selectedTools?.some((t) => t.startsWith("slack"));
-    if (!hasSlackTool) return;
-
-    // Workspace identity (user + team) is static for the life of a session,
-    // so inject once per live session and re-inject after compaction has
-    // swept the entry into a summary. Without this dedup the workspace
-    // block ends up persisted N times after N turns, bloating the prompt.
-    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), SLACK_CONTEXT_ENTRY_TYPE)) return;
+    slackContextActive = identity !== null && hasSlackTool === true;
+    if (!slackContextActive || !identity) return;
 
     // Boundary convention: lowercase snake_case XML tags, matching pi 0.75's
     // own context boundaries. See ADR 0008.
-    const lines = [
+    const content = [
       "<slack_workspace>",
       `User: @${identity.userName} (${identity.userId})`,
       `Team: ${identity.teamId}`,
       "</slack_workspace>",
-    ];
+    ].join("\n");
+    const stillFresh = (entry: { content: string | unknown[] }) => entry.content === content;
+
+    // Re-inject when identity changes or compaction removes the prior message.
+    if (!shouldInjectOnce(ctx.sessionManager, SLACK_CONTEXT_ENTRY_TYPE, stillFresh)) return;
 
     return {
       message: {
         customType: SLACK_CONTEXT_ENTRY_TYPE,
-        content: lines.join("\n"),
+        content,
         display: false,
       },
     };
@@ -714,8 +709,15 @@ export default function sfSlack(pi: ExtensionAPI) {
       run: (ctx) => handleSlackCommand(action.value, ctx, true),
       ...(action.value === "connect"
         ? {
-            createPanel: (theme, _cwd, _scope, done, _ctx) =>
-              createSlackConnectPanel({ theme, done }),
+            createPanel: (theme, _cwd, _scope, done, ctx) =>
+              createSlackConnectPanel({
+                theme,
+                done,
+                prepareLogin: () =>
+                  prepareSlackLogin(ctx)
+                    ? `Prepared /login ${PROVIDER_NAME} in Pi's editor. After login, run /${COMMAND_NAME} refresh.`
+                    : `Run /login ${PROVIDER_NAME} in interactive TUI mode.`,
+              }),
           }
         : {}),
       ...(action.value === "disconnect"
@@ -792,7 +794,7 @@ export default function sfSlack(pi: ExtensionAPI) {
           await emitSlackOutput(
             ctx,
             "Slack token not found",
-            "No Slack token found. Interactive entry is temporarily disabled; set SLACK_USER_TOKEN before starting Pi.",
+            "No Slack token found. Run /login sf-slack in interactive TUI mode, then /sf-slack refresh; use SLACK_USER_TOKEN for automation.",
             "warning",
             fromPanel,
           );
@@ -915,18 +917,27 @@ export default function sfSlack(pi: ExtensionAPI) {
   }
 
   async function runSlackConnect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
+    const prepared = prepareSlackLogin(ctx);
     await emitSlackOutput(
       ctx,
-      "Slack credential entry temporarily unavailable",
-      [
-        "Credential entry is temporarily unavailable because Pi's current native prompt can echo submitted secret values.",
-        "Existing saved credentials remain active.",
-        `Set ${ENV_TOKEN} before starting Pi for new automation or CI sessions.`,
-        "If you entered a token or callback URL through the previous visible input, rotate or revoke it.",
-      ].join("\n"),
-      "warning",
+      prepared ? "Slack native login prepared" : "Slack interactive login requires TUI mode",
+      prepared
+        ? [
+            `Prefilled /login ${PROVIDER_NAME}.`,
+            "Credential entry uses a fixed-mask SF Pi component; Pi alone persists the result.",
+            `After login, run /${COMMAND_NAME} refresh to verify identity, scopes, and tools.`,
+            `${ENV_TOKEN} remains available for automation and is never modified.`,
+          ].join("\n")
+        : `Run /login ${PROVIDER_NAME} in interactive TUI mode, or set ${ENV_TOKEN} before starting Pi for automation.`,
+      prepared ? "info" : "warning",
       fromPanel,
     );
+  }
+
+  function prepareSlackLogin(ctx: ExtensionCommandContext): boolean {
+    if (ctx.mode !== "tui") return false;
+    ctx.ui.setEditorText(`/login ${PROVIDER_NAME}`);
+    return true;
   }
 
   async function runSlackDisconnect(
@@ -1008,7 +1019,7 @@ export default function sfSlack(pi: ExtensionAPI) {
       "",
       "Commands:",
       `  /${COMMAND_NAME}            Open SF Slack in the SF Pi Manager`,
-      `  /${COMMAND_NAME} connect    Show temporary safe credential-setup guidance`,
+      `  /${COMMAND_NAME} connect    Prepare fixed-mask native login`,
       `  /${COMMAND_NAME} disconnect Prepare native logout for review`,
       `  /${COMMAND_NAME} status     Show current auth status`,
       `  /${COMMAND_NAME} refresh    Re-detect identity, re-probe scopes, refresh cache`,

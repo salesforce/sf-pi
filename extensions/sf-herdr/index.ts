@@ -152,13 +152,6 @@ export default function sfHerdr(pi: ExtensionAPI): void {
     planToolRegistered = false;
     planToolRegistration = undefined;
   });
-  pi.on("tool_execution_end", async (event) => {
-    signalState.observeToolExecutionEnd({
-      toolName: event.toolName,
-      args: "args" in event ? event.args : undefined,
-      isError: event.isError,
-    });
-  });
   pi.on("tool_result", async (event, ctx) => {
     signalState.observeToolResult(event, ctx.cwd);
   });

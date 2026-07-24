@@ -18,9 +18,14 @@ import {
   type AssistantMessageEventStream,
   type Context,
   type Model,
+  type OpenAICompletionsOptions,
   type SimpleStreamOptions,
+  type StreamOptions,
 } from "@earendil-works/pi-ai";
-import { streamSimpleOpenAICompletions } from "@earendil-works/pi-ai/compat";
+import {
+  streamOpenAICompletions,
+  streamSimpleOpenAICompletions,
+} from "@earendil-works/pi-ai/compat";
 import {
   injectCodexGatewayParams,
   injectOpenAiReasoningEffort,
@@ -28,15 +33,14 @@ import {
 } from "./payloads.ts";
 import { isCodexModelId, isOpenAiModelId, withGatewayProviderRetryDefaults } from "./shared.ts";
 
-export function streamSfGatewayOpenAI(
+function withGatewayOpenAIOptions<TOptions extends StreamOptions>(
   model: Model<"openai-completions">,
-  context: Context,
-  options?: SimpleStreamOptions,
-): AssistantMessageEventStream {
+  options: TOptions | undefined,
+): TOptions & { maxRetries: number } {
   const gatewayOptions = withGatewayProviderRetryDefaults(options);
   const existingOnPayload = gatewayOptions.onPayload;
 
-  const wrappedOptions: SimpleStreamOptions = {
+  return {
     ...gatewayOptions,
     onPayload: async (payload, payloadModel) => {
       let nextPayload = payload;
@@ -68,6 +72,27 @@ export function streamSfGatewayOpenAI(
       return existingOnPayload ? existingOnPayload(nextPayload, payloadModel) : nextPayload;
     },
   };
+}
 
-  return streamSimpleOpenAICompletions(model, context, wrappedOptions);
+export interface GatewayOpenAIFullTestHooks {
+  streamer?: typeof streamOpenAICompletions;
+}
+
+/** Gateway-aware full Chat Completions stream used by complete native Providers. */
+export function streamSfGatewayOpenAIFull(
+  model: Model<"openai-completions">,
+  context: Context,
+  options?: OpenAICompletionsOptions,
+  hooks?: GatewayOpenAIFullTestHooks,
+): AssistantMessageEventStream {
+  const streamer = hooks?.streamer ?? streamOpenAICompletions;
+  return streamer(model, context, withGatewayOpenAIOptions(model, options));
+}
+
+export function streamSfGatewayOpenAI(
+  model: Model<"openai-completions">,
+  context: Context,
+  options?: SimpleStreamOptions,
+): AssistantMessageEventStream {
+  return streamSimpleOpenAICompletions(model, context, withGatewayOpenAIOptions(model, options));
 }

@@ -145,6 +145,11 @@ describe("renderTopBar", () => {
     expect(line).not.toContain("think:");
   });
 
+  it("shows Pi's public session name when present", () => {
+    const [line] = renderTopBar(makeState({ sessionName: "Review gateway changes" }), stubTheme);
+    expect(line).toContain("session:Review gateway changes");
+  });
+
   it("shows git branch and changes", () => {
     const [line] = renderTopBar(
       makeState({
@@ -184,9 +189,22 @@ describe("renderTopBar", () => {
     expect(partialBlocks.some((ch) => line.includes(ch))).toBe(true);
   });
 
-  it("hides context bar when null", () => {
-    const [line] = renderTopBar(makeState({ contextPercent: null }), stubTheme);
+  it("omits context usage when Pi has no usable context fact", () => {
+    const [line] = renderTopBar(makeState({ contextPercent: undefined }), stubTheme);
     expect(line).not.toContain("Context Window");
+  });
+
+  it("renders exact-zero context usage as 0.0%", () => {
+    const [line] = renderTopBar(makeState({ contextPercent: 0 }), stubTheme);
+    expect(line).toContain("0.0%");
+    expect(line).not.toContain("unknown");
+  });
+
+  it("renders nullable context usage as unknown instead of zero", () => {
+    const [line] = renderTopBar(makeState({ contextPercent: null }), stubTheme);
+    expect(line).toContain("Context Window");
+    expect(line).toContain("unknown");
+    expect(line).not.toContain("0.0%");
   });
 
   it("shows thinking indicator when agent is working", () => {

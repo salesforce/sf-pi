@@ -1,7 +1,29 @@
 # ADR 0082: SF Skills Requires Native Parity Before Delegation
 
-Status: accepted
+Status: accepted; E4 complete with current SF Skills governance retained
 
 SF Pi will not delete or preserve the full Skill Funnel based only on Pi release notes. A read-only behavior parity harness will compare the Funnel with Pi 0.81's real resource resolver across global/project inherit-load-unload states, package deltas, exact include/exclude paths, duplicate names, project trust, stale roots, and rescope scenarios. No production settings or UI behavior changes during this proof.
 
 Each Funnel capability is then classified separately: native parity is a deletion candidate; Salesforce-specific value stays in SF Skills; useful generic behavior missing from Pi is an upstream candidate; and differing semantics require an explicit decision. Managed Salesforce skill-pack lifecycle, external source discovery, diagnostics, rescope convenience, and usage awareness are not presumed duplicate. ADRs 0017/0018 remain in force until this evidence explicitly supersedes their affected assumptions.
+
+## E4 evidence — Pi 0.81.1
+
+The evidence harness uses only Pi's public `DefaultPackageManager`, `DefaultResourceLoader`, `SettingsManager`, `loadSkills`, and `loadSkillsFromDir` exports. Every scenario runs against isolated temporary settings and skill trees; no user settings or SF Skills production code is changed.
+
+| Capability                                                                           | Classification                                    | Observed result                                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Global top-level load inherited by a project                                         | Native parity                                     | Pi loads the user-scoped skill and the Funnel tags it globally enabled and loaded.                                                                                             |
+| Project top-level exclusion against a global top-level source                        | Native parity                                     | A project-only `-path` has no source set to subtract; the global skill remains loaded and the Funnel reports it locked by global scope.                                        |
+| Global off plus trusted project load                                                 | Native parity                                     | Both systems report the skill as project-scoped and loaded.                                                                                                                    |
+| Project package `autoload:false` delta                                               | Semantic disagreement                             | Pi can subtract a global package resource; the Funnel does not model package resources or deltas.                                                                              |
+| Exact `+path` / `-path` filters                                                      | Semantic disagreement                             | Pi honors package and top-level filters; the Funnel treats top-level filter tokens as paths and does not model package filters.                                                |
+| Package plus `.pi/skills` plus `.agents/skills` duplicates                           | Partial native parity plus semantic disagreement  | Both identify the `.pi` winner among known defaults, but the Funnel omits the package collision participant.                                                                   |
+| Trusted versus untrusted project                                                     | Native parity                                     | Both exclude project-local settings and default roots when project trust is inactive.                                                                                          |
+| Missing and stale roots                                                              | Native omission plus Salesforce-specific leverage | Both avoid claiming missing skills are loaded; SF Skills additionally provides actionable stale-wiring diagnostics and prune guidance.                                         |
+| One-skill global-to-project rescope                                                  | Native result plus Salesforce-specific leverage   | Pi consumes the emitted scope split; SF Skills owns the explicit rescope workflow.                                                                                             |
+| Whole-source global-to-project rescope                                               | Semantic disagreement                             | Per-skill parent expansion re-adds sibling skills, leaving the full set wired globally and project-locally. This is evidence of a current defect, not an E4 fix authorization. |
+| Managed pack lifecycle, external source discovery, labels/prune, and usage awareness | Salesforce-specific leverage                      | Pi's public resolver consumes resources but does not replace these governance and observability workflows.                                                                     |
+
+## Consequence
+
+E4 authorizes no Funnel deletion and no production fix. The closeout decision retains current SF Skills governance because managed lifecycle, discovery, diagnostics, rescope convenience, labels/prune, and usage awareness remain Salesforce-specific leverage. Package/filter governance and whole-source rescope are separate future work; they do not block the Pi 0.81 adoption closeout. ADRs 0017 and 0018 remain active.

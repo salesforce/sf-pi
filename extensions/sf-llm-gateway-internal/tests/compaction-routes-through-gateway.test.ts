@@ -1,68 +1,30 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/**
- * pi 0.75 → gateway compaction handoff regression net.
- *
- * Pi 0.75 (#4484) made `compaction.generateSummary()` accept a `streamFn`
- * argument and call it when present, so the active provider's
- * `streamSimple` handles compaction summary calls instead of pi-ai's
- * built-in transport. That preserves our single-LLM-I/O-choke-point
- * invariant for the gateway:
- *
- *   prompt caching, Opus 4.7 early-stream retry, gpt-5.5 /responses fallback,
- *   reasoning_effort fixups, billing visibility — all of these live in
- *   `unifiedStream` and would silently bypass on compaction without
- *   #4484.
- *
- * We can't observe pi's session manager calling `generateSummary` from a
- * unit test without standing up a full agent, but `generateSummary` is a
- * pure pi export. This test calls it directly with a mock `streamFn` and
- * asserts the mock was called. Combined with the existing
- * unified-provider test that asserts we register `streamSimple:
- * unifiedStream`, the two close the loop:
- *
- *   pi.generateSummary(streamFn)  →  fakeStreamFn (here)
- *   pi.registerProvider({ streamSimple: unifiedStream })
- *     →  pi looks up streamSimple at compaction time and uses it as streamFn
- *
- * If pi ever stops threading streamFn into compaction, this test fails
- * before users notice the gateway being bypassed.
- */
-import { describe, expect, it } from "vitest";
+/** Exact Pi compaction handoff through the complete Gateway Provider. */
+import { describe, expect, it, vi } from "vitest";
 import { generateSummary } from "@earendil-works/pi-coding-agent";
 import {
   createAssistantMessageEventStream,
+  type Api,
+  type ApiKeyAuth,
   type AssistantMessage,
   type Context,
   type Message,
   type Model,
-  type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
+import type { GatewayProviderAuthController } from "../lib/provider-auth.ts";
+import {
+  createGatewayProviderRuntime,
+  type GatewayStreamImplementations,
+} from "../lib/provider.ts";
 
-/** Minimal Model<openai-completions> for compaction. None of the network or
- *  provider-specific fields are exercised because we never let pi-ai actually
- *  call out — our fake streamFn intercepts before that. */
-function fakeModel(): Model<"openai-completions"> {
-  return {
-    id: "fake-gateway-model",
-    name: "Fake Gateway Model",
-    api: "openai-completions",
-    provider: "openrouter",
-    baseUrl: "https://gateway.test/v1",
-    reasoning: false,
-    input: ["text"],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 200_000,
-    maxTokens: 8_000,
-  };
-}
-
-function fakeAssistantMessage(text: string): AssistantMessage {
-  return {
+function summaryStream(model: Model<Api>, text = "[gateway summary]") {
+  const stream = createAssistantMessageEventStream();
+  const message: AssistantMessage = {
     role: "assistant",
     content: [{ type: "text", text }],
-    api: "openai-completions",
-    provider: "openrouter",
-    model: "fake-gateway-model",
+    api: model.api,
+    provider: model.provider,
+    model: model.id,
     usage: {
       input: 0,
       output: 0,
@@ -74,15 +36,15 @@ function fakeAssistantMessage(text: string): AssistantMessage {
     stopReason: "stop",
     timestamp: Date.now(),
   };
+  queueMicrotask(() => {
+    stream.push({ type: "start", partial: message });
+    stream.push({ type: "done", reason: "stop", message });
+    stream.end();
+  });
+  return stream;
 }
 
-/**
- * pi-ai's `Message` is a structural subset of pi's `AgentMessage` (the latter
- * adds a few custom roles like `bashExecution` and `compactionSummary`).
- * `generateSummary` only ever invokes the message-shape branches, so passing
- * a plain `Message[]` is the lowest-friction shape that TS still accepts.
- */
-function userMessages(): Message[] {
+function userMessages(model: Model<Api>): Message[] {
   return [
     {
       role: "user",
@@ -92,9 +54,9 @@ function userMessages(): Message[] {
     {
       role: "assistant",
       content: [{ type: "text", text: "Sure, what do you need?" }],
-      api: "openai-completions",
-      provider: "openrouter",
-      model: "fake-gateway-model",
+      api: model.api,
+      provider: model.provider,
+      model: model.id,
       usage: {
         input: 100,
         output: 50,
@@ -109,61 +71,59 @@ function userMessages(): Message[] {
   ];
 }
 
-describe("pi compaction → gateway streamFn handoff (pi 0.75 #4484)", () => {
-  it("calls the provider streamFn passed in to generateSummary", async () => {
-    let streamFnCalls = 0;
-    let lastModelSeen: Model<"openai-completions"> | null = null;
-    let lastSystemPromptSeen: string | undefined;
+function authController(): GatewayProviderAuthController {
+  const auth: ApiKeyAuth = {
+    name: "test",
+    resolve: async () => undefined,
+  };
+  return {
+    auth,
+    bind: vi.fn(),
+    clear: vi.fn(),
+    getActiveCwd: vi.fn(() => undefined),
+    hasConfiguredCredential: vi.fn(async () => false),
+    resolveRuntimeAuth: vi.fn(async () => undefined),
+  };
+}
 
-    const fakeStreamFn = (
-      m: Model<"openai-completions">,
-      ctx: Context,
-      _options?: SimpleStreamOptions,
-    ) => {
-      streamFnCalls++;
-      lastModelSeen = m;
-      lastSystemPromptSeen = ctx.systemPrompt;
-
-      // Emit a minimal, well-formed event sequence so generateSummary's
-      // `.result()` resolves to a non-error AssistantMessage. Without `start`
-      // → `done`, pi treats the stream as malformed.
-      const stream = createAssistantMessageEventStream();
-      setTimeout(() => {
-        const message = fakeAssistantMessage("[fake summary]");
-        stream.push({ type: "start", partial: message });
-        stream.push({ type: "done", reason: "stop", message });
-        stream.end();
-      }, 0);
-      return stream;
+describe("Pi compaction → complete Gateway Provider", () => {
+  it("runs the registered Gateway streamSimple implementation", async () => {
+    let calls = 0;
+    let systemPrompt: string | undefined;
+    const simple = (model: Model<Api>, context: Context) => {
+      calls += 1;
+      systemPrompt = context.systemPrompt;
+      return summaryStream(model);
     };
+    const full = (model: Model<Api>) => summaryStream(model);
+    const streams: GatewayStreamImplementations = {
+      anthropicFull: full as GatewayStreamImplementations["anthropicFull"],
+      chatFull: full as GatewayStreamImplementations["chatFull"],
+      responsesFull: full as GatewayStreamImplementations["responsesFull"],
+      anthropicSimple: simple as GatewayStreamImplementations["anthropicSimple"],
+      chatSimple: simple as GatewayStreamImplementations["chatSimple"],
+      responsesSimple: simple as GatewayStreamImplementations["responsesSimple"],
+    };
+    const runtime = createGatewayProviderRuntime({ authController: authController(), streams });
+    const model = runtime.provider.getModels().find((entry) => entry.api === "openai-completions");
+    expect(model).toBeDefined();
+    if (!model) return;
 
     const summary = await generateSummary(
-      userMessages(),
-      fakeModel(),
+      userMessages(model),
+      model,
       8_192,
-      undefined, // apiKey
-      undefined, // headers
-      undefined, // signal
-      undefined, // customInstructions
-      undefined, // previousSummary
-      undefined, // thinkingLevel
-      fakeStreamFn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      runtime.provider.streamSimple.bind(runtime.provider),
     );
 
-    // Primary assertion: the provider streamFn ran. If pi ever stops threading
-    // `streamFn` through to the underlying complete call, this drops to 0 and
-    // we fail before the gateway gets silently bypassed.
-    expect(streamFnCalls).toBe(1);
-
-    // Secondary checks that close the loop on what pi handed to streamFn:
-    //   - the model object pi forwards is the one we asked it to summarize for
-    //   - pi seeds the context with its summarization system prompt (so the
-    //     mock matches the production call shape, not just any stream call)
-    expect(lastModelSeen).not.toBeNull();
-    expect(lastModelSeen?.id).toBe("fake-gateway-model");
-    expect(lastSystemPromptSeen).toBeTruthy();
-
-    // And the canned summary makes it back through generateSummary unchanged.
-    expect(summary).toBe("[fake summary]");
+    expect(calls).toBe(1);
+    expect(systemPrompt).toBeTruthy();
+    expect(summary).toBe("[gateway summary]");
   });
 });

@@ -60,14 +60,12 @@ export const FALLBACK_MODEL_ID = "claude-sonnet-5";
 
 /** Previous default kept as a named constant for backward compatibility in presets. */
 export const PREVIOUS_DEFAULT_MODEL_ID = "claude-opus-4-8";
-export const DEFAULT_THINKING_LEVEL = "max" as const;
 // When the user turns the gateway off, switch them to a model that actually
 // exists on the gateway. `openai-codex/gpt-5.5` used to be here but is not
 // a published model id on the gateway; use the real GPT-5 on the openai
 // provider bundled with pi instead.
 export const OFF_DEFAULT_PROVIDER = "openai";
 export const OFF_DEFAULT_MODEL_ID = "gpt-5";
-export const OFF_DEFAULT_THINKING_LEVEL = "xhigh" as const;
 
 export const SAVED_CONFIG_FILE = `${PROVIDER_NAME}.json`;
 
@@ -95,7 +93,6 @@ export type SavedGatewayConfig = {
   previousEnabledModels?: string[] | null;
   previousDefaultProvider?: string;
   previousDefaultModel?: string;
-  previousThinkingLevel?: string;
   /**
    * Optional URL surfaced by the doctor as a trailing "More info" link.
    * Empty / undefined by default; users may set this to point at their own
@@ -119,14 +116,11 @@ export type SavedGatewayConfig = {
 export type GatewayConfig = {
   enabled: boolean;
   baseUrl?: string;
-  apiKey?: string;
   exclusiveScope: boolean;
   baseUrlSource: ConfigSource;
-  apiKeySource: ConfigSource;
   exclusiveScopeSource: Extract<ConfigSource, "saved" | "default">;
   previousDefaultProvider?: string;
   previousDefaultModel?: string;
-  previousThinkingLevel?: string;
   /** Optional doctor "More info" URL. Resolved saved > env > undefined. */
   helpUrl?: string;
   helpUrlSource: ConfigSource;
@@ -155,8 +149,6 @@ export function getGatewayConfig(cwd: string): GatewayConfig {
 
   const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
   const savedBaseUrl = normalizeBaseUrl(saved.baseUrl);
-  const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
-  const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
   const optional = resolveOptionalEnvBackedValues(saved);
@@ -164,14 +156,11 @@ export function getGatewayConfig(cwd: string): GatewayConfig {
   return {
     enabled: saved.enabled !== false,
     baseUrl,
-    apiKey: savedApiKey ?? envApiKey,
     exclusiveScope: savedExclusiveScope ?? false,
     baseUrlSource: savedBaseUrl ? "saved" : envBaseUrl ? "env" : "default",
-    apiKeySource: savedApiKey ? "saved" : envApiKey ? "env" : "missing",
     exclusiveScopeSource: savedExclusiveScope !== undefined ? "saved" : "default",
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,
-    previousThinkingLevel: saved.previousThinkingLevel,
     helpUrl: optional.helpUrl,
     helpUrlSource: optional.helpUrlSource,
     caBundleSource: optional.caBundleSource,
@@ -222,8 +211,6 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
 
   const envBaseUrl = normalizeBaseUrl(readGatewayEnv(BASE_URL_ENV, LEGACY_BASE_URL_ENV));
   const savedBaseUrl = normalizeBaseUrl(saved.baseUrl);
-  const envApiKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim() || undefined;
-  const savedApiKey = saved.apiKey?.trim() || undefined;
   const savedExclusiveScope = asOptionalBoolean(saved.exclusiveScope);
   const baseUrl = savedBaseUrl ?? envBaseUrl ?? DEFAULT_BASE_URL;
   const optional = resolveOptionalEnvBackedValues(saved);
@@ -231,14 +218,11 @@ export function getGlobalOnlyGatewayConfig(): GatewayConfig {
   return {
     enabled: saved.enabled !== false,
     baseUrl,
-    apiKey: savedApiKey ?? envApiKey,
     exclusiveScope: savedExclusiveScope ?? false,
     baseUrlSource: savedBaseUrl ? "saved" : envBaseUrl ? "env" : "default",
-    apiKeySource: savedApiKey ? "saved" : envApiKey ? "env" : "missing",
     exclusiveScopeSource: savedExclusiveScope !== undefined ? "saved" : "default",
     previousDefaultProvider: saved.previousDefaultProvider,
     previousDefaultModel: saved.previousDefaultModel,
-    previousThinkingLevel: saved.previousThinkingLevel,
     helpUrl: optional.helpUrl,
     helpUrlSource: optional.helpUrlSource,
     caBundleSource: optional.caBundleSource,
@@ -337,7 +321,6 @@ export function readGatewaySavedConfig(filePath: string): SavedGatewayConfig {
       previousEnabledModels: asOptionalStringArrayOrNull(record.previousEnabledModels),
       previousDefaultProvider: asOptionalString(record.previousDefaultProvider),
       previousDefaultModel: asOptionalString(record.previousDefaultModel),
-      previousThinkingLevel: asOptionalString(record.previousThinkingLevel),
       helpUrl: asOptionalString(record.helpUrl),
       caBundleSource: asOptionalString(record.caBundleSource),
       caBundleCandidates: asOptionalStringArrayOrNull(record.caBundleCandidates),
@@ -375,17 +358,13 @@ export function normalizeBaseUrl(rawValue: string | undefined): string | undefin
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return undefined;
     }
+    if (url.username || url.password) {
+      return undefined;
+    }
     return toGatewayRootBaseUrl(url.toString().replace(/\/$/, ""));
   } catch {
     return undefined;
   }
-}
-
-export function maskApiKey(value: string): string {
-  if (value.length <= 8) {
-    return "*".repeat(Math.max(4, value.length));
-  }
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
 }
 
 export function describeConfigValue(value: string | undefined, source: ConfigSource): string {
@@ -393,13 +372,6 @@ export function describeConfigValue(value: string | undefined, source: ConfigSou
     return "missing";
   }
   return `${value} (${source})`;
-}
-
-export function describeApiKey(value: string | undefined, source: ConfigSource): string {
-  if (!value) {
-    return "missing";
-  }
-  return `${maskApiKey(value)} (${source})`;
 }
 
 export function asOptionalString(value: unknown): string | undefined {

@@ -164,7 +164,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 521
+    "srcLoc": 526
   },
   {
     "id": "sf-browser",
@@ -260,6 +260,8 @@
     ],
     "events": [
       "session_start",
+      "tool_result",
+      "agent_settled",
       "session_shutdown"
     ],
     "docs": {
@@ -295,7 +297,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4418
+    "srcLoc": 4420
   },
   {
     "id": "sf-data-explorer",
@@ -420,6 +422,7 @@
       "session_start",
       "session_shutdown",
       "model_select",
+      "session_info_changed",
       "thinking_level_select",
       "turn_start",
       "turn_end",
@@ -427,10 +430,11 @@
       "before_agent_start"
     ],
     "docs": {
-      "summary": "Two non-blocking status bars: a top widget with model/thinking/git/context, and a custom footer with project-scoped org info, monthly LLM-gateway budget, and active extension counts.",
+      "summary": "Two non-blocking status bars: a top widget with model/thinking/session/git/context, and a custom footer with project-scoped org info, monthly LLM-gateway budget, and active extension counts.",
       "primaryFiles": [
         "index.ts",
         "lib/top-bar.ts",
+        "lib/runtime-facts.ts",
         "lib/bottom-bar.ts",
         "lib/colors.ts",
         "lib/settings.ts",
@@ -442,7 +446,7 @@
     "entry": "extensions/sf-devbar/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2520
+    "srcLoc": 2561
   },
   {
     "id": "sf-docs",
@@ -462,7 +466,10 @@
     "tools": [
       "sf_docs"
     ],
-    "events": [],
+    "events": [
+      "session_start",
+      "session_shutdown"
+    ],
     "docs": {
       "summary": "Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to the Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport, stores the token in Pi's auth store, and keeps settings limited to non-secret defaults.",
       "primaryFiles": [
@@ -492,7 +499,7 @@
         "SF_DOCS_MCP_ENDPOINT"
       ],
       "safety": [
-        "Stores the docs token in Pi's local auth store under provider id `sf-docs`; project settings contain only non-secret preferences.",
+        "Interactive login uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials under provider id `sf-docs`.",
         "Uses native fetch plus a small local SSE parser; no MCP server, MCP SDK, or extra runtime dependency is required.",
         "Caches only the collection catalog and never caches search results, answer text, fetched document bodies, prompts, or citations.",
         "Tool output keeps URLs and citations visible while redacting token-bearing values from errors and UI surfaces."
@@ -501,7 +508,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3999
+    "srcLoc": 4087
   },
   {
     "id": "sf-feedback",
@@ -538,7 +545,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1538
+    "srcLoc": 1533
   },
   {
     "id": "sf-guardrail",
@@ -606,7 +613,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5539
+    "srcLoc": 5540
   },
   {
     "id": "sf-herdr",
@@ -627,7 +634,6 @@
     "events": [
       "session_start",
       "session_tree",
-      "tool_execution_end",
       "tool_result",
       "resources_discover",
       "session_shutdown"
@@ -660,7 +666,7 @@
     "entry": "extensions/sf-herdr/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 919
+    "srcLoc": 900
   },
   {
     "id": "sf-llm-gateway-internal",
@@ -686,10 +692,10 @@
       "session_shutdown"
     ],
     "docs": {
-      "summary": "Single pi-native provider for the Salesforce LLM Gateway. Static bootstrap catalog plus dynamic /v1/models discovery, family-aware presets, stale-usage auto-refresh, OpenAI-compat dispatcher that delegates Claude ids to the native Anthropic transport, and footer status with model + context + monthly usage.",
+      "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, static baseline plus dynamic overlay, real mixed-API dispatch, Gateway-aware transport adapters, explicit refresh, diagnostics, and usage status.",
       "primaryFiles": [
         "index.ts",
-        "lib/discovery.ts",
+        "lib/provider.ts",
         "lib/transport.ts",
         "lib/models.ts",
         "lib/model-resolution.ts",
@@ -700,18 +706,21 @@
         "lib/doctor.ts"
       ],
       "stateFiles": [
-        "~/.pi/agent/settings.json (provider config + retry guidance)",
-        "<globalAgentDir>/sf-llm-gateway/* (saved api key, base url, monthly usage cache)"
+        "~/.pi/agent/auth.json (Pi-owned API-key credential + default non-secret URL)",
+        "<globalAgentDir>/sf-llm-gateway-internal.json (non-secret settings; inactive legacy apiKey may remain for detection and confirmed cleanup)",
+        "<globalAgentDir>/sf-llm-gateway/* (monthly usage and diagnostic state)"
       ],
       "safety": [
-        "Tokens are never echoed in panel output; only describeApiKey summaries are shown.",
+        "API-key input uses SF Pi's shared fixed-mask component and never enters Pi's visible stock prompt.",
+        "Pi alone persists/removes active credentials; setup and import paths write no secrets.",
+        "Legacy config apiKey fields are never used for authentication and remain untouched without verified explicit cleanup.",
         "Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads."
       ]
     },
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12217
+    "srcLoc": 12170
   },
   {
     "id": "sf-lsp",
@@ -857,10 +866,12 @@
     "tools": [],
     "events": [
       "session_start",
+      "agent_start",
+      "agent_settled",
       "session_shutdown"
     ],
     "docs": {
-      "summary": "Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor/auto-update commands plus the interactive TUI overlay and settings panel. alwaysActive: enable/disable is mediated through this extension only.",
+      "summary": "Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor/auto-update commands plus the interactive TUI overlay and settings panel. Opt-in Auto Update waits for agent_settled, retains the audited Pi runtime, updates only declared-compatible unpinned global npm Pi packages through Pi, and runs the independent Salesforce CLI stable update. alwaysActive: enable/disable is mediated through this extension only.",
       "primaryFiles": [
         "index.ts",
         "lib/overlay.ts",
@@ -871,6 +882,10 @@
         "lib/doctor-command.ts",
         "lib/skill-sources-command.ts",
         "lib/auto-update-command.ts",
+        "lib/auto-update-coordinator.ts",
+        "lib/auto-update-package-plan.ts",
+        "lib/auto-update-runner.ts",
+        "lib/auto-update-transcript.ts",
         "lib/config-panel.ts",
         "../../lib/common/auto-update/store.ts"
       ],
@@ -878,17 +893,20 @@
         "~/.pi/agent/settings.json (sf-pi package filter list)",
         "<globalAgentDir>/state/sf-pi/recommendations.json",
         "<globalAgentDir>/state/sf-pi/announcements.json",
-        "<globalAgentDir>/sf-pi/auto-update/status.json"
+        "<globalAgentDir>/sf-pi/auto-update/status.json",
+        "<globalAgentDir>/sf-pi/auto-update/run.lock (ephemeral)"
       ],
       "safety": [
         "Owns the WRITE side of pi's package filter list via lib/common/sf-pi-package-state.ts.",
+        "Auto Update is opt-in, interactive-session only, agent-settled, machine-locked, abortable, and output-redacted; it never performs an unbounded Pi self-update.",
+        "Package automation is limited to outdated unpinned global npm packages with declared active Pi/Node compatibility; pinned, local, git, project, incompatible, and unverifiable packages are skipped.",
         "alwaysActive cannot be disabled through the standard toggle action."
       ]
     },
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3986
+    "srcLoc": 4609
   },
   {
     "id": "sf-skills",
@@ -996,13 +1014,14 @@
         "slack_send requires user confirmation in interactive mode and refuses headless unless SLACK_ALLOW_HEADLESS_SEND=1.",
         "slack_schedule schedule/delete require user confirmation in interactive mode and refuse headless unless SLACK_ALLOW_HEADLESS_SEND=1.",
         "Read-only by default; only canvas create/edit, slack_send, and slack_schedule schedule/delete mutate.",
+        "Interactive login uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials.",
         "Tokens are never displayed unmasked."
       ]
     },
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12288
+    "srcLoc": 12376
   },
   {
     "id": "sf-soql",
@@ -1119,6 +1138,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6408
+    "srcLoc": 6399
   }
 ]

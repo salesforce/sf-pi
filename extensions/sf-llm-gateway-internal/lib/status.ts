@@ -9,20 +9,19 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   API_KEY_ENV,
   DEFAULT_MODEL_ID,
-  DEFAULT_THINKING_LEVEL,
   FALLBACK_MODEL_ID,
   LEGACY_API_KEY_ENV,
-  describeApiKey,
+  PROVIDER_NAME,
   describeConfigValue,
   getGatewayConfig,
-  getMergedSavedGatewayConfig,
   getSavedExclusiveScopeStatus,
   globalGatewayConfigPath,
   projectGatewayConfigPath,
   readGatewayEnv,
 } from "./config.ts";
+import { hasLegacyGatewayToken } from "./legacy-token-migration.ts";
 import { formatTokens, formatUsd, getActiveModelDefinition } from "./models.ts";
-import { getLastModelGroupDrift, type GatewayDiscoveryState } from "./discovery.ts";
+import { gatewayProviderRuntime, type GatewayNativeDiscoveryState } from "./provider.ts";
 import type { ModelGroupDrift } from "./models.ts";
 import type {
   GatewayConnectionStatus,
@@ -42,7 +41,7 @@ import { glyph, resolveGlyphMode } from "../../../lib/common/glyph-policy.ts";
 export { formatProviderSignalBadge } from "./provider-telemetry.ts";
 
 export interface GatewayRuntimeStatusState {
-  discovery: GatewayDiscoveryState | null;
+  discovery: GatewayNativeDiscoveryState | null;
   monthlyUsage: GatewayMonthlyUsage | null;
   monthlyUsageError: string | null;
   lastKnownMonthlyUsage?: GatewayMonthlyUsage | null;
@@ -84,6 +83,10 @@ export function buildStatusReport(
   const activeModel = getActiveModelDefinition(ctx.model?.id, state.discovery?.modelIds);
   const contextUsage = ctx.getContextUsage();
   const discovery = state.discovery;
+  const authStatus = ctx.modelRegistry.getProviderAuthStatus(PROVIDER_NAME);
+  const authDescription = authStatus.configured
+    ? `configured (${authStatus.label ?? authStatus.source ?? "provider auth"})`
+    : "missing";
 
   return [
     "SF LLM Gateway Internal",
@@ -91,13 +94,13 @@ export function buildStatusReport(
     `Provider enabled: ${config.enabled ? "yes" : "no"}`,
     `Provider registered: ${providerRegistered ? "yes" : "no"}`,
     `Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-    `API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+    `Credential: ${authDescription}`,
     `Saved config files: ${globalGatewayConfigPath()}, ${projectGatewayConfigPath(ctx.cwd)}`,
     `Saved scope fallback: project=${savedScope.project}, global=${savedScope.global}, effective=${savedScope.effective} (${savedScope.effectiveSource})`,
     `Effective scoped model mode: ${config.exclusiveScope ? "exclusive (gateway-only scoped models)" : "additive (preserve existing scoped models)"}`,
     `Active model: ${ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "none"}`,
     `Active SF model: ${activeModel ? activeModel.name : "no"}`,
-    `Thinking default: ${DEFAULT_THINKING_LEVEL}`,
+    "Thinking selection: managed by Pi/user settings",
     `Context usage: ${contextUsage ? `${formatTokens(contextUsage.tokens)} / ${formatTokens(contextUsage.contextWindow)}` : "unknown"}`,
     `Monthly usage: ${formatMonthlyUsageReportLine(state.monthlyUsage, state.monthlyUsageError)}`,
     `Key spend: ${formatKeyInfoReportLine(state.keyInfo, state.keyInfoError)}`,
@@ -109,7 +112,7 @@ export function buildStatusReport(
     "",
     `Model discovery: ${discovery?.source ?? "not run"}${discovery?.error ? ` ⚠ ${discovery.error}` : ""}`,
     `Discovered models: ${discovery?.modelIds.length ?? 0}`,
-    ...formatModelGroupDriftLines(getLastModelGroupDrift()),
+    ...formatModelGroupDriftLines(gatewayProviderRuntime.getLastModelGroupDrift()),
     "",
     ...buildProviderTelemetryReport(),
     ...buildWireTraceReport(),
@@ -294,9 +297,9 @@ export function formatKeyListReportLine(
  * guidance tells users where to update or prune instead of guessing age.
  */
 export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusState): string[] {
-  const config = getGatewayConfig(cwd);
-  const savedKey = getMergedSavedGatewayConfig(cwd).apiKey?.trim();
-  const envKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
+  const legacySavedKeyPresent =
+    hasLegacyGatewayToken(cwd, "project") || hasLegacyGatewayToken(cwd, "global");
+  const envKeyPresent = Boolean(readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim());
   const lines: string[] = [];
 
   if (state.connectionStatus?.kind === "auth-failed") {
@@ -305,13 +308,14 @@ export function getApiKeyGuidanceLines(cwd: string, state: GatewayRuntimeStatusS
     );
   }
 
-  if (savedKey && envKey && savedKey !== envKey) {
+  if (legacySavedKeyPresent) {
     lines.push(
-      `${API_KEY_ENV} is also set but ignored because a saved key wins. If the env key is newer, run /login or /sf-llm-gateway setup to save it; otherwise remove the stale env var from your shell or Keychain setup.`,
+      "A legacy Gateway config token is present but is no longer used for authentication. Run /login to store a Pi-owned credential, then use /sf-llm-gateway remove-legacy-token project or global after verification; the legacy value is never copied or deleted automatically.",
     );
-  } else if (config.apiKeySource === "env") {
+  }
+  if (envKeyPresent) {
     lines.push(
-      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login or /sf-llm-gateway setup so pi keeps using the intended key across shells.`,
+      `An ${API_KEY_ENV} automation fallback is configured. A Pi-saved credential from /login takes precedence when present.`,
     );
   }
 

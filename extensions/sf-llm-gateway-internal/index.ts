@@ -2,29 +2,20 @@
 /**
  * sf-llm-gateway-internal behavior contract
  *
- * - Registers the Salesforce LLM Gateway as a SINGLE pi-native provider
- *   (`sf-llm-gateway-internal`). One row in `/login`, one paste-token flow,
- *   one saved credential. All registered models inherit the provider-level
- *   `openai-completions` api so pi always invokes our unified `streamSimple`.
- *   That dispatcher detects Claude model ids and delegates them to the native
- *   Anthropic transport internally. Claude still runs on the native Anthropic
- *   path because the OpenAI-compat proxy splits thinking+text across choices
- *   and intermittently drops the final text delta, producing empty assistant
- *   turns that force "continue".
- *
- *   See `lib/discovery.ts` for the dispatcher and `lib/migrate-unify-
- *   provider.ts` for the one-shot settings migration that rewrites the
- *   retired `sf-llm-gateway-internal-anthropic` references in users'
- *   settings.json files.
- * - Registers a static bootstrap catalog synchronously, then layers in the
- *   previous cached discovery catalog so Pi startup can resolve default and
- *   scoped models before async discovery finishes
+ * - Registers one complete Pi Provider (`sf-llm-gateway-internal`). Pi owns
+ *   credential persistence/logout, provider-scoped model storage, refresh
+ *   coordination, and dispatch by each model's real API tag.
+ * - `/login` always reviews the non-secret gateway URL through Pi's text prompt,
+ *   then collects the API key through SF Pi's fully masked custom component.
+ *   The key never enters Pi's visible stock prompt or extension config.
+ * - Registers a static bootstrap catalog synchronously, then lets Pi restore
+ *   and overlay the previous provider-scoped dynamic catalog without network.
  * - Dynamic model discovery via `/v1/models` for all valid gateway model IDs
  * - Static presets for common models, generic family-aware inference for newly discovered ones
- * - Uses Pi's built-in custom-provider support instead of models.json hacks
+ * - Keeps `models.json` overrides above the registered Provider through Pi composition
  * - Shows an explicit SF LLM Gateway footer status when one of these models is active
  * - Footer status includes chosen model, current context usage, and monthly gateway usage
- * - Defaults gateway sessions to Pi thinking level max when the model supports it
+ * - Advertises model-specific thinking capabilities while Pi/user settings choose the active level
  * - Repairs retired gateway enabledModels entries before startup validation
  * - No SF Pi-owned Anthropic beta headers; current gateway routes are GA/live-proven
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
@@ -36,7 +27,7 @@
  *                                       stale shell/Keychain exports shadowing new
  *                                       pasted values.
  * - SF_LLM_GATEWAY_API_KEY             optional automation fallback. Normal users
- *                                       should paste/rotate keys with /login or setup.
+ *                                       should authenticate through /login.
  * - Legacy SF_LLM_GATEWAY_INTERNAL_* aliases still work for base URL / API key.
  *
  * Commands:
@@ -58,20 +49,19 @@
  *
  *   Event/Trigger               | Condition                          | Result
  *   ----------------------------|------------------------------------|-------------------------------
- *   Extension load              | enabled + has credentials          | Register static catalog, fire-and-forget discovery
- *   Extension load              | disabled                           | Unregister provider
- *   session_start               | —                                  | Sync defaults (sync), fire-and-forget discovery, one-time key-conflict notify
+ *   Extension load              | —                                  | Register one complete Provider; restore Pi catalog cache offline
+ *   session_start               | —                                  | Bind cwd/UI/model registry; sync local defaults; no model-discovery network
  *   turn_end                    | model is gateway model             | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails
  *   turn_end                    | model is NOT gateway model         | Clear footer status
- *   model_select                | selected model is gateway          | Set thinking to the gateway default
+ *   model_select                | model changes                       | Refresh footer without mutating thinking
  *   after_provider_response     | model is gateway model + 2xx       | Clear any live throttle/upstream warning
  *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
  *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
- *   session_shutdown            | —                                  | Clear footer status + provider signal
+ *   session_shutdown            | —                                  | Cancel credential UI; clear cwd/auth/footer/provider state
  *   /command (no args)          | interactive UI                     | Open Manager detail page
  *   /command (no args)          | no UI                              | Print text status report
- *   /command on                 | missing credentials                | Prompt for credentials first
- *   /command on                 | credentials present                | Save config, set default, register, discover
+ *   /command on                 | missing credentials                | Prefill /login after endpoint setup
+ *   /command on                 | credentials present                | Set defaults and explicitly refresh Pi models
  *   /command off                | —                                  | Disable, remove pattern, switch to off-default
  *   /command refresh            | —                                  | Re-discover, refresh monthly usage
  *   /command latency-probe      | —                                  | Run read-only gateway timing probes
@@ -81,20 +71,19 @@
  *
  * Reader guide:
  * - Start at the extension entry point to see the runtime spine
- * - Then read provider registration/discovery and command routing
- * - Provider discovery lives in lib/discovery.ts
+ * - Then read provider registration/discovery in lib/provider.ts
+ * - Provider auth + session context live in lib/provider-auth.ts
  * - Monthly usage caching lives in lib/monthly-usage.ts
  * - Pi settings mutations live in lib/pi-settings.ts
  * - Footer/status formatting lives in lib/status.ts
  * - The standalone TUI setup overlay is in lib/setup-overlay.ts; Manager setup reuses lib/config-panel.ts
  */
 
-import { Text, matchesKey, type Focusable } from "@earendil-works/pi-tui";
+import { matchesKey, type Focusable } from "@earendil-works/pi-tui";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
-  MessageRenderer,
   Theme,
 } from "@earendil-works/pi-coding-agent";
 
@@ -112,10 +101,8 @@ import {
   DEFAULT_MODEL_ID,
   FALLBACK_MODEL_ID,
   PREVIOUS_DEFAULT_MODEL_ID,
-  DEFAULT_THINKING_LEVEL,
   OFF_DEFAULT_PROVIDER,
   OFF_DEFAULT_MODEL_ID,
-  OFF_DEFAULT_THINKING_LEVEL,
   getGatewayConfig,
   readGatewaySavedConfig,
   writeGatewaySavedConfig,
@@ -123,7 +110,6 @@ import {
   projectGatewayConfigPath,
   normalizeBaseUrl,
   describeConfigValue,
-  describeApiKey,
   asOptionalString,
   type SavedGatewayConfig,
 } from "./lib/config.ts";
@@ -160,14 +146,11 @@ import {
   restoreEnabledModelsSnapshot,
   shouldCaptureExclusiveScopeSnapshot,
   snapshotEnabledModelsForExclusiveScope,
+  setDefaultModelSelection,
   writeSettings,
 } from "./lib/pi-settings.ts";
-import {
-  discoverAndRegister,
-  getLastDiscovery,
-  registerCachedDiscoveryIfAvailable,
-  registerProviderIfConfigured,
-} from "./lib/discovery.ts";
+import { gatewayProviderRuntime } from "./lib/provider.ts";
+import { hasLegacyGatewayToken, removeLegacyGatewayToken } from "./lib/legacy-token-migration.ts";
 import { migrateGatewaySettings } from "./lib/migrate-unify-provider.ts";
 import {
   isObsoleteGatewayDefaultModelId,
@@ -223,7 +206,10 @@ import {
   type GatewayCommandId,
 } from "./lib/command-surface.ts";
 import type { ConfigPanelResult } from "../../catalog/registry.ts";
-import { openInfoPanel } from "../../lib/common/info-panel.ts";
+import {
+  emitHumanOnlyCommandOutput,
+  registerHumanOnlyCommandOutput,
+} from "../../lib/common/human-only-command-output.ts";
 import {
   openExtensionInManager,
   type SfPiManagerOpenRoute,
@@ -277,6 +263,7 @@ type CommandArgs = {
     | "open-token"
     | "import-claude"
     | "fix-ca-bundle"
+    | "remove-legacy-token"
     | "on"
     | "off"
     | "setup";
@@ -289,18 +276,6 @@ type CommandArgs = {
 // In-memory runtime state
 // -------------------------------------------------------------------------------------------------
 
-/**
- * Last thinking level this extension actively set on the session.
- *
- * We use this to distinguish "nobody picked a level, give them our default"
- * from "the user just picked medium, leave them alone". If the session's
- * current thinking level matches what we last set, the user has not touched
- * it and we are free to re-apply DEFAULT_THINKING_LEVEL. If it differs, the
- * user (or another extension) changed it and we respect that choice.
- *
- * Reset to undefined on session_shutdown so each new session starts fresh.
- */
-let lastAppliedThinkingLevel: string | undefined;
 const staleUsageRefresh = createStaleUsageRefreshState();
 
 function getRuntimeStatusState() {
@@ -319,7 +294,7 @@ function getRuntimeStatusState() {
     keyListError,
   } = getMonthlyUsageState();
   return {
-    discovery: getLastDiscovery(),
+    discovery: gatewayProviderRuntime.getLastDiscovery(),
     monthlyUsage,
     monthlyUsageError,
     lastKnownMonthlyUsage,
@@ -357,17 +332,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     installWireTrace();
   }
 
-  // Register a static catalog synchronously so Pi's startup can resolve
-  // defaultProvider/defaultModel and enabledModels patterns immediately.
-  // Uses a minimal registration that does not need cwd — the config layer
-  // reads global saved config first, then env vars as automation fallback.
-  registerProviderIfConfigured(pi);
-
-  // If a prior session discovered additional gateway models, register that
-  // local cache now too. Pi resolves scoped model patterns before
-  // session_start, so waiting until session_start would leave explicit model
-  // allow-lists stuck on the smaller bootstrap catalog for this session.
-  registerCachedDiscoveryIfAvailable(pi);
+  // Register one complete Pi Provider. Pi owns auth application, provider-scoped
+  // model persistence, refresh coordination, and API dispatch from this point on.
+  pi.registerProvider(gatewayProviderRuntime.provider);
 
   // Contribute to the aggregated `/sf-pi doctor` view. The standalone
   // `/sf-llm-gateway doctor` command keeps using
@@ -375,18 +342,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   registerExtensionDoctor("sf-llm-gateway-internal", (cwd) => runGatewayExtensionDoctor(cwd));
   registerManagerDetailActions(pi, "sf-llm-gateway-internal", buildGatewayManagerActions(pi));
 
-  // Rendering hook for any sendMessage traffic the extension emits on behalf
-  // of the gateway. Single registration now that the retired anthropic
-  // sub-provider is gone.
-  const renderGatewayMessage: MessageRenderer<unknown> = (message, _options, theme) => {
-    const content =
-      typeof message.content === "string"
-        ? message.content
-        : (message.content ?? []).map((part) => (part.type === "text" ? part.text : "")).join("");
-    const header = theme.fg("accent", theme.bold("[SF LLM Gateway Internal]"));
-    return new Text(`${header}\n${content}`, 0, 0);
-  };
-  pi.registerMessageRenderer(PROVIDER_NAME, renderGatewayMessage);
+  // Headless command reports use state-only entries, so JSON clients can
+  // observe them without adding a model-visible custom message.
+  registerHumanOnlyCommandOutput(pi, PROVIDER_NAME);
 
   pi.registerCommand(FRIENDLY_COMMAND_NAME, {
     description: "SF LLM Gateway — status, controls, and credential setup",
@@ -416,15 +374,14 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   };
 
   pi.on("session_start", async (_event, ctx) => {
+    gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry);
     if (!unregisterMonthlyUsage) {
       unregisterMonthlyUsage = registerGatewayMonthlyUsageRefresher();
     }
     clearDeferredStartupTimers();
-    // Capture cwd while the ctx is valid; deferred callbacks must not read
-    // ctx.cwd later (the getter throws on a stale ctx).
+    // Capture cwd while the ctx is valid; deferred callbacks must not read stale
+    // ctx getters after reload.
     const startupCwd = ctx.cwd;
-    // Fresh session — forget any thinking-level we set in a previous session.
-    lastAppliedThinkingLevel = undefined;
 
     // Install the retry-telemetry listener so transparent Anthropic
     // early-stream retries surface as user-visible notifications. These
@@ -451,17 +408,8 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       repairGatewayDefaultModelSettings(ctx.cwd, DEFAULT_MODEL_ID);
     });
 
-    // Phase 2.1: don't await `discoverAndRegister`. The bootstrap catalog
-    // is registered synchronously in the factory, so models work immediately
-    // even before live discovery completes. Awaiting here was the single
-    // biggest contributor to slow `session_start` (~2-4s on cold network).
-    //
-    // Chunk 4/10: syncGatewaySessionDefaults now keeps only cheap local
-    // setup in the awaited startup path. Footer usage refresh is display
-    // state, and active-model correction is not startup's job — pi's own
-    // settings resolver is the source of truth for the initial model.
-    registerCachedDiscoveryIfAvailable(pi, ctx.cwd);
-
+    // Startup remains local-only. Registering the complete Provider restores
+    // Pi's stored catalog without network access; live discovery is explicit.
     await markBootStep("sf-llm-gateway.sync-defaults", () =>
       syncGatewaySessionDefaults(pi, ctx, false, {
         awaitFooterRefresh: false,
@@ -469,39 +417,27 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       }),
     );
 
-    // Chunk 7: cached discovery is good enough for startup. Refresh the live
-    // gateway catalog after first paint so model-list drift self-corrects
-    // without adding network pressure to the boot path. Explicit
-    // /sf-llm-gateway refresh still awaits discoverAndRegister immediately.
-    const discoveryTimer = setTimeout(() => {
-      void markBootStep("sf-llm-gateway.discover (deferred)", () =>
-        discoverAndRegister(pi, startupCwd),
-      ).catch(() => undefined);
-    }, 2_500);
-    discoveryTimer.unref?.();
-    deferredStartupTimers.push(discoveryTimer);
-
-    // Phase 1.6: key-conflict detection is surfaced by sf-welcome's inline
-    // gateway row and /sf-llm-gateway doctor / usage-probe --trace. Do not
-    // toast during startup: notifications render over the splash and make
-    // first paint noisy.
-
     // First-run Claude Code nudge. Cache-first, deferred past first paint:
     //  1. State-store read (cheap; "have we shown this?")
-    //  2. Saved config read (cheap; "do they already have a key?")
+    //  2. Pi Provider auth status captured above (cheap)
     //  3. existsSync ~/.claude/settings.json (cheap)
     //  4. Only on hit — parse + score the Claude Code settings file once.
     // Sentinel-marked once shown so this never nags twice.
     const claudeNotifyTimer = setTimeout(() => {
-      void markBootStep("sf-llm-gateway.claude-code-nudge (deferred)", () => {
-        const decision = shouldNotifyClaudeCodeFirstRun({ cwd: startupCwd });
-        if (!decision.shouldNotify) return Promise.resolve();
+      void markBootStep("sf-llm-gateway.claude-code-nudge (deferred)", async () => {
+        const credentialConfigured = Boolean(
+          await gatewayProviderRuntime.authController.resolveRuntimeAuth(startupCwd),
+        );
+        const decision = shouldNotifyClaudeCodeFirstRun({
+          cwd: startupCwd,
+          credentialConfigured,
+        });
+        if (!decision.shouldNotify) return;
         const summary = decision.importedBaseUrl
-          ? `Found gateway credentials in Claude Code (${decision.importedBaseUrl}). Run /${FRIENDLY_COMMAND_NAME} onboard to import them.`
-          : `Found gateway credentials in Claude Code. Run /${FRIENDLY_COMMAND_NAME} onboard to import them.`;
+          ? `Found gateway setup in Claude Code (${decision.importedBaseUrl}). Run /${FRIENDLY_COMMAND_NAME} onboard to import non-secret settings, then authenticate with /login ${PROVIDER_NAME}.`
+          : `Found gateway setup in Claude Code. Run /${FRIENDLY_COMMAND_NAME} onboard to import non-secret settings, then authenticate with /login ${PROVIDER_NAME}.`;
         ctx.ui.notify(summary, "info");
         markClaudeCodeNotifyShown();
-        return Promise.resolve();
       }).catch(() => undefined);
     }, 4_000);
     claudeNotifyTimer.unref?.();
@@ -529,23 +465,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     }
   });
 
-  pi.on("model_select", async (event, ctx) => {
-    if (isGatewayProvider(event.model.provider)) {
-      // DEFAULT_THINKING_LEVEL is still the extension's recommended default
-      // on gateway models, but we no longer force it on every model_select —
-      // that overwrote user-initiated level changes and silently inflated every
-      // turn into a heavy-workload request profile, which correlated with
-      // Anthropic's intermittent `api_error: Internal server error` on long
-      // streaming turns.
-      //
-      // Re-apply the default only when the current level still matches what
-      // we last set (i.e. nobody has touched it since). That way:
-      //   - fresh session or first gateway switch: user gets the default
-      //   - user runs /thinking medium, then switches models: stays medium
-      //   - user runs /thinking medium, switches off gateway and back on:
-      //     stays medium (we do not re-force the default)
-      applyGatewayDefaultThinkingLevel(pi);
-    }
+  pi.on("model_select", async (_event, ctx) => {
     await updateFooterStatus(ctx, false);
   });
 
@@ -563,10 +483,10 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    gatewayProviderRuntime.clear();
     clearDeferredStartupTimers();
     clearProviderSignal();
     clearRetryEventListener();
-    lastAppliedThinkingLevel = undefined;
     detailsKickedOff = false;
     ctx.ui.setStatus(STATUS_KEY, undefined);
     if (unregisterMonthlyUsage) {
@@ -574,37 +494,6 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
       unregisterMonthlyUsage = null;
     }
   });
-}
-
-/**
- * Set thinking level to the extension's recommended default, but only when
- * the user has not explicitly changed it since we last set it. See the
- * block comment on `lastAppliedThinkingLevel` for the rationale.
- *
- * Returns true when the level was actually applied, false when respected.
- *
- * Exported for unit tests — the helpers below let tests drive the module's
- * internal state deterministically without booting a real pi session.
- */
-export function applyGatewayDefaultThinkingLevel(pi: ExtensionAPI): boolean {
-  const currentLevel = pi.getThinkingLevel();
-  if (lastAppliedThinkingLevel !== undefined && currentLevel !== lastAppliedThinkingLevel) {
-    // User changed it — respect the override.
-    return false;
-  }
-  pi.setThinkingLevel(DEFAULT_THINKING_LEVEL);
-  lastAppliedThinkingLevel = DEFAULT_THINKING_LEVEL;
-  return true;
-}
-
-/** Test-only: read the last thinking level this extension actively applied. */
-export function __getLastAppliedThinkingLevelForTests(): string | undefined {
-  return lastAppliedThinkingLevel;
-}
-
-/** Test-only: reset the module-level state between test cases. */
-export function __resetThinkingLevelStateForTests(): void {
-  lastAppliedThinkingLevel = undefined;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -793,6 +682,8 @@ async function handleCommand(
       return handleImportClaudeCommand(pi, ctx, parsed.scope);
     case "fix-ca-bundle":
       return handleFixCaBundleCommand(pi, ctx);
+    case "remove-legacy-token":
+      return handleRemoveLegacyTokenCommand(pi, ctx, parsed.scope);
     case "set-default":
       return handleSetDefaultCommand(pi, ctx, parsed.scope);
     case "help":
@@ -857,6 +748,8 @@ async function handlePanelAction(
       return handleImportClaudeCommand(pi, ctx, scope);
     case "fix-ca-bundle":
       return handleFixCaBundleCommand(pi, ctx);
+    case "remove-legacy-token":
+      return handleRemoveLegacyTokenCommand(pi, ctx, scope);
     case "help":
       return handleHelpCommand(pi, ctx);
     case "status":
@@ -872,10 +765,24 @@ function getPanelDefaultModelId(ctx: ExtensionCommandContext): string {
   return DEFAULT_MODEL_ID;
 }
 
+function bindGatewayProviderContext(ctx: ExtensionCommandContext): void {
+  if (gatewayProviderRuntime.authController.getActiveCwd() !== ctx.cwd) {
+    gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry);
+  }
+}
+
+async function refreshGatewayProvider(
+  ctx: ExtensionCommandContext,
+): Promise<ReturnType<typeof gatewayProviderRuntime.getLastDiscovery>> {
+  bindGatewayProviderContext(ctx);
+  await ctx.modelRegistry.refresh();
+  return gatewayProviderRuntime.getLastDiscovery();
+}
+
 async function handleRefreshCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const state = await discoverAndRegister(pi, ctx.cwd);
+  const state = await refreshGatewayProvider(ctx);
   await syncGatewaySessionDefaults(pi, ctx, true);
-  const report = buildStatusReport(ctx, state.source !== "disabled", getRuntimeStatusState());
+  const report = buildStatusReport(ctx, true, getRuntimeStatusState());
   await emitCommandOutput(
     pi,
     ctx,
@@ -886,7 +793,7 @@ async function handleRefreshCommand(pi: ExtensionAPI, ctx: ExtensionCommandConte
 }
 
 async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const state = getLastDiscovery();
+  const state = gatewayProviderRuntime.getLastDiscovery();
   const lines = [
     `Model discovery: ${state?.source ?? "not run"}${state?.error ? ` ⚠ ${state.error}` : ""}`,
     `Discovered at: ${state?.discoveredAt ?? "never"}`,
@@ -922,7 +829,7 @@ async function handleDoctorCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
         "",
         detail,
         "",
-        `Try /${FRIENDLY_COMMAND_NAME} status. If authentication is failing, open /${FRIENDLY_COMMAND_NAME} and paste a new gateway API key.`,
+        `Try /${FRIENDLY_COMMAND_NAME} status. If authentication is failing, run /login ${PROVIDER_NAME}.`,
       ].join("\n"),
       "error",
     );
@@ -953,7 +860,6 @@ async function handleUsageProbeCommand(
     connectionStatus,
     dailyActivity,
     dailyActivityError,
-    keyConflict,
     lastProbeTrace,
   } = getMonthlyUsageState();
 
@@ -962,7 +868,7 @@ async function handleUsageProbeCommand(
       pi,
       ctx,
       "SF LLM Gateway Internal usage probe — trace.",
-      formatProbeTraceReport(connectionStatus, lastProbeTrace, keyConflict),
+      formatProbeTraceReport(connectionStatus, lastProbeTrace),
       connectionStatus?.kind === "connected" ? "info" : "warning",
     );
     return;
@@ -1024,7 +930,6 @@ async function handleUsageProbeCommand(
 function formatProbeTraceReport(
   connectionStatus: import("./lib/monthly-usage.ts").GatewayConnectionStatus | undefined | null,
   trace: import("./lib/monthly-usage.ts").GatewayProbeTrace | undefined | null,
-  keyConflict: import("./lib/monthly-usage.ts").KeyConflictWarning | undefined | null,
 ): string {
   const lines: string[] = ["Gateway probe trace", ""];
   lines.push(
@@ -1060,10 +965,6 @@ function formatProbeTraceReport(
     }
   }
 
-  if (keyConflict) {
-    lines.push("", "Key conflict warning:", `  ${keyConflict.message}`);
-  }
-
   return lines.join("\n");
 }
 
@@ -1084,7 +985,7 @@ function pad(value: string, width: number): string {
 /**
  * `/sf-llm-gateway onboard` — one-shot onboarding chain.
  *
- * Chains: Claude Code import → register provider → gateway doctor → set
+ * Chains: non-secret Claude Code import → Pi model refresh → gateway doctor → set
  * default model. Stops short on errors and surfaces the next action
  * (e.g. fix-ca-bundle for a TLS failure) inline. The previous prose-only
  * "print gateway root URL" behavior is now covered by the `open-token`
@@ -1148,10 +1049,7 @@ async function executeOnboardChain(
         saved.baseUrl = imported.baseUrl;
         changed.push("base URL");
       }
-      if (imported.apiKey) {
-        saved.apiKey = imported.apiKey;
-        changed.push("API key");
-      }
+      const credentialDetected = imported.apiKeyPresent;
       const caDiscovery = mergeDiscoveredCaBundleCandidates(saved, ctx.cwd);
       if (caDiscovery.added.length > 0) {
         changed.push(
@@ -1162,8 +1060,9 @@ async function executeOnboardChain(
         return {
           ok: true,
           importedAny: false,
-          detail:
-            "Claude Code settings present, but no new gateway URL, token, or CA bundle candidate was detected.",
+          detail: credentialDetected
+            ? `Claude Code contains a credential, but SF Pi does not copy it. Run /login ${PROVIDER_NAME}.`
+            : "Claude Code settings present, but no new gateway URL or CA bundle candidate was detected.",
         };
       }
       writeGatewaySavedConfig(configPath, saved);
@@ -1173,8 +1072,8 @@ async function executeOnboardChain(
         detail: `Imported ${changed.join(" + ")} into ${importScope} scope.`,
       };
     },
-    registerProvider: async () => {
-      await discoverAndRegister(pi, ctx.cwd);
+    refreshProvider: async () => {
+      await refreshGatewayProvider(ctx);
     },
     runDoctor: async () => {
       const report = await fetchGatewayDoctorReport(ctx.cwd);
@@ -1187,12 +1086,90 @@ async function executeOnboardChain(
     setDefault: async (setScope) => {
       await applyGatewayDefault(pi, ctx, setScope);
     },
-    hasUsableSavedConfig: () => {
+    hasUsableSavedConfig: async () => {
       const config = getGatewayConfig(ctx.cwd);
-      return Boolean(config.baseUrl) && Boolean(config.apiKey);
+      bindGatewayProviderContext(ctx);
+      const credentialConfigured =
+        await gatewayProviderRuntime.authController.hasConfiguredCredential();
+      return Boolean(config.baseUrl) && credentialConfigured;
     },
   };
   return runOnboardChain(scope, deps);
+}
+
+async function handleRemoveLegacyTokenCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<void> {
+  if (!hasLegacyGatewayToken(ctx.cwd, scope)) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "No legacy Gateway token is present.",
+      `The ${scope} Gateway config has no legacy apiKey field.`,
+      "info",
+    );
+    return;
+  }
+
+  const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(ctx.cwd);
+  const nativeActive = runtimeAuth?.source === "Pi saved credential";
+  if (!nativeActive) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "Legacy token removal requires a verified Pi credential.",
+      `Run /login ${PROVIDER_NAME}, verify the Gateway, then retry this command.`,
+      "warning",
+    );
+    return;
+  }
+
+  const doctor = await fetchGatewayDoctorReport(ctx.cwd);
+  const authenticatedChecks = doctor.checks.filter((check) => check.name !== "Gateway signature");
+  const nativeVerified =
+    authenticatedChecks.length > 0 && authenticatedChecks.every((check) => check.ok);
+  if (!nativeVerified) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "Pi credential verification did not pass.",
+      "The legacy field was left unchanged. Resolve the Gateway doctor checks and retry.",
+      "warning",
+    );
+    return;
+  }
+
+  if (!ctx.hasUI) {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "Interactive confirmation is required.",
+      "The legacy field was left unchanged.",
+      "warning",
+    );
+    return;
+  }
+  const confirmed = await ctx.ui.confirm(
+    `Remove the legacy ${scope} Gateway token?`,
+    "Pi's saved credential has been verified. Only the legacy apiKey field will be removed.",
+  );
+  const result = removeLegacyGatewayToken({
+    cwd: ctx.cwd,
+    scope,
+    nativeVerified,
+    confirmed,
+  });
+  await emitCommandOutput(
+    pi,
+    ctx,
+    result.status === "removed" ? "Legacy Gateway token removed." : "Legacy token unchanged.",
+    result.status === "removed"
+      ? `Removed only the legacy apiKey field from ${result.path}. Pi's credential remains active.`
+      : "Removal was cancelled; no configuration changed.",
+    result.status === "removed" ? "info" : "warning",
+  );
 }
 
 /**
@@ -1471,7 +1448,7 @@ async function openGatewayTokenPage(
     "",
     url,
     "",
-    "After sign-in, create or rotate an API token, copy it, then paste it into the setup page.",
+    `After sign-in, create or rotate an API token, copy it, then run /login ${PROVIDER_NAME}.`,
     ...browserErrorLines,
   ].join("\n");
 
@@ -1523,10 +1500,7 @@ async function importClaudeCodeGatewayConfig(
     saved.baseUrl = imported.baseUrl;
     changed.push(`Base URL from ${imported.baseUrlPath ?? "Claude Code settings"}`);
   }
-  if (imported.apiKey) {
-    saved.apiKey = imported.apiKey;
-    changed.push(`API key from ${imported.apiKeyPath ?? "Claude Code settings"}`);
-  }
+  const credentialDetected = imported.apiKeyPresent;
   const caDiscovery = mergeDiscoveredCaBundleCandidates(saved, ctx.cwd);
   if (caDiscovery.added.length > 0) {
     changed.push(
@@ -1535,18 +1509,21 @@ async function importClaudeCodeGatewayConfig(
   }
 
   if (changed.length === 0) {
+    if (credentialDetected) ctx.ui.setEditorText(`/login ${PROVIDER_NAME}`);
     await emitCommandOutput(
       pi,
       ctx,
-      "Claude Code gateway import found nothing to save.",
-      `Claude Code settings: ${settingsPath}`,
-      "warning",
+      "Claude Code gateway import found no non-secret settings to save.",
+      credentialDetected
+        ? `A credential was detected but was not copied. Run the prefilled /login ${PROVIDER_NAME} command.`
+        : `Claude Code settings: ${settingsPath}`,
+      credentialDetected ? "info" : "warning",
     );
     return;
   }
 
   writeGatewaySavedConfig(configPath, saved);
-  await discoverAndRegister(pi, ctx.cwd);
+  await refreshGatewayProvider(ctx);
   await updateFooterStatus(ctx, false);
   const config = getGatewayConfig(ctx.cwd);
   const doctor = await fetchGatewayDoctorReport(ctx.cwd);
@@ -1557,7 +1534,7 @@ async function importClaudeCodeGatewayConfig(
     : doctor.failureClass === "tls"
       ? `Gateway preflight found a TLS issue. Next: /${FRIENDLY_COMMAND_NAME} fix-ca-bundle.`
       : doctor.failureClass === "auth"
-        ? `Gateway preflight found an auth issue. Next: rotate or re-paste the key via /${FRIENDLY_COMMAND_NAME} setup.`
+        ? `Gateway preflight found an auth issue. Next: /login ${PROVIDER_NAME}.`
         : doctor.failureClass === "redirect"
           ? "Gateway preflight hit an SSO/browser redirect. Confirm the saved URL is the API gateway root."
           : "Gateway preflight did not pass; default provider was not changed.";
@@ -1568,7 +1545,7 @@ async function importClaudeCodeGatewayConfig(
     `- Save file: ${configPath}`,
     `- Imported: ${changed.join(", ")}`,
     `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-    `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+    `- Credential copied: no${credentialDetected ? ` (run /login ${PROVIDER_NAME})` : ""}`,
     ...caDiscovery.summary.map((line) => `- ${line}`),
     "",
     `Doctor: ${doctorPassed ? "passed" : `needs attention (${doctor.failureClass ?? "unknown"})`}`,
@@ -1737,7 +1714,7 @@ async function applyGatewayDefault(
 ): Promise<string[]> {
   const settingsPath = scope === "project" ? projectSettingsPath(ctx.cwd) : globalSettingsPath();
 
-  await discoverAndRegister(pi, ctx.cwd);
+  await refreshGatewayProvider(ctx);
 
   const resolvedDefault = resolveGatewayDefaultModel(ctx, [
     DEFAULT_MODEL_ID,
@@ -1750,12 +1727,9 @@ async function applyGatewayDefault(
     ? { id: effectiveModelId, ...effectivePreset }
     : inferModelDefinition(effectiveModelId);
   const effectiveProviderName = resolvedDefault.provider;
-  const effectiveThinkingLevel = resolvedDefault.thinkingLevel;
 
   const settings = readSettings(settingsPath);
-  settings.defaultProvider = effectiveProviderName;
-  settings.defaultModel = effectiveModelId;
-  settings.defaultThinkingLevel = effectiveThinkingLevel;
+  setDefaultModelSelection(settings, effectiveProviderName, effectiveModelId);
   markGpt56DefaultMigration(settings);
   writeSettings(settingsPath, settings);
 
@@ -1763,9 +1737,6 @@ async function applyGatewayDefault(
     resolvedDefault.model ?? ctx.modelRegistry.find(effectiveProviderName, effectiveModelId);
   if (model) {
     await pi.setModel(model);
-    // Explicit user command — always apply the recommended default here.
-    pi.setThinkingLevel(effectiveThinkingLevel);
-    lastAppliedThinkingLevel = effectiveThinkingLevel;
   }
 
   await updateFooterStatus(ctx, true);
@@ -1774,7 +1745,7 @@ async function applyGatewayDefault(
     `Default updated in ${scope} settings.`,
     `- Provider: ${effectiveProviderName}`,
     `- Model: ${effectiveModelId}${effectiveModelId !== DEFAULT_MODEL_ID ? ` (resolved from ${DEFAULT_MODEL_ID})` : ""}`,
-    `- Thinking: ${effectiveThinkingLevel}`,
+    "- Thinking: selected by Pi/user settings; Pi may clamp for model capabilities",
     `- Context: ${effectiveModel.contextWindow.toLocaleString()} tokens`,
     `- Max output: ${effectiveModel.maxTokens.toLocaleString()} tokens`,
     `- Route: Global`,
@@ -1802,7 +1773,7 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
     "Built-in default base URL: (none — set via setup wizard)",
     `Automation fallback env vars (used only when saved config is blank): ${BASE_URL_ENV}, ${API_KEY_ENV}`,
     `Setup also supports browser token generation, Claude Code import, and additive vs exclusive scoped model behavior.`,
-    `Saved config file: ${globalGatewayConfigPath()} or ${projectGatewayConfigPath(process.cwd())}`,
+    `Saved config file: ${globalGatewayConfigPath()} or ${projectGatewayConfigPath(ctx.cwd)}`,
     `Disable fallback default: ${OFF_DEFAULT_PROVIDER}/${OFF_DEFAULT_MODEL_ID}`,
   ].join("\n");
 
@@ -1810,16 +1781,9 @@ async function handleHelpCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext)
 }
 
 async function handleStatusCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const registered = getLastDiscovery()?.source !== "disabled";
   await updateFooterStatus(ctx, false);
-  const report = buildStatusReport(ctx, registered, getRuntimeStatusState());
-  await emitCommandOutput(
-    pi,
-    ctx,
-    "SF LLM Gateway Internal status posted.",
-    report,
-    registered ? "info" : "warning",
-  );
+  const report = buildStatusReport(ctx, true, getRuntimeStatusState());
+  await emitCommandOutput(pi, ctx, "SF LLM Gateway Internal status posted.", report, "info");
 }
 
 // Exported for unit tests.
@@ -1877,6 +1841,9 @@ export function parseCommandArgs(args: string): CommandArgs {
   if (sub === "import-claude" || sub === "import-claude-code") {
     return { subcommand: "import-claude", scope };
   }
+  if (sub === "remove-legacy-token" || sub === "remove-legacy-key") {
+    return { subcommand: "remove-legacy-token", scope };
+  }
   if (sub === "fix-ca-bundle" || sub === "fix-ca" || sub === "ca-bundle") {
     return { subcommand: "fix-ca-bundle", scope };
   }
@@ -1895,7 +1862,7 @@ function setEnabledModelsSetting(
 }
 
 function getAvailableGatewayModelIds(): string[] {
-  const discoveredIds = getLastDiscovery()?.modelIds;
+  const discoveredIds = gatewayProviderRuntime.getLastDiscovery()?.modelIds;
   return discoveredIds && discoveredIds.length > 0 ? discoveredIds : getStaticGatewayModelIds();
 }
 
@@ -1909,7 +1876,6 @@ function resolveGatewayDefaultModel(
     availableModelIds: getAvailableGatewayModelIds(),
     preferredModelIds: preferredIds,
     fallbackModelId: FALLBACK_MODEL_ID,
-    defaultThinkingLevel: DEFAULT_THINKING_LEVEL,
   });
 }
 
@@ -1963,9 +1929,6 @@ function repairGatewayDefaultModelSettings(cwd: string, desiredModelId: string):
     }
 
     settings.defaultModel = desiredModelId;
-    if (asOptionalString(settings.defaultThinkingLevel) !== DEFAULT_THINKING_LEVEL) {
-      settings.defaultThinkingLevel = DEFAULT_THINKING_LEVEL;
-    }
     writeSettings(settingsPath, settings);
   }
 }
@@ -2042,13 +2005,13 @@ async function saveGatewaySetupOperation(
   scope: "global" | "project",
 ): Promise<GatewayCommandOutput> {
   const config = getGatewayConfig(ctx.cwd);
-  await discoverAndRegister(pi, ctx.cwd);
+  await refreshGatewayProvider(ctx);
   await updateFooterStatus(ctx, false);
 
   const report = [
-    `Saved ${scope} gateway fallback settings.`,
+    `Saved ${scope} gateway non-secret settings.`,
     `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-    `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+    "- Credential: managed by Pi /login (legacy saved fields remain read-only)",
     `- Scoped model mode: ${config.exclusiveScope ? "exclusive" : "additive"}`,
     `- Effective enabled: ${config.enabled ? "yes" : "no"}`,
     `- Save file: ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
@@ -2103,7 +2066,6 @@ async function enableGatewayOperation(
   if (!isGatewayProvider(asOptionalString(settings.defaultProvider))) {
     saved.previousDefaultProvider = asOptionalString(settings.defaultProvider);
     saved.previousDefaultModel = asOptionalString(settings.defaultModel);
-    saved.previousThinkingLevel = asOptionalString(settings.defaultThinkingLevel);
   }
 
   if (exclusiveScope) {
@@ -2118,19 +2080,20 @@ async function enableGatewayOperation(
   writeGatewaySavedConfig(configPath, saved);
 
   const config = getGatewayConfig(ctx.cwd);
-  if (!config.baseUrl || !config.apiKey) {
+  const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(ctx.cwd);
+  if (!config.baseUrl || !runtimeAuth) {
     return {
       summary: "SF LLM Gateway Internal is still missing configuration.",
       details: [
         `Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-        `API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
-        `Use /${FRIENDLY_COMMAND_NAME} setup ${scope} or set ${BASE_URL_ENV} / ${API_KEY_ENV}.`,
+        `Credential: ${runtimeAuth ? `configured (${runtimeAuth.source})` : "missing"}`,
+        `Use /${FRIENDLY_COMMAND_NAME} setup ${scope} for the endpoint and /login ${PROVIDER_NAME} for credentials.`,
       ].join("\n"),
       level: "warning",
     };
   }
 
-  const state = await discoverAndRegister(pi, ctx.cwd);
+  const state = await refreshGatewayProvider(ctx);
   const existingGatewayDefault = isGatewayProvider(asOptionalString(settings.defaultProvider))
     ? asOptionalString(settings.defaultModel)
     : undefined;
@@ -2144,11 +2107,8 @@ async function enableGatewayOperation(
   ]);
   const effectiveDefaultModelId = resolvedDefault.modelId;
   const effectiveProviderName = resolvedDefault.provider;
-  const effectiveThinkingLevel = resolvedDefault.thinkingLevel;
 
-  settings.defaultProvider = effectiveProviderName;
-  settings.defaultModel = effectiveDefaultModelId;
-  settings.defaultThinkingLevel = effectiveThinkingLevel;
+  setDefaultModelSelection(settings, effectiveProviderName, effectiveDefaultModelId);
   setEnabledModelsSetting(settings, applyGatewayModelScope(settings.enabledModels, exclusiveScope));
   markGpt56DefaultMigration(settings);
   writeSettings(settingsPath, settings);
@@ -2156,12 +2116,7 @@ async function enableGatewayOperation(
   const model =
     resolvedDefault.model ?? ctx.modelRegistry.find(effectiveProviderName, effectiveDefaultModelId);
   if (model) {
-    const changed = await pi.setModel(model);
-    if (changed) {
-      // Explicit enable command — always apply the recommended default here.
-      pi.setThinkingLevel(effectiveThinkingLevel);
-      lastAppliedThinkingLevel = effectiveThinkingLevel;
-    }
+    await pi.setModel(model);
   }
 
   await updateFooterStatus(ctx, true);
@@ -2170,10 +2125,10 @@ async function enableGatewayOperation(
     `Enabled in ${scope} settings.`,
     `- Provider: ${effectiveProviderName}`,
     `- Model: ${effectiveDefaultModelId}${effectiveDefaultModelId !== DEFAULT_MODEL_ID ? ` (resolved from ${DEFAULT_MODEL_ID})` : ""}`,
-    `- Thinking: ${effectiveThinkingLevel}`,
+    "- Thinking: selected by Pi/user settings; Pi may clamp for model capabilities",
     `- Scoped model mode: ${exclusiveScope ? `exclusive (gateway-only: ${ENABLED_MODEL_PATTERN})` : `additive (prepended ${ENABLED_MODEL_PATTERN})`}`,
     `- Base URL: ${describeConfigValue(config.baseUrl, config.baseUrlSource)}`,
-    `- API key: ${describeApiKey(config.apiKey, config.apiKeySource)}`,
+    `- Credential: configured (${runtimeAuth.source})`,
     `- Discovery source: ${state.source}${state.error ? ` (${state.error})` : ""}`,
   ].join("\n");
 
@@ -2213,9 +2168,7 @@ async function disableGatewayOperation(
   writeGatewaySavedConfig(configPath, saved);
 
   setEnabledModelsSetting(settings, restoredEnabledModels);
-  settings.defaultProvider = OFF_DEFAULT_PROVIDER;
-  settings.defaultModel = OFF_DEFAULT_MODEL_ID;
-  settings.defaultThinkingLevel = OFF_DEFAULT_THINKING_LEVEL;
+  setDefaultModelSelection(settings, OFF_DEFAULT_PROVIDER, OFF_DEFAULT_MODEL_ID);
 
   writeSettings(settingsPath, settings);
 
@@ -2224,23 +2177,19 @@ async function disableGatewayOperation(
     const offDefaultModel = ctx.modelRegistry.find(OFF_DEFAULT_PROVIDER, OFF_DEFAULT_MODEL_ID);
     if (offDefaultModel) {
       switchedToOffDefault = await pi.setModel(offDefaultModel);
-      if (switchedToOffDefault) {
-        pi.setThinkingLevel(OFF_DEFAULT_THINKING_LEVEL);
-        lastAppliedThinkingLevel = OFF_DEFAULT_THINKING_LEVEL;
-      }
     }
   }
 
-  await discoverAndRegister(pi, ctx.cwd);
+  await refreshGatewayProvider(ctx);
   await updateFooterStatus(ctx, false);
 
   const report = [
     `Disabled in ${scope} settings.`,
     `- Scoped models: ${exclusiveScope ? "restored the previous scoped model set" : `removed ${ENABLED_MODEL_PATTERN}`}`,
     `- New default: ${OFF_DEFAULT_PROVIDER}/${OFF_DEFAULT_MODEL_ID}`,
-    `- Thinking: ${OFF_DEFAULT_THINKING_LEVEL}`,
+    "- Thinking: selected by Pi/user settings; Pi may clamp for model capabilities",
     `- Switched current session model: ${switchedToOffDefault ? "yes" : "no"}`,
-    `- Saved credentials remain in ${scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath()}`,
+    "- Pi credential remains stored; use /logout to remove it. Legacy config fields are unchanged.",
   ].join("\n");
 
   return {
@@ -2256,7 +2205,9 @@ async function ensureGatewayCredentialsConfigured(
   scope: "global" | "project",
 ): Promise<boolean> {
   let config = getGatewayConfig(ctx.cwd);
-  if (config.baseUrl && config.apiKey) {
+  bindGatewayProviderContext(ctx);
+  const hasCredential = () => gatewayProviderRuntime.authController.hasConfiguredCredential();
+  if (config.baseUrl && (await hasCredential())) {
     return true;
   }
 
@@ -2265,7 +2216,7 @@ async function ensureGatewayCredentialsConfigured(
       pi,
       ctx,
       "SF LLM Gateway Internal needs configuration.",
-      `Set ${API_KEY_ENV}, or run /${FRIENDLY_COMMAND_NAME} setup ${scope} in interactive Pi. Use ${BASE_URL_ENV} only if you need to override the built-in default.`,
+      `Set ${API_KEY_ENV} for automation, or configure the endpoint with /${FRIENDLY_COMMAND_NAME} setup ${scope} and authenticate with /login ${PROVIDER_NAME}.`,
       "warning",
     );
     return false;
@@ -2286,22 +2237,19 @@ async function ensureGatewayCredentialsConfigured(
   }
 
   config = getGatewayConfig(ctx.cwd);
-  if (!config.apiKey) {
-    const ok = await promptAndSaveApiKey(pi, ctx, scope, { quiet: true });
-    if (!ok) {
-      await emitCommandOutput(
-        pi,
-        ctx,
-        "Setup cancelled.",
-        "API key was not configured.",
-        "warning",
-      );
-      return false;
-    }
+  if (!(await hasCredential())) {
+    ctx.ui.setEditorText(`/login ${PROVIDER_NAME}`);
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "Gateway credential is not configured.",
+      `Run the prefilled /login ${PROVIDER_NAME} command. SF Pi uses a masked credential component and Pi owns persistence.`,
+      "warning",
+    );
+    return false;
   }
 
-  config = getGatewayConfig(ctx.cwd);
-  return Boolean(config.baseUrl && config.apiKey);
+  return Boolean(config.baseUrl);
 }
 
 async function promptAndSaveBaseUrl(
@@ -2348,7 +2296,7 @@ async function promptAndSaveBaseUrl(
   }
 
   writeGatewaySavedConfig(configPath, saved);
-  await discoverAndRegister(pi, ctx.cwd);
+  await refreshGatewayProvider(ctx);
   await updateFooterStatus(ctx, false);
 
   if (!options?.quiet) {
@@ -2363,63 +2311,10 @@ async function promptAndSaveBaseUrl(
   return true;
 }
 
-async function promptAndSaveApiKey(
-  pi: ExtensionAPI,
-  ctx: ExtensionCommandContext,
-  scope: "global" | "project",
-  options?: { quiet?: boolean },
-): Promise<boolean> {
-  const configPath =
-    scope === "project" ? projectGatewayConfigPath(ctx.cwd) : globalGatewayConfigPath();
-  const saved = readGatewaySavedConfig(configPath);
-  const resolved = getGatewayConfig(ctx.cwd);
-
-  const hint =
-    resolved.apiKeySource === "env"
-      ? `\nCurrently using ${API_KEY_ENV} because no saved key exists. Saving here makes pi ignore stale shell/Keychain exports.`
-      : "";
-
-  const value = await ctx.ui.input(`SF LLM Gateway API key (${scope})${hint}`, "");
-
-  if (value == null) {
-    return false;
-  }
-
-  const trimmed = value.trim();
-  if (trimmed === "") {
-    delete saved.apiKey;
-  } else {
-    saved.apiKey = trimmed;
-  }
-
-  writeGatewaySavedConfig(configPath, saved);
-  await discoverAndRegister(pi, ctx.cwd);
-  await updateFooterStatus(ctx, false);
-
-  if (!options?.quiet) {
-    const next = getGatewayConfig(ctx.cwd);
-    await emitCommandOutput(
-      pi,
-      ctx,
-      "Saved SF LLM Gateway API key.",
-      `API key source is now ${describeApiKey(next.apiKey, next.apiKeySource)}.`,
-      "info",
-    );
-  }
-  return true;
-}
-
-// Render command output for both TUI and headless runs.
-//
-// In interactive Pi (hasUI=true) we put the full report into `notify` —
-// Pi's notification popup renders multi-line content, and every other
-// extension in this repo (sf-devbar, sf-slack, sf-pi-manager, sf-welcome)
-// uses the same pattern. Without this, only the short `summary` string is
-// shown and the actual report never reaches the user.
-//
-// In headless mode we still surface the summary via notify and push the
-// detailed report into the transcript via sendMessage so it shows up in
-// session logs / non-TUI transports.
+// Render display-only command output through Pi's human channels without
+// adding it to later model context. TUI keeps the existing info panel, RPC
+// emits a notification, JSON emits a custom-entry event, and print mode writes
+// the report while appending the same state-only entry.
 async function emitGatewayCommandOutput(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
@@ -2435,21 +2330,11 @@ async function emitCommandOutput(
   details: string,
   level: "info" | "warning" | "error",
 ): Promise<void> {
-  if (ctx.hasUI) {
-    await openInfoPanel(ctx, { title: summary, body: details || summary, severity: level });
-    return;
-  }
-
-  ctx.ui.notify(summary, level);
-  pi.sendMessage(
-    {
-      customType: PROVIDER_NAME,
-      content: details,
-      display: true,
-      details: {},
-    },
-    { triggerTurn: false },
-  );
+  await emitHumanOnlyCommandOutput(pi, ctx, PROVIDER_NAME, {
+    title: summary,
+    body: details || summary,
+    severity: level,
+  });
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -2484,17 +2369,6 @@ async function syncGatewaySessionDefaults(
         }
       }
     }
-  }
-
-  const currentModelIsGateway = isGatewayProvider(ctx.model?.provider);
-  const mayHaveSwitchedToGateway = options.allowModelSwitch !== false && startupDefaultIsGateway;
-  if (currentModelIsGateway || mayHaveSwitchedToGateway) {
-    // At session startup the current thinking level is pi's resolved default
-    // (settings or DEFAULT_THINKING_LEVEL from our `on` command). Apply through the
-    // user-respecting helper so users who edited settings to a different
-    // default do not get overridden by the extension. When startup model
-    // switching is disabled, don't mutate thinking for a non-gateway model.
-    applyGatewayDefaultThinkingLevel(pi);
   }
 
   if (options.awaitFooterRefresh === false) {

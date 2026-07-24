@@ -789,7 +789,7 @@ export function summarizeSlackError(
     case "not_authed":
     case "invalid_auth":
     case "token_revoked":
-      return "Slack auth is invalid or missing. Interactive entry is temporarily disabled; set SLACK_USER_TOKEN before starting Pi.";
+      return "Slack auth is invalid or missing. Run /login sf-slack in interactive TUI mode, then /sf-slack refresh; use SLACK_USER_TOKEN for automation.";
     case "token_expired":
       return "Slack token expired. Try /sf-slack refresh; if it cannot refresh the saved credential, set SLACK_USER_TOKEN before starting Pi.";
     case "bot_scopes_not_found":
@@ -797,7 +797,7 @@ export function summarizeSlackError(
       return (
         "Slack rejected this action because the token type is wrong. " +
         "This workspace needs a user token (xoxp-) for canvas writes and some admin calls, but the configured token appears to be a bot token (xoxb-) or app token. " +
-        "Configure SLACK_USER_TOKEN with a user token before starting Pi; interactive entry is temporarily disabled."
+        "Run /login sf-slack with a user token, then /sf-slack refresh; use SLACK_USER_TOKEN for automation."
       );
     case "channel_not_found":
       return "Slack channel not found or the token cannot access it.";

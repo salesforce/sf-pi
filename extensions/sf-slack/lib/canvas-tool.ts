@@ -284,7 +284,7 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
                       text:
                         "Cannot read canvas — token lacks both files:read and canvases:read, " +
                         "so neither files.info nor canvases.sections.lookup will succeed. " +
-                        "Use a SLACK_USER_TOKEN with files:read or canvases:read; interactive entry is temporarily disabled.",
+                        "Use /login sf-slack with a user token granting files:read or canvases:read, then run /sf-slack refresh.",
                     },
                   ],
                   details: { ok: false, action, reason: "missing_scope" },
@@ -604,7 +604,7 @@ function formatDegradedCanvasSections(
   }
 
   lines.push(
-    "To get full canvas file metadata, use a SLACK_USER_TOKEN with files:read; interactive entry is temporarily disabled.",
+    "To get full canvas file metadata, use /login sf-slack with a user token granting files:read, then run /sf-slack refresh.",
   );
   return lines.join("\n");
 }
@@ -679,7 +679,7 @@ export function preflightCanvasWrite(tokenType: SlackTokenType): CanvasWriteGate
       message:
         "Canvas create/edit requires a user token (xoxp-). The configured token is a " +
         `${tokenType} token, which Slack will reject with bot_scopes_not_found. ` +
-        "Use a SLACK_USER_TOKEN user token (xoxp-) before starting Pi; interactive entry is temporarily disabled.",
+        "Run /login sf-slack with a user token (xoxp-), then run /sf-slack refresh.",
     };
   }
   if (!hasScope("canvases:write")) {

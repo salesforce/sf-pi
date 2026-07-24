@@ -117,27 +117,6 @@ export interface GatewayConnectionStatus {
 }
 
 /**
- * Cross-source API-key conflict warning.
- *
- * Emitted when the env var `SF_LLM_GATEWAY_INTERNAL_API_KEY` and the saved
- * config both hold a non-empty key and they don't match. Saved beats env
- * today, but a stale env key is a footgun (`/login` flows that clear saved
- * silently fall back to a blocked env key). UIs surface this once per
- * session as a passive nudge — not an error.
- */
-export interface KeyConflictWarning {
-  /** Eight-char SHA-256 prefix of the env-var key. Identifies *which* key
-   * is the stale one without ever logging the secret. */
-  envKeyHash: string;
-  /** Eight-char SHA-256 prefix of the saved-config key. */
-  savedKeyHash: string;
-  /** Active key (the one chat actually uses). Always "saved" today. */
-  active: "saved" | "env";
-  /** Human-readable nudge, ready to display verbatim. */
-  message: string;
-}
-
-/**
  * Per-endpoint result of the most recent gateway probe. Captured for
  * `/sf-llm-gateway probe --trace` and the boot-timing diagnostic.
  */
@@ -194,11 +173,6 @@ export interface MonthlyUsageSnapshot {
   /** Number of keys this user has on the gateway, from `/key/list`. */
   keyList?: GatewayKeyList | null;
   keyListError?: string | null;
-  /**
-   * Cross-source key-conflict warning. Computed by the refresher every time
-   * it resolves config; UIs render once per session.
-   */
-  keyConflict?: KeyConflictWarning | null;
   /** Most recent per-endpoint probe trace. Used by `--trace` diagnostics. */
   lastProbeTrace?: GatewayProbeTrace | null;
 }
@@ -222,7 +196,6 @@ const EMPTY_SNAPSHOT: MonthlyUsageSnapshot = {
   dailyActivityError: null,
   keyList: null,
   keyListError: null,
-  keyConflict: null,
   lastProbeTrace: null,
 };
 

@@ -47,7 +47,9 @@ You can also manage this extension from the SF Pi home base:
 
 ## Safety notes
 
-- Tokens are never echoed in panel output; only describeApiKey summaries are shown.
+- API-key input uses SF Pi's shared fixed-mask component and never enters Pi's visible stock prompt.
+- Pi alone persists/removes active credentials; setup and import paths write no secrets.
+- Legacy config apiKey fields are never used for authentication and remain untouched without verified explicit cleanup.
 - Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads.
 
 ## Exact reference

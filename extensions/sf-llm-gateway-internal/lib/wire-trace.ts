@@ -20,6 +20,7 @@
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import { redactDisplayText } from "../../../lib/common/redaction.ts";
 
 const TRACE_ENV = "SF_LLM_GATEWAY_TRACE";
 const LEGACY_TRACE_ENV = "SF_LLM_GATEWAY_INTERNAL_TRACE";
@@ -43,9 +44,46 @@ function ensureTraceFile(): string {
   return p;
 }
 
+const SECRET_KEY_RE =
+  /authorization|api[_-]?key|token|secret|password|credential|cookie|signature|session[_-]?id/i;
+const TRACE_SECRET_ASSIGNMENT_RE =
+  /\b(token|authorization|api[_-]?key|secret|password|credential|cookie|signature)\b\s*[:=]\s*[^\s,}\]]+/gi;
+
+export function sanitizeWireTraceValue(value: unknown, key = ""): unknown {
+  if (SECRET_KEY_RE.test(key)) return "<redacted>";
+  if (typeof value === "string") {
+    let text = value;
+    try {
+      const url = new URL(text);
+      if (url.username || url.password) {
+        url.username = "";
+        url.password = "";
+        text = url.toString();
+      }
+    } catch {
+      // Most trace strings are not URLs.
+    }
+    return redactDisplayText(
+      text.replace(TRACE_SECRET_ASSIGNMENT_RE, (_match, name: string) => `${name}=<redacted>`),
+    );
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeWireTraceValue(entry));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([entryKey, entryValue]) => [
+        entryKey,
+        sanitizeWireTraceValue(entryValue, entryKey),
+      ]),
+    );
+  }
+  return value;
+}
+
 function writeLine(p: string, line: unknown): void {
   try {
-    appendFileSync(p, JSON.stringify(line) + "\n");
+    appendFileSync(p, JSON.stringify(sanitizeWireTraceValue(line)) + "\n");
   } catch {
     // tracing must never break requests
   }

@@ -13,14 +13,10 @@
  * "continue". Pi-ai has a first-class Anthropic transport that handles all of
  * that natively.
  *
- * In the unified single-provider design, this file still tags Claude with the
- * desired transport for internal routing, but `lib/discovery.ts` strips that
- * tag before handing models to pi. If pi sees a per-model anthropic api, it
- * bypasses our provider-level `streamSimple` dispatcher and appends
- * `/v1/messages` to the provider's OpenAI baseUrl (`<gateway>/v1`), producing
- * `<gateway>/v1/v1/messages`. The dispatcher instead detects Claude by id,
- * clones the model to Anthropic internally, and rewrites baseUrl to the
- * gateway root.
+ * The complete Gateway Provider preserves this real API tag and delegates
+ * dispatch to Pi's Provider API map. Request-time endpoint materialization
+ * keeps Anthropic and Responses at the gateway root while Chat Completions
+ * uses `<gateway>/v1`.
  *
  * Non-Claude families (Gemini, GPT, Codex) stay on OpenAI-compat.
  *
@@ -90,13 +86,10 @@ const CODEX_OPENAI_COMPAT: ProviderModelConfig["compat"] = {
  * Codex thinking-level mapping.
  *
  * Moved from `compat.reasoningEffortMap` to model-level `thinkingLevelMap`
- * for pi >= 0.72 (pi-mono #3208). LiteLLM's Codex path only accepts
- * low/medium/high, so we collapse the older pi levels the gateway rejects
- * (`minimal` and `xhigh`) onto the nearest supported value. Every mapped
- * level is a string (not null) because we still want those selector levels
- * to appear and cycle — they just all resolve to one of three gateway
- * values. Live probe on 2026-07-12 proved Codex accepts `max`, so `xhigh`
- * and `max` map to the gateway's strongest supported tier.
+ * for pi >= 0.72 (pi-mono #3208). LiteLLM's Codex path accepts
+ * low/medium/high/max, so `minimal` clamps to low while Pi's `xhigh` and
+ * `max` selectors map to the live-proven strongest `max` tier. Every mapped
+ * level is a string (not null) because those selector levels remain visible.
  */
 const CODEX_THINKING_LEVEL_MAP: ProviderModelConfig["thinkingLevelMap"] = {
   minimal: "low",
@@ -205,9 +198,8 @@ export type GatewayModelGroupInfoMap = Record<string, GatewayModelGroupInfo>;
 // -------------------------------------------------------------------------------------------------
 
 /**
- * A gateway model tagged with the transport it should use. This tag is
- * internal to the extension: `lib/discovery.ts` strips it before registering
- * the model with pi, then `streamSimple` routes by model id at request time.
+ * A gateway model tagged with the real API transport used by Pi's complete
+ * Provider API map.
  */
 export type TaggedGatewayModel = ProviderModelConfig & {
   api: "openai-completions" | "anthropic-messages" | "openai-responses";
@@ -393,9 +385,10 @@ export function toProviderModelConfig(id: string, info?: GatewayModelInfo): Tagg
   // (`POST /responses` on this gateway; `/v1/responses` is SSO-only). The
   // working reasoning.effort window is model-specific:
   //   - gpt-5 / gpt-5-mini: minimal | low | medium | high  (xhigh → high)
-  //   - gpt-5.5:            low | medium | high            (minimal → low,
-  //                                                        xhigh  → high)
-  //   - gpt-5.*-bedrock:    high only                      (all levels → high)
+  //   - gpt-5.5:            low | medium | high | xhigh    (minimal → low,
+  //                                                         Pi max → xhigh)
+  //   - gpt-5.6:            low | medium | high | xhigh | max
+  //   - older gpt-5 Bedrock: high only                     (all levels → high)
   // The internal api tag is stripped before pi registers the model so pi
   // still calls the provider-level `streamSimple` hook; the dispatcher
   // reads the id to pick the right shim.

@@ -68,6 +68,7 @@ describe("sf-pi manager mode behavior", () => {
     const pi = {
       events: { on: vi.fn() },
       on: vi.fn(),
+      registerEntryRenderer: vi.fn(),
       registerCommand: vi.fn((_name, definition) => {
         handler = definition.handler;
       }),

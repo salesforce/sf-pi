@@ -78,7 +78,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-code-analyzer"],
     tools: ["code_analyzer"],
-    events: ["session_start","session_shutdown"],
+    events: ["session_start","tool_result","agent_settled","session_shutdown"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-code-analyzer/lib/config-panel.ts");
@@ -127,7 +127,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-devbar","/sf-org"],
-    events: ["session_start","session_shutdown","model_select","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start"],
+    events: ["session_start","session_shutdown","model_select","session_info_changed","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-devbar/lib/config-panel.ts");
@@ -145,6 +145,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     commands: ["/sf-docs"],
     providers: ["sf-docs"],
     tools: ["sf_docs"],
+    events: ["session_start","session_shutdown"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-docs/lib/config-panel.ts");
@@ -192,7 +193,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-herdr"],
     tools: ["sf_herdr_plan"],
-    events: ["session_start","session_tree","tool_execution_end","tool_result","resources_discover","session_shutdown"],
+    events: ["session_start","session_tree","tool_result","resources_discover","session_shutdown"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-herdr/lib/config-panel.ts");
@@ -268,7 +269,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-pi"],
-    events: ["session_start","session_shutdown"],
+    events: ["session_start","agent_start","agent_settled","session_shutdown"],
     alwaysActive: true,
     configurable: true,
     getConfigPanel: async () => {

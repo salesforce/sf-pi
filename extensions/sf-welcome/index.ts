@@ -689,8 +689,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
       data.gatewayStatus = data.gatewayVisible ? (gatewayStatus ?? null) : null;
       data.gatewayLoading =
         data.gatewayVisible && gatewayState.connectionStatus?.kind === "checking";
-      // Phase 1.6: surface the cross-source key conflict on the splash row.
-      data.gatewayKeyConflict = data.gatewayVisible ? (gatewayState.keyConflict ?? null) : null;
 
       scheduleSplashRepaint(ctx, generation);
     });

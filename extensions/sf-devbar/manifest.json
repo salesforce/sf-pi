@@ -11,6 +11,7 @@
     "session_start",
     "session_shutdown",
     "model_select",
+    "session_info_changed",
     "thinking_level_select",
     "turn_start",
     "turn_end",
@@ -18,10 +19,11 @@
     "before_agent_start"
   ],
   "docs": {
-    "summary": "Two non-blocking status bars: a top widget with model/thinking/git/context, and a custom footer with project-scoped org info, monthly LLM-gateway budget, and active extension counts.",
+    "summary": "Two non-blocking status bars: a top widget with model/thinking/session/git/context, and a custom footer with project-scoped org info, monthly LLM-gateway budget, and active extension counts.",
     "primaryFiles": [
       "index.ts",
       "lib/top-bar.ts",
+      "lib/runtime-facts.ts",
       "lib/bottom-bar.ts",
       "lib/colors.ts",
       "lib/settings.ts",

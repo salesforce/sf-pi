@@ -38,14 +38,20 @@ const monthlyUsageMock = vi.hoisted(() => {
 
 vi.mock("../lib/monthly-usage.ts", () => monthlyUsageMock);
 
-const discoveryMock = vi.hoisted(() => ({
-  discoverAndRegister: vi.fn(async () => ({ source: "fallback", modelIds: [], error: null })),
-  getLastDiscovery: vi.fn(() => null),
-  registerCachedDiscoveryIfAvailable: vi.fn(() => false),
-  registerProviderIfConfigured: vi.fn(() => false),
+const providerRuntimeMock = vi.hoisted(() => ({
+  provider: { id: "sf-llm-gateway-internal" },
+  authController: {
+    getActiveCwd: vi.fn(() => undefined),
+    hasConfiguredCredential: vi.fn(async () => false),
+    resolveRuntimeAuth: vi.fn(async () => undefined),
+  },
+  bind: vi.fn(),
+  clear: vi.fn(),
+  getLastDiscovery: vi.fn(() => ({ source: "static", modelIds: [] })),
+  getLastModelGroupDrift: vi.fn(() => []),
 }));
 
-vi.mock("../lib/discovery.ts", () => discoveryMock);
+vi.mock("../lib/provider.ts", () => ({ gatewayProviderRuntime: providerRuntimeMock }));
 
 const migrationMock = vi.hoisted(() => ({ migrateGatewaySettings: vi.fn(async () => undefined) }));
 vi.mock("../lib/migrate-unify-provider.ts", () => migrationMock);
@@ -102,6 +108,7 @@ interface FakePi {
   handlers: Record<string, Array<(event: unknown, ctx: ExtensionContext) => Promise<void> | void>>;
   on(event: string, handler: (event: unknown, ctx: ExtensionContext) => Promise<void> | void): void;
   registerCommand: ReturnType<typeof vi.fn>;
+  registerEntryRenderer: ReturnType<typeof vi.fn>;
   registerMessageRenderer: ReturnType<typeof vi.fn>;
   registerProvider: ReturnType<typeof vi.fn>;
   unregisterProvider: ReturnType<typeof vi.fn>;
@@ -119,6 +126,7 @@ function makeFakePi(): FakePi {
       pi.handlers[event].push(handler);
     },
     registerCommand: vi.fn(),
+    registerEntryRenderer: vi.fn(),
     registerMessageRenderer: vi.fn(),
     registerProvider: vi.fn(),
     unregisterProvider: vi.fn(),
@@ -132,8 +140,9 @@ function makeFakePi(): FakePi {
 function makeCtx(cwd: string): ExtensionContext {
   return {
     cwd,
+    mode: "tui",
     model: undefined,
-    modelRegistry: { find: vi.fn(() => undefined) },
+    modelRegistry: { find: vi.fn(() => undefined), refresh: vi.fn(async () => undefined) },
     ui: { notify: vi.fn(), setStatus: vi.fn() },
   } as unknown as ExtensionContext;
 }
@@ -143,11 +152,42 @@ describe("gateway extension lifecycle", () => {
     vi.useFakeTimers();
     monthlyUsageMock.unregisters.length = 0;
     monthlyUsageMock.registerGatewayMonthlyUsageRefresher.mockClear();
+    providerRuntimeMock.bind.mockClear();
+    providerRuntimeMock.clear.mockClear();
+    piSettingsMock.getEffectiveDefaultModelSetting.mockReturnValue({
+      provider: "anthropic",
+      modelId: "claude",
+    });
+    piSettingsMock.readSettings.mockReturnValue({});
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("registers one complete native Provider", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+
+    extension(pi as never);
+
+    expect(pi.registerProvider).toHaveBeenCalledTimes(1);
+    expect(pi.registerProvider).toHaveBeenCalledWith(providerRuntimeMock.provider);
+    expect(pi.unregisterProvider).not.toHaveBeenCalled();
+  });
+
+  it("registers human-only entry rendering instead of message rendering", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+
+    extension(pi as never);
+
+    expect(pi.registerEntryRenderer).toHaveBeenCalledWith(
+      "sf-llm-gateway-internal",
+      expect.any(Function),
+    );
+    expect(pi.registerMessageRenderer).not.toHaveBeenCalled();
   });
 
   it("does not register a Gateway-owned beta header hook", async () => {
@@ -158,6 +198,62 @@ describe("gateway extension lifecycle", () => {
 
     expect(pi.handlers.before_provider_headers).toBeUndefined();
   });
+
+  it.each(["set", "cycle", "restore"] as const)(
+    "does not mutate thinking when a Gateway model is selected via %s",
+    async (source) => {
+      const { default: extension } = await import("../index.ts");
+      const pi = makeFakePi();
+      extension(pi as never);
+      const ctx = makeCtx(mkdtempSync(join(tmpdir(), "sf-pi-gateway-thinking-")));
+
+      await pi.handlers.model_select?.[0]?.(
+        {
+          type: "model_select",
+          model: { provider: "sf-llm-gateway-internal", id: "gpt-5.6-sol" },
+          source,
+        },
+        ctx,
+      );
+
+      expect(pi.setThinkingLevel).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["low", undefined])(
+    "preserves a %s Pi thinking default during Gateway startup repair",
+    async (thinkingLevel) => {
+      const settings: Record<string, unknown> = {
+        defaultProvider: "sf-llm-gateway-internal",
+        defaultModel: "gpt-5.6-sol-v1",
+      };
+      if (thinkingLevel !== undefined) settings.defaultThinkingLevel = thinkingLevel;
+      piSettingsMock.readSettings.mockReturnValue(settings);
+      piSettingsMock.getEffectiveDefaultModelSetting.mockReturnValue({
+        provider: "sf-llm-gateway-internal",
+        modelId: "gpt-5.6-sol",
+      });
+
+      const { default: extension } = await import("../index.ts");
+      const pi = makeFakePi();
+      extension(pi as never);
+      const ctx = makeCtx(mkdtempSync(join(tmpdir(), "sf-pi-gateway-startup-thinking-")));
+      (ctx as { model?: unknown }).model = {
+        provider: "sf-llm-gateway-internal",
+        id: "gpt-5.6-sol",
+      };
+
+      await pi.handlers.session_start?.[0]?.({ type: "session_start", reason: "startup" }, ctx);
+
+      expect(pi.setThinkingLevel).not.toHaveBeenCalled();
+      expect(settings.defaultModel).toBe("gpt-5.6-sol");
+      if (thinkingLevel === undefined) {
+        expect(settings).not.toHaveProperty("defaultThinkingLevel");
+      } else {
+        expect(settings.defaultThinkingLevel).toBe(thinkingLevel);
+      }
+    },
+  );
 
   it("registers the monthly usage refresher for each session and unregisters it on shutdown", async () => {
     const { default: extension } = await import("../index.ts");
@@ -175,12 +271,15 @@ describe("gateway extension lifecycle", () => {
     expect(shutdown).toBeDefined();
 
     await start?.({ type: "session_start" }, ctx);
+    expect(providerRuntimeMock.bind).toHaveBeenCalledWith(cwd, ctx.ui, "tui", ctx.modelRegistry);
     expect(monthlyUsageMock.registerGatewayMonthlyUsageRefresher).toHaveBeenCalledTimes(1);
 
     await shutdown?.({ type: "session_shutdown", reason: "resume" }, ctx);
+    expect(providerRuntimeMock.clear).toHaveBeenCalledTimes(1);
     expect(monthlyUsageMock.unregisters[0]).toHaveBeenCalledTimes(1);
 
     await start?.({ type: "session_start" }, ctx);
+    expect(providerRuntimeMock.bind).toHaveBeenCalledTimes(2);
     expect(monthlyUsageMock.registerGatewayMonthlyUsageRefresher).toHaveBeenCalledTimes(2);
   });
 });

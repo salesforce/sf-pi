@@ -29,15 +29,14 @@
  *   before_agent_start  | CLI installed, no live kernel entry             | Inject full kernel as hidden message
  *   before_agent_start  | CLI not installed, no live kernel entry         | Inject install stub as hidden message
  *
- * The dedup predicate (`shouldInjectKernel` in lib/kernel.ts) handles two
- * subtleties: pi stores the kernel as `type: "custom_message"` (LLM-visible,
- * created via `appendCustomMessageEntry`), not `type: "custom"` (state-only
- * marker created via `pi.appendEntry()`); and post-compaction, only entries
- * from `firstKeptEntryId` onward count as "live."
+ * The dedup predicate (`shouldInjectKernel` in lib/kernel.ts) reads Pi's
+ * active, compaction-aware branch projection and matches `custom_message`
+ * entries rather than state-only `custom` entries.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
+import { registerLatestContextProjection } from "../../lib/common/session/active-branch-context.ts";
 import {
   getCachedSfEnvironment,
   getSharedSfEnvironment,
@@ -55,10 +54,11 @@ import { readEffectiveSfBrainSettings } from "./lib/settings.ts";
 export default function (pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-brain")) return;
 
+  registerLatestContextProjection(pi, [KERNEL_ENTRY_TYPE, SF_PI_EXTENSIONS_ENTRY_TYPE]);
   const exec = buildExecFn(pi);
 
   pi.on("before_agent_start", async (_event, ctx) => {
-    if (!shouldInjectKernel(ctx.sessionManager.getEntries())) return;
+    if (!shouldInjectKernel(ctx.sessionManager)) return;
 
     // Prefer the already-populated shared cache. If nothing has run detection
     // yet in this process, fall through to a live detection. Either way the
@@ -88,7 +88,7 @@ export default function (pi: ExtensionAPI) {
         readEffectiveSfBrainSettings(ctx.cwd).herdrGuidance === "auto" &&
         isHerdrWorkflowModeActive({ env: process.env, activeTools }),
     });
-    if (!shouldInjectSfPiExtensionContext(ctx.sessionManager.getEntries(), context)) return;
+    if (!shouldInjectSfPiExtensionContext(ctx.sessionManager, context)) return;
 
     return {
       message: {

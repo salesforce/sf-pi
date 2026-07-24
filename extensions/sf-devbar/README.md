@@ -6,7 +6,8 @@ A bespoke Salesforce developer status bar that renders two persistent UI surface
 
 - **Top bar** (widget above editor): SF Pi brand, model name with gateway detection,
   rainbow thinking level, working folder, git branch + changes, context window progress bar,
-  a permanent right-aligned **Salesforce LSP segment** (`LSP[Apex: ● | LWC: ● | AgentScript: ●]`)
+  an optional bounded Pi session name, and a permanent right-aligned **Salesforce LSP segment**
+  (`LSP[Apex: ● | LWC: ● | AgentScript: ●]`)
   fed by sf-lsp via the shared `lib/common/sf-lsp-health` registry, and (when non-default)
   an `img:Nc` pill reflecting `terminal.imageWidthCells`
 - **Bottom bar** (custom footer): deterministic left order of active LLM gateway
@@ -26,6 +27,7 @@ Extension loads
   ├─ registerShortcut(Ctrl+Shift+B)
   ├─ session_start      → install top/bottom bars, start async data refresh
   ├─ model_select       → repaint model / gateway badge
+  ├─ session_info_changed → repaint optional Pi session name
   ├─ thinking_level_select → repaint thinking badge
   ├─ turn_start         → show thinking indicator
   ├─ turn_end           → refresh context + footer
@@ -35,18 +37,18 @@ Extension loads
 
 ## How It Differs from the Default Pi Footer
 
-| Default Pi footer           | sf-devbar                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| Model name + git branch     | SF-first: org context, gateway badge, thinking level                           |
-| No org awareness            | Shows `SFDX Project →` authenticated org and type when inside an SF DX project |
-| No context window indicator | Visual progress bar with color-coded usage                                     |
-| No package/cost grouping    | Active LLM gateway budget, then SF Pi package count, then org on the left      |
-| No git change counts        | Branch + added/modified/deleted counts                                         |
-| No SF LLM Gateway detection | Gold badge when using the internal gateway                                     |
-| No thinking level display   | Rainbow gradient thinking badge                                                |
-| No keyboard toggle          | Ctrl+Shift+B to toggle bars on/off                                             |
+| Default Pi footer                | sf-devbar                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| Model name + git branch          | SF-first: org context, gateway badge, thinking level                           |
+| No org awareness                 | Shows `SFDX Project →` authenticated org and type when inside an SF DX project |
+| Compact native context indicator | Visual progress bar with explicit post-compaction unknown state                |
+| No package/cost grouping         | Active LLM gateway budget, then SF Pi package count, then org on the left      |
+| No git change counts             | Branch + added/modified/deleted counts                                         |
+| No SF LLM Gateway detection      | Gold badge when using the internal gateway                                     |
+| Native thinking indicator        | Salesforce-oriented rainbow thinking badge                                     |
+| No keyboard toggle               | Ctrl+Shift+B to toggle bars on/off                                             |
 
-## Pi SDK Features Used (25)
+## Pi SDK Features Used (27)
 
 ### Rendering
 
@@ -60,6 +62,7 @@ Extension loads
 - `session_start` — activate bars, load data, start async checks
 - `session_shutdown` — restore default footer, clear widget
 - `model_select` — update model display, detect gateway
+- `session_info_changed` — repaint the optional session-name segment
 - `thinking_level_select` — repaint thinking badge instantly on level change (pi ≥ 0.71; no-op on older)
 - `turn_start` — set thinking indicator
 - `turn_end` — context refresh + footer repaint
@@ -68,7 +71,8 @@ Extension loads
 ### Data Sources
 
 - `pi.getThinkingLevel()` — thinking level for rainbow badge
-- `ctx.getContextUsage()` — context window progress bar
+- `ctx.getContextUsage()` — authoritative nullable context percentage and window size
+- `pi.getSessionName()` — optional Pi-owned session display name
 - `ctx.model` — model name, provider detection
 - `ctx.cwd` — working folder name
 - `pi.exec()` — git status
@@ -88,13 +92,14 @@ Extension loads
 Every data source loads independently. The bars render immediately and update
 as results arrive:
 
-| Data Source      | Timing                                           | Loading State                   |
-| ---------------- | ------------------------------------------------ | ------------------------------- |
-| SF Environment   | Reads shared sf-environment cache — instant warm | Shows last cached, then updates |
-| Model + Thinking | Synchronous from `ctx.model` / thinking API      | Always available                |
-| Git branch       | Reactive via `footerData.onBranchChange()`       | Immediate from Pi's tracking    |
-| Git changes      | Async `git status` — refreshed on agent_end      | Shows "…" until first result    |
-| Context usage    | Recalculated on turn_end                         | Bar starts empty, fills on turn |
+| Data Source      | Timing                                           | Loading State                                            |
+| ---------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| SF Environment   | Reads shared sf-environment cache — instant warm | Shows last cached, then updates                          |
+| Model + Thinking | Synchronous from `ctx.model` / thinking API      | Always available                                         |
+| Git branch       | Reactive via `footerData.onBranchChange()`       | Immediate from Pi's tracking                             |
+| Git changes      | Async `git status` — refreshed on agent_end      | Shows "…" until first result                             |
+| Context usage    | Read from Pi on render and repainted on turn_end | Hidden when absent; unknown after compaction; then fills |
+| Session name     | Read from Pi on render and repainted on rename   | Hidden until the user assigns one                        |
 
 ## Commands
 
@@ -117,6 +122,7 @@ as results arrive:
 | session_start         | UI available     | Render bars with cached data                              |
 | session_start         | `--no-devbar`    | Stay silent                                               |
 | model_select          | model changes    | Repaint model/gateway badge                               |
+| session_info_changed  | session renamed  | Repaint bounded Pi session-name segment                   |
 | thinking_level_select | thinking changes | Repaint rainbow thinking badge                            |
 | turn_end / agent_end  | —                | Refresh context, footer, and git state                    |
 | session_shutdown      | —                | Clear custom widget/footer                                |
@@ -178,6 +184,7 @@ extensions/sf-devbar/
     colors.ts               ← implementation module
     config-panel.ts         ← implementation module
     git-changes.ts          ← implementation module
+    runtime-facts.ts        ← implementation module
     settings-reader.ts      ← implementation module
     settings.ts             ← implementation module
     top-bar.ts              ← implementation module
@@ -186,6 +193,7 @@ extensions/sf-devbar/
     colors.test.ts          ← unit / smoke test
     config-panel.test.ts    ← unit / smoke test
     git-changes.test.ts     ← unit / smoke test
+    runtime-facts.test.ts   ← unit / smoke test
     settings-reader.test.ts ← unit / smoke test
     settings.test.ts        ← unit / smoke test
     shutdown-reason.test.ts ← unit / smoke test
@@ -231,10 +239,11 @@ start calls the SF CLI; subsequent sessions read the persisted snapshot
 instantly. If it never resolves, run `sf org display --json` directly to
 confirm the CLI can see the org.
 
-**Context bar starts empty and doesn't fill:**
-Context usage is recalculated on `turn_end`. The bar fills after the
-first assistant turn. If you expect it to fill immediately, you're
-looking for `ctx.getContextUsage()` — that's the data source.
+**Context bar is hidden or says `unknown`:**
+The bar is hidden when Pi has no usable context fact. Immediately after
+compaction, Pi can know the context window while its percentage is explicitly
+unknown; DevBar shows `unknown` rather than a false `0%`. The percentage fills
+from Pi's public `ctx.getContextUsage().percent` after the next assistant turn.
 
 **Gateway badge color is wrong when using sf-llm-gateway-internal:**
 The gold badge triggers on `ctx.model.provider === "sf-llm-gateway-internal"`

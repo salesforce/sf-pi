@@ -81,9 +81,13 @@ Primary setup lives in the SF Pi Manager detail page:
 /sf-docs
 ```
 
-The detail page reports the credential source, but interactive credential entry is temporarily disabled while Pi's native secret prompt can echo submitted values. Existing saved credentials under `sf-docs` remain usable.
+The detail page reports the credential source and prepares native login. Interactive setup uses SF Pi's shared fixed-mask component while Pi owns persistence and logout:
 
-Set the temporary new-session credential before starting Pi:
+```text
+/login sf-docs
+```
+
+For non-persisted automation, set the environment credential before starting Pi:
 
 ```text
 SF_DOCS_MCP_TOKEN=<token>
@@ -97,8 +101,8 @@ SF_DOCS_MCP_ENDPOINT=https://mcp.docs.salesforce.com/
 
 ## Safety boundaries
 
-- Tokens are never stored in project settings or rendered in status output.
-- If a token was entered through the previous visible input, rotate it with the issuer.
+- Tokens are never stored in project settings, session entries, or rendered in status output.
+- Interactive entry is fixed-mask and TUI-only; RPC/JSON/print use existing credentials or environment automation.
 - Settings are non-secret preferences only.
 - The catalog cache stores only collection metadata, never search results, answer text, or fetched document bodies.
 - SF Docs uses the Salesforce Docs service as its retrieval surface; it does not scrape Salesforce websites, download documentation bundles, or build a local search index.

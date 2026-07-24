@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.229.0-2026-07-21",
-  "latestVersion": "0.229.0",
+  "revision": "release-0.238.0-2026-07-24",
+  "latestVersion": "0.238.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.229.0",
+      "id": "release-0.238.0",
       "kind": "update",
-      "title": "sf-pi v0.229.0 — sf-llm-gateway: default to GPT-5.6 Sol",
-      "publishedAt": "2026-07-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.229.0",
+      "title": "sf-pi v0.238.0 — auth: share secure provider login",
+      "publishedAt": "2026-07-24T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.0",
       "severity": "info",
-      "body": "sf-llm-gateway: default to GPT-5.6 Sol"
+      "body": "auth: share secure provider login"
     },
     {
       "id": "pi-0.73-required",

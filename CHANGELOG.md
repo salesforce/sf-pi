@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 - **Adopted the audited Pi 0.81 runtime window `>=0.81.1 <0.82.0`.** Pi 0.80.8 removed the public `ModelRegistry.authStorage` surface used by earlier SF Docs and SF Slack credential actions. SF Pi now recommends Pi 0.81.1, enforces the exclusive next-minor ceiling at runtime, pins its development Pi packages to exact 0.81.1 versions, tests the supported runtime in nightly CI, suppresses unbounded Pi updates, and routes version repair through `/sf-pi doctor runtime`.
 - **Disabled interactive SF Docs and SF Slack credential entry while Pi's native secret prompt remains unsafe.** Existing saved Pi credentials and the `SF_DOCS_MCP_TOKEN` / `SLACK_USER_TOKEN` environment fallbacks continue to work. Connect surfaces show safe setup and rotation guidance, Disconnect prefills native `/logout` for review, status surfaces no longer render token fragments, and extension code no longer calls the removed `authStorage` surface.
+- **Ended SF LLM Gateway legacy config-token execution after the v0.235.0-v0.236.0 migration window.** Project/global `apiKey` fields no longer authenticate requests or satisfy setup checks. Pi-owned credentials and current/legacy environment-variable automation remain supported. Existing fields are detected without exposing their values and are never deleted unless a verified Pi credential passes doctor checks and the user explicitly confirms field-only cleanup.
 
 - **Migrated pi peer-dependency scope from `@mariozechner/*` to
   `@earendil-works/*` (pi 0.74).** Pi 0.74.0 (2026-05-07) renamed every
@@ -50,6 +51,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Changed
 
+- **Added shared fixed-mask provider login for SF Docs and SF Slack.** Gateway, Docs, and Slack now use one session-bound SF Pi `ctx.ui.custom()` component while Pi alone persists credentials and owns `/logout`. Existing API-key and OAuth-compatible credentials plus environment automation remain supported; Docs/Slack containment-only login failures and the Gateway-local prompt copy were deleted.
+- **Closed the Browser progressive-activation proposal without implementation.** Pi's eager tool activation and authoritative exclusions remain unchanged; dynamic tool loading requires separate future authorization.
+- **Patched the development dependency graph for `brace-expansion`.** The lockfile now resolves the ESLint path to a patched release, removing the open high-severity development-only denial-of-service alert while leaving production dependencies unchanged.
+- **Replaced the one-shot Native Auto Update timer with an Agent-Settled Update Coordinator.** Due interactive work now waits for `agent_settled`, rechecks consent and idle state, emits sanitized Human-Only plan/final rows, and uses an atomic abortable lock. The audited Pi runtime remains unchanged; outdated compatible unpinned global npm Pi packages—including Herdr—update through Pi's per-package command, and Salesforce CLI updates independently. Pinned, local, git, project, incompatible, or unverifiable packages remain untouched. This also removes the `PI_SKIP_VERSION_CHECK` self-update failure path.
+- **Recognized current split Herdr control tools in SF Welcome.** Active `herdr_layout`, `herdr_pane`, or `herdr_agent` tools now report pane control ready alongside the legacy `herdr` tool instead of showing an ineffective reload warning.
+- **Replaced legacy Gateway orchestration with one complete Pi Provider.** Pi now owns Gateway credential persistence/logout, provider-scoped model storage, refresh retention, and real API-map dispatch. `/login` can collect a missing non-secret URL and uses an SF Pi fixed-mask component for the API key; setup/import paths no longer write secrets. The custom catalog cache, delayed discovery timer, pseudo-auth marker, API-tag stripping, and ID dispatcher were deleted after live Chat, Responses, Anthropic, and compaction proofs.
+- **Made Gateway `max` capability-only.** SF LLM Gateway retains live-proven model thinking maps but no longer selects an active level, writes Pi's `defaultThinkingLevel`, or carries passive thinking-default state. Pi and user settings remain authoritative across startup, commands, and model switches.
+- **Attested Code Analyzer's delegated runtime hooks.** Generated catalog and orientation metadata now report the actual `tool_result` and `agent_settled` hooks, backed by an exact extension-factory event test rather than broad source scanning.
+- **Completed the SF Skills resource parity evidence gate.** A production-neutral harness compares the Funnel with Pi 0.81.1's public package manager and resource loader across scope, filter, package, collision, trust, stale-root, and rescope scenarios. Native-parity rows remain deletion candidates only; package/filter semantics and whole-source rescope return for explicit decisions.
+- **Aligned SF Herdr with Pi's real tool-result events.** Workflow inference now reads validated input from successful `tool_result` events, removes the invented end-event `args` shape, ignores failed attempts consistently, and records each successful activity once.
+- **Kept new display-only command reports out of model context.** SF LLM Gateway and SF Feedback now use Pi's human-only channels across TUI, RPC, JSON, and print modes. Headless reports use state-only entries rather than model-visible custom messages.
+- **Corrected SF DevBar runtime facts for Pi 0.81.** DevBar now consumes Pi's authoritative nullable context percentage, distinguishes absent usage from post-compaction `unknown`, preserves exact zero and fractional values, and displays bounded Pi-owned session names without parsing session history.
 - **Patched transitive URL parsing.** Updated `fast-uri` to 3.1.4 to resolve the production audit advisory without changing direct dependency APIs.
 - **Reduced SF Welcome splash clutter.** Removed `pi-updater` from the recommended package set, hid monthly usage for non-gateway providers, removed the Tips block, and tightened trailing splash/header spacing.
 - **Added public threat model and secure-design review evidence.** Added `docs/threat-model.md` and linked it from security docs as the public evidence packet for trust boundaries, mitigations, validation, and residual governance risks.
@@ -92,6 +105,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Features
 
+- **Project mutable hidden context from Pi's active branch.** SF Brain, DevBar, Guardrail, and Slack now use Pi's compaction-aware `buildContextEntries()` projection, reinject from the latest active value, and filter superseded model-visible custom messages without changing state-only approval or audit entries.
 - **Adopt pi 0.72 model-level `thinkingLevelMap` in
   sf-llm-gateway-internal.** Pi 0.72 replaced `compat.reasoningEffortMap`
   with a top-level `thinkingLevelMap` on each model (pi-mono #3208). The
@@ -533,6 +547,71 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
   - The final sanitized error forwarded downstream now carries the same
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
+
+## [0.238.0](https://github.com/salesforce/sf-pi/compare/v0.237.0...v0.238.0) (2026-07-24)
+
+
+### Features
+
+* **auth:** share secure provider login ([#521](https://github.com/salesforce/sf-pi/issues/521)) ([e05b6d1](https://github.com/salesforce/sf-pi/commit/e05b6d14f793d1faba516bb3598558bd37821b73))
+
+## [0.237.0](https://github.com/salesforce/sf-pi/compare/v0.236.0...v0.237.0) (2026-07-23)
+
+
+### Features
+
+* **gateway:** end legacy config-token fallback ([#519](https://github.com/salesforce/sf-pi/issues/519)) ([5bcac5c](https://github.com/salesforce/sf-pi/commit/5bcac5c7d766d3f5e62bc465d3a937d70a130c15))
+
+## [0.236.0](https://github.com/salesforce/sf-pi/compare/v0.235.0...v0.236.0) (2026-07-23)
+
+
+### Features
+
+* coordinate updates after agent settlement ([#517](https://github.com/salesforce/sf-pi/issues/517)) ([b378e1a](https://github.com/salesforce/sf-pi/commit/b378e1a38eef5bae7227a9b569e8b0a69ce8fee7))
+
+## [0.235.0](https://github.com/salesforce/sf-pi/compare/v0.234.0...v0.235.0) (2026-07-23)
+
+
+### Features
+
+* complete native Gateway Provider ([#515](https://github.com/salesforce/sf-pi/issues/515)) ([05e6545](https://github.com/salesforce/sf-pi/commit/05e6545675420fe30a245fb315d1e84a7351cf1c))
+
+## [0.234.0](https://github.com/salesforce/sf-pi/compare/v0.233.0...v0.234.0) (2026-07-23)
+
+
+### Features
+
+* attest Code Analyzer runtime hooks ([a6e7127](https://github.com/salesforce/sf-pi/commit/a6e7127bc99ccbb8da95e38394f56205e66bbf0c))
+
+## [0.233.0](https://github.com/salesforce/sf-pi/compare/v0.232.0...v0.233.0) (2026-07-23)
+
+
+### Features
+
+* align Herdr signals with Pi events ([6a3d929](https://github.com/salesforce/sf-pi/commit/6a3d929d43707139165efbb97c2c2917d5e8db35))
+* make Gateway thinking capability-only ([3e287bb](https://github.com/salesforce/sf-pi/commit/3e287bb978ffd9864519914d073a091b73505d19))
+
+## [0.232.0](https://github.com/salesforce/sf-pi/compare/v0.231.0...v0.232.0) (2026-07-23)
+
+
+### Features
+
+* consume public Pi facts in DevBar ([f36903c](https://github.com/salesforce/sf-pi/commit/f36903cc4700548022bec49f9b860e01a2de9d3b))
+* keep command reports out of model context ([c2d5371](https://github.com/salesforce/sf-pi/commit/c2d53718e1863478f6945ae6626255672b798e2c))
+
+## [0.231.0](https://github.com/salesforce/sf-pi/compare/v0.230.0...v0.231.0) (2026-07-22)
+
+
+### Features
+
+* project mutable context from active branch ([0fbd571](https://github.com/salesforce/sf-pi/commit/0fbd5717b2e8b1ed65ab2fe4b999f15ef566f026))
+
+## [0.230.0](https://github.com/salesforce/sf-pi/compare/v0.229.0...v0.230.0) (2026-07-22)
+
+
+### Features
+
+* adopt Pi 0.81.1 with credential containment ([36a78d4](https://github.com/salesforce/sf-pi/commit/36a78d41bcc97c55ac0d8389b54675129ce963fd))
 
 ## [0.229.0](https://github.com/salesforce/sf-pi/compare/v0.228.7...v0.229.0) (2026-07-21)
 

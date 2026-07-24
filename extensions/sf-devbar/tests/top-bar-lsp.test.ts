@@ -22,6 +22,11 @@ const stubTheme: BarTheme = {
   bold: (text) => `<b>${text}</b>`,
 };
 
+const plainTheme: BarTheme = {
+  fg: (_color, text) => text,
+  bold: (text) => text,
+};
+
 function entry(
   language: SupportedLspLanguage,
   overrides: Partial<SfLspLanguageEntry> = {},
@@ -151,6 +156,61 @@ describe("renderTopBarLine", () => {
     const lines = renderTopBarLine(base, stubTheme, 120);
     expect(lines).toHaveLength(1);
     expect(lines[0]).not.toContain("Apex:");
+  });
+
+  it("shows a normal session name on wide terminals", () => {
+    const [line] = renderTopBarLine(
+      { ...base, sessionName: "Review gateway changes" },
+      plainTheme,
+      160,
+    );
+
+    expect(line).toContain("session:Review gateway changes");
+    expect(visibleWidth(line)).toBeLessThanOrEqual(160);
+  });
+
+  it("bounds long session names on narrow terminals", () => {
+    const [line] = renderTopBarLine(
+      { ...base, sessionName: `Review-${"gateway-".repeat(20)}` },
+      plainTheme,
+      56,
+    );
+
+    expect(visibleWidth(line)).toBeLessThanOrEqual(56);
+    expect(line).toContain("session:Review-");
+    expect(line).not.toContain("gateway-".repeat(20));
+  });
+
+  it("bounds wide-character session names by terminal cells", () => {
+    const sessionName = `Review-${"🚀".repeat(40)}`;
+    const [line] = renderTopBarLine({ ...base, sessionName }, plainTheme, 80);
+
+    expect(visibleWidth(line)).toBeLessThanOrEqual(80);
+    expect(line).not.toContain(sessionName);
+  });
+
+  it("never exceeds the terminal width when the right-side LSP segment is wider", () => {
+    const [line] = renderTopBarLine(
+      {
+        ...base,
+        sessionName: "Review gateway changes",
+        lspHealth: makeHealth({}),
+      },
+      plainTheme,
+      20,
+    );
+
+    expect(visibleWidth(line)).toBeLessThanOrEqual(20);
+  });
+
+  it("right-aligns the LSP-only fallback when one margin cell remains", () => {
+    const lspHealth = makeHealth({});
+    const right = formatLspHealthSegment(lspHealth, plainTheme)!;
+    const width = visibleWidth(right) + 1;
+    const [line] = renderTopBarLine({ ...base, lspHealth }, plainTheme, width);
+
+    expect(visibleWidth(line)).toBe(width);
+    expect(line.endsWith(right)).toBe(true);
   });
 
   it("right-aligns the LSP segment at the terminal width", () => {

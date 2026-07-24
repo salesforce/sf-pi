@@ -18,10 +18,11 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { SessionEntry } from "@earendil-works/pi-coding-agent";
-
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
-import { shouldInjectOnce } from "../../../lib/common/session/inject-once.ts";
+import {
+  type ActiveContextSession,
+  shouldInjectOnce,
+} from "../../../lib/common/session/inject-once.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -104,6 +105,6 @@ export function loadKernel(options: { cliInstalled: boolean }): string {
  * live-window logic stays identical across sf-brain / sf-guardrail /
  * sf-slack.
  */
-export function shouldInjectKernel(entries: readonly SessionEntry[]): boolean {
-  return shouldInjectOnce(entries, KERNEL_ENTRY_TYPE);
+export function shouldInjectKernel(sessionManager: ActiveContextSession): boolean {
+  return shouldInjectOnce(sessionManager, KERNEL_ENTRY_TYPE);
 }

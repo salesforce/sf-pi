@@ -4,17 +4,14 @@ import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.
 import {
   API_KEY_ENV,
   CA_BUNDLE_SOURCE_ENV,
-  LEGACY_API_KEY_ENV,
-  describeApiKey,
   describeConfigValue,
   FRIENDLY_COMMAND_NAME,
   getGatewayConfig,
-  getMergedSavedGatewayConfig,
-  readGatewayEnv,
   type ConfigSource,
 } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
+import { gatewayProviderRuntime } from "./provider.ts";
 import { type GatewayCaProbeFailureClass, writeCaProbeState } from "./ca-probe-state.ts";
 import {
   collectUsableCaBundlePaths,
@@ -142,10 +139,10 @@ export function interpretGatewayHttpResult(status: number, bodyPreview: string):
     return "OK";
   }
   if (status === 401 && /key is blocked/i.test(bodyPreview)) {
-    return "Authentication failed because the active gateway key is blocked. Run /login and paste a new gateway API key; saved pi config now takes precedence over stale env or Keychain exports.";
+    return "Authentication failed because the active gateway key is blocked. Run /login sf-llm-gateway-internal; Pi-saved credentials take precedence over stale environment fallbacks.";
   }
   if (status === 401 || /no api key|authentication|unauthorized/i.test(bodyPreview)) {
-    return "Authentication failed. Run /login to paste a gateway API key, or use env vars only for automation when no saved key exists.";
+    return "Authentication failed. Run /login sf-llm-gateway-internal, or use environment variables for automation.";
   }
   if (
     status === 302 ||
@@ -168,8 +165,10 @@ export function interpretGatewayHttpResult(status: number, bodyPreview: string):
 
 export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoctorReport> {
   const config = getGatewayConfig(cwd);
-  const openAiBaseUrl = config.baseUrl ? toGatewayOpenAiBaseUrl(config.baseUrl) : undefined;
-  const anthropicRootUrl = config.baseUrl ? toGatewayRootBaseUrl(config.baseUrl) : undefined;
+  const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(cwd);
+  const effectiveBaseUrl = runtimeAuth?.baseUrl ?? config.baseUrl;
+  const openAiBaseUrl = effectiveBaseUrl ? toGatewayOpenAiBaseUrl(effectiveBaseUrl) : undefined;
+  const anthropicRootUrl = effectiveBaseUrl ? toGatewayRootBaseUrl(effectiveBaseUrl) : undefined;
   const checks: GatewayDoctorCheck[] = [];
 
   if (anthropicRootUrl) {
@@ -185,14 +184,16 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
     );
   }
   if (openAiBaseUrl) {
-    checks.push(await runGatewayCheck("Model discovery", `${openAiBaseUrl}/models`, config.apiKey));
+    checks.push(
+      await runGatewayCheck("Model discovery", `${openAiBaseUrl}/models`, runtimeAuth?.apiKey),
+    );
   }
   if (anthropicRootUrl) {
     checks.push(
       await runGatewayCheck(
         "Gateway health",
         `${anthropicRootUrl}/health/readiness`,
-        config.apiKey,
+        runtimeAuth?.apiKey,
       ),
     );
   }
@@ -204,18 +205,18 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
   });
 
   const recommendations: string[] = [];
-  if (!config.baseUrl) {
+  if (!effectiveBaseUrl) {
     recommendations.push(`Run /sf-llm-gateway setup and enter the gateway base URL.`);
   }
-  if (!config.apiKey) {
+  if (!runtimeAuth) {
     recommendations.push(
-      "Run /login and paste the gateway API key. Env vars are only an automation fallback when no saved key exists.",
+      "Run /login sf-llm-gateway-internal. Environment variables are automation fallbacks.",
     );
   }
   for (const check of checks) {
     if (!check.ok) recommendations.push(`${check.name}: ${check.interpretation}`);
   }
-  recommendations.push(...buildDoctorKeySourceRecommendations(cwd));
+  recommendations.push(...buildDoctorKeySourceRecommendations(runtimeAuth?.source));
   recommendations.push(...buildTlsHintRecommendations(failureClass, discovery));
   if (config.helpUrl) {
     recommendations.push(`More info: ${config.helpUrl}`);
@@ -236,10 +237,10 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
 
   return {
     enabled: config.enabled,
-    baseUrl: config.baseUrl,
+    baseUrl: effectiveBaseUrl,
     baseUrlSource: config.baseUrlSource,
-    apiKeyPresent: Boolean(config.apiKey),
-    apiKeyDescription: describeApiKey(config.apiKey, config.apiKeySource),
+    apiKeyPresent: Boolean(runtimeAuth),
+    apiKeyDescription: runtimeAuth ? `configured (${runtimeAuth.source})` : "missing",
     openAiBaseUrl,
     anthropicRootUrl,
     checks,
@@ -289,23 +290,12 @@ function buildTlsHintRecommendations(
   return recommendations;
 }
 
-function buildDoctorKeySourceRecommendations(cwd: string): string[] {
-  const config = getGatewayConfig(cwd);
-  const savedKey = getMergedSavedGatewayConfig(cwd).apiKey?.trim();
-  const envKey = readGatewayEnv(API_KEY_ENV, LEGACY_API_KEY_ENV)?.trim();
-
-  if (savedKey && envKey && savedKey !== envKey) {
+function buildDoctorKeySourceRecommendations(source: string | undefined): string[] {
+  if (source === API_KEY_ENV) {
     return [
-      `${API_KEY_ENV} is set but ignored because a saved key wins. If the env key is newer, run /login or /sf-llm-gateway setup to save it; otherwise remove the stale env var from your shell or Keychain setup.`,
+      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login so Pi can store the intended key across shells.`,
     ];
   }
-
-  if (config.apiKeySource === "env") {
-    return [
-      `Using ${API_KEY_ENV} as an automation fallback. For interactive use, run /login or /sf-llm-gateway setup so pi keeps using the intended key across shells.`,
-    ];
-  }
-
   return [];
 }
 
@@ -460,7 +450,7 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
     severity: report.apiKeyPresent ? "ok" : "warn",
     title: report.apiKeyPresent ? "API key present" : "API key not present",
     detail: report.apiKeyDescription,
-    fix: report.apiKeyPresent ? undefined : "Run /login and paste the gateway API key.",
+    fix: report.apiKeyPresent ? undefined : "Run /login sf-llm-gateway-internal.",
   });
 
   for (const check of report.checks) {

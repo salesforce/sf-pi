@@ -63,6 +63,22 @@ describe("sf-herdr", () => {
     expect(pi.registerCommand).toHaveBeenCalledWith("sf-herdr", expect.any(Object));
   });
 
+  it("observes successful workflow input only through Pi's tool_result hook", async () => {
+    const mod = await import("../index.ts");
+    const pi = {
+      events: eventBus(),
+      on: vi.fn(),
+      registerCommand: vi.fn(),
+    };
+
+    mod.default(pi as never);
+    const eventNames = pi.on.mock.calls.map(([eventName]) => eventName);
+
+    expect(eventNames).toContain("tool_result");
+    expect(eventNames).not.toContain("tool_execution_start");
+    expect(eventNames).not.toContain("tool_execution_end");
+  });
+
   it("routes the no-args UI command to the SF Pi Manager detail page", async () => {
     const mod = await import("../index.ts");
     const events = eventBus();

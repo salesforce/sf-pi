@@ -7,6 +7,7 @@
  * and toProviderModelConfig.
  */
 import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
+import { getSupportedThinkingLevels, type Api, type Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import {
   buildBootstrapModelList,
@@ -29,6 +30,13 @@ function gatewayCompat(config: {
   compat?: ProviderModelConfig["compat"];
 }): GatewayCompat | undefined {
   return config.compat as GatewayCompat | undefined;
+}
+
+function asPiModel(id: string): Model<Api> {
+  return {
+    ...toProviderModelConfig(id),
+    provider: "sf-llm-gateway-internal",
+  } as Model<Api>;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -429,8 +437,8 @@ describe("toProviderModelConfig", () => {
   it("routes gpt-5.5 through the OpenAI Responses API with the clamped thinking map", () => {
     // Gateway /v1/model/info reports 1,050,000 / 128,000 for gpt-5.5. The
     // preset rounds the context window to 1M so the selector math is clean.
-    // Phase 3: the model is tagged `openai-responses` internally so the
-    // dispatcher in lib/discovery.ts routes it through `POST /responses`.
+    // The complete Provider keeps the real `openai-responses` tag so Pi's
+    // API map routes it through `POST /responses`.
     // `thinkingLevelMap` clamps pi's thinking scale to the {low, medium,
     // high} window — the only values that both LiteLLM's Pydantic validator
     // and upstream OpenAI accept on the Responses path for this model.
@@ -503,6 +511,27 @@ describe("toProviderModelConfig", () => {
     expect(config.thinkingLevelMap?.xhigh).toBe("max");
     expect(config.thinkingLevelMap?.high).toBe("high");
     expect(config.thinkingLevelMap?.max).toBe("max");
+  });
+
+  it("exposes max through Pi's real capability API only for proven model families", () => {
+    for (const id of [
+      "claude-opus-4-8",
+      "claude-sonnet-5",
+      "gpt-5.3-codex",
+      "gpt-5.5",
+      "gpt-5.6-sol",
+      "gpt-5.6-sol-bedrock",
+    ]) {
+      expect(getSupportedThinkingLevels(asPiModel(id)), `${id} should expose max`).toContain("max");
+    }
+
+    for (const id of ["gpt-5", "gpt-5-mini"]) {
+      const levels = getSupportedThinkingLevels(asPiModel(id));
+      expect(levels, `${id} should retain xhigh compatibility`).toContain("xhigh");
+      expect(levels, `${id} should not expose max`).not.toContain("max");
+    }
+
+    expect(getSupportedThinkingLevels(asPiModel("gpt-4o"))).toEqual(["off"]);
   });
 
   it("opts live-proven max-capable gateway models into max via thinkingLevelMap", () => {

@@ -16,6 +16,7 @@
  *   session_start         | Activate both bars, load cached org, start async checks
  *   session_shutdown      | Clear custom footer + widget
  *   model_select          | Update model name, detect SF LLM Gateway, refresh bars
+ *   session_info_changed  | Repaint the optional Pi session-name segment
  *   thinking_level_select | Repaint top bar immediately on thinking-level change
  *   turn_start            | Set thinking indicator on top bar
  *   turn_end              | Refresh git changes, update context bar, trigger footer repaint
@@ -27,10 +28,11 @@
  *
  * Pi SDK features used:
  *   setWidget, setFooter, setTitle
- *   session_start, session_shutdown, model_select, turn_start, turn_end, agent_end
+ *   session_start, session_shutdown, model_select, session_info_changed
+ *   turn_start, turn_end, agent_end
  *   before_agent_start (with systemPromptOptions)
  *   registerCommand, registerShortcut, registerFlag
- *   getThinkingLevel, getContextUsage, ctx.model, ctx.cwd, ctx.hasUI
+ *   getThinkingLevel, getSessionName, getContextUsage, ctx.model, ctx.cwd, ctx.hasUI
  *   pi.exec()
  *   footerData (getGitBranch, onBranchChange, getExtensionStatuses)
  *   theme.fg, theme.bold
@@ -42,6 +44,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
+import { registerLatestContextProjection } from "../../lib/common/session/active-branch-context.ts";
 import { shouldInjectOnce } from "../../lib/common/session/inject-once.ts";
 import {
   getCachedSfEnvironment,
@@ -57,6 +60,7 @@ import {
   formatDetailedStatus,
 } from "../../lib/common/sf-environment/format-agent-context.ts";
 import { renderTopBarLine, type TopBarState } from "./lib/top-bar.ts";
+import { toDevbarRuntimeFacts } from "./lib/runtime-facts.ts";
 import { renderBottomBarParts, type BottomBarState } from "./lib/bottom-bar.ts";
 import {
   extractSfEnvironmentEntries,
@@ -101,6 +105,7 @@ export const SF_ORG_CONTEXT_ENTRY_TYPE = "sf-org-context";
 
 export default function sfDevBar(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-devbar")) return;
+  registerLatestContextProjection(pi, [SF_ORG_CONTEXT_ENTRY_TYPE]);
 
   // Bind the Pi API to the shared runtime so org detection results are
   // persisted into the session via appendEntry(). This lets the cache
@@ -192,24 +197,16 @@ export default function sfDevBar(pi: ExtensionAPI) {
     refreshDevbarSettings(ctx.cwd);
     const model = ctx.model;
     const thinkingLevel = pi.getThinkingLevel();
-    const contextUsage = ctx.getContextUsage();
-    // Keep the raw float — the top bar renders 1/8-block partials for a
-    // ~1% granular fill and a one-decimal percent label (e.g. "1.2%").
-    // Rounding to an integer here would collapse both back to 1% steps.
-    const contextPercent =
-      contextUsage && contextUsage.contextWindow > 0
-        ? (contextUsage.tokens / contextUsage.contextWindow) * 100
-        : null;
+    const runtimeFacts = toDevbarRuntimeFacts(ctx.getContextUsage(), pi.getSessionName());
 
     return {
       modelName: model?.name ?? model?.id,
       modelProvider: model?.provider,
-      contextWindow: contextUsage?.contextWindow,
+      ...runtimeFacts,
       thinkingLevel,
       folderName: basename(ctx.cwd),
       gitBranch: latestGitBranch, // Use the latest known branch from footerData
       gitChanges,
-      contextPercent,
       isThinking,
       imageWidthPill,
       // Always read fresh — the widget factory re-renders on every health
@@ -502,6 +499,12 @@ export default function sfDevBar(pi: ExtensionAPI) {
     requestFooterRender?.();
   });
 
+  // --- Session name change: repaint from Pi's public getter ---
+  pi.on("session_info_changed", async (_event, ctx) => {
+    if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
+    updateTopBar(ctx);
+  });
+
   // --- Thinking level change: repaint the rainbow badge instantly ---
   //
   // pi emits `thinking_level_select` whenever the user flips thinking
@@ -565,8 +568,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     const stillFresh = (entry: { content: string | unknown[] }) =>
       typeof entry.content === "string" && entry.content === context;
-    if (!shouldInjectOnce(ctx.sessionManager.getEntries(), SF_ORG_CONTEXT_ENTRY_TYPE, stillFresh))
-      return;
+    if (!shouldInjectOnce(ctx.sessionManager, SF_ORG_CONTEXT_ENTRY_TYPE, stillFresh)) return;
 
     return {
       message: {

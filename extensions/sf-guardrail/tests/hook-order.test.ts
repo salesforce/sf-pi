@@ -20,4 +20,11 @@ describe("sf-guardrail hook order", () => {
     expect(source).toContain("return { block: true");
     expect(source).not.toContain('pi.on("tool_result"');
   });
+
+  it("projects only the latest Guardrail guidance without changing enforcement", () => {
+    expect(source).toContain("registerLatestContextProjection");
+    expect(source).toContain("entry.content === prompt");
+    expect(source).not.toContain("ctx.sessionManager.getEntries()");
+    expect(source).toContain('pi.on("tool_call"');
+  });
 });

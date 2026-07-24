@@ -2,13 +2,12 @@
 /**
  * Tests for pure formatting helpers.
  *
- * Covers: formatTokens, formatUsd, maskApiKey, getShortModelLabel
+ * Covers: formatTokens, formatUsd, getShortModelLabel
  *
  * These are low-risk but easy to test and useful for regression protection.
  */
 import { describe, it, expect } from "vitest";
 import { formatTokens, formatUsd, getShortModelLabel } from "../lib/models.ts";
-import { maskApiKey } from "../lib/config.ts";
 
 // -------------------------------------------------------------------------------------------------
 // formatTokens
@@ -71,32 +70,6 @@ describe("formatUsd", () => {
 
   it("returns $0.00 for NaN", () => {
     expect(formatUsd(NaN)).toBe("$0.00");
-  });
-});
-
-// -------------------------------------------------------------------------------------------------
-// maskApiKey
-// -------------------------------------------------------------------------------------------------
-
-describe("maskApiKey", () => {
-  it("masks a normal-length key showing first and last 4 chars", () => {
-    const result = maskApiKey("sk-ant-1234567890abcdef");
-    expect(result).toBe("sk-a…cdef");
-  });
-
-  it("masks a short key entirely", () => {
-    const result = maskApiKey("abc");
-    expect(result).toBe("****");
-  });
-
-  it("masks an 8-char key entirely", () => {
-    const result = maskApiKey("12345678");
-    expect(result).toBe("********");
-  });
-
-  it("masks a 9-char key with first/last 4", () => {
-    const result = maskApiKey("123456789");
-    expect(result).toBe("1234…6789");
   });
 });
 

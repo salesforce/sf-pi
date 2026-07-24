@@ -135,9 +135,9 @@ describe("buildAuthStatus", () => {
     const status = await buildAuthStatus(fakeCtx(undefined));
 
     expect(status).toMatch(/Not configured/);
-    expect(status).toContain("Interactive entry is temporarily disabled");
+    expect(status).toContain("/login sf-slack");
+    expect(status).toContain("/sf-slack refresh");
     expect(status).toContain("SLACK_USER_TOKEN");
-    expect(status).not.toContain("/login sf-slack");
     // Even the not-configured path still lists requested scopes so the user
     // can see what they'll be asked to consent to.
     expect(status).toMatch(/Requested scopes/);

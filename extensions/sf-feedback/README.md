@@ -76,6 +76,14 @@ Enter; multiline fields use Enter for new lines and Ctrl+S to save. Preview and
 submit states stay inside the same Manager flow. They do not stack standalone
 input or confirmation prompts above the Manager detail page.
 
+### 7. Display-only reports stay out of model context
+
+Help, diagnostics, drafts, and submission summaries use Pi's human-only output
+channels: the existing TUI panel, RPC notifications, JSON custom-entry events,
+and print-mode console output. Headless reports use state-only custom entries
+rather than custom messages, so newly emitted reports do not steer a later
+model turn.
+
 ## Settings
 
 SF Feedback has a Manager Settings page for the default issue kind stored under `sfPi.feedback.defaultIssueKind`:

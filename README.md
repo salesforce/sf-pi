@@ -133,9 +133,9 @@ parity with Linux/macOS shell tooling. The audited Pi window tracks the
 `>=0.81.1 <0.82.0`). Pi 0.81.1 is the recommended version. Runtimes outside
 that window are not supported; [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts)
 skips extensions with an actionable `/sf-pi doctor runtime` message instead of
-letting them crash on removed runtime APIs. SF Docs and Slack interactive
-credential entry remains disabled until Pi ships a native secret prompt that
-masks input and never echoes submitted values.
+letting them crash on removed runtime APIs. SF Docs, Slack, and the Gateway use
+one shared SF Pi fixed-mask provider component for interactive TUI login while
+Pi alone owns credential persistence and logout.
 
 ## Telemetry and aggregate metrics
 
@@ -592,6 +592,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `pi --version` is outside SF Pi's audited runtime window
 - Disabling an extension through the manager doesn't take effect
 - `/sf-pi enable-all` still leaves some extensions disabled
+- Auto Update is on but Herdr was not updated
+- Auto Update says it is waiting for `agent_settled`
 - Project-scoped changes aren't sticking
 - Display profile change doesn't affect any output
 - `/sf-pi recommended` shows no items or the opposite — too many
@@ -717,7 +719,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 - Bars don't appear at all
 - Org segment shows `…` or takes a long time
-- Context bar starts empty and doesn't fill
+- Context bar is hidden or says `unknown`
 - Gateway badge color is wrong when using sf-llm-gateway-internal
 - `img:Nc` pill appears unexpectedly
 

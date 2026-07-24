@@ -7,8 +7,8 @@ export type SfDocsCommandAction =
 export const SF_DOCS_ACTIONS: SfPiCommandAction<SfDocsCommandAction>[] = [
   {
     value: "connect",
-    label: "Credential setup (temporarily limited)",
-    description: "Show safe setup guidance while interactive credential entry is disabled.",
+    label: "Connect with masked login",
+    description: "Prepare native /login with SF Pi's fixed-mask credential component.",
     group: "Connection",
   },
   {
@@ -57,17 +57,17 @@ export function renderHelp(): string {
     "",
     "Commands:",
     "- `/sf-docs` — open the SF Pi Manager detail page.",
-    "- `/sf-docs connect` — show temporary safe credential-setup guidance.",
+    "- `/sf-docs connect` — prepare fixed-mask native `/login sf-docs`.",
     "- `/sf-docs disconnect` — prefill native logout for review; env vars are untouched.",
     "- `/sf-docs status` — show auth, endpoint, defaults, and cache status.",
     "- `/sf-docs collections` — list available docs collections.",
     "- `/sf-docs refresh` — refresh the collection catalog cache.",
     "- `/sf-docs cheatsheet` — show the extension-owned usage cheatsheet.",
     "",
-    "Temporary credential setup:",
-    "- Interactive entry is disabled while Pi's native secret prompt can echo submitted values.",
-    "- `SF_DOCS_MCP_TOKEN` supplies the token without saving it; set it before starting Pi.",
-    "- Existing saved Pi credentials remain usable.",
+    "Credential setup:",
+    "- `/login sf-docs` uses SF Pi's fixed-mask component while Pi owns persistence.",
+    "- `SF_DOCS_MCP_TOKEN` remains the non-persisted automation fallback.",
+    "- Existing Pi API-key and OAuth credentials remain compatible.",
     "- `SF_DOCS_MCP_ENDPOINT` overrides the default endpoint for advanced testing.",
   ].join("\n");
 }

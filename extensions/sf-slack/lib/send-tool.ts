@@ -379,7 +379,7 @@ export function preflightSend(
           text:
             "slack_send requires a user token (xoxp-). The configured token appears to be a " +
             `${tokenType} token, which posts as the app (not as you) and has a different blast ` +
-            "radius. Use a SLACK_USER_TOKEN user token before starting Pi; interactive entry is temporarily disabled.",
+            "radius. Run /login sf-slack with a user token, then /sf-slack refresh; use SLACK_USER_TOKEN for automation.",
         },
       ],
       details: { ok: false, action: action || "send", reason: "wrong_token_type" },

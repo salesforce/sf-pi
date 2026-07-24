@@ -49,7 +49,9 @@ describe("sf-devbar systemPromptOptions wiring", () => {
     // does not include detectedAt), so a content-equality predicate is
     // a safe "is anything materially different?" signal.
     expect(devbarSource).toContain("shouldInjectOnce");
+    expect(devbarSource).toContain("registerLatestContextProjection");
     expect(devbarSource).toContain("SF_ORG_CONTEXT_ENTRY_TYPE");
+    expect(devbarSource).not.toContain("ctx.sessionManager.getEntries()");
     // Content-equality predicate — the seam that lets `/sf-org refresh`
     // re-inject when env actually changes.
     expect(devbarSource).toMatch(/entry\.content === context/);

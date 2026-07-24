@@ -3,7 +3,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   API_KEY_ENV,
   BASE_URL_ENV,
@@ -24,6 +24,11 @@ const originalLegacyBaseUrl = process.env[LEGACY_BASE_URL_ENV];
 const originalLegacyApiKey = process.env[LEGACY_API_KEY_ENV];
 
 describe("countTokens", () => {
+  beforeEach(() => {
+    process.env[API_KEY_ENV] = "active-automation-test-key";
+    delete process.env[LEGACY_API_KEY_ENV];
+  });
+
   afterEach(() => {
     globalThis.fetch = originalFetch;
     restoreEnv(BASE_URL_ENV, originalBaseUrl);
@@ -111,8 +116,15 @@ describe("countTokens", () => {
 });
 
 describe("estimateSpend", () => {
+  beforeEach(() => {
+    process.env[API_KEY_ENV] = "active-automation-test-key";
+    delete process.env[LEGACY_API_KEY_ENV];
+  });
+
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    restoreEnv(API_KEY_ENV, originalApiKey);
+    restoreEnv(LEGACY_API_KEY_ENV, originalLegacyApiKey);
     vi.restoreAllMocks();
   });
 

@@ -33,9 +33,11 @@ describe("sf-slack systemPromptOptions wiring", () => {
     expect(slackSource).toContain('t.startsWith("slack")');
   });
 
-  it("returns early when no Slack tools are active", () => {
-    // Verify the guard clause: if (!hasSlackTool) return;
-    expect(slackSource).toContain("if (!hasSlackTool) return;");
+  it("returns early and removes prior context when no Slack tools are active", () => {
+    expect(slackSource).toContain(
+      "slackContextActive = identity !== null && hasSlackTool === true",
+    );
+    expect(slackSource).toContain("if (!slackContextActive || !identity) return;");
   });
 
   it("still injects context when Slack tools are active", () => {
@@ -45,12 +47,13 @@ describe("sf-slack systemPromptOptions wiring", () => {
     expect(slackSource).toContain("</slack_workspace>");
   });
 
-  it("dedupes the workspace injection so identity is written once per live session", () => {
-    // Workspace identity (user + team) is static for the session. Without
-    // shouldInjectOnce dedup, sf-slack persists a fresh custom_message
-    // entry on every before_agent_start, bloating the prompt by N copies
-    // after N turns.
+  it("dedupes and projects the latest workspace identity on the active branch", () => {
     expect(slackSource).toContain("shouldInjectOnce");
+    expect(slackSource).toContain("registerLatestContextProjection");
+    expect(slackSource).toContain("slackContextActive");
+    expect(slackSource).toContain("identity !== null && hasSlackTool === true");
+    expect(slackSource).toContain("entry.content === content");
+    expect(slackSource).not.toContain("ctx.sessionManager.getEntries()");
     expect(slackSource).toMatch(
       /if \(!shouldInjectOnce\([\s\S]*?SLACK_CONTEXT_ENTRY_TYPE[\s\S]*?\)\) return;/,
     );

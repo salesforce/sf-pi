@@ -403,6 +403,43 @@ describe("sf-welcome", () => {
     expect(plain).not.toContain("/sf-code-analyzer doctor");
   });
 
+  it("renders pending and package-update coordinator states truthfully", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const base = {
+      modelName: "Claude Sonnet 4",
+      providerName: "anthropic",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+    };
+
+    const pending = stripAnsi(
+      new SfWelcomeOverlay({
+        ...base,
+        autoUpdate: { enabled: true, status: { pending: true, running: false } },
+      })
+        .render(140)
+        .join("\n"),
+    );
+    const running = stripAnsi(
+      new SfWelcomeOverlay({
+        ...base,
+        autoUpdate: {
+          enabled: true,
+          status: { running: true, currentTarget: "pi-packages" as const },
+        },
+      })
+        .render(140)
+        .join("\n"),
+    );
+
+    expect(pending).toContain("waiting for agent_settled");
+    expect(running).toContain("Updating Pi packages");
+  });
+
   it("renders skipped SF Browser freshness without an update warning", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const data = {

@@ -48,6 +48,22 @@ describe("sf-feedback", () => {
     expect(typeof mod.default).toBe("function");
   });
 
+  it("registers human-only entry rendering instead of message rendering", async () => {
+    const mod = await import("../index.ts");
+    const pi = {
+      events: eventBus(),
+      on: vi.fn(),
+      registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
+      registerMessageRenderer: vi.fn(),
+    };
+
+    mod.default(pi as never);
+
+    expect(pi.registerEntryRenderer).toHaveBeenCalledWith("sf-feedback", expect.any(Function));
+    expect(pi.registerMessageRenderer).not.toHaveBeenCalled();
+  });
+
   it("does not statically import feedback-flow modules before command registration", () => {
     expect(source).not.toContain('from "./lib/diagnostics.ts"');
     expect(source).not.toContain('from "./lib/github.ts"');
@@ -65,7 +81,9 @@ describe("sf-feedback", () => {
           throw new Error("manager action registration failed");
         }),
       },
+      on: vi.fn(),
       registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
     };
 
     expect(() => mod.default(pi as never)).toThrow("manager action registration failed");
@@ -74,7 +92,12 @@ describe("sf-feedback", () => {
 
   it("registers flat slash-command completions", async () => {
     const mod = await import("../index.ts");
-    const pi = { events: eventBus(), registerCommand: vi.fn() };
+    const pi = {
+      events: eventBus(),
+      on: vi.fn(),
+      registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
+    };
 
     mod.default(pi as never);
 
@@ -90,7 +113,9 @@ describe("sf-feedback", () => {
     const events = eventBus();
     const pi = {
       events,
+      on: vi.fn(),
       registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
     };
 
     mod.default(pi as never);
@@ -113,7 +138,9 @@ describe("sf-feedback", () => {
     const events = eventBus();
     const pi = {
       events,
+      on: vi.fn(),
       registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
     };
     let request: SfPiManagerOpenRequest | undefined;
     events.on(SF_PI_MANAGER_OPEN_EVENT, (payload) => {

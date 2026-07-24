@@ -33,6 +33,7 @@ import {
   GPT55_FORCE_CHAT_ENV,
   isGpt5FamilyResponsesModelId,
   streamSfGatewayResponses,
+  streamSfGatewayResponsesFull,
   type Gpt55ResponsesTestHooks,
 } from "../lib/transport.ts";
 
@@ -473,6 +474,64 @@ describe("streamSfGatewayResponses", () => {
     expect(chatCalls).toBe(0);
     expect(events).toContain("text_delta");
     expect(events).toContain("done");
+  });
+
+  it("honors the force-chat kill switch in the full Responses adapter", async () => {
+    process.env[GPT5_FORCE_CHAT_ENV] = "1";
+
+    const events = await collect(
+      streamSfGatewayResponsesFull(
+        responsesModel,
+        context,
+        undefined,
+        { chatModel },
+        {
+          responsesStreamer: () => happyResponsesStreamer(),
+          chatStreamer: () => emptyChatStreamer(),
+        },
+      ),
+    );
+
+    expect(events).toEqual([]);
+    expect(responsesCalls).toBe(0);
+    expect(chatCalls).toBe(1);
+  });
+
+  it("projects only compatible full Responses options onto the Chat fallback", async () => {
+    let observedChatOptions: Record<string, unknown> | undefined;
+    const events = await collect(
+      streamSfGatewayResponsesFull(
+        responsesModel,
+        context,
+        {
+          maxRetries: 2,
+          reasoningEffort: "high",
+          reasoningSummary: "detailed",
+          serviceTier: "flex",
+          toolChoice: "required",
+          headers: { "X-Test": "value" },
+        },
+        { chatModel },
+        {
+          responsesStreamer: () => erroringResponsesStreamer("full responses failed"),
+          chatStreamer: (_model, _ctx, options) => {
+            observedChatOptions = options as unknown as Record<string, unknown>;
+            return emptyChatStreamer();
+          },
+        },
+      ),
+    );
+
+    expect(events).toEqual([]);
+    expect(chatCalls).toBe(1);
+    expect(observedChatOptions).toMatchObject({
+      maxRetries: 2,
+      reasoningEffort: "high",
+      toolChoice: "required",
+      headers: { "X-Test": "value" },
+    });
+    expect(observedChatOptions).not.toHaveProperty("reasoningSummary");
+    expect(observedChatOptions).not.toHaveProperty("serviceTier");
   });
 
   it("falls back to chat when the Responses stream errors before content", async () => {
