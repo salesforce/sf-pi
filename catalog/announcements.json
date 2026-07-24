@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.238.1-2026-07-24",
-  "latestVersion": "0.238.1",
+  "revision": "release-0.238.2-2026-07-24",
+  "latestVersion": "0.238.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.238.1",
+      "id": "release-0.238.2",
       "kind": "update",
-      "title": "sf-pi v0.238.1 — runtime: support Pi 0.82",
+      "title": "sf-pi v0.238.2 — runtime: allow future stable Pi releases",
       "publishedAt": "2026-07-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.2",
       "severity": "info",
-      "body": "runtime: support Pi 0.82"
+      "body": "runtime: allow future stable Pi releases"
     },
     {
       "id": "pi-0.73-required",
