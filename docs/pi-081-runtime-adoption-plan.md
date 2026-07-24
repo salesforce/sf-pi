@@ -1,6 +1,6 @@
 # Pi 0.81 Runtime Adoption Plan
 
-Status: Pi 0.81.1 runtime adoption, M2A–M2F, E4, M3A, M3B, and M6 implemented; P5 remains pending; stock-prompt interactive login for SF Docs/Slack remains deferred
+Status: complete for Pi 0.81.1; shared Gateway/Docs/Slack secure login, M2A–M2F, E4 retain evidence, M3A, M3B, and M6 are complete; P5 stopped before implementation; R7 passed
 
 ## Goal
 
@@ -33,7 +33,7 @@ Adopt Pi 0.80.7–0.81 capabilities only where they make SF Pi simpler, safer, o
 - No implementation before separate authorization.
 - No private Pi imports, direct `auth.json` writes, or duplicate secret store.
 - No old/new production Provider paths after parity.
-- No package-wide capability router in the first dynamic-tool slice.
+- No dynamic tool loading or package-wide capability router in the current adoption program.
 - No replacement of the purpose-built SF DevBar.
 - No wholesale SF Skills deletion before real resolver parity.
 - No copying direct-provider model metadata into the Gateway without Gateway evidence.
@@ -81,7 +81,7 @@ Live artifacts must be sanitized before persistence, not only during final relea
 
 | ID  | Classification        | Outcome                                                                 | Depends on                              |
 | --- | --------------------- | ----------------------------------------------------------------------- | --------------------------------------- |
-| P0  | deferred prerequisite | Pi ships masked, non-echoed native secret input for interactive login   | none                                    |
+| P0  | deletion milestone    | Shared SF Pi fixed-mask provider login with Pi-owned persistence        | M1                                      |
 | C0  | completed containment | Compatibility/auth claims fail safely while credential entry is blocked | none                                    |
 | M1  | deletion milestone    | Pi 0.81.1 runtime window with contained Docs/Slack auth                 | C0                                      |
 | M2A | deletion milestone    | Active-branch latest context                                            | M1                                      |
@@ -93,48 +93,55 @@ Live artifacts must be sanitized before persistence, not only during final relea
 | M3A | deletion milestone    | Complete native Gateway Provider                                        | M1, M2A, M2D                            |
 | M3B | deletion milestone    | Legacy config-token execution fallback ends                             | one released migration window after M3A |
 | E4  | evidence gate         | SF Skills Pi-vs-Funnel parity matrix                                    | M1                                      |
-| P5  | reversible pilot      | SF Browser progressive tool activation decision                         | M2A                                     |
+| P5  | stopped pilot         | Eager Browser/SF tool activation retained; no dynamic layer implemented | M2A                                     |
 | M6  | deletion milestone    | Agent-Settled Update Coordinator                                        | M1, M2B                                 |
 | R7  | release gate          | Final evidence, docs, and sanitization                                  | all accepted outcomes                   |
 
 ---
 
-## P0 — Future secure native credential prompt
+## P0 — Shared secure provider credential prompt
+
+Implementation status: implemented for Gateway, SF Docs, and SF Slack on Pi 0.81.1.
 
 ### Objective
 
-Land and release a Pi 0.81 patch whose interactive auth UI masks secret input and never echoes the submitted value.
+Provide secure interactive token entry without depending on Pi's visible stock prompt or owning credential persistence.
 
-### Upstream targets
+### Implementation
 
-Likely Pi files:
+- `lib/common/secure-credential-prompt.ts` owns one session-bound fixed-mask `ctx.ui.custom()` component;
+- `lib/common/auth-only-provider.ts` gives Docs and Slack complete no-model Providers with API-key and OAuth-compatible auth;
+- Gateway consumes the same shared component and deletes its extension-local copy;
+- Docs and Slack bind/clear the bridge on session lifecycle, prepare native `/login`, and return canonical credentials to Pi;
+- Pi alone persists credentials and owns `/logout`; environment fallbacks remain unchanged;
+- RPC, JSON, and print modes reject interactive entry and retain existing/environment auth paths.
 
-- `packages/coding-agent/src/modes/interactive/interactive-mode.ts`
-- `packages/coding-agent/src/modes/interactive/components/login-dialog.ts`
-- matching interactive auth/TUI tests
+### Behavior proof
 
-### Red behavior proof
+- fixed-length mask while typing, with no credential fragments in narrow/wide rendering;
+- Kitty input, bracketed paste, terminal-control filtering, grapheme deletion, Escape, abort, reload, shutdown, and rebind behavior;
+- no stock prompt callback invocation;
+- API-key and OAuth-compatible credentials resolve through Pi's public Models API;
+- existing credential shapes remain usable and native logout removes Pi-owned credentials;
+- no private auth import, direct `auth.json` write, second secret store, session entry, config field, status line, or terminal echo.
 
-Drive `AuthInteraction.prompt({ type: "secret" })` through the real interactive adapter and assert:
+### Deletion gate
 
-- typed characters are absent from rendered lines;
-- submitted secret text remains absent after confirmation;
-- text/manual-code prompts retain visible behavior;
-- cancel and retry behavior remain correct.
-
-### Current disposition
-
-SF Pi does not patch or fork the Pi runtime. This prerequisite is deferred until an official Pi release provides the secure behavior. It blocks only interactive native `/login` delegation; it does not block the contained Pi 0.81.1 runtime window.
-
-### Exit gate
-
-An official Pi release passes this proof. That release can enable the later native-login deletion slice.
+Delete Docs/Slack containment-only login failures and copy, plus the Gateway-local secure prompt after all three providers use the shared implementation.
 
 ### Hard stops
 
 - Masked editing with post-submit echo does not pass.
-- Type declarations alone do not pass.
-- SF Pi does not add a local credential writer or private-storage adapter.
+- The component never writes credentials or bypasses Pi persistence/logout.
+- Provider-specific copies of the shared prompt are prohibited.
+
+Implementation evidence:
+
+- exact Pi 0.81.1 TUI login for Docs and Slack rendered the provider-specific shared component, persisted OAuth-compatible credentials at mode `0600`, and native logout removed them;
+- provider-specific token sentinels appeared in neither terminal capture, status, session/config files, nor public evidence;
+- Pi public Models tests cover API-key login/logout, OAuth compatibility, and environment precedence without invoking the stock prompt callback;
+- common component tests cover fixed masks, Kitty input, paste, terminal controls, grapheme deletion, cancellation, abort, rebind, and non-TUI refusal;
+- sanitized evidence: `/tmp/sf-pi-r7-shared-credential-evidence.json`.
 
 ---
 
@@ -632,7 +639,7 @@ Implementation evidence:
 
 ## E4 — SF Skills Resource Resolution Parity Proof
 
-Implementation status: evidence complete; no production deletion or SF Skills behavior change authorized.
+Implementation status: evidence complete; closeout retains current SF Skills governance and authorizes no production deletion.
 
 ### Objective
 
@@ -682,6 +689,8 @@ Implementation evidence:
 
 ## P5 — SF Browser Progressive Tool Activation Pilot
 
+Implementation status: stopped before implementation by product decision; Pi's eager tool activation remains authoritative.
+
 ### Objective
 
 Measure additive activation without routing or safety fragility.
@@ -725,12 +734,11 @@ Activation may add only tools from the original Pi-selected eligible baseline.
 - cache behavior is recorded when exposed;
 - zero safety, exclusion, confirmation, or headless regressions.
 
-### Keep/stop/expand outcomes
+### Keep/stop/expand outcome
 
-- **Keep** only after the complete mandatory production gate and measurable benefit.
-- **Stop** on any next-turn, fallback, exclusion, confirmation, Guardrail, headless, resume/compaction, or benefit failure; restore the eager active set and delete the progressive layer.
-- **Expand** requires separate authorization; it never follows automatically.
-- Provider compatibility flags remain forbidden without live route proof.
+- **Stop selected before implementation.** No production layer, state, manifest change, or provider compatibility flag landed.
+- The current adoption program retains Pi's normal eager active set and authoritative exclusions.
+- Dynamic loading requires separate future authorization and does not block R7.
 
 ---
 
@@ -815,6 +823,8 @@ Implementation evidence:
 
 ## R7 — Final release gate
 
+Implementation status: complete for the Pi 0.81.1 adoption program.
+
 This gate does not repair an earlier milestone. Every originating slice must already be green.
 
 ### Required outputs
@@ -839,17 +849,25 @@ bash scripts/check-llm-artifacts.sh
 npm run validate:ci
 ```
 
+Closeout evidence:
+
+- every implemented deletion/correction milestone is green at the exact supported Pi 0.81.1 runtime edge;
+- P5 is explicitly stopped with no production rollback required;
+- E4 is complete with current SF Skills governance retained and package/rescope differences recorded as separate future work;
+- Gateway, Docs, and Slack share one secure provider input boundary with Pi-owned persistence/logout;
+- aggregate validation passes 477 test files and 3,562 tests, with 5 test files and 8 tests skipped;
+- generated docs/catalog, formatting, typecheck, ESLint, docs build, LLM-artifact, production audit, and public-sanitization gates pass;
+- sanitized final evidence: `/tmp/sf-pi-r7-shared-credential-evidence.json`.
+
 ## Dependency graph
 
 ```text
-P0 secure native secret prompt
- |
- v
-M1 audited fixed-patch runtime + native Docs/Slack auth
+M1 audited fixed-patch runtime + contained auth
  |\
- | +------------------------------> E4 SF Skills parity evidence
+ | +--> P0 shared secure provider login for Gateway, Docs, and Slack
+ | +--> E4 SF Skills parity evidence (retain decision)
  |
- +--> M2A active-branch context --> P5 Browser pilot
+ +--> M2A active-branch context --> P5 Browser pilot (stopped before implementation)
  |
  +--> M2B human-only output ------> M6 update coordinator
  |
@@ -867,7 +885,7 @@ Accepted outcomes -----------------------------------------------> R7 release ga
 ## Definition of done
 
 - The supported Pi range is truthful in package metadata, runtime gate, and required edge CI.
-- Native secret entry is observably masked and non-echoed.
+- Gateway, Docs, and Slack share one observably masked, non-echoed provider credential component while Pi owns persistence/logout.
 - No production source references `ModelRegistry.authStorage` or writes `auth.json`.
 - Gateway project configuration accepts no new secret.
 - Legacy Gateway token execution fallback ends after the announced window without deleting user files.
@@ -877,16 +895,16 @@ Accepted outcomes -----------------------------------------------> R7 release ga
 - The complete Gateway Provider passes auth/logout, offline, refresh, override, transport, compaction, retry, drift, diagnostics, spend, and live gates; legacy orchestration is deleted.
 - SF DevBar consumes only public Pi facts and shows unknown context honestly.
 - SF Skills has a reviewed parity matrix before any Funnel deletion.
-- Browser activation has an explicit keep/stop decision and rollback proof.
+- Browser activation has an explicit stop decision; no production layer landed, so no rollback is required.
 - Auto Update preserves consent, settlement, compatibility, redaction, and durable human visibility.
 - Generated docs/catalogs were updated in each originating slice and remain green at release.
 - Full CI, docs, security, and public-sanitization gates pass.
 
 ## Residual risks requiring escalation
 
-- Upstream Pi may choose a different secure-secret or provider-login interface; use its public solution rather than preserving plan mechanics.
-- Existing Docs/Slack credential shapes may need explicit migration if Pi cannot resolve them safely beside canonical auth.
-- Gateway routes and provider storage cannot be proven from types alone.
-- Pi resource resolution may not preserve every Funnel convenience; parity results return for user decision.
-- Dynamic activation may not improve cache behavior on custom Gateway routes even when correctness passes.
+- The shared credential component depends only on public Pi 0.81.1 provider and `ctx.ui.custom()` APIs; any future Pi interface change requires a new support-window audit.
+- Gateway routes and provider storage cannot be proven from types alone; existing live/runtime gates remain required.
+- E4 found package/filter and whole-source rescope semantic disagreements. The current adoption outcome retains SF Skills governance and authorizes no broad deletion; future fixes require separate scope.
+- Dynamic tool activation was deliberately not adopted and requires separate future authorization.
 - Automatic Pi/package target planning may remain unavailable publicly; skipping is preferable to a custom updater.
+- A moderate `protobufjs` advisory remains confined to the exact Pi development dependency tree; the SF Pi production audit is clean.

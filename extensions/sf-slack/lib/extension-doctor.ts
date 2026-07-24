@@ -31,7 +31,7 @@ export function buildSlackDoctor(context: SlackDoctorContext) {
         severity: "warn",
         title: "No Slack token configured",
         detail: "Slack tools are not registered until a token resolves.",
-        fix: "Interactive entry is temporarily disabled; set SLACK_USER_TOKEN before starting Pi, or continue using an existing saved credential.",
+        fix: "Run /login sf-slack in interactive TUI mode, then /sf-slack refresh; use SLACK_USER_TOKEN for automation.",
       });
       return {
         extensionId: "sf-slack",
@@ -77,7 +77,7 @@ export function buildSlackDoctor(context: SlackDoctorContext) {
           severity: "warn",
           title: `Missing ${missing.length} expected Slack scope${missing.length === 1 ? "" : "s"}`,
           detail: `missing: ${missing.join(", ")}`,
-          fix: "Use a SLACK_USER_TOKEN with the required approved scopes; interactive entry is temporarily disabled.",
+          fix: "Run /login sf-slack with a user token granting the required approved scopes, then /sf-slack refresh.",
         });
       }
     } else {

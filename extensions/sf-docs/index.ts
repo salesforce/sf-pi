@@ -6,9 +6,10 @@
  *
  *   Event/Trigger          | Result
  *   -----------------------|---------------------------------------------------------
- *   extension load         | Register provider auth entry, `sf_docs`, `/sf-docs`
+ *   extension load         | Register auth-only Provider, `sf_docs`, `/sf-docs`
+ *   session_start/shutdown | Bind/clear shared fixed-mask credential entry
  *   /sf-docs (no args)     | Open SF Pi Manager detail page when UI is available
- *   /sf-docs connect       | Explain temporary credential-entry containment
+ *   /sf-docs connect       | Prepare native `/login sf-docs`
  *   /sf-docs status        | Print connection/default/cache status
  *   sf_docs search/fetch   | Call docs service via direct HTTP JSON-RPC/SSE transport
  */
@@ -33,9 +34,8 @@ import {
 import {
   detectTokenSource,
   getDocsToken,
-  loginSfDocs,
-  refreshSfDocsToken,
   resolveEndpoint,
+  sfDocsAuthController,
 } from "./lib/auth.ts";
 import { DocsClient } from "./lib/client.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./lib/catalog-cache.ts";
@@ -53,14 +53,13 @@ import {
 export default function sfDocs(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-docs")) return;
 
-  pi.registerProvider(PROVIDER_NAME, {
-    apiKey: `$${ENV_TOKEN}`,
-    oauth: {
-      name: "SF Docs",
-      login: loginSfDocs,
-      refreshToken: refreshSfDocsToken,
-      getApiKey: (credentials) => credentials.access,
-    },
+  pi.registerProvider(sfDocsAuthController.provider);
+
+  pi.on("session_start", async (_event, ctx) => {
+    sfDocsAuthController.bind(ctx.ui, ctx.mode);
+  });
+  pi.on("session_shutdown", async () => {
+    sfDocsAuthController.clear();
   });
 
   registerSfDocsTool(pi);
@@ -93,8 +92,15 @@ function buildManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
     run: (ctx) => handleCommand(pi, ctx, action.value, true),
     ...(action.value === "connect"
       ? {
-          createPanel: (theme, _cwd, _scope, done, _ctx) =>
-            createSfDocsConnectPanel({ theme, done }),
+          createPanel: (theme, _cwd, _scope, done, ctx) =>
+            createSfDocsConnectPanel({
+              theme,
+              done,
+              prepareLogin: () =>
+                prepareDocsLogin(ctx)
+                  ? `Prepared /login ${PROVIDER_NAME} in Pi's editor.`
+                  : `Run /login ${PROVIDER_NAME} in interactive TUI mode.`,
+            }),
         }
       : {}),
     ...(action.value === "disconnect"
@@ -162,18 +168,26 @@ async function handleCommand(
 }
 
 async function connect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
+  const prepared = prepareDocsLogin(ctx);
   return emit(
     ctx,
-    "SF Docs credential entry temporarily unavailable",
-    [
-      "Credential entry is temporarily unavailable because Pi's current native prompt can echo submitted secret values.",
-      "Existing saved credentials remain active.",
-      `Set ${ENV_TOKEN} before starting Pi for new automation or CI sessions.`,
-      "If you entered a token through the previous visible input, rotate it with the credential issuer.",
-    ].join("\n"),
-    "warning",
+    prepared ? "SF Docs native login prepared" : "SF Docs interactive login requires TUI mode",
+    prepared
+      ? [
+          `Prefilled /login ${PROVIDER_NAME}.`,
+          "Credential entry uses a fixed-mask SF Pi component; Pi alone persists the result.",
+          `${ENV_TOKEN} remains available for automation and is never modified.`,
+        ].join("\n")
+      : `Run /login ${PROVIDER_NAME} in interactive TUI mode, or set ${ENV_TOKEN} before starting Pi for automation.`,
+    prepared ? "info" : "warning",
     fromPanel,
   );
+}
+
+function prepareDocsLogin(ctx: ExtensionCommandContext): boolean {
+  if (ctx.mode !== "tui") return false;
+  ctx.ui.setEditorText(`/login ${PROVIDER_NAME}`);
+  return true;
 }
 
 async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {

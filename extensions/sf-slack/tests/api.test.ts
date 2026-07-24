@@ -134,7 +134,8 @@ describe("api", () => {
 
     it("summarizes auth errors", () => {
       expect(summarizeSlackError("not_authed")).toContain("SLACK_USER_TOKEN");
-      expect(summarizeSlackError("not_authed")).not.toContain("/login sf-slack");
+      expect(summarizeSlackError("not_authed")).toContain("/login sf-slack");
+      expect(summarizeSlackError("not_authed")).toContain("/sf-slack refresh");
       expect(summarizeSlackError("invalid_auth")).toContain("invalid or missing");
       expect(summarizeSlackError("token_revoked")).toContain("invalid or missing");
     });

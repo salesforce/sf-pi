@@ -28,7 +28,7 @@ import {
   createGatewayProviderAuth,
   type GatewayProviderAuthDependencies,
 } from "../lib/provider-auth.ts";
-import type { SecureCredentialPromptBridge } from "../lib/secure-credential-prompt.ts";
+import type { SecureCredentialPromptBridge } from "../../../lib/common/secure-credential-prompt.ts";
 
 const UNUSED_UI = {} as ExtensionUIContext;
 

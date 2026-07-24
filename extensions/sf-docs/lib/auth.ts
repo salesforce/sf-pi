@@ -1,18 +1,80 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Credential and endpoint resolution for SF Docs. */
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
+import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { readPiAuthProviderStatus } from "../../../lib/common/pi-auth-status.ts";
+import { createAuthOnlyProvider } from "../../../lib/common/auth-only-provider.ts";
+import {
+  createSecureCredentialPromptBridge,
+  loginWithSecureCredentialPrompt,
+  type SecureCredentialPromptBridge,
+} from "../../../lib/common/secure-credential-prompt.ts";
 import {
   DEFAULT_ENDPOINT,
   ENV_ENDPOINT,
   ENV_TOKEN,
   LONG_LIVED_EXPIRY_MS,
+  MANUAL_REFRESH_SENTINEL,
   PROVIDER_NAME,
   type EndpointResolution,
   type TokenResolution,
   type TokenSource,
 } from "./types.ts";
+
+type ExtensionMode = ExtensionContext["mode"];
+
+export interface SfDocsAuthController {
+  provider: ReturnType<typeof createAuthOnlyProvider>;
+  bind(ui: ExtensionUIContext, mode: ExtensionMode): void;
+  clear(): void;
+}
+
+export function createSfDocsAuthController(
+  promptBridge: SecureCredentialPromptBridge = createSecureCredentialPromptBridge({
+    title: "SF Docs credential",
+  }),
+): SfDocsAuthController {
+  const provider = createAuthOnlyProvider({
+    id: PROVIDER_NAME,
+    name: "SF Docs",
+    auth: {
+      apiKey: {
+        name: "SF Docs token",
+        login: (interaction) => loginWithSecureCredentialPrompt(promptBridge, interaction),
+        resolve: async ({ ctx, credential }) => {
+          const saved = credential?.key?.trim();
+          if (saved) return { auth: { apiKey: saved }, source: "Pi saved credential" };
+          const env = (await ctx.env(ENV_TOKEN))?.trim();
+          return env ? { auth: { apiKey: env }, source: ENV_TOKEN } : undefined;
+        },
+      },
+      oauth: {
+        name: "SF Docs compatible credential",
+        login: async (interaction) => ({
+          type: "oauth",
+          access: await promptBridge.prompt(interaction.signal),
+          refresh: MANUAL_REFRESH_SENTINEL,
+          expires: Date.now() + LONG_LIVED_EXPIRY_MS,
+        }),
+        refresh: async (credential) => ({
+          ...credential,
+          expires: Date.now() + LONG_LIVED_EXPIRY_MS,
+        }),
+        toAuth: async (credential) => {
+          const access = credential.access?.trim();
+          return access ? { apiKey: access } : {};
+        },
+      },
+    },
+  });
+
+  return {
+    provider,
+    bind: (ui, mode) => promptBridge.bind(ui, mode),
+    clear: () => promptBridge.clear(),
+  };
+}
+
+export const sfDocsAuthController = createSfDocsAuthController();
 
 function getEnv(name: string): string | undefined {
   const value = process.env[name]?.trim();
@@ -54,8 +116,8 @@ export async function getDocsToken(
     ok: false,
     message: [
       "SF Docs is not connected.",
-      "Interactive credential entry is temporarily unavailable while Pi's native secret prompt can echo submitted values.",
-      "Set SF_DOCS_MCP_TOKEN before starting Pi; existing saved Pi credentials remain usable.",
+      "Run /login sf-docs in interactive TUI mode; SF Pi masks the token and Pi owns persistence.",
+      "For automation, set SF_DOCS_MCP_TOKEN before starting Pi.",
     ].join("\n"),
   };
 }
@@ -92,14 +154,4 @@ export function normalizeEndpoint(
   } catch {
     return { ok: false, error: `${ENV_ENDPOINT} is not a valid URL.` };
   }
-}
-
-export async function loginSfDocs(_callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
-  throw new Error(
-    `SF Docs credential entry is temporarily unavailable until Pi masks and does not echo native secret prompts. Existing saved credentials still work; set ${ENV_TOKEN} before starting Pi for new sessions.`,
-  );
-}
-
-export async function refreshSfDocsToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {
-  return { ...credentials, expires: Date.now() + LONG_LIVED_EXPIRY_MS };
 }

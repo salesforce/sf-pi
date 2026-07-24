@@ -46,8 +46,9 @@ uses Pi's public model-registry refresh seam.
 
 1. Pi always shows the non-secret gateway root URL. Press Enter to keep the
    current value or type a replacement.
-2. SF Pi collects the API key through a fixed-mask `ctx.ui.custom()` component;
-   Pi's visible stock secret prompt is never called.
+2. SF Pi collects the API key through the shared fixed-mask
+   `lib/common/secure-credential-prompt.ts` component; Pi's visible stock secret
+   prompt is never called.
 3. The Provider returns a canonical `ApiKeyCredential`. Pi persists the key and
    default URL and owns `/logout` removal.
 
@@ -356,7 +357,6 @@ extensions/sf-llm-gateway-internal/
     provider-telemetry.ts   ← implementation module
     provider.ts             ← implementation module
     retry-telemetry.ts      ← implementation module
-    secure-credential-prompt.ts← implementation module
     setup-overlay.ts        ← implementation module
     stale-usage-refresh.ts  ← implementation module
     status.ts               ← implementation module
@@ -406,7 +406,6 @@ extensions/sf-llm-gateway-internal/
     provider.test.ts        ← unit / smoke test
     retry-telemetry.test.ts ← unit / smoke test
     robust-retry.test.ts    ← unit / smoke test
-    secure-credential-prompt.test.ts← unit / smoke test
     setup-overlay-single-write.test.ts← unit / smoke test
     stale-usage-refresh.test.ts← unit / smoke test
     status.test.ts          ← unit / smoke test

@@ -52,6 +52,10 @@ Tools and their supporting modules follow a **one-file-per-concern** split:
 5. **Stay width-safe.** Rendered output uses `visibleWidth` + truncation
    helpers (see `lib/render.ts`). Don't use raw `.length` on strings with
    ANSI or emoji.
+6. **Credential boundary.** Interactive login uses
+   `lib/common/secure-credential-prompt.ts`; Pi alone persists/removes API-key
+   or OAuth-compatible credentials. `SLACK_USER_TOKEN` remains the automation
+   fallback. Never accept or display tokens in Slack panels or tool output.
 
 ## Testing
 

@@ -145,6 +145,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     commands: ["/sf-docs"],
     providers: ["sf-docs"],
     tools: ["sf_docs"],
+    events: ["session_start","session_shutdown"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-docs/lib/config-panel.ts");

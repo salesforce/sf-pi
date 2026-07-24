@@ -64,7 +64,7 @@ Extension loads
              turn-to-turn and would invalidate prompt cache)
   /sf-slack
        ├─ UI available + no args → open SF Slack in the SF Pi Manager
-       ├─ Manager Connect        → show temporary safe setup and rotation guidance
+       ├─ Manager Connect        → prefill native /login with fixed-mask entry
        ├─ Manager Disconnect     → prefill native /logout for review
        └─ no UI + no args        → show auth status
   /sf-slack refresh
@@ -74,28 +74,28 @@ Extension loads
 
 ## Connecting
 
-Interactive credential entry is temporarily disabled because current Pi native
-secret prompts can echo submitted values. The `/sf-slack` **Connect** action
-shows this containment status but never accepts a token or callback URL.
+The `/sf-slack` **Connect** action prepares `/login sf-slack`. Interactive
+entry uses SF Pi's shared fixed-mask component; Pi alone persists and removes
+the resulting API-key or OAuth-compatible credential. After login, run
+`/sf-slack refresh` to verify identity, scopes, and tool availability.
 
-Existing credentials in Pi's auth store remain usable. For a new session, set
-the environment fallback before starting Pi:
+Existing credentials in Pi's auth store remain compatible. For automation, set
+the non-persisted environment fallback before starting Pi:
 
 ```bash
 export SLACK_USER_TOKEN=xoxp-...
 pi
 ```
 
-| Source                      | Current behavior                                     |
-| --------------------------- | ---------------------------------------------------- |
-| Existing Pi auth credential | Read-only compatibility source; continues to resolve |
-| `SLACK_USER_TOKEN`          | New-session setup for automation, CI, or local use   |
-| Interactive Connect / login | Blocked until Pi masks and never echoes secrets      |
+| Source                      | Current behavior                                               |
+| --------------------------- | -------------------------------------------------------------- |
+| Existing Pi auth credential | API-key and OAuth-compatible shapes continue to resolve        |
+| `SLACK_USER_TOKEN`          | Non-persisted automation and CI fallback                       |
+| Interactive Connect / login | Fixed-mask TUI entry; Pi owns persistence and native `/logout` |
 
 If both usable sources are present, the existing Pi credential wins. The
-**Disconnect** action prefills `/logout sf-slack` for review; it never modifies
-`SLACK_USER_TOKEN`. If a token or callback URL was entered through the previous
-visible input, rotate or revoke it.
+**Disconnect** action prefills `/logout sf-slack` for review and never modifies
+`SLACK_USER_TOKEN`.
 
 ## Obtaining an `xoxp-` User Token
 
@@ -547,7 +547,7 @@ extensions/sf-slack/
     channel-cache-from-search.test.ts← unit / smoke test
     channel-types-default.test.ts← unit / smoke test
     config-panel.test.ts    ← unit / smoke test
-    credential-containment.test.ts← unit / smoke test
+    credential-security.test.ts← unit / smoke test
     emoji.test.ts           ← unit / smoke test
     extra-format.test.ts    ← unit / smoke test
     field-modes.test.ts     ← unit / smoke test
@@ -604,10 +604,9 @@ Run: `npm test`
 ## Troubleshooting
 
 **No Slack footer pill appears and no tools are available:**
-No token was resolved at `session_start`, or the extension is disabled.
-Interactive credential entry is temporarily disabled. Set `SLACK_USER_TOKEN`
-before starting Pi, then run `/sf-slack refresh` if the process environment was
-updated without restarting.
+No token was resolved at `session_start`, or the extension is disabled. Run
+`/sf-slack connect`, submit the prefilled `/login sf-slack`, and then run
+`/sf-slack refresh`. For automation, set `SLACK_USER_TOKEN` before starting Pi.
 
 **Footer shows `✓ Connected` with fewer known scopes than expected:**
 The footer counts known scopes: the union of scopes `sf-slack` requested and
@@ -666,8 +665,8 @@ appends a typed audit entry to the session branch.
 ## Security
 
 - NEVER renders tokens or token fragments in status/configuration output
-- Interactive token and callback-URL entry is blocked until Pi's native secret prompt is masked and non-echoing
-- Existing Pi auth credentials remain readable; new temporary setup uses `SLACK_USER_TOKEN` before startup
+- Interactive entry uses SF Pi's shared fixed-mask TUI component; Pi owns persistence and logout
+- Existing API-key and OAuth-compatible Pi credentials remain readable; `SLACK_USER_TOKEN` is the automation fallback
 - All tools are read-only except `slack_canvas` create/edit, `slack_send`, and `slack_schedule` schedule/delete
 - `slack_send` always requires an explicit user confirmation in interactive
   mode; headless mode refuses unless `SLACK_ALLOW_HEADLESS_SEND=1`

@@ -9,6 +9,7 @@ type Done = (result: ConfigPanelResult | undefined) => void;
 export function createSlackConnectPanel(args: {
   theme: Theme;
   done: Done;
+  prepareLogin: () => Promise<string> | string;
 }): Component & Focusable & { renderContent(width: number): string[] } {
   return new SlackConnectPanel(args);
 }
@@ -24,30 +25,55 @@ export function createSlackDisconnectPanel(args: {
 
 class SlackConnectPanel implements Focusable {
   focused = false;
+  private result = "";
 
-  constructor(private readonly args: { theme: Theme; done: Done }) {}
+  constructor(
+    private readonly args: {
+      theme: Theme;
+      done: Done;
+      prepareLogin: () => Promise<string> | string;
+    },
+  ) {}
 
   handleInput(data: string): void {
-    if (matchesKey(data, "escape") || matchesKey(data, "enter") || data === "q") {
+    if (matchesKey(data, "escape") || data === "q") {
       this.args.done(undefined);
+      return;
+    }
+    if (matchesKey(data, "enter") || matchesKey(data, "return")) {
+      if (this.result) {
+        this.args.done(undefined);
+        return;
+      }
+      void this.prepare();
     }
   }
 
   renderContent(width: number): string[] {
     const t = this.args.theme;
+    if (this.result) {
+      return [
+        ` ${t.fg("accent", t.bold("Connect to Slack"))}`,
+        "",
+        ...wrap(this.result, width - 3).map((line) => ` ${t.fg("success", line)}`),
+        "",
+        ` ${t.fg("dim", "Enter/Esc back")}`,
+      ];
+    }
+
     const guidance = [
-      "Credential entry is temporarily unavailable while Pi's native secret prompt can echo submitted values.",
-      "Existing saved credentials remain active. Use SLACK_USER_TOKEN for new automation or CI sessions.",
-      "If you entered a token or callback URL through the previous visible input, rotate or revoke it.",
+      "Interactive entry uses a fixed-mask SF Pi component and Pi-owned credential persistence.",
+      "Existing saved credentials remain active. SLACK_USER_TOKEN remains the automation and CI fallback.",
+      "After login, run /sf-slack refresh to verify identity, scopes, and tool availability.",
     ];
     return [
       ` ${t.fg("accent", t.bold("Connect to Slack"))}`,
       "",
-      ...guidance.flatMap((text) =>
-        wrap(text, width - 3).map((line) => ` ${t.fg("warning", line)}`),
-      ),
+      ...guidance.flatMap((text) => wrap(text, width - 3).map((line) => ` ${t.fg("muted", line)}`)),
       "",
-      ` ${t.fg("dim", "Enter/Esc back")}`,
+      ` ${t.fg("accent", "→ Prepare native login")}`,
+      "",
+      ` ${t.fg("dim", "Enter prepare · Esc back")}`,
     ];
   }
 
@@ -56,6 +82,10 @@ class SlackConnectPanel implements Focusable {
   }
 
   invalidate(): void {}
+
+  private async prepare(): Promise<void> {
+    this.result = await this.args.prepareLogin();
+  }
 }
 
 class SlackDisconnectPanel implements Focusable {
