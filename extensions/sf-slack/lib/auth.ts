@@ -7,16 +7,22 @@
  *   1. Existing Pi auth through `ctx.modelRegistry.getApiKeyForProvider()`.
  *   2. Environment variable (SLACK_USER_TOKEN) for automation / CI.
  *
- * New interactive credential entry is temporarily disabled until Pi's native
- * secret prompt is masked and non-echoing.
+ * Interactive credential entry uses SF Pi's fixed-mask component while Pi owns
+ * credential persistence and logout.
  *
  * Config/status surfaces without ExtensionContext use a shared status-only
  * auth-store adapter that never returns token values.
  *
  */
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { OAuthCredentials } from "@earendil-works/pi-ai";
+import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { readPiAuthProviderStatus } from "../../../lib/common/pi-auth-status.ts";
+import { createAuthOnlyProvider } from "../../../lib/common/auth-only-provider.ts";
+import {
+  createSecureCredentialPromptBridge,
+  loginWithSecureCredentialPrompt,
+  type SecureCredentialPromptBridge,
+} from "../../../lib/common/secure-credential-prompt.ts";
 import {
   PROVIDER_NAME,
   SLACK_API_BASE,
@@ -29,6 +35,62 @@ import {
   DEFAULT_SCOPES,
   type SlackToolResult,
 } from "./types.ts";
+
+type ExtensionMode = ExtensionContext["mode"];
+
+export interface SfSlackAuthController {
+  provider: ReturnType<typeof createAuthOnlyProvider>;
+  bind(ui: ExtensionUIContext, mode: ExtensionMode): void;
+  clear(): void;
+}
+
+export function createSfSlackAuthController(
+  promptBridge: SecureCredentialPromptBridge = createSecureCredentialPromptBridge({
+    title: "SF Slack credential",
+  }),
+): SfSlackAuthController {
+  const provider = createAuthOnlyProvider({
+    id: PROVIDER_NAME,
+    name: "SF Slack",
+    auth: {
+      apiKey: {
+        name: "SF Slack user token",
+        login: (interaction) => loginWithSecureCredentialPrompt(promptBridge, interaction),
+        resolve: async ({ ctx, credential }) => {
+          const saved = credential?.key?.trim();
+          if (saved) return { auth: { apiKey: saved }, source: "Pi saved credential" };
+          const env = (await ctx.env(ENV_TOKEN))?.trim();
+          return env ? { auth: { apiKey: env }, source: ENV_TOKEN } : undefined;
+        },
+      },
+      oauth: {
+        name: "SF Slack compatible credential",
+        login: async (interaction) => ({
+          type: "oauth",
+          access: await promptBridge.prompt(interaction.signal),
+          refresh: MANUAL_REFRESH_SENTINEL,
+          expires: Date.now() + LONG_LIVED_EXPIRY_MS,
+        }),
+        refresh: async (credential) => ({
+          ...(await refreshSlackToken(credential)),
+          type: "oauth",
+        }),
+        toAuth: async (credential) => {
+          const access = credential.access?.trim();
+          return access ? { apiKey: access } : {};
+        },
+      },
+    },
+  });
+
+  return {
+    provider,
+    bind: (ui, mode) => promptBridge.bind(ui, mode),
+    clear: () => promptBridge.clear(),
+  };
+}
+
+export const sfSlackAuthController = createSfSlackAuthController();
 
 interface SlackOAuthResponse {
   ok?: boolean;
@@ -111,8 +173,8 @@ export async function getSlackToken(
     ok: false,
     message: [
       "Slack auth is not configured.",
-      "Interactive credential entry is temporarily unavailable while Pi's native secret prompt can echo submitted values.",
-      `Set ${ENV_TOKEN}=xoxp-... before starting Pi, or continue using an existing saved credential.`,
+      "Run /login sf-slack in interactive TUI mode, then /sf-slack refresh.",
+      `For automation, set ${ENV_TOKEN}=xoxp-... before starting Pi.`,
     ].join("\n"),
   };
 }
@@ -157,12 +219,6 @@ export function formatExpiry(expiresMs: number): string {
 }
 
 // ─── OAuth provider callbacks ───────────────────────────────────────────────────
-
-export async function loginSlack(_callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
-  throw new Error(
-    `Slack credential entry is temporarily unavailable until Pi masks and does not echo native secret prompts. Existing saved credentials still work; set ${ENV_TOKEN} before starting Pi for new sessions.`,
-  );
-}
 
 export async function refreshSlackToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {
   const clientId = getEnv(ENV_CLIENT_ID);

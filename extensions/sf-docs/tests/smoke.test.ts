@@ -18,6 +18,7 @@ describe("sf-docs", () => {
   it("registers flat slash-command completions", async () => {
     const mod = await import("../index.ts");
     const pi = {
+      on: vi.fn(),
       registerProvider: vi.fn(),
       registerTool: vi.fn(),
       registerCommand: vi.fn(),
@@ -37,6 +38,7 @@ describe("sf-docs", () => {
     const mod = await import("../index.ts");
     const listeners = new Map<string, Array<(payload: unknown) => void>>();
     const pi = {
+      on: vi.fn(),
       registerProvider: vi.fn(),
       registerTool: vi.fn(),
       registerCommand: vi.fn(),

@@ -466,7 +466,10 @@
     "tools": [
       "sf_docs"
     ],
-    "events": [],
+    "events": [
+      "session_start",
+      "session_shutdown"
+    ],
     "docs": {
       "summary": "Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to the Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport, stores the token in Pi's auth store, and keeps settings limited to non-secret defaults.",
       "primaryFiles": [
@@ -496,7 +499,7 @@
         "SF_DOCS_MCP_ENDPOINT"
       ],
       "safety": [
-        "Stores the docs token in Pi's local auth store under provider id `sf-docs`; project settings contain only non-secret preferences.",
+        "Interactive login uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials under provider id `sf-docs`.",
         "Uses native fetch plus a small local SSE parser; no MCP server, MCP SDK, or extra runtime dependency is required.",
         "Caches only the collection catalog and never caches search results, answer text, fetched document bodies, prompts, or citations.",
         "Tool output keeps URLs and citations visible while redacting token-bearing values from errors and UI surfaces."
@@ -505,7 +508,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3999
+    "srcLoc": 4087
   },
   {
     "id": "sf-feedback",
@@ -708,7 +711,7 @@
         "<globalAgentDir>/sf-llm-gateway/* (monthly usage and diagnostic state)"
       ],
       "safety": [
-        "API-key input uses a fixed-mask SF Pi component and never enters Pi's visible stock prompt.",
+        "API-key input uses SF Pi's shared fixed-mask component and never enters Pi's visible stock prompt.",
         "Pi alone persists/removes active credentials; setup and import paths write no secrets.",
         "Legacy config apiKey fields are never used for authentication and remain untouched without verified explicit cleanup.",
         "Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads."
@@ -717,7 +720,7 @@
     "entry": "extensions/sf-llm-gateway-internal/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12360
+    "srcLoc": 12170
   },
   {
     "id": "sf-lsp",
@@ -1011,13 +1014,14 @@
         "slack_send requires user confirmation in interactive mode and refuses headless unless SLACK_ALLOW_HEADLESS_SEND=1.",
         "slack_schedule schedule/delete require user confirmation in interactive mode and refuse headless unless SLACK_ALLOW_HEADLESS_SEND=1.",
         "Read-only by default; only canvas create/edit, slack_send, and slack_schedule schedule/delete mutate.",
+        "Interactive login uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials.",
         "Tokens are never displayed unmasked."
       ]
     },
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12291
+    "srcLoc": 12376
   },
   {
     "id": "sf-soql",

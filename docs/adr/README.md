@@ -89,4 +89,4 @@ or accidentally contradicted in extension READMEs.
 - [0084: Agent-Settled Update Coordinator](./0084-agent-settled-update-coordinator.md)
 - [0085: Agent Workflow Visibility Contract](./0085-agent-workflow-visibility-contract.md)
 - [0086: Behavior Proof Ladder](./0086-behavior-proof-ladder.md)
-- [0087: Secure Native Credential Prompt Is a Prerequisite](./0087-secure-native-credential-prompt-prerequisite.md)
+- [0087: Shared Secure Credential Prompt Policy](./0087-secure-native-credential-prompt-prerequisite.md)

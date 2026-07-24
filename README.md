@@ -133,9 +133,9 @@ parity with Linux/macOS shell tooling. The audited Pi window tracks the
 `>=0.81.1 <0.82.0`). Pi 0.81.1 is the recommended version. Runtimes outside
 that window are not supported; [`lib/common/pi-compat.ts`](./lib/common/pi-compat.ts)
 skips extensions with an actionable `/sf-pi doctor runtime` message instead of
-letting them crash on removed runtime APIs. SF Docs and Slack interactive
-credential entry remains disabled until Pi ships a native secret prompt that
-masks input and never echoes submitted values.
+letting them crash on removed runtime APIs. SF Docs, Slack, and the Gateway use
+one shared SF Pi fixed-mask provider component for interactive TUI login while
+Pi alone owns credential persistence and logout.
 
 ## Telemetry and aggregate metrics
 

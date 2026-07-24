@@ -1,6 +1,6 @@
 # ADR 0082: SF Skills Requires Native Parity Before Delegation
 
-Status: accepted
+Status: accepted; E4 complete with current SF Skills governance retained
 
 SF Pi will not delete or preserve the full Skill Funnel based only on Pi release notes. A read-only behavior parity harness will compare the Funnel with Pi 0.81's real resource resolver across global/project inherit-load-unload states, package deltas, exact include/exclude paths, duplicate names, project trust, stale roots, and rescope scenarios. No production settings or UI behavior changes during this proof.
 
@@ -26,4 +26,4 @@ The evidence harness uses only Pi's public `DefaultPackageManager`, `DefaultReso
 
 ## Consequence
 
-E4 authorizes no Funnel deletion and no production fix. Native-parity rows are deletion candidates only. Package/filter governance and whole-source rescope require explicit follow-up decisions; ADRs 0017 and 0018 remain active until those decisions are made.
+E4 authorizes no Funnel deletion and no production fix. The closeout decision retains current SF Skills governance because managed lifecycle, discovery, diagnostics, rescope convenience, labels/prune, and usage awareness remain Salesforce-specific leverage. Package/filter governance and whole-source rescope are separate future work; they do not block the Pi 0.81 adoption closeout. ADRs 0017 and 0018 remain active.

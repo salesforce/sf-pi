@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Behavior tests for the Gateway's masked provider-login credential prompt. */
+/** Behavior tests for the shared masked provider-login credential prompt. */
 import { describe, expect, it, vi } from "vitest";
 import type {
   ExtensionContext,
@@ -12,7 +12,7 @@ import {
   MaskedCredentialInput,
   createSecureCredentialPromptBridge,
   loginWithSecureCredentialPrompt,
-} from "../lib/secure-credential-prompt.ts";
+} from "../secure-credential-prompt.ts";
 
 const theme = {
   fg: (_color: string, text: string) => text,
@@ -27,6 +27,18 @@ function makeTui(onRender: () => void = () => undefined): TUI {
 }
 
 describe("MaskedCredentialInput", () => {
+  it("renders provider-specific, non-secret prompt copy", () => {
+    const component = new MaskedCredentialInput(makeTui(), theme, () => undefined, {
+      title: "SF Docs credential",
+      description: "Pi will store the submitted token.",
+    });
+
+    const rendered = component.render(80).join("\n");
+    expect(rendered).toContain("SF Docs credential");
+    expect(rendered).toContain("Pi will store the submitted token.");
+    expect(rendered).not.toContain("SF LLM Gateway credential");
+  });
+
   it("returns the submitted credential without rendering any part of it", () => {
     const sentinel = "sk-proof-7Zq9-private";
     const frames: string[] = [];
@@ -167,13 +179,18 @@ async function expectModeRejected(mode: ExtensionContext["mode"]): Promise<void>
 }
 
 describe("secure credential prompt bridge", () => {
-  it("opens the component without overlay mode and returns its submitted value", async () => {
-    const bridge = createSecureCredentialPromptBridge();
+  it("opens the configured component without overlay mode and returns its submitted value", async () => {
+    const bridge = createSecureCredentialPromptBridge({
+      title: "SF Slack credential",
+      description: "Pi owns persistence.",
+    });
     const fake = makeUi();
     bridge.bind(fake.ui, "tui");
 
     const result = bridge.prompt();
     expect(fake.custom).toHaveBeenCalledWith(expect.any(Function));
+    expect(fake.active?.component.render(80).join("\n")).toContain("SF Slack credential");
+    expect(fake.active?.component.render(80).join("\n")).toContain("Pi owns persistence.");
     fake.active?.component.handleInput("credential-from-provider-login");
     fake.active?.component.handleInput("\r");
 

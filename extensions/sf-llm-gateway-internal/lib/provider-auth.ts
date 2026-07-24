@@ -27,7 +27,7 @@ import {
   createSecureCredentialPromptBridge,
   loginWithSecureCredentialPrompt,
   type SecureCredentialPromptBridge,
-} from "./secure-credential-prompt.ts";
+} from "../../../lib/common/secure-credential-prompt.ts";
 
 type ExtensionMode = ExtensionContext["mode"];
 
@@ -72,7 +72,7 @@ type ResolvedCredential = {
 
 function createDefaultDependencies(): GatewayProviderAuthDependencies {
   return {
-    promptBridge: createSecureCredentialPromptBridge(),
+    promptBridge: createSecureCredentialPromptBridge({ title: "SF LLM Gateway credential" }),
     getConfig(cwd) {
       return cwd ? getGatewayConfig(cwd) : getGlobalOnlyGatewayConfig();
     },

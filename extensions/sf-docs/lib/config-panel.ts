@@ -113,7 +113,7 @@ class SfDocsConfigPanel implements Focusable {
     const endpoint = resolveEndpoint();
     const lines: string[] = [
       ` ${t.fg("accent", t.bold("📚 SF Docs Settings"))}`,
-      ` ${t.fg("dim", "Configure non-secret defaults. Credential entry is temporarily disabled; existing auth still works.")}`,
+      ` ${t.fg("dim", "Configure non-secret defaults. Use /login sf-docs for fixed-mask Pi-owned credentials.")}`,
       "",
       ` ${tokenSource !== "none" ? t.fg("success", "● Connected") : t.fg("error", "● Not configured")}`,
       `   ${t.fg("muted", "Token source:")} ${t.fg("text", tokenSource)}`,

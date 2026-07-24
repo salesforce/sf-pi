@@ -357,11 +357,9 @@ export async function buildAuthStatus(ctx: ExtensionContext): Promise<string> {
     lines.push("Status: Slack tools are unavailable.");
     lines.push("");
     lines.push("Credential setup:");
-    lines.push(
-      "  Interactive entry is temporarily disabled while Pi's secret prompt can echo values.",
-    );
-    lines.push(`  Environment: export ${ENV_TOKEN}=xoxp-... before starting Pi.`);
-    lines.push("  Existing saved Pi credentials remain usable.");
+    lines.push("  Interactive: run /login sf-slack, then /sf-slack refresh.");
+    lines.push(`  Automation: export ${ENV_TOKEN}=xoxp-... before starting Pi.`);
+    lines.push("  SF Pi masks interactive entry; Pi owns persistence and logout.");
     lines.push("");
     lines.push(`Requested scopes: ${oauthScopes()}`);
     return lines.join("\n");

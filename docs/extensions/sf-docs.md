@@ -48,7 +48,7 @@ You can also manage this extension from the SF Pi home base:
 
 ## Safety notes
 
-- Stores the docs token in Pi's local auth store under provider id `sf-docs`; project settings contain only non-secret preferences.
+- Interactive login uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials under provider id `sf-docs`.
 - Uses native fetch plus a small local SSE parser; no MCP server, MCP SDK, or extra runtime dependency is required.
 - Caches only the collection catalog and never caches search results, answer text, fetched document bodies, prompts, or citations.
 - Tool output keeps URLs and citations visible while redacting token-bearing values from errors and UI surfaces.
@@ -65,7 +65,7 @@ You can also manage this extension from the SF Pi home base:
 - **Commands:** `/sf-docs`
 - **LLM tools:** `sf_docs`
 - **Providers:** `sf-docs`
-- **Events/hooks:** _none_
+- **Events/hooks:** `session_start`, `session_shutdown`
 
 </details>
 

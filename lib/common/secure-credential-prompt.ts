@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Session-bound masked credential entry for Gateway provider authentication.
+ * Session-bound masked credential entry for SF Pi provider authentication.
  *
- * Pi still owns `/login` orchestration and credential persistence. The provider
- * login callback uses this bridge instead of Pi 0.81.1's visible secret prompt.
+ * Pi still owns `/login` orchestration and credential persistence. Providers
+ * use this bridge instead of Pi 0.81.1's visible stock secret prompt.
  */
 import type { ApiKeyCredential, AuthInteraction } from "@earendil-works/pi-ai";
 import type {
@@ -21,12 +21,49 @@ import {
   type Focusable,
   type TUI,
 } from "@earendil-works/pi-tui";
-import { normalizePastedTextFieldInput } from "./config-panel.ts";
 
 const CANCELLED_MESSAGE = "Login cancelled";
 const UNAVAILABLE_MESSAGE = "Secure credential entry is only available in interactive TUI mode.";
 const MASK = "••••••••";
+const DEFAULT_DESCRIPTION = "The submitted value is masked and is not added to the session.";
+const ESC = String.fromCharCode(27);
+const CSI = `${ESC}[`;
+const SS3 = `${ESC}O`;
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+function normalizePastedTextFieldInput(data: string): string {
+  if (/^\[(?:\d+(?:;\d+)*)?[A-Za-z~]$/.test(data)) return "";
+
+  let output = "";
+  for (let i = 0; i < data.length; i++) {
+    const nextIndex = consumeTerminalControl(data, i);
+    if (nextIndex !== i) {
+      i = nextIndex - 1;
+      continue;
+    }
+    const code = data.charCodeAt(i);
+    if (code < 32 || code === 127) continue;
+    output += data[i] ?? "";
+  }
+  return output;
+}
+
+function consumeTerminalControl(data: string, index: number): number {
+  if (data.startsWith(CSI, index)) {
+    for (let i = index + CSI.length; i < data.length; i++) {
+      const code = data.charCodeAt(i);
+      if (code >= 64 && code <= 126) return i + 1;
+    }
+    return data.length;
+  }
+  if (data.startsWith(SS3, index) && /[ABCD]/.test(data[index + 2] ?? "")) return index + 3;
+  return index;
+}
+
+export interface SecureCredentialPromptOptions {
+  title: string;
+  description?: string;
+}
 
 export class MaskedCredentialInput implements Component, Focusable {
   focused = false;
@@ -37,6 +74,7 @@ export class MaskedCredentialInput implements Component, Focusable {
     private readonly tui: TUI,
     private readonly theme: Theme,
     private readonly done: (value: string | undefined) => void,
+    private readonly options: SecureCredentialPromptOptions = { title: "Secure credential" },
   ) {}
 
   render(width: number): string[] {
@@ -45,12 +83,9 @@ export class MaskedCredentialInput implements Component, Focusable {
     const cursor = this.focused ? CURSOR_MARKER : "";
 
     return [
+      truncateToWidth(this.theme.fg("accent", this.theme.bold(this.options.title)), safeWidth),
       truncateToWidth(
-        this.theme.fg("accent", this.theme.bold("SF LLM Gateway credential")),
-        safeWidth,
-      ),
-      truncateToWidth(
-        this.theme.fg("muted", "The submitted value is masked and is not added to the session."),
+        this.theme.fg("muted", this.options.description ?? DEFAULT_DESCRIPTION),
         safeWidth,
       ),
       truncateToWidth(
@@ -140,7 +175,9 @@ export async function loginWithSecureCredentialPrompt(
   };
 }
 
-export function createSecureCredentialPromptBridge(): SecureCredentialPromptBridge {
+export function createSecureCredentialPromptBridge(
+  options: SecureCredentialPromptOptions = { title: "Secure credential" },
+): SecureCredentialPromptBridge {
   let generation = 0;
   let binding: SessionBinding | undefined;
   let activePrompt: ActivePrompt | undefined;
@@ -190,7 +227,7 @@ export function createSecureCredentialPromptBridge(): SecureCredentialPromptBrid
       try {
         const result = await current.ui.custom<string | undefined>(
           (tui: TUI, theme: Theme, _keybindings: KeybindingsManager, done) => {
-            const component = new MaskedCredentialInput(tui, theme, done);
+            const component = new MaskedCredentialInput(tui, theme, done, options);
             activePrompt = {
               generation: promptGeneration,
               cancel: () => component.cancel(),

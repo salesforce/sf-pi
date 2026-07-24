@@ -23,7 +23,7 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Model presets + family inference               | `lib/models.ts`                   |
 | Complete Provider + model discovery            | `lib/provider.ts`                 |
 | Provider auth + session context                | `lib/provider-auth.ts`            |
-| Masked API-key input                           | `lib/secure-credential-prompt.ts` |
+| Masked API-key input                           | `common secure credential prompt` |
 | HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`                |
 | Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`            |
 | Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`              |
@@ -41,6 +41,10 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Provider-telemetry (429/5xx footer badge)      | `lib/provider-telemetry.ts`       |
 | Transparent inner-stream retry telemetry       | `lib/retry-telemetry.ts`          |
 | Wire-level request/response tracing            | `lib/wire-trace.ts`               |
+
+The masked input implementation is shared at
+`lib/common/secure-credential-prompt.ts`; do not reintroduce an extension-local
+copy.
 
 ## Cross-extension contracts
 

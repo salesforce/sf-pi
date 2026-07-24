@@ -61,12 +61,12 @@ A read-only behavior comparison between an SF Pi resource policy and Pi's real r
 _Avoid_: release-note parity assumption, mock-only resolver test, wholesale feature retirement, production-setting experiment
 
 **Pi-Native Credential Ownership**:
-The SF Pi rule that Pi provider authentication owns user-global secret input, persistence, refresh, and removal, while SF Pi panels own status, diagnostics, credential-source reporting, and a visible handoff to native `/login` or `/logout`. A `/login` handoff is withheld until the **Secure Credential Prompt Proof** passes; containment keeps existing/environment reads and safe `/logout` handoff only. Environment variables remain the automation fallback; project configuration is non-secret, and SF Pi never writes `auth.json` or imports private credential storage.
-_Avoid_: panel-owned secret form, project-scoped secret, direct auth.json mutation, private AuthStorage adapter, duplicate secret store
+The SF Pi rule that Pi provider authentication owns user-global login orchestration, persistence, refresh, and removal, while SF Pi owns one shared fixed-mask TUI input boundary plus status, diagnostics, source reporting, and visible `/login` or `/logout` handoff. Environment variables remain the automation fallback; project configuration is non-secret, and SF Pi never writes `auth.json` or imports private credential storage.
+_Avoid_: panel-owned persistence, project-scoped secret, direct auth.json mutation, private AuthStorage adapter, duplicate secret store, provider-specific prompt copy
 
 **Secure Credential Prompt Proof**:
-Observable evidence that a Pi-native secret prompt masks the value while editing and never echoes the submitted value in the TUI or transcript. SF Pi treats this proof—not the presence of a `type: "secret"` declaration—as the prerequisite for interactive credential delegation.
-_Avoid_: type-only secret support, ordinary Input, submitted-value echo, manual screenshot confidence
+Observable evidence that a provider login prompt masks the value while editing, never echoes the submitted value in the TUI or transcript, clears cancellation/history state, and returns the credential only to Pi persistence. SF Pi treats this proof—not a `type: "secret"` declaration—as the prerequisite for interactive credential entry.
+_Avoid_: type-only secret support, ordinary Input, submitted-value echo, manual screenshot confidence, extension-owned storage
 
 **MCP Governance Extension**:
 An SF Pi extension that allows general MCP server connections while adding Salesforce-specific discovery, setup, safety posture, and conflict handling around Salesforce Pi-native tools and Salesforce MCP servers.
