@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.237.0-2026-07-23",
-  "latestVersion": "0.237.0",
+  "revision": "release-0.238.0-2026-07-24",
+  "latestVersion": "0.238.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.237.0",
+      "id": "release-0.238.0",
       "kind": "update",
-      "title": "sf-pi v0.237.0 — gateway: end legacy config-token fallback",
-      "publishedAt": "2026-07-23T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.237.0",
+      "title": "sf-pi v0.238.0 — auth: share secure provider login",
+      "publishedAt": "2026-07-24T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.0",
       "severity": "info",
-      "body": "gateway: end legacy config-token fallback"
+      "body": "auth: share secure provider login"
     },
     {
       "id": "pi-0.73-required",
