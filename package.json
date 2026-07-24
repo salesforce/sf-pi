@@ -124,7 +124,7 @@
     "lint-staged": "^17.1.1",
     "prettier": "^3.9.6",
     "typebox": "^1.3.6",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.65.0",
     "vite": "7.3.6",
     "vitepress": "^1.6.4",
