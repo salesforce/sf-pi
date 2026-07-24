@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.238.2-2026-07-24",
-  "latestVersion": "0.238.2",
+  "revision": "release-0.238.3-2026-07-24",
+  "latestVersion": "0.238.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.238.2",
+      "id": "release-0.238.3",
       "kind": "update",
-      "title": "sf-pi v0.238.2 — runtime: allow future stable Pi releases",
+      "title": "sf-pi v0.238.3 — welcome: avoid control regex literal",
       "publishedAt": "2026-07-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.3",
       "severity": "info",
-      "body": "runtime: allow future stable Pi releases"
+      "body": "welcome: avoid control regex literal"
     },
     {
       "id": "pi-0.73-required",
