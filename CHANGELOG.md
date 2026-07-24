@@ -550,6 +550,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.238.3](https://github.com/salesforce/sf-pi/compare/v0.238.2...v0.238.3) (2026-07-24)
+
+
+### Bug Fixes
+
+* **welcome:** avoid control regex literal ([db96dc1](https://github.com/salesforce/sf-pi/commit/db96dc1c9388f02016ef685e4ccd1181f2a3d5f9))
+
 ## [0.238.2](https://github.com/salesforce/sf-pi/compare/v0.238.1...v0.238.2) (2026-07-24)
 
 
