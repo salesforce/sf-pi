@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.238.0-2026-07-24",
-  "latestVersion": "0.238.0",
+  "revision": "release-0.238.1-2026-07-24",
+  "latestVersion": "0.238.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.238.0",
+      "id": "release-0.238.1",
       "kind": "update",
-      "title": "sf-pi v0.238.0 — auth: share secure provider login",
+      "title": "sf-pi v0.238.1 — runtime: support Pi 0.82",
       "publishedAt": "2026-07-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.1",
       "severity": "info",
-      "body": "auth: share secure provider login"
+      "body": "runtime: support Pi 0.82"
     },
     {
       "id": "pi-0.73-required",
