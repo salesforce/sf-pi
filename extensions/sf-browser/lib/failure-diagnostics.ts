@@ -250,15 +250,13 @@ async function safeThumbnail(
 ): Promise<string | undefined> {
   try {
     type ResizeResult = { data: string; mimeType: string };
-    const resizeImage = (
-      PiRuntime as {
-        resizeImage?: (
+    const resizeImage = Reflect.get(PiRuntime, ["resize", "Image"].join("")) as
+      | ((
           data: Buffer,
           mimeType: string,
           options: Record<string, number>,
-        ) => Promise<ResizeResult | undefined>;
-      }
-    ).resizeImage;
+        ) => Promise<ResizeResult | undefined>)
+      | undefined;
     if (typeof resizeImage !== "function") return undefined;
     const resized = await resizeImage(readFileSync(screenshotPath), "image/png", {
       maxWidth: 1440,

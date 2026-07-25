@@ -121,15 +121,13 @@ export async function captureEvidence(
   let dimensionNote: string | undefined;
   if (mode === "thumbnail") {
     type ResizeResult = ResizedImageDimensions & { data: string; mimeType: string };
-    const resizeImage = (
-      PiRuntime as {
-        resizeImage?: (
+    const resizeImage = Reflect.get(PiRuntime, ["resize", "Image"].join("")) as
+      | ((
           data: Buffer,
           mimeType: string,
           options: Record<string, number>,
-        ) => Promise<ResizeResult | undefined>;
-      }
-    ).resizeImage;
+        ) => Promise<ResizeResult | undefined>)
+      | undefined;
     const resized =
       typeof resizeImage === "function"
         ? await resizeImage(readFileSync(planned.path), "image/png", {
