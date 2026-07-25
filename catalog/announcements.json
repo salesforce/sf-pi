@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.239.0-2026-07-25",
-  "latestVersion": "0.239.0",
+  "revision": "release-0.240.0-2026-07-25",
+  "latestVersion": "0.240.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.239.0",
+      "id": "release-0.240.0",
       "kind": "update",
-      "title": "sf-pi v0.239.0 — gateway: support Claude Opus 5",
+      "title": "sf-pi v0.240.0 — tldraw: add deterministic Salesforce diagram profiles",
       "publishedAt": "2026-07-25T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.239.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.240.0",
       "severity": "info",
-      "body": "gateway: support Claude Opus 5 — deps: clear production audit failure"
+      "body": "tldraw: add deterministic Salesforce diagram profiles — tldraw: use BSD-licensed SLDS assets"
     },
     {
       "id": "pi-0.73-required",
