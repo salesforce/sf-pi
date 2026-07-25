@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.238.3-2026-07-24",
-  "latestVersion": "0.238.3",
+  "revision": "release-0.239.0-2026-07-25",
+  "latestVersion": "0.239.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.238.3",
+      "id": "release-0.239.0",
       "kind": "update",
-      "title": "sf-pi v0.238.3 — welcome: avoid control regex literal",
-      "publishedAt": "2026-07-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.238.3",
+      "title": "sf-pi v0.239.0 — gateway: support Claude Opus 5",
+      "publishedAt": "2026-07-25T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.239.0",
       "severity": "info",
-      "body": "welcome: avoid control regex literal"
+      "body": "gateway: support Claude Opus 5 — deps: clear production audit failure"
     },
     {
       "id": "pi-0.73-required",
