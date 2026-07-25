@@ -550,6 +550,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.240.0](https://github.com/salesforce/sf-pi/compare/v0.239.0...v0.240.0) (2026-07-25)
+
+
+### Features
+
+* **tldraw:** add deterministic Salesforce diagram profiles ([7b1df40](https://github.com/salesforce/sf-pi/commit/7b1df40ba1eeb2267d8a784cfad8e6bcb019d8d4))
+
+
+### Bug Fixes
+
+* **tldraw:** use BSD-licensed SLDS assets ([54c73dc](https://github.com/salesforce/sf-pi/commit/54c73dc2371b974cf9244809517627fb788754c5))
+
 ## [0.239.0](https://github.com/salesforce/sf-pi/compare/v0.238.3...v0.239.0) (2026-07-25)
 
 
