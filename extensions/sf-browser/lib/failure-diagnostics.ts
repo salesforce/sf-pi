@@ -7,11 +7,8 @@
  * screenshots or raw accessibility trees into the transcript.
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import {
-  resizeImage,
-  type ExtensionAPI,
-  type ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import * as PiRuntime from "@earendil-works/pi-coding-agent";
 import { commitEvidenceCapture, planEvidenceCapture } from "./artifacts.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { BROWSER_LAUNCH_RECOVERY, isBrowserLaunchFailure } from "./browser-launch-diagnostics.ts";
@@ -252,6 +249,17 @@ async function safeThumbnail(
   plannedThumbnailPath: string,
 ): Promise<string | undefined> {
   try {
+    type ResizeResult = { data: string; mimeType: string };
+    const resizeImage = (
+      PiRuntime as {
+        resizeImage?: (
+          data: Buffer,
+          mimeType: string,
+          options: Record<string, number>,
+        ) => Promise<ResizeResult | undefined>;
+      }
+    ).resizeImage;
+    if (typeof resizeImage !== "function") return undefined;
     const resized = await resizeImage(readFileSync(screenshotPath), "image/png", {
       maxWidth: 1440,
       maxHeight: 1000,
