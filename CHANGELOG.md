@@ -550,6 +550,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.241.0](https://github.com/salesforce/sf-pi/compare/v0.240.0...v0.241.0) (2026-07-25)
+
+
+### Features
+
+* **sf-tldraw:** harden sequence diagram rendering ([73f7a9b](https://github.com/salesforce/sf-pi/commit/73f7a9bc04665b65103a0827a11e96f842e31ef5))
+
+
+### Bug Fixes
+
+* **sf-tldraw:** harden cross-lane sequence labels ([98a2f37](https://github.com/salesforce/sf-pi/commit/98a2f3797f1dfb4f7012b45a281bc0ac0ee44486))
+
 ## [0.240.0](https://github.com/salesforce/sf-pi/compare/v0.239.0...v0.240.0) (2026-07-25)
 
 
