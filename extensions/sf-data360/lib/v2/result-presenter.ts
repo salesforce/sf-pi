@@ -11,7 +11,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
+import { withFileMutationQueue } from "../../../../lib/common/pi-sdk-compat.ts";
 
 import type { SfPiToolResultEnvelope } from "../../../../lib/common/display/types.ts";
 import { buildD360Envelope, type D360OutputMode, type D360TruncatedOutput } from "../truncation.ts";

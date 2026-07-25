@@ -14,9 +14,16 @@
  *   releases load with one process-wide forward-compatibility warning.
  */
 import * as PiRuntime from "@earendil-works/pi-coding-agent";
+import path from "node:path";
 
 /** Oldest Pi release whose public APIs satisfy every bundled extension. */
 export const MIN_PI_VERSION = "0.81.1";
+
+/** Oldest Oh My Pi release whose legacy Pi compatibility layer is supported. */
+export const MIN_OMP_VERSION = "17.1.3";
+
+/** OMP majors are audited independently because they do not follow Pi's 0.x versions. */
+export const MAX_OMP_VERSION_EXCLUSIVE = "18.0.0";
 
 /** Exclusive end of the exact runtime range covered by required compatibility CI. */
 export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "0.83.0";
@@ -29,6 +36,49 @@ export const RECOMMENDED_PI_VERSION = "0.82.0";
 
 export type PiVersionCompatibility =
   "audited" | "forward-compatible" | "too-old" | "prerelease" | "major-version";
+
+export type PiRuntimeFlavor = "pi" | "omp";
+
+export interface RuntimeFlavorSignals {
+  version?: string;
+  agentDir?: string;
+  execPath?: string;
+  argv?: string[];
+}
+
+/**
+ * Identify OMP without depending on OMP-only imports, which would make the
+ * normal Pi runtime fail module resolution. The compiled OMP binary is named
+ * `omp`; source/npm launches retain an `omp` argv entry. The version + agent
+ * directory fallback covers wrappers while avoiding a false positive for Pi.
+ */
+export function detectPiRuntimeFlavor(signals: RuntimeFlavorSignals = {}): PiRuntimeFlavor {
+  const executableNames = [signals.execPath, ...(signals.argv ?? [])]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .map((value) => path.basename(value).toLowerCase());
+  if (executableNames.some((name) => name === "omp" || name === "omp.exe")) return "omp";
+
+  const major = Number.parseInt(signals.version?.split(".", 1)[0] ?? "", 10);
+  const normalizedAgentDir = signals.agentDir?.replaceAll("\\", "/").toLowerCase();
+  if (Number.isFinite(major) && major >= 1 && normalizedAgentDir?.includes("/.omp/")) return "omp";
+
+  return "pi";
+}
+
+function currentRuntimeFlavor(installed: string | undefined): PiRuntimeFlavor {
+  const getAgentDir = (PiRuntime as { getAgentDir?: () => string }).getAgentDir;
+  return detectPiRuntimeFlavor({
+    version: installed,
+    agentDir: typeof getAgentDir === "function" ? getAgentDir() : undefined,
+    execPath: process.execPath,
+    argv: process.argv,
+  });
+}
+
+/** Active host family for behavior that cannot be expressed through the shared API. */
+export function getPiRuntimeFlavor(): PiRuntimeFlavor {
+  return currentRuntimeFlavor(getInstalledPiVersion());
+}
 
 /** Cached host version; stable for the life of the Pi process. */
 let cachedPiVersion: string | undefined | null = null;
@@ -115,6 +165,22 @@ export function requirePiVersion(
 ): boolean {
   const installed = getInstalledPiVersion();
   if (!installed) return true;
+
+  if (currentRuntimeFlavor(installed) === "omp") {
+    const supported =
+      compareVersions(installed, MIN_OMP_VERSION) >= 0 &&
+      compareVersions(installed, MAX_OMP_VERSION_EXCLUSIVE) < 0 &&
+      !installed.split("+", 1)[0]?.includes("-");
+    if (supported) return true;
+
+    if (!warnedBlockedExtensions.has(extensionName)) {
+      warnedBlockedExtensions.add(extensionName);
+      console.warn(
+        `[sf-pi] Skipping "${extensionName}": requires stable Oh My Pi >= ${MIN_OMP_VERSION} and < ${MAX_OMP_VERSION_EXCLUSIVE}; found ${installed}.`,
+      );
+    }
+    return false;
+  }
 
   const compatibility = classifyPiVersion(
     installed,

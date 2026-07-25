@@ -33,7 +33,12 @@ export interface CodeAnalyzerTranscriptEntry {
 }
 
 export function registerCodeAnalyzerTranscriptRenderer(pi: ExtensionAPI): void {
-  pi.registerEntryRenderer<CodeAnalyzerTranscriptEntry>(
+  const registerEntryRenderer = (
+    pi as ExtensionAPI & { registerEntryRenderer?: ExtensionAPI["registerEntryRenderer"] }
+  ).registerEntryRenderer;
+  if (typeof registerEntryRenderer !== "function") return;
+  registerEntryRenderer.call(
+    pi,
     CODE_ANALYZER_TRANSCRIPT_TYPE,
     createCodeAnalyzerTranscriptRenderer(),
   );

@@ -19,12 +19,12 @@
  * duplicating it. Behavior is unchanged from that prior version.
  */
 import path from "node:path";
-import {
-  parseSkillBlock,
-  type SessionContext,
-  type SessionEntry,
-  type SlashCommandInfo,
+import type {
+  SessionContext,
+  SessionEntry,
+  SlashCommandInfo,
 } from "@earendil-works/pi-coding-agent";
+import { parseSkillBlock } from "../pi-sdk-compat.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Types

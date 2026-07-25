@@ -16,9 +16,12 @@ import {
   AUDITED_MAX_PI_VERSION_EXCLUSIVE,
   classifyPiVersion,
   compareVersions,
+  detectPiRuntimeFlavor,
   getInstalledPiVersion,
   HARD_MAX_PI_VERSION_EXCLUSIVE,
   isPiVersionLoadable,
+  MAX_OMP_VERSION_EXCLUSIVE,
+  MIN_OMP_VERSION,
   MIN_PI_VERSION,
   requirePiVersion,
 } from "../pi-compat.ts";
@@ -97,6 +100,23 @@ describe("pi version floor", () => {
     }
   });
 
+  it("declares the audited OMP compatibility profile", () => {
+    const pkg = JSON.parse(readFileSync(path.resolve("package.json"), "utf8")) as {
+      omp?: { extensions?: string[] };
+    };
+    const ompExtensions = new Set(
+      (pkg.omp?.extensions ?? []).map((entry) => entry.replace(/^\.\//, "")),
+    );
+
+    expect(MIN_OMP_VERSION).toBe("17.1.3");
+    expect(MAX_OMP_VERSION_EXCLUSIVE).toBe("18.0.0");
+    expect(ompExtensions).toContain("extensions/sf-pi-manager/index.ts");
+    expect(ompExtensions).toContain("extensions/sf-brain/index.ts");
+    expect(ompExtensions).toContain("extensions/sf-data360/index.ts");
+    expect(ompExtensions).not.toContain("extensions/sf-llm-gateway-internal/index.ts");
+    expect(ompExtensions).not.toContain("extensions/sf-agentscript/index.ts");
+  });
+
   it("tracks the forward-compatible peer range and exact audited development SDK", () => {
     const pkg = JSON.parse(readFileSync(path.resolve("package.json"), "utf8")) as {
       peerDependencies?: Record<string, string>;
@@ -110,6 +130,36 @@ describe("pi version floor", () => {
     expect(pkg.devDependencies?.["@earendil-works/pi-coding-agent"]).toBe("0.82.0");
     expect(pkg.devDependencies?.["@earendil-works/pi-ai"]).toBe("0.82.0");
     expect(pkg.devDependencies?.["@earendil-works/pi-tui"]).toBe("0.82.0");
+  });
+});
+
+describe("runtime flavor detection", () => {
+  it("detects compiled and source OMP launches", () => {
+    expect(detectPiRuntimeFlavor({ execPath: "/opt/homebrew/bin/omp" })).toBe("omp");
+    expect(
+      detectPiRuntimeFlavor({
+        version: "17.1.3",
+        execPath: "/usr/local/bin/bun",
+        argv: ["bun", "/pkg/src/cli.ts", "omp"],
+      }),
+    ).toBe("omp");
+    expect(
+      detectPiRuntimeFlavor({
+        version: "17.1.3",
+        agentDir: "/home/user/.omp/agent",
+        execPath: "/usr/local/bin/wrapper",
+      }),
+    ).toBe("omp");
+  });
+
+  it("does not mistake normal Pi for OMP", () => {
+    expect(
+      detectPiRuntimeFlavor({
+        version: "0.82.0",
+        agentDir: "/home/user/.pi/agent",
+        execPath: "/usr/local/bin/pi",
+      }),
+    ).toBe("pi");
   });
 });
 

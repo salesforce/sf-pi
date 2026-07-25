@@ -16,10 +16,13 @@ export interface HumanOnlyCommandOutput {
 }
 
 export function registerHumanOnlyCommandOutput(pi: ExtensionAPI, customType: string): void {
-  pi.registerEntryRenderer<HumanOnlyCommandOutput>(
-    customType,
-    createHumanOnlyCommandOutputRenderer(),
-  );
+  const registerEntryRenderer = (
+    pi as ExtensionAPI & {
+      registerEntryRenderer?: ExtensionAPI["registerEntryRenderer"];
+    }
+  ).registerEntryRenderer;
+  if (typeof registerEntryRenderer !== "function") return;
+  registerEntryRenderer.call(pi, customType, createHumanOnlyCommandOutputRenderer());
 }
 
 export function createHumanOnlyCommandOutputRenderer(): EntryRenderer<HumanOnlyCommandOutput> {

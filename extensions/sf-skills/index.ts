@@ -32,11 +32,11 @@ import {
   buildSessionContext,
   loadSkills,
   loadSkillsFromDir,
-  parseSkillBlock,
   type ExtensionAPI,
   type ExtensionCommandContext,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { parseSkillBlock } from "../../lib/common/pi-sdk-compat.ts";
 import { SkillsHudComponent } from "./lib/hud-component.ts";
 import {
   buildSkillsHudState,

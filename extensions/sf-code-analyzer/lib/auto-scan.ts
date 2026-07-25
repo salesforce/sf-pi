@@ -13,7 +13,7 @@ import type {
   ExtensionContext,
   ToolResultEvent,
 } from "@earendil-works/pi-coding-agent";
-import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-agent";
+import { isEditToolResult, isWriteToolResult } from "../../../lib/common/pi-sdk-compat.ts";
 import type { ExecFn } from "../../../lib/common/sf-environment/detect.ts";
 import { runApexGuru } from "./apexguru.ts";
 import { buildAutoScanFollowUp } from "./auto-scan-followup.ts";

@@ -240,7 +240,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6099
+    "srcLoc": 6112
   },
   {
     "id": "sf-code-analyzer",
@@ -297,7 +297,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4420
+    "srcLoc": 4425
   },
   {
     "id": "sf-data-explorer",
@@ -761,7 +761,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4097
+    "srcLoc": 4102
   },
   {
     "id": "sf-lwc",
@@ -906,7 +906,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4614
+    "srcLoc": 4662
   },
   {
     "id": "sf-skills",

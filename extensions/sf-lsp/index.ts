@@ -32,7 +32,7 @@ import type {
   ExtensionContext,
   ToolResultEvent,
 } from "@earendil-works/pi-coding-agent";
-import { isEditToolResult, isWriteToolResult } from "@earendil-works/pi-coding-agent";
+import { isEditToolResult, isWriteToolResult } from "../../lib/common/pi-sdk-compat.ts";
 import { getLspDiagnosticsForFile, doctorLsp, shutdownLspClients } from "./lib/lsp-client.ts";
 import { getSfLspLanguageForFile, resolveToolPath } from "./lib/file-classify.ts";
 import {
@@ -178,8 +178,13 @@ export default function sfLspExtension(pi: ExtensionAPI) {
   let uiSettings: SfLspUiSettings = { verbose: false };
   const unavailableSeenByLanguage = new Set<SupportedLanguage>();
 
-  // --- Register human-only transcript entry renderer ----------------------------------------
-  pi.registerEntryRenderer(LSP_TRANSCRIPT_CUSTOM_TYPE, createTranscriptRenderer());
+  // OMP's legacy Pi shim does not currently expose human-only entry renderers.
+  const registerEntryRenderer = (
+    pi as ExtensionAPI & { registerEntryRenderer?: ExtensionAPI["registerEntryRenderer"] }
+  ).registerEntryRenderer;
+  if (typeof registerEntryRenderer === "function") {
+    registerEntryRenderer.call(pi, LSP_TRANSCRIPT_CUSTOM_TYPE, createTranscriptRenderer());
+  }
 
   // --- Core hooks -----------------------------------------------------------------------------
   registerMainCommand(pi);

@@ -13,7 +13,7 @@
  */
 
 import fs from "node:fs/promises";
-import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
+import { withFileMutationQueue } from "../../../lib/common/pi-sdk-compat.ts";
 import { loadAgentforceSDK, getSdkLoadError } from "./sdk.ts";
 import { invalidateAgentScriptAnalysis } from "./analysis-snapshot.ts";
 import { checkAgentScriptFile } from "./diagnostics.ts";

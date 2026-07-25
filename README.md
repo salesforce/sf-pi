@@ -94,6 +94,24 @@ Restart pi or run `/reload`. Every extension ships enabled by default
 — see the **Default** column in the [Bundled Extensions](#bundled-extensions)
 table for exact per-extension defaults.
 
+#### Oh My Pi (OMP)
+
+sf-pi also ships an audited compatibility profile for
+[Oh My Pi](https://github.com/can1357/oh-my-pi) `>=17.1.3 <18.0.0`:
+
+```bash
+omp install git:github.com/salesforce/sf-pi
+```
+
+OMP loads the package's `omp.extensions` manifest instead of its Pi manifest.
+The compatibility profile currently includes SF Welcome, DevBar, Ohana Spinner,
+SF Pi Manager, Guardrail, Brain, Browser, Code Analyzer, Data 360, Data Explorer,
+Herdr, Skills, and Feedback. Use OMP's `/extensions` or `omp plugin` controls for
+enablement; `/sf-pi` reports the OMP profile but does not write Pi-style package
+filters. Extensions that depend on Pi SDK exports or Node module behavior not
+yet available through OMP's legacy compatibility layer are omitted rather than
+failing the entire plugin installation.
+
 Users who do not use a compatible LLM gateway can disable that provider with
 `/sf-pi disable sf-llm-gateway-internal`; all other bundled extensions continue
 to work independently.
@@ -128,7 +146,8 @@ details and why each one is worth it.
 
 macOS, Linux, and WSL are the primary targets. Native Windows works on
 x64 and ARM64 once the `sf` CLI is installed, but WSL is recommended for
-parity with Linux/macOS shell tooling. The loadable Pi range tracks the
+parity with Linux/macOS shell tooling. OMP support is audited separately at
+`>=17.1.3 <18.0.0` and uses the bounded compatibility profile above. The loadable Pi range tracks the
 `peerDependencies` range in [`package.json`](./package.json) (currently
 `>=0.81.1 <1.0.0`). Required compatibility CI audits `>=0.81.1 <0.83.0`, with
 Pi 0.82.0 recommended. Newer stable Pi 0.x releases load in

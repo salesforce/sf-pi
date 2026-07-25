@@ -79,7 +79,7 @@ import {
   resolveEffectiveScope,
 } from "../../lib/common/sf-pi-package-state.ts";
 import { glyph, resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
-import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { getPiRuntimeFlavor, requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
   describeDisplaySettingsSource,
@@ -225,14 +225,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PACKAGE_ROOT = path.resolve(__dirname, "../..");
 
-const PACKAGE_VERSION: string = (() => {
+const PACKAGE_MANIFEST: {
+  version?: string;
+  omp?: { extensions?: string[] };
+} = (() => {
   try {
-    const pkg = JSON.parse(readFileSync(path.join(PACKAGE_ROOT, "package.json"), "utf8"));
-    return typeof pkg.version === "string" ? pkg.version : "0.0.0";
+    return JSON.parse(readFileSync(path.join(PACKAGE_ROOT, "package.json"), "utf8"));
   } catch {
-    return "0.0.0";
+    return {};
   }
 })();
+const PACKAGE_VERSION = PACKAGE_MANIFEST.version ?? "0.0.0";
+const OMP_EXTENSION_FILES = new Set(
+  (PACKAGE_MANIFEST.omp?.extensions ?? []).map((entry) => entry.replace(/^\.\//, "")),
+);
 
 // -------------------------------------------------------------------------------------------------
 // Types
@@ -274,12 +280,21 @@ type CommandArgs = {
 
 export default function sfPiManagerExtension(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-pi-manager")) return;
+  const isOmp = getPiRuntimeFlavor() === "omp";
 
   const autoUpdateCoordinator = createAgentSettledUpdateCoordinator(pi);
   registerAutoUpdateTranscript(pi);
 
   pi.events.on(SF_PI_MANAGER_OPEN_EVENT, (request: SfPiManagerOpenRequest) => {
     request.accept?.();
+    if (isOmp) {
+      request.ctx.ui.notify(
+        "Use OMP's /extensions or `omp plugin` controls to manage sf-pi on Oh My Pi.",
+        "info",
+      );
+      request.resolve?.();
+      return;
+    }
     void handleOverlay(pi, request.ctx, resolveEffectiveScope(request.ctx.cwd), request.route).then(
       request.resolve,
       request.reject,
@@ -314,7 +329,9 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     // currently undefined. Respects an explicit `true` user opt-in.
     // Emits a one-time pi.appendEntry notice on the session that flips it.
     try {
-      const result = assertTelemetryDefault({ sfPiVersion: PACKAGE_VERSION });
+      const result = isOmp
+        ? { shouldNotify: false }
+        : assertTelemetryDefault({ sfPiVersion: PACKAGE_VERSION });
       if (result.shouldNotify && ctx.hasUI) {
         // Surface the one-time notice as a passive notification. We use
         // notify rather than appendEntry-driven output so the user sees
@@ -345,6 +362,7 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     updateDoctorNudge(ctx);
 
     if (doctorRefreshTimer) clearTimeout(doctorRefreshTimer);
+    if (isOmp) return;
     doctorRefreshTimer = setTimeout(() => {
       if (isAbortedSafe(ctx)) return;
       void refreshRuntimeDiagnosticsCache()
@@ -567,6 +585,23 @@ async function handleCommand(
   autoUpdateRunner: ManualAutoUpdateRunner,
 ): Promise<void> {
   const args = parseCommandArgs(raw);
+  if (getPiRuntimeFlavor() === "omp") {
+    if (["overlay", "list", "status"].includes(args.subcommand)) {
+      handleOmpStatus(ctx);
+      return;
+    }
+    if (
+      ["enable", "disable", "enable-all", "disable-all", "telemetry", "auto-update"].includes(
+        args.subcommand,
+      )
+    ) {
+      ctx.ui.notify(
+        "This setting is owned by Oh My Pi. Use OMP's /extensions or `omp plugin` controls instead.",
+        "info",
+      );
+      return;
+    }
+  }
   // Resolve scope here so handlers always receive a concrete value but
   // parseCommandArgs stays pure (no fs access — keeps unit tests fast).
   const scope = args.scope ?? resolveEffectiveScope(ctx.cwd);
@@ -746,6 +781,18 @@ function collectOverlayActions(
   for (const action of discovered) byId.set(action.id, action);
   for (const action of direct) byId.set(action.id, action);
   return [...byId.values()];
+}
+
+function handleOmpStatus(ctx: ExtensionCommandContext): void {
+  const extensions = SF_PI_REGISTRY.filter((entry) => OMP_EXTENSION_FILES.has(entry.file));
+  const lines = [
+    `sf-pi v${PACKAGE_VERSION} — Oh My Pi compatibility profile`,
+    `${extensions.length} bundled extensions are available on OMP 17.1.3+ (< 18).`,
+    "Manage extension and plugin state with OMP's /extensions or `omp plugin` controls.",
+    "",
+    ...extensions.map((entry) => `  ● ${entry.name} [${entry.category}]`),
+  ];
+  ctx.ui.notify(lines.join("\n"), "info");
 }
 
 async function handleList(
@@ -988,8 +1035,10 @@ function handleHelp(ctx: ExtensionCommandContext): void {
 // -------------------------------------------------------------------------------------------------
 
 function updateFooterStatus(ctx: ExtensionContext): void {
-  const globalDisabled = getDisabledExtensionsForCwd(ctx.cwd);
-  const states = buildExtensionStates(globalDisabled);
+  const states =
+    getPiRuntimeFlavor() === "omp"
+      ? buildExtensionStates(new Set()).filter((entry) => OMP_EXTENSION_FILES.has(entry.file))
+      : buildExtensionStates(getDisabledExtensionsForCwd(ctx.cwd));
   const enabledCount = states.filter((e) => e.enabled).length;
   // Glyph policy swaps `📦` for `[]` on terminals without emoji font
   // fallback so the bottom-bar status stays readable instead of tofu.
