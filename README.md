@@ -105,7 +105,7 @@ omp install git:github.com/salesforce/sf-pi
 
 OMP loads the package's `omp.extensions` manifest instead of its Pi manifest.
 The compatibility profile currently includes SF Welcome, DevBar, Ohana Spinner,
-SF Pi Manager, Guardrail, Brain, Browser, Code Analyzer, Data 360, Data Explorer,
+SF Pi Manager, Guardrail, Brain, Code Analyzer, Data 360, Data Explorer,
 Herdr, Skills, and Feedback. Use OMP's `/extensions` or `omp plugin` controls for
 enablement; `/sf-pi` reports the OMP profile but does not write Pi-style package
 filters. Extensions that depend on Pi SDK exports or Node module behavior not

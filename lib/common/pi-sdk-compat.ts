@@ -38,20 +38,6 @@ export function parseSkillBlock(text: string): ParsedSkillBlock | null {
   };
 }
 
-export interface ResizedImageDimensions {
-  wasResized: boolean;
-  originalWidth: number;
-  originalHeight: number;
-  width: number;
-  height: number;
-}
-
-export function formatDimensionNote(result: ResizedImageDimensions): string | undefined {
-  if (!result.wasResized) return undefined;
-  const scale = result.originalWidth / result.width;
-  return `[Image: original ${result.originalWidth}x${result.originalHeight}, displayed at ${result.width}x${result.height}. Multiply coordinates by ${scale.toFixed(2)} to map to original image.]`;
-}
-
 const fileMutationQueues = new Map<string, Promise<void>>();
 let registrationQueue: Promise<void> = Promise.resolve();
 

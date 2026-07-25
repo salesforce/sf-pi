@@ -3,12 +3,12 @@
  * Shared command/tool operations for SF Browser.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import * as PiRuntime from "@earendil-works/pi-coding-agent";
 import {
   formatDimensionNote,
-  type ResizedImageDimensions,
-} from "../../../lib/common/pi-sdk-compat.ts";
+  resizeImage,
+  type ExtensionAPI,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import { markLatestBrowserSnapshotStale } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
@@ -120,23 +120,12 @@ export async function captureEvidence(
   let thumbnailPath: string | undefined;
   let dimensionNote: string | undefined;
   if (mode === "thumbnail") {
-    type ResizeResult = ResizedImageDimensions & { data: string; mimeType: string };
-    const resizeImage = Reflect.get(PiRuntime, ["resize", "Image"].join("")) as
-      | ((
-          data: Buffer,
-          mimeType: string,
-          options: Record<string, number>,
-        ) => Promise<ResizeResult | undefined>)
-      | undefined;
-    const resized =
-      typeof resizeImage === "function"
-        ? await resizeImage(readFileSync(planned.path), "image/png", {
-            maxWidth: viewport?.width ?? 1440,
-            maxHeight: viewport?.height ?? 1000,
-            maxBytes: 1_500_000,
-            jpegQuality: 55,
-          })
-        : undefined;
+    const resized = await resizeImage(readFileSync(planned.path), "image/png", {
+      maxWidth: viewport?.width ?? 1440,
+      maxHeight: viewport?.height ?? 1000,
+      maxBytes: 1_500_000,
+      jpegQuality: 55,
+    });
     if (resized) {
       thumbnailPath = thumbnailPathForMime(planned.thumbnailPath, resized.mimeType);
       writeFileSync(thumbnailPath, Buffer.from(resized.data, "base64"));

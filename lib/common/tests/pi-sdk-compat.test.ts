@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 import {
-  formatDimensionNote,
   isEditToolResult,
   isWriteToolResult,
   parseSkillBlock,
@@ -24,18 +23,6 @@ describe("Pi SDK compatibility helpers", () => {
       content: "Body",
       userMessage: "Run it",
     });
-  });
-
-  it("formats resized-image coordinate guidance", () => {
-    expect(
-      formatDimensionNote({
-        wasResized: true,
-        originalWidth: 2000,
-        originalHeight: 1000,
-        width: 1000,
-        height: 500,
-      }),
-    ).toContain("Multiply coordinates by 2.00");
   });
 
   it("serializes operations targeting the same file", async () => {
