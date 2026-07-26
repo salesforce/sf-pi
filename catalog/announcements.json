@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.242.0-2026-07-26",
-  "latestVersion": "0.242.0",
+  "revision": "release-0.243.0-2026-07-26",
+  "latestVersion": "0.243.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.242.0",
+      "id": "release-0.243.0",
       "kind": "update",
-      "title": "sf-pi v0.242.0 — sf-tldraw: harden zero-shot data-model diagrams",
+      "title": "sf-pi v0.243.0 — sf-tldraw: qualify the Salesforce model gallery",
       "publishedAt": "2026-07-26T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.242.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.243.0",
       "severity": "info",
-      "body": "sf-tldraw: harden zero-shot data-model diagrams — sf-tldraw: restore colorful icons and grow graph hubs"
+      "body": "sf-tldraw: qualify the Salesforce model gallery"
     },
     {
       "id": "pi-0.73-required",
