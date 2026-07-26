@@ -550,6 +550,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.242.0](https://github.com/salesforce/sf-pi/compare/v0.241.1...v0.242.0) (2026-07-26)
+
+
+### Features
+
+* **sf-tldraw:** harden zero-shot data-model diagrams ([b401bf1](https://github.com/salesforce/sf-pi/commit/b401bf1c2eb2aeec5b2ca1b8dde7a984ee3e49c2))
+* **sf-tldraw:** restore colorful icons and grow graph hubs ([bd2d7e2](https://github.com/salesforce/sf-pi/commit/bd2d7e20fd3fccd784502acfec158f48d60afa84))
+
 ## [0.241.1](https://github.com/salesforce/sf-pi/compare/v0.241.0...v0.241.1) (2026-07-26)
 
 
