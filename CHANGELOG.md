@@ -550,6 +550,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.243.0](https://github.com/salesforce/sf-pi/compare/v0.242.0...v0.243.0) (2026-07-26)
+
+
+### Features
+
+* **sf-tldraw:** qualify the Salesforce model gallery ([47e9a4a](https://github.com/salesforce/sf-pi/commit/47e9a4ab5092a4e5715d4f611e22dea03c7bc788))
+
 ## [0.242.0](https://github.com/salesforce/sf-pi/compare/v0.241.1...v0.242.0) (2026-07-26)
 
 
