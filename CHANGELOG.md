@@ -550,6 +550,23 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.244.0](https://github.com/salesforce/sf-pi/compare/v0.243.0...v0.244.0) (2026-07-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** bundled extensions now require Pi 0.82.0 or newer.
+
+### Features
+
+* **runtime:** adopt Pi 0.82 and refresh dependencies ([0ae66d9](https://github.com/salesforce/sf-pi/commit/0ae66d9b18504ff61dbed6d4ac8bda68d7ed606b))
+* **sf-welcome:** clarify SF tldraw readiness ([bdaf4a2](https://github.com/salesforce/sf-pi/commit/bdaf4a2ed80e17a43af3873a84ad0c7cf7114916))
+
+
+### Bug Fixes
+
+* **sf-agentscript:** remove unused dry-run parameters ([fd30f5c](https://github.com/salesforce/sf-pi/commit/fd30f5cc461370f41110f831b694fa4591ff5515))
+
 ## [0.243.0](https://github.com/salesforce/sf-pi/compare/v0.242.0...v0.243.0) (2026-07-26)
 
 
