@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.244.0-2026-07-27",
-  "latestVersion": "0.244.0",
+  "revision": "release-0.245.0-2026-07-27",
+  "latestVersion": "0.245.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.244.0",
+      "id": "release-0.245.0",
       "kind": "update",
-      "title": "sf-pi v0.244.0 — runtime: bundled extensions now require Pi 0.82.0 or newer.",
+      "title": "sf-pi v0.245.0 — sf-agentscript: align upstream diagnostics and inspection",
       "publishedAt": "2026-07-27T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.244.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.245.0",
       "severity": "info",
-      "body": "runtime: bundled extensions now require Pi 0.82.0 or newer. — runtime: adopt Pi 0.82 and refresh dependencies"
+      "body": "sf-agentscript: align upstream diagnostics and inspection"
     },
     {
       "id": "pi-0.73-required",
