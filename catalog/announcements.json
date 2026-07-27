@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.243.0-2026-07-26",
-  "latestVersion": "0.243.0",
+  "revision": "release-0.244.0-2026-07-27",
+  "latestVersion": "0.244.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.243.0",
+      "id": "release-0.244.0",
       "kind": "update",
-      "title": "sf-pi v0.243.0 — sf-tldraw: qualify the Salesforce model gallery",
-      "publishedAt": "2026-07-26T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.243.0",
+      "title": "sf-pi v0.244.0 — runtime: bundled extensions now require Pi 0.82.0 or newer.",
+      "publishedAt": "2026-07-27T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.244.0",
       "severity": "info",
-      "body": "sf-tldraw: qualify the Salesforce model gallery"
+      "body": "runtime: bundled extensions now require Pi 0.82.0 or newer. — runtime: adopt Pi 0.82 and refresh dependencies"
     },
     {
       "id": "pi-0.73-required",
