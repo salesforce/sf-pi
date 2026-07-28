@@ -550,6 +550,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.249.1](https://github.com/salesforce/sf-pi/compare/v0.249.0...v0.249.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **sf-tldraw:** compact hidden legend layouts ([8c6f7ab](https://github.com/salesforce/sf-pi/commit/8c6f7abb01bb5b463d1a75e81953b885f5db09eb))
+
 ## [0.249.0](https://github.com/salesforce/sf-pi/compare/v0.248.0...v0.249.0) (2026-07-28)
 
 
