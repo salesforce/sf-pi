@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.249.0-2026-07-28",
-  "latestVersion": "0.249.0",
+  "revision": "release-0.249.1-2026-07-28",
+  "latestVersion": "0.249.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.249.0",
+      "id": "release-0.249.1",
       "kind": "update",
-      "title": "sf-pi v0.249.0 — sf-tldraw: add configurable relationship legend",
+      "title": "sf-pi v0.249.1 — sf-tldraw: compact hidden legend layouts",
       "publishedAt": "2026-07-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.249.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.249.1",
       "severity": "info",
-      "body": "sf-tldraw: add configurable relationship legend"
+      "body": "sf-tldraw: compact hidden legend layouts"
     },
     {
       "id": "pi-0.73-required",
