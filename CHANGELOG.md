@@ -550,6 +550,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.247.0](https://github.com/salesforce/sf-pi/compare/v0.246.0...v0.247.0) (2026-07-28)
+
+
+### Features
+
+* **sf-tldraw:** modernize tldraw offline integration ([94a8718](https://github.com/salesforce/sf-pi/commit/94a87184f28b97561c4f57d664fd28c55b5bebe7))
+
+
+### Bug Fixes
+
+* **sf-tldraw:** satisfy strict lint ([156d694](https://github.com/salesforce/sf-pi/commit/156d694c44bc43348514667ead83f26cd7a6c27e))
+
 ## [0.246.0](https://github.com/salesforce/sf-pi/compare/v0.245.2...v0.246.0) (2026-07-27)
 
 
