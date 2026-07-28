@@ -550,6 +550,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.249.0](https://github.com/salesforce/sf-pi/compare/v0.248.0...v0.249.0) (2026-07-28)
+
+
+### Features
+
+* **sf-tldraw:** add configurable relationship legend ([3ed644d](https://github.com/salesforce/sf-pi/commit/3ed644d97d1dc9e0d65426702368e729a712fa2a))
+
 ## [0.248.0](https://github.com/salesforce/sf-pi/compare/v0.247.1...v0.248.0) (2026-07-28)
 
 
