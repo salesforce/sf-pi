@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.249.1-2026-07-28",
-  "latestVersion": "0.249.1",
+  "revision": "release-0.250.0-2026-07-28",
+  "latestVersion": "0.250.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.249.1",
+      "id": "release-0.250.0",
       "kind": "update",
-      "title": "sf-pi v0.249.1 — sf-tldraw: compact hidden legend layouts",
+      "title": "sf-pi v0.250.0 — sf-agentscript: add native quality analysis",
       "publishedAt": "2026-07-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.249.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.250.0",
       "severity": "info",
-      "body": "sf-tldraw: compact hidden legend layouts"
+      "body": "sf-agentscript: add native quality analysis"
     },
     {
       "id": "pi-0.73-required",
