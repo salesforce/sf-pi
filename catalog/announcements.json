@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.246.0-2026-07-27",
-  "latestVersion": "0.246.0",
+  "revision": "release-0.247.0-2026-07-28",
+  "latestVersion": "0.247.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.246.0",
+      "id": "release-0.247.0",
       "kind": "update",
-      "title": "sf-pi v0.246.0 — sf-agentscript: generate stateful multi-turn evals",
-      "publishedAt": "2026-07-27T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.246.0",
+      "title": "sf-pi v0.247.0 — sf-tldraw: modernize tldraw offline integration",
+      "publishedAt": "2026-07-28T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.247.0",
       "severity": "info",
-      "body": "sf-agentscript: generate stateful multi-turn evals"
+      "body": "sf-tldraw: modernize tldraw offline integration — sf-tldraw: satisfy strict lint"
     },
     {
       "id": "pi-0.73-required",
