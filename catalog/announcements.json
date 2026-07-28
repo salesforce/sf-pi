@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.247.0-2026-07-28",
-  "latestVersion": "0.247.0",
+  "revision": "release-0.247.1-2026-07-28",
+  "latestVersion": "0.247.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.247.0",
+      "id": "release-0.247.1",
       "kind": "update",
-      "title": "sf-pi v0.247.0 — sf-tldraw: modernize tldraw offline integration",
+      "title": "sf-pi v0.247.1 — sf-tldraw: retire v1 schema and pin route budgets",
       "publishedAt": "2026-07-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.247.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.247.1",
       "severity": "info",
-      "body": "sf-tldraw: modernize tldraw offline integration — sf-tldraw: satisfy strict lint"
+      "body": "sf-tldraw: retire v1 schema and pin route budgets"
     },
     {
       "id": "pi-0.73-required",
