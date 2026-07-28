@@ -550,6 +550,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.248.0](https://github.com/salesforce/sf-pi/compare/v0.247.1...v0.248.0) (2026-07-28)
+
+
+### Features
+
+* **sf-tldraw:** simplify data model connectors ([a213e54](https://github.com/salesforce/sf-pi/commit/a213e548a4890896fb616803b91c5912414e1961))
+
 ## [0.247.1](https://github.com/salesforce/sf-pi/compare/v0.247.0...v0.247.1) (2026-07-28)
 
 
