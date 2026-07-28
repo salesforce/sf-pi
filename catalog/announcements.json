@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.250.0-2026-07-28",
-  "latestVersion": "0.250.0",
+  "revision": "release-0.250.1-2026-07-28",
+  "latestVersion": "0.250.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.250.0",
+      "id": "release-0.250.1",
       "kind": "update",
-      "title": "sf-pi v0.250.0 — sf-agentscript: add native quality analysis",
+      "title": "sf-pi v0.250.1 — sf-tldraw: harden screenshot file handling",
       "publishedAt": "2026-07-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.250.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.250.1",
       "severity": "info",
-      "body": "sf-agentscript: add native quality analysis"
+      "body": "sf-tldraw: harden screenshot file handling"
     },
     {
       "id": "pi-0.73-required",
