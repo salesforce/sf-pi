@@ -555,6 +555,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.251.0](https://github.com/salesforce/sf-pi/compare/v0.250.2...v0.251.0) (2026-07-29)
+
+
+### Features
+
+* streamline Salesforce instructions and gate agent activation ([ca74ddd](https://github.com/salesforce/sf-pi/commit/ca74ddda76f73cdb77a11c780bac132f3c10a6fe))
+
 ## [0.250.2](https://github.com/salesforce/sf-pi/compare/v0.250.1...v0.250.2) (2026-07-28)
 
 
