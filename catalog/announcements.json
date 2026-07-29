@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.250.2-2026-07-28",
-  "latestVersion": "0.250.2",
+  "revision": "release-0.251.0-2026-07-29",
+  "latestVersion": "0.251.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.250.2",
+      "id": "release-0.251.0",
       "kind": "update",
-      "title": "sf-pi v0.250.2 — security: clear remaining code scanning alerts",
-      "publishedAt": "2026-07-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.250.2",
+      "title": "sf-pi v0.251.0 — streamline Salesforce instructions and gate agent activation",
+      "publishedAt": "2026-07-29T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.251.0",
       "severity": "info",
-      "body": "security: clear remaining code scanning alerts"
+      "body": "streamline Salesforce instructions and gate agent activation"
     },
     {
       "id": "pi-0.73-required",
