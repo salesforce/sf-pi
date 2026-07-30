@@ -555,6 +555,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.252.0](https://github.com/salesforce/sf-pi/compare/v0.251.0...v0.252.0) (2026-07-30)
+
+
+### Features
+
+* **runtime:** audit Pi 0.83 and delegate gateway retries ([1af5f1f](https://github.com/salesforce/sf-pi/commit/1af5f1f9f72b5f2b91c8a88b29a0cf8d9d897494))
+
 ## [0.251.0](https://github.com/salesforce/sf-pi/compare/v0.250.2...v0.251.0) (2026-07-29)
 
 
