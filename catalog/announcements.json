@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.252.0-2026-07-30",
-  "latestVersion": "0.252.0",
+  "revision": "release-0.252.1-2026-07-30",
+  "latestVersion": "0.252.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.252.0",
+      "id": "release-0.252.1",
       "kind": "update",
-      "title": "sf-pi v0.252.0 — runtime: audit Pi 0.83 and delegate gateway retries",
+      "title": "sf-pi v0.252.1 — sf-agentscript: make target and compile diagnostics complete",
       "publishedAt": "2026-07-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.252.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.252.1",
       "severity": "info",
-      "body": "runtime: audit Pi 0.83 and delegate gateway retries"
+      "body": "sf-agentscript: make target and compile diagnostics complete"
     },
     {
       "id": "pi-0.73-required",
