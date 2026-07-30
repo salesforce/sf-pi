@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.251.0-2026-07-29",
-  "latestVersion": "0.251.0",
+  "revision": "release-0.252.0-2026-07-30",
+  "latestVersion": "0.252.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.251.0",
+      "id": "release-0.252.0",
       "kind": "update",
-      "title": "sf-pi v0.251.0 — streamline Salesforce instructions and gate agent activation",
-      "publishedAt": "2026-07-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.251.0",
+      "title": "sf-pi v0.252.0 — runtime: audit Pi 0.83 and delegate gateway retries",
+      "publishedAt": "2026-07-30T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.252.0",
       "severity": "info",
-      "body": "streamline Salesforce instructions and gate agent activation"
+      "body": "runtime: audit Pi 0.83 and delegate gateway retries"
     },
     {
       "id": "pi-0.73-required",
