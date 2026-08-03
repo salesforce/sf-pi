@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.253.1-2026-08-03",
-  "latestVersion": "0.253.1",
+  "revision": "release-0.253.2-2026-08-03",
+  "latestVersion": "0.253.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.253.1",
+      "id": "release-0.253.2",
       "kind": "update",
-      "title": "sf-pi v0.253.1 — release 0.253.1",
+      "title": "sf-pi v0.253.2 — sf-agentscript: delegate semantic rename upstream",
       "publishedAt": "2026-08-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.2",
       "severity": "info",
-      "body": "release 0.253.1"
+      "body": "sf-agentscript: delegate semantic rename upstream"
     },
     {
       "id": "pi-0.73-required",
