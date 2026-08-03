@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.253.0-2026-08-03",
-  "latestVersion": "0.253.0",
+  "revision": "release-0.253.1-2026-08-03",
+  "latestVersion": "0.253.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.253.0",
+      "id": "release-0.253.1",
       "kind": "update",
-      "title": "sf-pi v0.253.0 — sf-agentscript: add eval studio and dynamic seed profiles",
+      "title": "sf-pi v0.253.1 — release 0.253.1",
       "publishedAt": "2026-08-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.1",
       "severity": "info",
-      "body": "sf-agentscript: add eval studio and dynamic seed profiles"
+      "body": "release 0.253.1"
     },
     {
       "id": "pi-0.73-required",
