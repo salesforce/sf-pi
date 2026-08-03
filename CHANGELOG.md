@@ -555,6 +555,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.253.2](https://github.com/salesforce/sf-pi/compare/v0.253.1...v0.253.2) (2026-08-03)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** delegate semantic rename upstream ([51c81f2](https://github.com/salesforce/sf-pi/commit/51c81f22aa19b140ca797143380ffaaefdb439f7))
+
 ## [0.253.1](https://github.com/salesforce/sf-pi/compare/v0.253.0...v0.253.1) (2026-08-03)
 
 
