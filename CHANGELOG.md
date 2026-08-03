@@ -555,6 +555,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.253.0](https://github.com/salesforce/sf-pi/compare/v0.252.1...v0.253.0) (2026-08-03)
+
+
+### Features
+
+* **sf-agentscript:** add eval studio and dynamic seed profiles ([e590e4e](https://github.com/salesforce/sf-pi/commit/e590e4effa5b3f6a42ae529475e680b5b28fbf67))
+
 ## [0.252.1](https://github.com/salesforce/sf-pi/compare/v0.252.0...v0.252.1) (2026-07-30)
 
 
