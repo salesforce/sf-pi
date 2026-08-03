@@ -140,7 +140,7 @@
     "@salesforce-ux/design-system": "2.264.0",
     "@salesforce/apex-node": "^8.4.39",
     "@salesforce/core": "^8.31.2",
-    "@salesforce/kit": "^3.2.6",
+    "@salesforce/kit": "^4.0.0",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
     "@salesforce/source-deploy-retrieve": "^12.37.2",
