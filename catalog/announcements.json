@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.253.2-2026-08-03",
-  "latestVersion": "0.253.2",
+  "revision": "release-0.253.3-2026-08-03",
+  "latestVersion": "0.253.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.253.2",
+      "id": "release-0.253.3",
       "kind": "update",
-      "title": "sf-pi v0.253.2 — sf-agentscript: delegate semantic rename upstream",
+      "title": "sf-pi v0.253.3 — sf-agentscript: adopt dual upstream analysis",
       "publishedAt": "2026-08-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.3",
       "severity": "info",
-      "body": "sf-agentscript: delegate semantic rename upstream"
+      "body": "sf-agentscript: adopt dual upstream analysis"
     },
     {
       "id": "pi-0.73-required",
