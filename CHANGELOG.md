@@ -555,6 +555,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.253.1](https://github.com/salesforce/sf-pi/compare/v0.253.0...v0.253.1) (2026-08-03)
+
+
+### Miscellaneous Chores
+
+* release 0.253.1 ([e7aa623](https://github.com/salesforce/sf-pi/commit/e7aa623e6d0bd49b1f910c5a4a9ce3c14e8e702a))
+
 ## [0.253.0](https://github.com/salesforce/sf-pi/compare/v0.252.1...v0.253.0) (2026-08-03)
 
 
