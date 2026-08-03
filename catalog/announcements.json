@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.253.5-2026-08-03",
-  "latestVersion": "0.253.5",
+  "revision": "release-0.253.6-2026-08-03",
+  "latestVersion": "0.253.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.253.5",
+      "id": "release-0.253.6",
       "kind": "update",
-      "title": "sf-pi v0.253.5 — sf-agentscript: harden eval failures and pin quality parity",
+      "title": "sf-pi v0.253.6 — sf-agentscript: localize private family actions",
       "publishedAt": "2026-08-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.6",
       "severity": "info",
-      "body": "sf-agentscript: harden eval failures and pin quality parity"
+      "body": "sf-agentscript: localize private family actions"
     },
     {
       "id": "pi-0.73-required",
