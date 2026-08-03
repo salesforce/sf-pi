@@ -555,6 +555,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.253.4](https://github.com/salesforce/sf-pi/compare/v0.253.3...v0.253.4) (2026-08-03)
+
+
+### Bug Fixes
+
+* **deps:** update ip-address to 10.4.0 ([d9593ca](https://github.com/salesforce/sf-pi/commit/d9593cabc24ecd0f869adca9b8953c7fc2ed3e2c))
+* **sf-agentscript:** deduplicate eval orchestration ([262ef0f](https://github.com/salesforce/sf-pi/commit/262ef0fc2d71a800a3e97ae920a25bbaaab4d90b))
+
 ## [0.253.3](https://github.com/salesforce/sf-pi/compare/v0.253.2...v0.253.3) (2026-08-03)
 
 
