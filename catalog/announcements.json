@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.253.3-2026-08-03",
-  "latestVersion": "0.253.3",
+  "revision": "release-0.253.4-2026-08-03",
+  "latestVersion": "0.253.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.253.3",
+      "id": "release-0.253.4",
       "kind": "update",
-      "title": "sf-pi v0.253.3 — sf-agentscript: adopt dual upstream analysis",
+      "title": "sf-pi v0.253.4 — deps: update ip-address to 10.4.0",
       "publishedAt": "2026-08-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.4",
       "severity": "info",
-      "body": "sf-agentscript: adopt dual upstream analysis"
+      "body": "deps: update ip-address to 10.4.0 — sf-agentscript: deduplicate eval orchestration"
     },
     {
       "id": "pi-0.73-required",
