@@ -555,6 +555,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.255.0](https://github.com/salesforce/sf-pi/compare/v0.254.0...v0.255.0) (2026-08-04)
+
+
+### Features
+
+* **agentscript:** preserve full eval response sequence ([5993555](https://github.com/salesforce/sf-pi/commit/599355530c7dd8998353d82d7f33c01c2bccc0ed))
+
 ## [0.254.0](https://github.com/salesforce/sf-pi/compare/v0.253.9...v0.254.0) (2026-08-04)
 
 
