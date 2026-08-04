@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.255.0-2026-08-04",
-  "latestVersion": "0.255.0",
+  "revision": "release-0.256.0-2026-08-04",
+  "latestVersion": "0.256.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.255.0",
+      "id": "release-0.256.0",
       "kind": "update",
-      "title": "sf-pi v0.255.0 — agentscript: preserve full eval response sequence",
+      "title": "sf-pi v0.256.0 — agentscript: render complete LLM response sequences",
       "publishedAt": "2026-08-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.255.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.256.0",
       "severity": "info",
-      "body": "agentscript: preserve full eval response sequence"
+      "body": "agentscript: render complete LLM response sequences"
     },
     {
       "id": "pi-0.73-required",
