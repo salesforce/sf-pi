@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.253.7-2026-08-03",
-  "latestVersion": "0.253.7",
+  "revision": "release-0.253.8-2026-08-04",
+  "latestVersion": "0.253.8",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.253.7",
+      "id": "release-0.253.8",
       "kind": "update",
-      "title": "sf-pi v0.253.7 — sf-agentscript: remove internal compatibility shims",
-      "publishedAt": "2026-08-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.7",
+      "title": "sf-pi v0.253.8 — docs: simplify sf-pi onboarding",
+      "publishedAt": "2026-08-04T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.8",
       "severity": "info",
-      "body": "sf-agentscript: remove internal compatibility shims"
+      "body": "docs: simplify sf-pi onboarding"
     },
     {
       "id": "pi-0.73-required",
