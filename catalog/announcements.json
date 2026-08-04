@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.253.8-2026-08-04",
-  "latestVersion": "0.253.8",
+  "revision": "release-0.253.9-2026-08-04",
+  "latestVersion": "0.253.9",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.253.8",
+      "id": "release-0.253.9",
       "kind": "update",
-      "title": "sf-pi v0.253.8 — docs: simplify sf-pi onboarding",
+      "title": "sf-pi v0.253.9 — docs: refine onboarding and troubleshooting",
       "publishedAt": "2026-08-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.8",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.253.9",
       "severity": "info",
-      "body": "docs: simplify sf-pi onboarding"
+      "body": "docs: refine onboarding and troubleshooting"
     },
     {
       "id": "pi-0.73-required",
