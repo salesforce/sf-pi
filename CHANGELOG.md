@@ -555,6 +555,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.258.0](https://github.com/salesforce/sf-pi/compare/v0.257.0...v0.258.0) (2026-08-05)
+
+
+### Features
+
+* make gateway model catalog dynamic ([30bb1ca](https://github.com/salesforce/sf-pi/commit/30bb1ca8fd35a7032168b21ee63a3e81057e29df))
+
 ## [0.257.0](https://github.com/salesforce/sf-pi/compare/v0.256.0...v0.257.0) (2026-08-04)
 
 
