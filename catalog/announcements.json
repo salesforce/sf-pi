@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.257.0-2026-08-04",
-  "latestVersion": "0.257.0",
+  "revision": "release-0.258.0-2026-08-05",
+  "latestVersion": "0.258.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.257.0",
+      "id": "release-0.258.0",
       "kind": "update",
-      "title": "sf-pi v0.257.0 — agentscript: gate evals on response integrity",
-      "publishedAt": "2026-08-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.257.0",
+      "title": "sf-pi v0.258.0 — make gateway model catalog dynamic",
+      "publishedAt": "2026-08-05T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.258.0",
       "severity": "info",
-      "body": "agentscript: gate evals on response integrity — agentscript: show response sequences in eval studio"
+      "body": "make gateway model catalog dynamic"
     },
     {
       "id": "pi-0.73-required",
