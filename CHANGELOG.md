@@ -515,6 +515,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.259.2](https://github.com/salesforce/sf-pi/compare/v0.259.1...v0.259.2) (2026-08-06)
+
+
+### Bug Fixes
+
+* remove stale gateway routing references ([87f7f90](https://github.com/salesforce/sf-pi/commit/87f7f9000b7a3f3b309955a94b55532a48cc22e3))
+
 ## [0.259.1](https://github.com/salesforce/sf-pi/compare/v0.259.0...v0.259.1) (2026-08-06)
 
 
