@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.259.1-2026-08-06",
-  "latestVersion": "0.259.1",
+  "revision": "release-0.259.2-2026-08-06",
+  "latestVersion": "0.259.2",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.259.1",
+      "id": "release-0.259.2",
       "kind": "update",
-      "title": "sf-pi v0.259.1 — sf-llm-gateway: harden setup and Pi 0.84 support",
+      "title": "sf-pi v0.259.2 — remove stale gateway routing references",
       "publishedAt": "2026-08-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.2",
       "severity": "info",
-      "body": "sf-llm-gateway: harden setup and Pi 0.84 support"
+      "body": "remove stale gateway routing references"
     },
     {
       "id": "pi-0.73-required",
