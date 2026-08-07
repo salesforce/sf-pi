@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.259.3-2026-08-07",
-  "latestVersion": "0.259.3",
+  "revision": "release-0.259.4-2026-08-07",
+  "latestVersion": "0.259.4",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.259.3",
+      "id": "release-0.259.4",
       "kind": "update",
-      "title": "sf-pi v0.259.3 — sf-herdr: adopt current split tools",
+      "title": "sf-pi v0.259.4 — sf-herdr: normalize pane run and runtime identity",
       "publishedAt": "2026-08-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.4",
       "severity": "info",
-      "body": "sf-herdr: adopt current split tools"
+      "body": "sf-herdr: normalize pane run and runtime identity"
     },
     {
       "id": "pi-0.73-required",
