@@ -7,7 +7,7 @@
  * invocations as edges. Keep this characterization explicit so a future pinned
  * package refresh makes new upstream coverage visible for parity review.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import * as ts from "typescript";
 import { describe, expect, test } from "vitest";
@@ -120,11 +120,12 @@ describe("AgentFabric graph parity insight", () => {
     const extensionRoot = path.resolve("extensions/sf-agentscript");
     const importedBy: string[] = [];
     const visit = (dir: string): void => {
-      for (const entry of readdirSync(dir)) {
-        const candidate = path.join(dir, entry);
-        if (statSync(candidate).isDirectory()) {
-          if (entry !== "tests" && entry !== "docs") visit(candidate);
-        } else if (/\.(?:[cm]?ts|tsx)$/.test(candidate)) {
+      // Dirent metadata avoids a separate stat(path) check before each file read.
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const candidate = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== "tests" && entry.name !== "docs") visit(candidate);
+        } else if (entry.isFile() && /\.(?:[cm]?ts|tsx)$/.test(candidate)) {
           const source = readFileSync(candidate, "utf8");
           const file = ts.createSourceFile(candidate, source, ts.ScriptTarget.Latest, true);
           const walk = (node: ts.Node): void => {
