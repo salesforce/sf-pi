@@ -516,6 +516,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.260.0](https://github.com/salesforce/sf-pi/compare/v0.259.6...v0.260.0) (2026-08-07)
+
+
+### Features
+
+* **sf-agentscript:** harden voice transition eval evidence ([a0e169f](https://github.com/salesforce/sf-pi/commit/a0e169f743be5cbaeb87a292e6fcf1cc75f3fa1b))
+
 ## [0.259.6](https://github.com/salesforce/sf-pi/compare/v0.259.5...v0.259.6) (2026-08-07)
 
 
