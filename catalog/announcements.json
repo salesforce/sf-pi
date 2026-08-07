@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.259.6-2026-08-07",
-  "latestVersion": "0.259.6",
+  "revision": "release-0.260.0-2026-08-07",
+  "latestVersion": "0.260.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.259.6",
+      "id": "release-0.260.0",
       "kind": "update",
-      "title": "sf-pi v0.259.6 — security: patch dependency advisories and file race",
+      "title": "sf-pi v0.260.0 — sf-agentscript: harden voice transition eval evidence",
       "publishedAt": "2026-08-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.260.0",
       "severity": "info",
-      "body": "security: patch dependency advisories and file race"
+      "body": "sf-agentscript: harden voice transition eval evidence"
     },
     {
       "id": "pi-0.73-required",
