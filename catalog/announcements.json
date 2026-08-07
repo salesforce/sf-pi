@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.260.0-2026-08-07",
-  "latestVersion": "0.260.0",
+  "revision": "release-0.260.1-2026-08-07",
+  "latestVersion": "0.260.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.260.0",
+      "id": "release-0.260.1",
       "kind": "update",
-      "title": "sf-pi v0.260.0 — sf-agentscript: harden voice transition eval evidence",
+      "title": "sf-pi v0.260.1 — sf-agentscript: detect deterministic route loops",
       "publishedAt": "2026-08-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.260.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.260.1",
       "severity": "info",
-      "body": "sf-agentscript: harden voice transition eval evidence"
+      "body": "sf-agentscript: detect deterministic route loops"
     },
     {
       "id": "pi-0.73-required",
