@@ -516,6 +516,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.260.1](https://github.com/salesforce/sf-pi/compare/v0.260.0...v0.260.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** detect deterministic route loops ([9325a4a](https://github.com/salesforce/sf-pi/commit/9325a4a598ae15fb0f243cc6754065b0b29fb229))
+
 ## [0.260.0](https://github.com/salesforce/sf-pi/compare/v0.259.6...v0.260.0) (2026-08-07)
 
 
