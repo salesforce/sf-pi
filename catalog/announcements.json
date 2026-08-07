@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.259.4-2026-08-07",
-  "latestVersion": "0.259.4",
+  "revision": "release-0.259.5-2026-08-07",
+  "latestVersion": "0.259.5",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.259.4",
+      "id": "release-0.259.5",
       "kind": "update",
-      "title": "sf-pi v0.259.4 — sf-herdr: normalize pane run and runtime identity",
+      "title": "sf-pi v0.259.5 — sf-herdr: tighten smoke test event types",
       "publishedAt": "2026-08-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.5",
       "severity": "info",
-      "body": "sf-herdr: normalize pane run and runtime identity"
+      "body": "sf-herdr: tighten smoke test event types"
     },
     {
       "id": "pi-0.73-required",
