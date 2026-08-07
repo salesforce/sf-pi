@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.259.2-2026-08-06",
-  "latestVersion": "0.259.2",
+  "revision": "release-0.259.3-2026-08-07",
+  "latestVersion": "0.259.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.259.2",
+      "id": "release-0.259.3",
       "kind": "update",
-      "title": "sf-pi v0.259.2 — remove stale gateway routing references",
-      "publishedAt": "2026-08-06T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.2",
+      "title": "sf-pi v0.259.3 — sf-herdr: adopt current split tools",
+      "publishedAt": "2026-08-07T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.3",
       "severity": "info",
-      "body": "remove stale gateway routing references"
+      "body": "sf-herdr: adopt current split tools"
     },
     {
       "id": "pi-0.73-required",
