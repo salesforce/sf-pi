@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.259.5-2026-08-07",
-  "latestVersion": "0.259.5",
+  "revision": "release-0.259.6-2026-08-07",
+  "latestVersion": "0.259.6",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.259.5",
+      "id": "release-0.259.6",
       "kind": "update",
-      "title": "sf-pi v0.259.5 — sf-herdr: tighten smoke test event types",
+      "title": "sf-pi v0.259.6 — security: patch dependency advisories and file race",
       "publishedAt": "2026-08-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.259.6",
       "severity": "info",
-      "body": "sf-herdr: tighten smoke test event types"
+      "body": "security: patch dependency advisories and file race"
     },
     {
       "id": "pi-0.73-required",
