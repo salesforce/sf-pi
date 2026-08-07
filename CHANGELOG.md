@@ -515,6 +515,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.259.5](https://github.com/salesforce/sf-pi/compare/v0.259.4...v0.259.5) (2026-08-07)
+
+
+### Bug Fixes
+
+* **sf-herdr:** tighten smoke test event types ([931b0f5](https://github.com/salesforce/sf-pi/commit/931b0f5af4f47d820b982b4a2d0a9aad677de565))
+
 ## [0.259.4](https://github.com/salesforce/sf-pi/compare/v0.259.3...v0.259.4) (2026-08-07)
 
 
