@@ -519,6 +519,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.262.0](https://github.com/salesforce/sf-pi/compare/v0.261.0...v0.262.0) (2026-08-09)
+
+
+### Features
+
+* **sf-slack:** add adaptive compact footer status ([7681176](https://github.com/salesforce/sf-pi/commit/76811766d9a309d912205084cdadefc1b8d18a7c))
+
 ## [0.261.0](https://github.com/salesforce/sf-pi/compare/v0.260.2...v0.261.0) (2026-08-09)
 
 
