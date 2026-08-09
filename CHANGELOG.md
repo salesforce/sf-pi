@@ -518,6 +518,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.261.0](https://github.com/salesforce/sf-pi/compare/v0.260.2...v0.261.0) (2026-08-09)
+
+
+### Features
+
+* **sf-welcome:** consolidate LSP and Herdr status ([d41784d](https://github.com/salesforce/sf-pi/commit/d41784d3dc118054f7c524d03ad83684ad4fd6ed))
+
 ## [0.260.2](https://github.com/salesforce/sf-pi/compare/v0.260.1...v0.260.2) (2026-08-08)
 
 
