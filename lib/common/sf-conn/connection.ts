@@ -54,8 +54,10 @@ export interface OrgFromAliasOptions {
   timeoutMs?: number;
   /** Optional caller cancellation signal. */
   signal?: AbortSignal;
-  /** Evict this alias before resolving it. Reserved for explicit user refreshes. */
+  /** Evict this cache entry before resolving it. Reserved for explicit user refreshes. */
   fresh?: boolean;
+  /** Internal cache identity. Defaults to the alias/username. */
+  cacheKey?: string;
 }
 
 export class OrgConnectionTimeoutError extends Error {
@@ -80,7 +82,7 @@ export async function orgFromAlias(
   options: OrgFromAliasOptions = {},
 ): Promise<OrgType> {
   if (options.signal?.aborted) throw new OrgConnectionAbortedError();
-  const key = targetOrg ?? DEFAULT_KEY;
+  const key = options.cacheKey ?? targetOrg ?? DEFAULT_KEY;
   if (options.fresh) orgCache.delete(key);
   let pending = orgCache.get(key);
   if (!pending) {
@@ -156,6 +158,11 @@ async function boundOrgCreate<T>(promise: Promise<T>, options: OrgFromAliasOptio
  */
 export function clearConnectionCache(): void {
   orgCache.clear();
+}
+
+/** Drop one internal Org cache entry without affecting other target contexts. */
+export function clearConnectionCacheEntry(cacheKey: string): void {
+  orgCache.delete(cacheKey);
 }
 
 /** Test/debug helper. */

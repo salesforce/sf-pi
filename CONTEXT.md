@@ -60,6 +60,10 @@ _Avoid_: extension-owned skill, mandatory guide load, full README injection, dup
 The source whose current state governs a requested Salesforce change: repository source for repository outcomes, org metadata or schema for live-org outcomes, and owning SF Pi tool evidence when it already proves the needed fact. SF Pi asks only when the requested outcome leaves authority materially ambiguous.
 _Avoid_: org-always-authoritative, local-always-authoritative, unconditional retrieve, duplicate verification
 
+**Salesforce Connection Module**:
+The single shared `lib/common` module through which SF Pi resolves target orgs, creates Salesforce Core connections, selects request API versions, performs bounded instance REST/query work, refreshes authentication, and caches connection state. It uses the target org's highest advertised API version by default, uses explicit `org-api-version` only when discovery fails, and otherwise fails before a business request. Status projections can reuse last-known orientation facts but never authorize requests.
+_Avoid_: per-extension connection helper, direct API-version construction, project source API fallback, JSforce default version, cross-version business retry
+
 **SF Pi Routing Summary**:
 The tiny always-visible runtime statement that active SF Pi tools take priority over external skills and raw CLI, plus any disabled **Capability Owners** and their enablement path. It does not repeat the enabled extension catalog, tool descriptions, commands, or UI-only extensions.
 _Avoid_: extension map, active tool catalog, command inventory, enabled-status dump

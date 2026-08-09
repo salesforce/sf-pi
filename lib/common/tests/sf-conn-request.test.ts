@@ -181,6 +181,94 @@ describe("connRequest body handling", () => {
     expect(conn.request).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
+  test("retargets the retry when auth refresh changes the instance URL", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ errorCode: "INVALID_SESSION_ID" }]), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const conn = {
+      accessToken: "OLD",
+      instanceUrl: "https://old.example.my.salesforce.com",
+      refreshAuth: vi.fn().mockImplementation(function (this: {
+        accessToken: string;
+        instanceUrl: string;
+      }) {
+        this.accessToken = "NEW";
+        this.instanceUrl = "https://new.example.my.salesforce.com";
+        return Promise.resolve();
+      }),
+      request: vi.fn(),
+    } as unknown as Parameters<typeof connRequest>[0];
+
+    const response = await connRequest(conn, {
+      method: "GET",
+      url: "https://old.example.my.salesforce.com/services/data/v67.0/limits",
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("https://old.example.my.salesforce.com/");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("https://new.example.my.salesforce.com/");
+    vi.unstubAllGlobals();
+  });
+
+  test("uses one total timeout across fetch, auth refresh, and retry", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          setTimeout(
+            () =>
+              resolve(
+                new Response(JSON.stringify([{ errorCode: "INVALID_SESSION_ID" }]), {
+                  status: 401,
+                  headers: { "Content-Type": "application/json" },
+                }),
+              ),
+            60,
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const conn = {
+      accessToken: "OLD",
+      instanceUrl: "https://example.my.salesforce.com",
+      refreshAuth: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            setTimeout(resolve, 60);
+          }),
+      ),
+      request: vi.fn(),
+    } as unknown as Parameters<typeof connRequest>[0];
+
+    const pending = connRequest(conn, {
+      method: "GET",
+      url: "/services/data/v67.0/limits",
+      timeoutMs: 100,
+    });
+    await vi.advanceTimersByTimeAsync(60);
+    await vi.advanceTimersByTimeAsync(40);
+
+    await expect(pending).resolves.toMatchObject({
+      status: 408,
+      body: { errorCode: "REQUEST_TIMEOUT" },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("connRequest error → status mapping", () => {

@@ -105,3 +105,4 @@ or accidentally contradicted in extension READMEs.
 - [0100: Public Gateway Client Excludes Deployment Routing](./0100-public-gateway-client-excludes-deployment-routing.md)
 - [0101: Canonical Gateway Identity Uses `sf-llm-gateway`](./0101-canonical-gateway-identity.md)
 - [0102: SF Herdr Is Forward-Only on the Current Split Tools](./0102-forward-only-current-herdr-tools.md)
+- [0103: Salesforce Org Connections Use One Shared Module](./0103-shared-salesforce-connection-module.md)

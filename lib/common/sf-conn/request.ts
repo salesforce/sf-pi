@@ -113,16 +113,33 @@ async function nativeFetchRequest<T>(
   const accessToken = getAccessToken(conn);
   if (!accessToken || !instanceUrl) return undefined;
 
+  const deadline = Date.now() + req.timeoutMs;
+  const remaining = (): number => {
+    const value = deadline - Date.now();
+    if (value <= 0) throw new ConnRequestTimeoutError(req.timeoutMs);
+    return value;
+  };
+
   const url = absoluteUrl(instanceUrl, req.url);
-  const first = await boundedNativeFetch<T>(url, withAuthHeader(req, accessToken));
+  const first = await boundedNativeFetch<T>(url, {
+    ...withAuthHeader(req, accessToken),
+    timeoutMs: remaining(),
+  });
   if (![401, 403].includes(first.status)) return first;
 
-  const refreshed = await refreshConnectionAuth(conn, req);
+  const refreshed = await refreshConnectionAuth(conn, {
+    ...req,
+    timeoutMs: remaining(),
+  });
   if (!refreshed) return first;
 
   const refreshedToken = getAccessToken(conn);
   if (!refreshedToken) return first;
-  return boundedNativeFetch<T>(url, withAuthHeader(req, refreshedToken));
+  const retryUrl = retargetAfterRefresh(req.url, instanceUrl, conn.instanceUrl);
+  return boundedNativeFetch<T>(retryUrl, {
+    ...withAuthHeader(req, refreshedToken),
+    timeoutMs: remaining(),
+  });
 }
 
 function withAuthHeader(req: NativeFetchRequest, accessToken: string): NativeFetchRequest {
@@ -152,6 +169,22 @@ function getAccessToken(conn: Connection): string | undefined {
 function absoluteUrl(instanceUrl: string, url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   return `${instanceUrl.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+}
+
+function retargetAfterRefresh(
+  requestedUrl: string,
+  previousInstanceUrl: string,
+  refreshedInstanceUrl: string,
+): string {
+  if (!/^https?:\/\//i.test(requestedUrl)) return absoluteUrl(refreshedInstanceUrl, requestedUrl);
+  try {
+    const requested = new URL(requestedUrl);
+    const previous = new URL(previousInstanceUrl);
+    if (requested.origin !== previous.origin) return requestedUrl;
+    return new URL(`${requested.pathname}${requested.search}`, refreshedInstanceUrl).toString();
+  } catch {
+    return requestedUrl;
+  }
 }
 
 async function boundedNativeFetch<T>(
