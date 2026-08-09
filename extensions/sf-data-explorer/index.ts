@@ -24,11 +24,7 @@ import { readEffectiveDataExplorerSettings } from "./lib/settings.ts";
 import { createData360SqlStrategy, type Data360ObjectMeta } from "./lib/modes/data360-sql.ts";
 import { createSoqlStrategy, type CoreSObjectMeta } from "./lib/modes/soql.ts";
 import { createSoslStrategy } from "./lib/modes/sosl.ts";
-import {
-  clearSfDataExplorerTransportCacheIfInitialized,
-  getSfDataExplorerTransport,
-  type SfDataExplorerTransport,
-} from "./lib/transport.ts";
+import { getSfDataExplorerTransport, type SfDataExplorerTransport } from "./lib/transport.ts";
 import { ExplorerSpa, type ExplorerSpaResult } from "./lib/ui/explorer-spa.ts";
 import type { ExplorerMode, ExplorerStrategy } from "./lib/types.ts";
 
@@ -68,11 +64,9 @@ export default function sfDataExplorer(pi: ExtensionAPI) {
 
   pi.on("session_start", () => {
     clearExplorerCache();
-    clearSfDataExplorerTransportCacheIfInitialized();
   });
   pi.on("session_shutdown", () => {
     clearExplorerCache();
-    clearSfDataExplorerTransportCacheIfInitialized();
   });
 
   pi.registerCommand(COMMAND, {
@@ -210,7 +204,7 @@ async function launchExplorer(
   ctx: ExtensionCommandContext,
   parsed: ParsedCommandArgs & { mode: ExplorerMode },
 ): Promise<ExplorerSpaResult> {
-  const transport = await getSfDataExplorerTransport(pi);
+  const transport = await getSfDataExplorerTransport(pi, ctx.cwd);
   const strategy = await buildInitialStrategy(pi, ctx, transport, parsed);
   if (!strategy) return undefined;
   const result = await ctx.ui.custom<ExplorerSpaResult>((tui, theme, _keybindings, done) => {

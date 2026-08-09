@@ -34,7 +34,6 @@ function transportForMetadata(body: Record<string, unknown>): SfDataExplorerTran
     queryData360Sql: async () => {
       throw new Error("query-sql should not be used for metadata field loading");
     },
-    clearCache: () => {},
   };
 }
 

@@ -2,28 +2,23 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { connFromAlias, clearConnectionCache } from "../../../lib/common/sf-conn/connection.ts";
-import { resolveSfPiPackageRootPath } from "../../../lib/common/sf-pi-package-root.ts";
-import { connRequest } from "../../../lib/common/sf-conn/request.ts";
-import { detectEnvironment } from "../../../lib/common/sf-environment/detect.ts";
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
-import { buildApiPath, type QueryParams } from "../../../lib/common/sf-rest/path.ts";
 import {
-  normalizeTargetOrg,
-  resolveApiVersion,
-  resolveExplicitTargetOrg,
-  resolveOrgType,
-} from "../../../lib/common/sf-rest/target-org.ts";
+  connectSalesforce,
+  type HttpMethod,
+  type SalesforceQueryParams,
+  type SalesforceSession,
+} from "../../../lib/common/sf-conn/index.ts";
+import { resolveSfPiPackageRootPath } from "../../../lib/common/sf-pi-package-root.ts";
 import type {
   CoreQueryResponse,
   CoreSearchResponse,
   Data360SqlResponse,
 } from "./result-normalize.ts";
 
-export type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+export type Method = HttpMethod;
 
 export interface TargetContext {
-  targetOrg?: string;
+  targetOrg: string;
   apiVersion: string;
   orgType: string;
 }
@@ -48,7 +43,7 @@ export interface SfDataExplorerTransport {
     targetOrg?: string;
     method: Method;
     path: string;
-    query?: QueryParams;
+    query?: SalesforceQueryParams;
     body?: unknown;
     timeoutMs?: number;
     signal?: AbortSignal;
@@ -72,94 +67,82 @@ export interface SfDataExplorerTransport {
     timeoutMs?: number;
     signal?: AbortSignal;
   }): Promise<RestResponse<Data360SqlResponse>>;
-  clearCache(): void;
 }
 
-type ExecResult = { stdout: string; stderr: string; code: number | null };
+const transportPromises = new Map<string, Promise<SfDataExplorerTransport>>();
 
-let transportPromise: Promise<SfDataExplorerTransport> | undefined;
-const envCache = new Map<string, SfEnvironment>();
-
-export function getSfDataExplorerTransport(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
-  transportPromise ??= initialize(pi);
-  return transportPromise;
-}
-
-export function clearSfDataExplorerTransportCacheIfInitialized(): void {
-  envCache.clear();
-  const initialized = transportPromise;
-  if (!initialized) return;
-  void initialized
-    .then((transport) => transport.clearCache())
-    .catch(() => {
-      // Ignore initialization failures here. Explicit command invocation surfaces them.
+export function getSfDataExplorerTransport(
+  _pi: ExtensionAPI,
+  cwd: string,
+): Promise<SfDataExplorerTransport> {
+  const key = path.resolve(cwd);
+  let pending = transportPromises.get(key);
+  if (!pending) {
+    pending = initialize(key).catch((error: unknown) => {
+      if (transportPromises.get(key) === pending) transportPromises.delete(key);
+      throw error;
     });
+    transportPromises.set(key, pending);
+  }
+  return pending;
 }
 
-async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
+async function initialize(cwd: string): Promise<SfDataExplorerTransport> {
   const sfPiPath = await resolveBundledSfPiPath();
   const sourceCommit = await tryReadCommit(sfPiPath);
-  const cwd = process.cwd();
-  const exec = async (
-    command: string,
-    args: string[],
-    options?: { timeout?: number; cwd?: string },
-  ): Promise<ExecResult> => {
-    const result = await pi.exec(command, args, {
-      timeout: options?.timeout,
-      cwd: options?.cwd ?? cwd,
+
+  const connect = (
+    targetOrg?: string,
+    signal?: AbortSignal,
+    timeoutMs?: number,
+  ): Promise<SalesforceSession> =>
+    connectSalesforce({
+      cwd,
+      targetOrg: targetOrg === "default" ? undefined : targetOrg,
+      signal,
+      timeoutMs,
     });
-    return { stdout: result.stdout, stderr: result.stderr, code: result.code };
-  };
-  const loadEnv = async (): Promise<SfEnvironment> => {
-    const cached = envCache.get(cwd);
-    if (cached) return cached;
-    const env = await detectEnvironment(exec, cwd);
-    envCache.set(cwd, env);
-    return env;
-  };
-  const envPromise = loadEnv().catch(() => null);
+
+  const contextFrom = (sf: SalesforceSession): TargetContext => ({
+    targetOrg: sf.target.targetOrg,
+    apiVersion: sf.target.apiVersion,
+    orgType: sf.target.orgType,
+  });
 
   async function resolveTarget(targetOrg?: string): Promise<TargetContext> {
-    const env = (await envPromise) ?? (await loadEnv());
-    const requestedOrg = targetOrg && targetOrg !== "default" ? targetOrg : undefined;
-    const resolvedTargetOrg = normalizeTargetOrg(requestedOrg, env) ?? requestedOrg;
-    const targetOrgInfo = await resolveExplicitTargetOrg(resolvedTargetOrg, env).catch(
-      () => undefined,
-    );
-    const apiVersion = resolveApiVersion(env, targetOrgInfo);
-    const orgType = resolveOrgType(resolvedTargetOrg, env, targetOrgInfo);
-    return { targetOrg: resolvedTargetOrg, apiVersion, orgType };
+    return contextFrom(await connect(targetOrg));
   }
 
   async function callRest<T = unknown>(args: {
     targetOrg?: string;
     method: Method;
     path: string;
-    query?: QueryParams;
+    query?: SalesforceQueryParams;
     body?: unknown;
     timeoutMs?: number;
     signal?: AbortSignal;
   }): Promise<RestResponse<T>> {
     if (args.signal?.aborted) throw new Error("sf-data-explorer call cancelled before request.");
-    const context = await resolveTarget(args.targetOrg);
-    if (!context.targetOrg)
-      throw new Error(
-        "No Salesforce target org is configured. Pass a target org or set sf config target-org.",
-      );
-    const conn = await connFromAlias(context.targetOrg);
-    const url = buildApiPath(args.path, context.apiVersion, args.query);
-    const resp = await connRequest<T>(conn, {
+    const sf = await connect(args.targetOrg, args.signal, args.timeoutMs);
+    const response = await sf.request<T>({
       method: args.method,
-      url,
+      path: args.path,
+      query: args.query,
       body: args.method === "GET" ? undefined : args.body,
       timeoutMs: args.timeoutMs ?? 120_000,
+      signal: args.signal,
     });
-    if (resp.status >= 400) {
-      const text = typeof resp.body === "string" ? resp.body : JSON.stringify(resp.body);
-      throw new Error(`${args.method} ${url} failed: ${resp.status} ${text}`);
+    if (response.status >= 400) {
+      throw new Error(
+        `${args.method} ${response.path.split("?", 1)[0]} failed: ${response.status}`,
+      );
     }
-    return { status: resp.status, body: resp.body, path: url, context };
+    return {
+      status: response.status,
+      body: response.body,
+      path: response.path,
+      context: contextFrom(sf),
+    };
   }
 
   return {
@@ -193,10 +176,6 @@ async function initialize(pi: ExtensionAPI): Promise<SfDataExplorerTransport> {
         timeoutMs: args.timeoutMs,
         signal: args.signal,
       }),
-    clearCache: () => {
-      envCache.clear();
-      clearConnectionCache();
-    },
   };
 }
 

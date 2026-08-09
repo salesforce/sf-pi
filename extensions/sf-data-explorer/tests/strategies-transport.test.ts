@@ -87,7 +87,6 @@ function fakeTransport(): SfDataExplorerTransport & {
         body: { metadata: [{ name: "id" }], data: [], returnedRows: 0 },
       };
     },
-    clearCache: () => {},
   };
   return t;
 }

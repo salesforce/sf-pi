@@ -19,6 +19,7 @@ import {
 } from "./connection.ts";
 import { connRequest, type HttpMethod } from "./request.ts";
 export type { HttpMethod } from "./request.ts";
+export type { SalesforceQueryParams, SalesforceQueryValue } from "./path.ts";
 import {
   buildSalesforceApiPath,
   buildSalesforceInstancePath,

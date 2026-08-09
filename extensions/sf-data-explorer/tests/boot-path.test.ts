@@ -54,12 +54,13 @@ describe("sf-data-explorer completions", () => {
 });
 
 describe("sf-data-explorer boot path", () => {
-  it("uses shared REST helpers instead of importing sf-data360 internals", () => {
+  it("uses only the shared Salesforce Connection Module for org transport", () => {
     const source = readFileSync("extensions/sf-data-explorer/lib/transport.ts", "utf8");
-    expect(source).toContain("lib/common/sf-rest/path.ts");
-    expect(source).toContain("lib/common/sf-rest/target-org.ts");
-    expect(source).not.toContain("extensions/sf-data360/lib/path.ts");
-    expect(source).not.toContain("extensions/sf-data360/lib/target-org.ts");
+    expect(source).toContain("lib/common/sf-conn/index.ts");
+    expect(source).not.toContain("lib/common/sf-rest/");
+    expect(source).not.toContain("lib/common/sf-conn/connection.ts");
+    expect(source).not.toContain("lib/common/sf-conn/request.ts");
+    expect(source).not.toContain("detectEnvironment");
   });
 
   it("does not initialize Salesforce transport during session lifecycle hooks", async () => {
