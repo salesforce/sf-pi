@@ -34,7 +34,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-apex"],
     tools: ["sf_apex"],
-    events: ["session_start","session_shutdown","tool_result"],
+    events: ["session_start","tool_result"],
   },
   {
     id: "sf-brain",

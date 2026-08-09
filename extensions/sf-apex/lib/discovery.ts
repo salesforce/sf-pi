@@ -2,7 +2,7 @@
 /** Native Apex lifecycle discovery actions. */
 
 import path from "node:path";
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, currentUserId, requestJson, toolingQuery } from "./api.ts";
 import { buildApexDigest } from "./digest.ts";
 import { ok } from "./result.ts";
@@ -273,15 +273,21 @@ async function discoverApexTests(
   try {
     const classes: Array<ApexClassRow & { testMethods?: ToolingTestMethod[] }> = [];
     let flowTestsOmitted = 0;
-    let nextUrl: string | undefined =
-      `/services/data/v${Math.max(Number(apiVersion(conn)), 65).toFixed(1)}/tooling/tests?showAllMethods=true`;
+    let nextUrl: string | undefined = "/tooling/tests?showAllMethods=true";
     let pages = 0;
     while (nextUrl && pages < 25) {
       pages += 1;
-      const page = await requestJson<TestDiscoveryPage>(conn, "GET", nextUrl, undefined, {
-        Accept: "application/json",
-        "X-Chatter-Entity-Encoding": "false",
-      });
+      const page = await requestJson<TestDiscoveryPage>(
+        conn,
+        "GET",
+        nextUrl,
+        undefined,
+        {
+          Accept: "application/json",
+          "X-Chatter-Entity-Encoding": "false",
+        },
+        pages > 1,
+      );
       for (const item of page.apexTestClasses ?? []) {
         if (isFlowTestClass(item)) {
           flowTestsOmitted += 1;

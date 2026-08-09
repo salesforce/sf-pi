@@ -509,6 +509,39 @@ describe("SalesforceSession request and query", () => {
     ).rejects.toThrow(/traversal/i);
   });
 
+  test("supports bounded non-data instance routes without allowing data-version bypass", async () => {
+    const conn = fakeConnection();
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(versionsResponse("67.0"))
+      .mockResolvedValueOnce(
+        new Response("<result/>", { status: 200, headers: { "Content-Type": "text/xml" } }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const sf = await connectSalesforce({ cwd: "/workspace" });
+    const response = await sf.request<string>({
+      method: "POST",
+      scope: "instance",
+      path: "/services/Soap/s/67.0/00D000000000001AAA",
+      body: "<Envelope/>",
+      headers: { "Content-Type": "text/xml" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      "https://example.sandbox.my.salesforce.com/services/Soap/s/67.0/00D000000000001AAA",
+    );
+    await expect(
+      sf.request({
+        method: "GET",
+        scope: "instance",
+        path: "/services/data/v50.0/limits",
+      }),
+    ).rejects.toThrow(/data API paths/i);
+  });
+
   test("does not retry a failed business request using the configured fallback", async () => {
     mockConfig("ExampleOrg", "62.0");
     const conn = fakeConnection();

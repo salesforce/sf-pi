@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Targeted Apex test execution through the public @salesforce/apex-node TestService. */
 
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { Duration } from "@salesforce/kit";
 import { ResultFormat, TestLevel, TestService } from "@salesforce/apex-node";
 import { apiVersion, toolingQuery } from "./api.ts";
@@ -39,7 +39,7 @@ export async function runTest(
 
   const includeCoverage = params.include_coverage === true;
   const waitSeconds = params.wait_seconds ?? 60;
-  const service = new TestService(conn);
+  const service = new TestService(conn.connection);
   const payload = await buildApexNodePayload(
     conn,
     service,
@@ -115,7 +115,7 @@ export async function testResult(
   }
 
   const includeCoverage = params.include_coverage === true;
-  const service = new TestService(conn);
+  const service = new TestService(conn.connection);
   const result = (await service.reportAsyncResults(
     runId,
     includeCoverage,

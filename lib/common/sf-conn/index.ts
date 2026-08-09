@@ -21,6 +21,7 @@ import { connRequest, type HttpMethod } from "./request.ts";
 export type { HttpMethod } from "./request.ts";
 import {
   buildSalesforceApiPath,
+  buildSalesforceInstancePath,
   isVersionedSalesforceResource,
   normalizeSalesforceResource,
   type SalesforceQueryParams,
@@ -71,7 +72,9 @@ export interface ConnectSalesforceOptions {
 
 export interface SalesforceRequestInput {
   method: HttpMethod;
-  /** Resource relative to /services/data/vNN.N, such as /query or /tooling/query. */
+  /** Data resource by default; use instance scope only for non-data routes such as SOAP. */
+  scope?: "data" | "instance";
+  /** Resource relative to the selected scope. */
   path: string;
   query?: SalesforceQueryParams;
   body?: unknown;
@@ -114,6 +117,8 @@ export interface SalesforceSession {
   identity(options?: ResolveOrgIdentityOptions): Promise<OrgIdentity>;
   path(resource: string, query?: SalesforceQueryParams): string;
   request<T = unknown>(input: SalesforceRequestInput): Promise<SalesforceResponse<T>>;
+  /** Normalize a server-provided versioned continuation back to this session's selected version. */
+  continueRequest<T = unknown>(input: SalesforceRequestInput): Promise<SalesforceResponse<T>>;
   query<T = Record<string, unknown>>(
     input: SalesforceQueryInput,
   ): Promise<SalesforceQueryResult<T>>;
@@ -387,7 +392,9 @@ function createSession(connection: Connection, target: SalesforceTarget): Salesf
   ): Promise<SalesforceResponse<T>> => {
     const requestPath = continuation
       ? buildContinuationPath(input.path)
-      : buildPublicPath(input.path, input.query);
+      : input.scope === "instance"
+        ? buildSalesforceInstancePath(input.path, input.query)
+        : buildPublicPath(input.path, input.query);
     const response = await connRequest<T>(connection, {
       method: input.method,
       url: requestPath,
@@ -400,6 +407,9 @@ function createSession(connection: Connection, target: SalesforceTarget): Salesf
   };
   const request = <T = unknown>(input: SalesforceRequestInput): Promise<SalesforceResponse<T>> =>
     executeRequest<T>(input);
+  const continueRequest = <T = unknown>(
+    input: SalesforceRequestInput,
+  ): Promise<SalesforceResponse<T>> => executeRequest<T>(input, true);
 
   const query = async <T = Record<string, unknown>>(
     input: SalesforceQueryInput,
@@ -476,7 +486,15 @@ function createSession(connection: Connection, target: SalesforceTarget): Salesf
   const identity = (options?: ResolveOrgIdentityOptions): Promise<OrgIdentity> =>
     resolveOrgIdentity(connection, options);
 
-  return { target, connection, identity, path: buildPublicPath, request, query };
+  return {
+    target,
+    connection,
+    identity,
+    path: buildPublicPath,
+    request,
+    continueRequest,
+    query,
+  };
 }
 
 interface QueryPage<T> {

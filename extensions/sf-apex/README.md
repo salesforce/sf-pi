@@ -30,24 +30,20 @@ for the LLM and renders as human-friendly **Apex Result Cards** in the TUI.
 ```text
 Extension loads
   ├─ register /sf-apex command
-  └─ session_start
-       ├─ clear cached Salesforce connections
-       └─ register sf_apex tool
+  └─ session_start → register sf_apex tool
 
 sf_apex action
   ├─ local-only actions: author.plan, diagnose.file, log.analyze
-  ├─ API-native actions resolve @salesforce/core connection lazily
-  ├─ Tooling/REST call runs on the fast native path
+  ├─ API-native actions enter the shared Salesforce Connection Module
+  ├─ latest/configured-fallback API version resolves lazily
+  ├─ Tooling/REST/SDK call runs on the bounded native path
   ├─ raw evidence is written as Apex Artifacts
   └─ compact digest returns to the LLM + custom TUI renderer
 ```
 
 ## Key Architecture Decisions
 
-- **API-native hot path** — lifecycle actions use `@salesforce/core` plus
-  Tooling/REST APIs by default so they feel fast and native. If a lifecycle
-  capability is missing, prefer adding a small native action over routing
-  `sf-apex` through Salesforce CLI subprocess stacks. See ADR 0069.
+- **Shared API-native hot path** — lifecycle actions use the common Salesforce Connection Module for target resolution, latest-first API-version selection, authentication, and bounded Tooling/REST calls. SDK/SOAP actions reuse the Module's already-versioned Salesforce Core connection. If a lifecycle capability is missing, prefer adding a small native action over routing `sf-apex` through Salesforce CLI subprocess stacks. See ADRs 0069 and 0103.
 - **One family tool** — `sf_apex` uses dotted actions instead of many tools,
   keeping prompt footprint low while covering the lifecycle.
 - **Source edits stay generic** — normal Pi file tools edit Apex. `sf-apex`
@@ -103,23 +99,22 @@ pending until the Flow-generation MCP pipeline is available.
 
 ## Behavior Matrix
 
-| Event/Trigger              | Condition                | Result                                                       |
-| -------------------------- | ------------------------ | ------------------------------------------------------------ |
-| extension load             | always                   | Register `/sf-apex` command.                                 |
-| session_start              | extension enabled        | Register `sf_apex` tool and clear cached org connections.    |
-| session_shutdown           | always                   | Clear cached org connections.                                |
-| `/sf-apex`                 | interactive              | Open status/actions panel.                                   |
-| `/sf-apex status`          | any mode                 | Print concise extension status.                              |
-| `sf_apex author.plan`      | local                    | Return lightweight plan, likely tests, and skill hints.      |
-| `sf_apex org.preflight`    | explicit tool call       | Check native Apex lifecycle readiness in the target org.     |
-| `sf_apex apex.search`      | explicit tool call       | Search active Apex classes/triggers for lifecycle targets.   |
-| `sf_apex test.discover`    | explicit tool call       | Find candidate Apex test classes for targets or query terms. |
-| `sf_apex test.plan`        | explicit tool call       | Recommend the smallest useful test scope.                    |
-| `sf_apex coverage.summary` | explicit tool call       | Summarize native Tooling coverage for named classes.         |
-| `sf_apex trace.start`      | explicit tool call       | Create/update bounded current-user trace flag.               |
-| `sf_apex log.watch`        | explicit tool call       | Poll for a new ApexLog and analyze it.                       |
-| `sf_apex anon.run`         | explicit tool call       | Execute Anonymous Apex natively and capture/analyze the log. |
-| `sf_apex test.run`         | explicit classes/methods | Run native targeted tests and summarize results.             |
+| Event/Trigger              | Condition                | Result                                                           |
+| -------------------------- | ------------------------ | ---------------------------------------------------------------- |
+| extension load             | always                   | Register `/sf-apex` command.                                     |
+| session_start              | extension enabled        | Register `sf_apex`; the shared Module owns connection lifecycle. |
+| `/sf-apex`                 | interactive              | Open status/actions panel.                                       |
+| `/sf-apex status`          | any mode                 | Print concise extension status.                                  |
+| `sf_apex author.plan`      | local                    | Return lightweight plan, likely tests, and skill hints.          |
+| `sf_apex org.preflight`    | explicit tool call       | Check native Apex lifecycle readiness in the target org.         |
+| `sf_apex apex.search`      | explicit tool call       | Search active Apex classes/triggers for lifecycle targets.       |
+| `sf_apex test.discover`    | explicit tool call       | Find candidate Apex test classes for targets or query terms.     |
+| `sf_apex test.plan`        | explicit tool call       | Recommend the smallest useful test scope.                        |
+| `sf_apex coverage.summary` | explicit tool call       | Summarize native Tooling coverage for named classes.             |
+| `sf_apex trace.start`      | explicit tool call       | Create/update bounded current-user trace flag.                   |
+| `sf_apex log.watch`        | explicit tool call       | Poll for a new ApexLog and analyze it.                           |
+| `sf_apex anon.run`         | explicit tool call       | Execute Anonymous Apex natively and capture/analyze the log.     |
+| `sf_apex test.run`         | explicit classes/methods | Run native targeted tests and summarize results.                 |
 
 ## Commands
 
@@ -192,6 +187,7 @@ extensions/sf-apex/
     errors.test.ts          ← unit / smoke test
     log-parser.test.ts      ← unit / smoke test
     render.test.ts          ← unit / smoke test
+    shared-connection.test.ts← unit / smoke test
     smoke.test.ts           ← unit / smoke test
     source.test.ts          ← unit / smoke test
     suites.test.ts          ← unit / smoke test

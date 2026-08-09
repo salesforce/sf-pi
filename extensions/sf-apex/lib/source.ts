@@ -2,7 +2,7 @@
 /** Read-only Org Apex Source Evidence through Tooling API. */
 
 import path from "node:path";
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, toolingQueryAll } from "./api.ts";
 import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
 import { buildApexDigest, plural } from "./digest.ts";

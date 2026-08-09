@@ -2,7 +2,7 @@
 /** Native Apex Coverage Evidence for sf-apex. */
 
 import path from "node:path";
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, toolingQuery, toolingQueryAll } from "./api.ts";
 import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
 import { buildApexDigest, plural } from "./digest.ts";

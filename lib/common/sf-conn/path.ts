@@ -50,6 +50,30 @@ function assertSafeResourcePath(resource: string): void {
   }
 }
 
+export function buildSalesforceInstancePath(
+  resource: string,
+  query?: SalesforceQueryParams,
+): string {
+  const normalized = normalizeSalesforceInstanceResource(resource);
+  const separator = normalized.includes("?") ? "&" : "?";
+  const queryString = buildSalesforceQueryString(query);
+  return `${normalized}${queryString ? `${separator}${queryString}` : ""}`;
+}
+
+export function normalizeSalesforceInstanceResource(resource: string): string {
+  const trimmed = resource.trim();
+  if (!trimmed) throw new Error("Salesforce instance resource path is required.");
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("//")) {
+    throw new Error("Salesforce instance resource paths must be relative.");
+  }
+  assertSafeResourcePath(trimmed);
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  if (/^\/services\/data(?:\/|$)/i.test(withLeadingSlash)) {
+    throw new Error("Salesforce data API paths must use the version-owned data request seam.");
+  }
+  return withLeadingSlash;
+}
+
 export function buildSalesforceQueryString(query?: SalesforceQueryParams): string {
   if (!query) return "";
 

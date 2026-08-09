@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** SOAP-backed Anonymous Apex execution for low-latency probes with inline debug logs. */
 
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, requestText } from "./api.ts";
 
 export interface SoapAnonymousResult {
@@ -35,10 +35,10 @@ export async function executeAnonymousSoap(
   conn: Connection,
   apexCode: string,
 ): Promise<SoapAnonymousResult> {
-  const accessToken = getAccessToken(conn);
+  const accessToken = getAccessToken(conn.connection);
   if (!accessToken) throw new Error("Anonymous Apex SOAP execution failed: no access token.");
 
-  const orgId = getOrgId(conn, accessToken);
+  const orgId = getOrgId(conn.connection, accessToken);
   if (!orgId) throw new Error("Anonymous Apex SOAP execution failed: org id unavailable.");
 
   const version = apiVersion(conn);
@@ -87,14 +87,14 @@ export function parseSoapExecuteAnonymousResponse(xml: string): SoapAnonymousRes
   };
 }
 
-function getAccessToken(conn: Connection): string | undefined {
+function getAccessToken(conn: Connection["connection"]): string | undefined {
   return (
     (conn as unknown as { accessToken?: string }).accessToken ??
     (conn.getConnectionOptions?.() as { accessToken?: string } | undefined)?.accessToken
   );
 }
 
-function getOrgId(conn: Connection, accessToken: string): string | undefined {
+function getOrgId(conn: Connection["connection"], accessToken: string): string | undefined {
   const tokenOrgId = accessToken.includes("!") ? accessToken.split("!")[0] : undefined;
   return tokenOrgId || (conn.getAuthInfoFields?.() as { orgId?: string } | undefined)?.orgId;
 }

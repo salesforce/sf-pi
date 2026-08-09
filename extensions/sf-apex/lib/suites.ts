@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Read-only Apex test suite discovery. */
 
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { TestService } from "@salesforce/apex-node";
 import { apiVersion, toolingQueryAll } from "./api.ts";
 import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
@@ -23,7 +23,7 @@ interface SuiteMemberRow extends Record<string, unknown> {
 }
 
 export async function testSuites(conn: Connection, params: SfApexParams): Promise<ToolResult> {
-  const service = new TestService(conn);
+  const service = new TestService(conn.connection);
   const suites = (await service.retrieveAllSuites()).map((suite) => ({
     id: suite.id,
     name: suite.TestSuiteName,

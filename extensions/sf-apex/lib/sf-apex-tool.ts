@@ -5,7 +5,7 @@ import { Text } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
-import { apexConnection } from "./api.ts";
+import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
 import { apexErrorResult } from "./errors.ts";
 import { renderApexResultMarkdown } from "./render.ts";
 import type { SfApexParams, SfApexSessionState, ToolResult } from "./types.ts";
@@ -161,7 +161,11 @@ export function registerSfApexTool(pi: ExtensionAPI): void {
         if (params.action === "diagnose.file") return diagnoseFile(params, ctx.cwd);
         if (params.action === "log.analyze") return analyzeLog(params);
 
-        const conn = await apexConnection(params.target_org, signal);
+        const conn = await connectSalesforce({
+          cwd: ctx.cwd,
+          targetOrg: params.target_org,
+          signal,
+        });
         switch (params.action) {
           case "status":
             return status(conn, params);

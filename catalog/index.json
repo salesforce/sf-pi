@@ -113,7 +113,6 @@
     ],
     "events": [
       "session_start",
-      "session_shutdown",
       "tool_result"
     ],
     "docs": {
@@ -150,7 +149,7 @@
     "entry": "extensions/sf-apex/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4515
+    "srcLoc": 4490
   },
   {
     "id": "sf-brain",

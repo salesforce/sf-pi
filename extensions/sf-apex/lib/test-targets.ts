@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Parse Apex test targets into Tooling test payload items. */
 
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { toolingQuery } from "./api.ts";
 import { ambiguousTargetError } from "./errors.ts";
 

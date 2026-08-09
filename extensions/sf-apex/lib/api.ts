@@ -1,156 +1,128 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Native Salesforce API helpers for sf-apex. */
+/** SF Apex domain helpers over the shared Salesforce Connection Module. */
 
-import type { Connection } from "@salesforce/core";
-import { connFromAlias, resolveOrgIdentity } from "../../../lib/common/sf-conn/connection.ts";
-import { connRequest, type HttpMethod } from "../../../lib/common/sf-conn/request.ts";
+import type { HttpMethod, SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 
 const APEX_CONNECTION_TIMEOUT_MS = 30_000;
+const APEX_REQUEST_TIMEOUT_MS = 120_000;
+const MAX_TOOLING_QUERY_ROWS = 50_000;
 
-export async function apexConnection(
-  targetOrg?: string,
-  signal?: AbortSignal,
-): Promise<Connection> {
-  return connFromAlias(targetOrg, { timeoutMs: APEX_CONNECTION_TIMEOUT_MS, signal });
-}
+export type ApexConnection = SalesforceSession;
 
-export function apiVersion(conn: Connection): string {
-  const value =
-    (conn as unknown as { getApiVersion?: () => string; version?: string }).getApiVersion?.() ??
-    (conn as unknown as { version?: string }).version ??
-    "67.0";
-  return String(value).replace(/^v/, "");
+export function apiVersion(sf: ApexConnection): string {
+  return sf.target.apiVersion;
 }
 
 export async function requestJson<T>(
-  conn: Connection,
+  sf: ApexConnection,
   method: HttpMethod,
-  url: string,
+  path: string,
   body?: unknown,
   headers?: Record<string, string>,
+  continuation = false,
 ): Promise<T> {
-  let response = await connRequest<T>(conn, { method, url, body, headers, timeoutMs: 120_000 });
-  if ([401, 403].includes(response.status) && (await refreshConnection(conn))) {
-    response = await connRequest<T>(conn, { method, url, body, headers, timeoutMs: 120_000 });
-  }
+  const input = {
+    method,
+    path,
+    body,
+    headers,
+    timeoutMs: APEX_REQUEST_TIMEOUT_MS,
+  };
+  const response = continuation ? await sf.continueRequest<T>(input) : await sf.request<T>(input);
   if (response.status >= 400) {
     throw new Error(
-      `Salesforce API ${method} ${url} failed (${response.status}): ${JSON.stringify(response.body)}`,
+      `Salesforce API ${method} ${response.path.split("?", 1)[0]} failed (${response.status}).`,
     );
   }
   return response.body;
 }
 
 export async function requestText(
-  conn: Connection,
+  sf: ApexConnection,
   method: HttpMethod,
-  url: string,
+  path: string,
   body?: unknown,
   headers: Record<string, string> = { Accept: "text/plain" },
 ): Promise<string> {
-  let response = await connRequest<string>(conn, {
+  const response = await sf.request<string>({
     method,
-    url,
+    scope: path.startsWith("/services/Soap/") ? "instance" : "data",
+    path,
     body,
     headers,
-    timeoutMs: 120_000,
+    timeoutMs: APEX_REQUEST_TIMEOUT_MS,
   });
-  if ([401, 403].includes(response.status) && (await refreshConnection(conn))) {
-    response = await connRequest<string>(conn, {
-      method,
-      url,
-      body,
-      headers,
-      timeoutMs: 120_000,
-    });
-  }
   if (response.status >= 400) {
     throw new Error(
-      `Salesforce API ${method} ${url} failed (${response.status}): ${String(response.body)}`,
+      `Salesforce API ${method} ${response.path.split("?", 1)[0]} failed (${response.status}).`,
     );
   }
   return String(response.body ?? "");
 }
 
 export async function toolingQuery<T extends Record<string, unknown>>(
-  conn: Connection,
+  sf: ApexConnection,
   soql: string,
 ): Promise<{ totalSize: number; records: T[]; done?: boolean; nextRecordsUrl?: string }> {
-  const v = apiVersion(conn);
-  const encoded = encodeURIComponent(soql);
-  const result = await requestJson<{
-    totalSize: number;
-    records: T[];
-    done?: boolean;
-    nextRecordsUrl?: string;
-  }>(conn, "GET", `/services/data/v${v}/tooling/query/?q=${encoded}`);
-  return result;
+  const result = await sf.query<T>({
+    soql,
+    api: "tooling",
+    maxRows: MAX_TOOLING_QUERY_ROWS,
+    timeoutMs: APEX_REQUEST_TIMEOUT_MS,
+  });
+  if (result.truncated) {
+    throw new Error(`Apex Tooling query exceeded ${MAX_TOOLING_QUERY_ROWS} rows.`);
+  }
+  return {
+    totalSize: result.totalSize ?? result.records.length,
+    records: result.records,
+    done: result.done,
+    nextRecordsUrl: result.nextRecordsUrl,
+  };
 }
 
 export async function toolingQueryAll<T extends Record<string, unknown>>(
-  conn: Connection,
+  sf: ApexConnection,
   soql: string,
 ): Promise<{ totalSize: number; records: T[] }> {
-  let page = await toolingQuery<T>(conn, soql);
-  const records = [...page.records];
-  while (page.done === false && page.nextRecordsUrl) {
-    page = await requestJson<{
-      totalSize: number;
-      records: T[];
-      done?: boolean;
-      nextRecordsUrl?: string;
-    }>(conn, "GET", page.nextRecordsUrl);
-    records.push(...page.records);
-  }
-  return { totalSize: records.length, records };
+  const result = await toolingQuery<T>(sf, soql);
+  return { totalSize: result.records.length, records: result.records };
 }
 
-async function refreshConnection(conn: Connection): Promise<boolean> {
-  const refreshAuth = (conn as unknown as { refreshAuth?: () => Promise<unknown> }).refreshAuth;
-  if (typeof refreshAuth !== "function") return false;
-  await refreshAuth.call(conn);
-  return true;
-}
-
-export async function currentUserId(conn: Connection): Promise<string> {
-  return (await resolveOrgIdentity(conn, { timeoutMs: 30_000 })).user_id;
+export async function currentUserId(sf: ApexConnection): Promise<string> {
+  return (await sf.identity({ timeoutMs: APEX_CONNECTION_TIMEOUT_MS })).user_id;
 }
 
 export async function createTooling<T>(
-  conn: Connection,
+  sf: ApexConnection,
   objectName: string,
   body: unknown,
 ): Promise<T> {
-  return requestJson<T>(
-    conn,
-    "POST",
-    `/services/data/v${apiVersion(conn)}/tooling/sobjects/${objectName}`,
-    body,
-  );
+  return requestJson<T>(sf, "POST", `/tooling/sobjects/${encodeURIComponent(objectName)}`, body);
 }
 
 export async function patchTooling(
-  conn: Connection,
+  sf: ApexConnection,
   objectName: string,
   id: string,
   body: unknown,
 ): Promise<void> {
   await requestJson(
-    conn,
+    sf,
     "PATCH",
-    `/services/data/v${apiVersion(conn)}/tooling/sobjects/${objectName}/${id}`,
+    `/tooling/sobjects/${encodeURIComponent(objectName)}/${encodeURIComponent(id)}`,
     body,
   );
 }
 
 export async function deleteTooling(
-  conn: Connection,
+  sf: ApexConnection,
   objectName: string,
   id: string,
 ): Promise<void> {
   await requestJson(
-    conn,
+    sf,
     "DELETE",
-    `/services/data/v${apiVersion(conn)}/tooling/sobjects/${objectName}/${id}`,
+    `/tooling/sobjects/${encodeURIComponent(objectName)}/${encodeURIComponent(id)}`,
   );
 }

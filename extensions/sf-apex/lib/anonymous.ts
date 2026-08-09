@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Native Anonymous Apex execution with risk classification and log capture. */
 
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion } from "./api.ts";
 import { executeAnonymousSoap } from "./anonymous-soap.ts";
 import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";

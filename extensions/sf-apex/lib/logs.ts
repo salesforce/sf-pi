@@ -2,7 +2,7 @@
 /** Apex log fetch, watch, analyze, and artifact persistence. */
 
 import { readFile } from "node:fs/promises";
-import type { Connection } from "@salesforce/core";
+import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, currentUserId, requestText, toolingQuery } from "./api.ts";
 import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
 import { parseApexLog, summarizeLogDigest } from "./log-parser.ts";
@@ -318,13 +318,8 @@ export async function fetchAndAnalyzeLog(
   state?: SfApexSessionState,
   params?: SfApexParams,
 ): Promise<ToolResult> {
-  const v = apiVersion(conn);
   const logId = String(row.Id);
-  const body = await requestText(
-    conn,
-    "GET",
-    `/services/data/v${v}/tooling/sobjects/ApexLog/${logId}/Body`,
-  );
+  const body = await requestText(conn, "GET", `/tooling/sobjects/ApexLog/${logId}/Body`);
   const digest: ApexLogDigest = parseApexLog(body, {
     log_id: logId,
     operation: String(row.Operation ?? ""),

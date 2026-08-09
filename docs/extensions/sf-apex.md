@@ -67,7 +67,7 @@ You can also manage this extension from the SF Pi home base:
 - **Commands:** `/sf-apex`
 - **LLM tools:** `sf_apex`
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`, `tool_result`
+- **Events/hooks:** `session_start`, `tool_result`
 
 </details>
 

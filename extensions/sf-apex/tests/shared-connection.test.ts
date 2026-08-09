@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Public-tool proof that SF SOQL uses the shared Salesforce Connection Module. */
+/** Public-tool proof that SF Apex uses the shared Salesforce Connection Module. */
 
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -11,7 +11,7 @@ vi.mock("../../../lib/common/sf-conn/index.ts", () => ({
   connectSalesforce: (options: unknown) => connectSalesforceMock(options),
 }));
 
-import { registerSfSoqlTool } from "../lib/sf-soql-tool.ts";
+import { registerSfApexTool } from "../lib/sf-apex-tool.ts";
 
 function fakeSession(): SalesforceSession {
   const target = Object.freeze({
@@ -34,36 +34,31 @@ function fakeSession(): SalesforceSession {
       user_id: "005000000000001AAA",
     })),
     path: vi.fn((resource: string) => `/services/data/v67.0${resource}`),
-    request: vi.fn(async (input) => ({
-      status: 200,
-      body: {
-        sobjects: [
-          { name: "Account", label: "Account", queryable: true },
-          { name: "Contact", label: "Contact", queryable: true },
-        ],
-      },
-      path: `/services/data/v67.0${input.path}`,
-      target,
-      warnings: [],
-    })) as SalesforceSession["request"],
+    request: vi.fn() as SalesforceSession["request"],
     continueRequest: vi.fn() as SalesforceSession["continueRequest"],
-    query: vi.fn() as SalesforceSession["query"],
+    query: vi.fn(async () => ({
+      records: [],
+      totalSize: 0,
+      done: true,
+      truncated: false,
+      target,
+    })) as SalesforceSession["query"],
   };
 }
 
-describe("SF SOQL shared connection", () => {
-  it("routes a schema.search tool call through connectSalesforce and versionless resources", async () => {
+describe("SF Apex shared connection", () => {
+  it("routes a status tool call through connectSalesforce and shared Tooling query", async () => {
     const session = fakeSession();
     connectSalesforceMock.mockReset();
     connectSalesforceMock.mockResolvedValue(session);
     const registerTool = vi.fn();
-    registerSfSoqlTool({ registerTool } as unknown as ExtensionAPI);
+    registerSfApexTool({ registerTool } as unknown as ExtensionAPI);
     const tool = registerTool.mock.calls[0]?.[0];
     const signal = new AbortController().signal;
 
     const result = await tool.execute(
       "call-1",
-      { action: "schema.search", query: "acc", target_org: "ExampleOrg", limit: 5 },
+      { action: "status", target_org: "ExampleOrg" },
       signal,
       undefined,
       { cwd: "/workspace" },
@@ -74,11 +69,11 @@ describe("SF SOQL shared connection", () => {
       targetOrg: "ExampleOrg",
       signal,
     });
-    expect(session.request).toHaveBeenCalledWith(
-      expect.objectContaining({ method: "GET", path: "/sobjects" }),
+    expect(session.identity).toHaveBeenCalled();
+    expect(session.query).toHaveBeenCalledWith(
+      expect.objectContaining({ api: "tooling", maxRows: 50_000 }),
     );
     expect(result.details.digest.org.api_version).toBe("67.0");
-    expect(result.details.digest.api_calls[0].path).toBe("/services/data/v67.0/sobjects");
-    expect(result.content[0].text).toContain("matches=1");
+    expect(result.content[0].text).toContain("Org API v67.0");
   });
 });

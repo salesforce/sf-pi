@@ -7,7 +7,7 @@
   "defaultEnabled": true,
   "commands": ["/sf-apex"],
   "tools": ["sf_apex"],
-  "events": ["session_start", "session_shutdown", "tool_result"],
+  "events": ["session_start", "tool_result"],
   "docs": {
     "summary": "Owns the lean Apex lifecycle loop in pi: native Apex discovery/preflight, authoring plan hints, Apex-owned diagnostics handoff, API-native trace flags, log fetch/watch/analyze, Anonymous Apex probes, coverage summaries, and targeted test runs. Source edits remain normal Pi file operations; full evidence is persisted as Apex Artifacts while tool output stays compact.",
     "primaryFiles": [
