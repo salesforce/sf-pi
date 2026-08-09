@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Status and org preflight actions for sf-soql. */
 
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, currentUserId, listSObjects, orgAlias, orgLimits } from "./api.ts";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
 import type { SfSoqlParams, ToolResult } from "./types.ts";
@@ -49,10 +49,10 @@ export async function orgPreflight(conn: Connection, params: SfSoqlParams): Prom
     },
     meta: [`queryable=${queryable}`],
     api_calls: [
-      apiCall("GET", `/services/data/v${apiVersion(conn)}/sobjects`, `queryable=${queryable}`),
+      apiCall("GET", conn.path("/sobjects"), `queryable=${queryable}`),
       apiCall(
         "GET",
-        `/services/data/v${apiVersion(conn)}/limits`,
+        conn.path("/limits"),
         Object.keys(limits).length ? "limits=ok" : "limits=unknown",
       ),
     ],

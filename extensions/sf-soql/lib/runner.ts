@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Query plan and execution operations for sf-soql. */
 
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, explainQuery, queryAll, restQuery } from "./api.ts";
 import { writeRunBundle, writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
@@ -60,7 +60,7 @@ export async function explain(
       api_calls: [
         apiCall(
           "GET",
-          "/query?explain=SELECT...",
+          conn.path("/query", { explain: "SELECT..." }),
           shape.primary_object ? `object=${shape.primary_object}` : undefined,
         ),
       ],
@@ -339,7 +339,7 @@ async function executeQuery(
         sample_rows: sampleRows,
         duration_ms: durationMs,
       },
-      api_calls: [apiCall("GET", apiPathFor(operation, apiMode), `maxRows=${maxRows}`)],
+      api_calls: [apiCall("GET", apiPathFor(conn, operation, apiMode), `maxRows=${maxRows}`)],
       sections: [
         ...(operation === "queryAll"
           ? [
@@ -373,10 +373,10 @@ async function executeQuery(
   }
 }
 
-function apiPathFor(operation: SoqlOperation, apiMode: SoqlApiMode): string {
-  if (operation === "queryAll") return "/queryAll?q=SELECT...";
-  if (apiMode === "tooling") return "/tooling/query?q=SELECT...";
-  return "/query?q=SELECT...";
+function apiPathFor(conn: Connection, operation: SoqlOperation, apiMode: SoqlApiMode): string {
+  const resource =
+    operation === "queryAll" ? "/queryAll" : apiMode === "tooling" ? "/tooling/query" : "/query";
+  return conn.path(resource, { q: "SELECT..." });
 }
 
 function titleFor(action: string, operation: SoqlOperation, objectName?: string): string {

@@ -68,7 +68,7 @@ You can also manage this extension from the SF Pi home base:
 - **Commands:** `/sf-soql`
 - **LLM tools:** `sf_soql`
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`
+- **Events/hooks:** `session_start`
 
 </details>
 

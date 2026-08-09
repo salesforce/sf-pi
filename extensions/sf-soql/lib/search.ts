@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Bounded schema search for SOQL object discovery. */
 
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, listSObjects } from "./api.ts";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
 import type { SfSoqlParams, ToolResult } from "./types.ts";
@@ -30,7 +30,7 @@ export async function schemaSearch(conn: Connection, params: SfSoqlParams): Prom
     title: `SOQL Schema Search · ${params.query ?? params.object}`,
     org: { alias: params.target_org, api_version: apiVersion(conn) },
     meta: [`matches=${matches.length}`],
-    api_calls: [apiCall("GET", `/services/data/v${apiVersion(conn)}/sobjects`, `query=${term}`)],
+    api_calls: [apiCall("GET", conn.path("/sobjects"), `query=${term}`)],
     sections: [
       section(
         "🔍",

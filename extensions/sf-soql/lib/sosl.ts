@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Native SOSL search execution for sf-soql. */
 
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, soslSearch } from "./api.ts";
 import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
@@ -28,7 +28,7 @@ export async function runSosl(conn: Connection, params: SfSoqlParams): Promise<T
       title: "SOSL Run",
       org: { alias: params.target_org, api_version: apiVersion(conn) },
       meta: [`${records.length} records`],
-      api_calls: [apiCall("GET", "/search?q=FIND...", `maxRows=${maxRows}`)],
+      api_calls: [apiCall("GET", conn.path("/search", { q: "FIND..." }), `maxRows=${maxRows}`)],
       sections: [
         section("📦", "Result Summary", [
           row("📦", "Records", records.length),

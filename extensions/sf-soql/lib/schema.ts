@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Schema describe and relationship helpers for sf-soql. */
 
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, describeSObject } from "./api.ts";
 import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
@@ -32,7 +32,11 @@ export async function schemaDescribe(conn: Connection, params: SfSoqlParams): Pr
       `relationships=${describe.childRelationships?.length ?? 0}`,
     ],
     api_calls: [
-      apiCall("GET", `/sobjects/${describe.name}/describe`, `fields=${describe.fields.length}`),
+      apiCall(
+        "GET",
+        conn.path(`/sobjects/${describe.name}/describe`),
+        `fields=${describe.fields.length}`,
+      ),
     ],
     output_mode: params.output_mode,
     schema_preview: {
@@ -85,7 +89,9 @@ export async function schemaRelationships(
     title: `SOQL Relationships · ${describe.name}`,
     org: { alias: params.target_org, api_version: apiVersion(conn) },
     meta: [`parents=${parentRefs.length}`, `children=${childRels.length}`],
-    api_calls: [apiCall("GET", `/sobjects/${describe.name}/describe`, "relationships=true")],
+    api_calls: [
+      apiCall("GET", conn.path(`/sobjects/${describe.name}/describe`), "relationships=true"),
+    ],
     sections: [
       section(
         "⬆️",

@@ -22,7 +22,6 @@ import {
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
-import { clearConnectionCache } from "../../lib/common/sf-conn/connection.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { registerSfSoqlTool } from "./lib/sf-soql-tool.ts";
 
@@ -50,10 +49,8 @@ export default function (pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-soql")) return;
 
   pi.on("session_start", async () => {
-    clearConnectionCache();
     registerSfSoqlTool(pi);
   });
-  pi.on("session_shutdown", async () => clearConnectionCache());
 
   pi.registerCommand(COMMAND_NAME, {
     description: "SF SOQL — query lifecycle status & controls",

@@ -7,7 +7,7 @@
   "defaultEnabled": true,
   "commands": ["/sf-soql"],
   "tools": ["sf_soql"],
-  "events": ["session_start", "session_shutdown"],
+  "events": ["session_start"],
   "docs": {
     "summary": "Owns the schema-aware SOQL query loop in pi: native org preflight, sObject search/describe, relationship discovery, query drafting, validation, query explain, bounded sample/run/count/queryAll, SOSL run, query export, file diagnostics, history rerun, compact SOQL Run Digests, human SOQL Result Cards, and persisted SOQL Artifacts. Broad data exploration remains with sf-data-explorer; data mutation remains out of scope.",
     "primaryFiles": [

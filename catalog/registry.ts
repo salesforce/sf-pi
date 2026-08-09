@@ -316,7 +316,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-soql"],
     tools: ["sf_soql"],
-    events: ["session_start","session_shutdown"],
+    events: ["session_start"],
   },
   {
     id: "sf-tldraw",

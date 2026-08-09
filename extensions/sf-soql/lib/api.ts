@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Native Salesforce API helpers for sf-soql. */
+/** SF SOQL domain helpers over the shared Salesforce Connection Module. */
 
-import type { Connection } from "@salesforce/core";
-import { connFromAlias, resolveOrgIdentity } from "../../../lib/common/sf-conn/connection.ts";
-import { connRequest, type HttpMethod } from "../../../lib/common/sf-conn/request.ts";
+import type {
+  HttpMethod,
+  SalesforceSession,
+  SalesforceQueryResult as SharedQueryResult,
+} from "../../../lib/common/sf-conn/index.ts";
 import type {
   SalesforceQueryResult,
   SalesforceSearchResult,
@@ -15,104 +17,82 @@ import type {
 const SOQL_CONNECTION_TIMEOUT_MS = 90_000;
 const SOQL_REQUEST_TIMEOUT_MS = 120_000;
 
-export async function soqlConnection(
-  targetOrg?: string,
-  signal?: AbortSignal,
-): Promise<Connection> {
-  return connFromAlias(targetOrg, { timeoutMs: SOQL_CONNECTION_TIMEOUT_MS, signal });
+export type SoqlConnection = SalesforceSession;
+
+export function apiVersion(sf: SoqlConnection): string {
+  return sf.target.apiVersion;
 }
 
-export function apiVersion(conn: Connection): string {
-  const value =
-    (conn as unknown as { getApiVersion?: () => string; version?: string }).getApiVersion?.() ??
-    (conn as unknown as { version?: string }).version ??
-    "67.0";
-  return String(value).replace(/^v/, "");
+export function orgAlias(sf: SoqlConnection, fallback?: string): string | undefined {
+  return fallback ?? sf.target.alias ?? sf.target.targetOrg ?? sf.target.username;
 }
 
-export function orgAlias(conn: Connection, fallback?: string): string | undefined {
-  return (
-    fallback ??
-    (conn as unknown as { getUsername?: () => string }).getUsername?.() ??
-    (conn as unknown as { username?: string }).username
-  );
-}
-
-export async function currentUserId(conn: Connection): Promise<string | undefined> {
+export async function currentUserId(sf: SoqlConnection): Promise<string | undefined> {
   try {
-    return (await resolveOrgIdentity(conn, { timeoutMs: SOQL_CONNECTION_TIMEOUT_MS })).user_id;
+    return (await sf.identity({ timeoutMs: SOQL_CONNECTION_TIMEOUT_MS })).user_id;
   } catch {
     return undefined;
   }
 }
 
 export async function requestJson<T>(
-  conn: Connection,
+  sf: SoqlConnection,
   method: HttpMethod,
-  url: string,
+  path: string,
   body?: unknown,
+  query?: Record<string, string>,
 ): Promise<T> {
-  const response = await connRequest<T>(conn, {
+  const response = await sf.request<T>({
     method,
-    url,
+    path,
     body,
+    query,
     timeoutMs: SOQL_REQUEST_TIMEOUT_MS,
   });
   if (response.status >= 400) {
     throw new Error(
-      `Salesforce API ${method} ${url} failed (${response.status}): ${JSON.stringify(response.body)}`,
+      `Salesforce API ${method} ${response.path.split("?", 1)[0]} failed (${response.status}).`,
     );
   }
   return response.body;
 }
 
 export async function restQuery(
-  conn: Connection,
+  sf: SoqlConnection,
   query: string,
   mode: SoqlApiMode,
   maxRows: number,
 ): Promise<SalesforceQueryResult> {
-  const records: SalesforceQueryResult["records"] = [];
-  let first = await queryOnce(conn, query, mode);
-  records.push(...first.records.slice(0, maxRows));
-  while (!first.done && first.nextRecordsUrl && records.length < maxRows) {
-    first = await requestJson<SalesforceQueryResult>(conn, "GET", first.nextRecordsUrl);
-    records.push(...first.records.slice(0, Math.max(0, maxRows - records.length)));
-  }
-  return { ...first, records, done: first.done };
-}
-
-async function queryOnce(
-  conn: Connection,
-  query: string,
-  mode: SoqlApiMode,
-): Promise<SalesforceQueryResult> {
-  const encoded = encodeURIComponent(query);
-  const prefix = mode === "tooling" ? "/tooling" : "";
-  return requestJson<SalesforceQueryResult>(
-    conn,
-    "GET",
-    `/services/data/v${apiVersion(conn)}${prefix}/query/?q=${encoded}`,
+  return toSoqlQueryResult(
+    await sf.query({ soql: query, api: mode, maxRows, timeoutMs: SOQL_REQUEST_TIMEOUT_MS }),
   );
 }
 
 export async function queryAll(
-  conn: Connection,
+  sf: SoqlConnection,
   query: string,
   maxRows: number,
 ): Promise<SalesforceQueryResult> {
-  const records: SalesforceQueryResult["records"] = [];
-  let page = await requestJson<SalesforceQueryResult>(
-    conn,
-    "GET",
-    `/services/data/v${apiVersion(conn)}/queryAll/?q=${encodeURIComponent(query)}`,
+  return toSoqlQueryResult(
+    await sf.query({
+      soql: query,
+      api: "rest",
+      queryAll: true,
+      maxRows,
+      timeoutMs: SOQL_REQUEST_TIMEOUT_MS,
+    }),
   );
-  records.push(...page.records.slice(0, maxRows));
-  while (!page.done && page.nextRecordsUrl && records.length < maxRows) {
-    page = await requestJson<SalesforceQueryResult>(conn, "GET", page.nextRecordsUrl);
-    records.push(...page.records.slice(0, Math.max(0, maxRows - records.length)));
-  }
-  return { ...page, records, done: page.done };
+}
+
+function toSoqlQueryResult(
+  result: SharedQueryResult<Record<string, unknown>>,
+): SalesforceQueryResult {
+  return {
+    totalSize: result.totalSize ?? result.records.length,
+    done: result.done,
+    records: result.records,
+    nextRecordsUrl: result.nextRecordsUrl,
+  };
 }
 
 export interface QueryPlanResponse {
@@ -127,42 +107,33 @@ export interface QueryPlanResponse {
   }>;
 }
 
-export async function explainQuery(conn: Connection, query: string): Promise<QueryPlanResponse> {
-  return requestJson<QueryPlanResponse>(
-    conn,
-    "GET",
-    `/services/data/v${apiVersion(conn)}/query?explain=${encodeURIComponent(query)}`,
-  );
+export async function explainQuery(sf: SoqlConnection, query: string): Promise<QueryPlanResponse> {
+  return requestJson<QueryPlanResponse>(sf, "GET", "/query", undefined, { explain: query });
 }
 
 export async function describeSObject(
-  conn: Connection,
+  sf: SoqlConnection,
   objectName: string,
 ): Promise<SObjectDescribe> {
   return requestJson<SObjectDescribe>(
-    conn,
+    sf,
     "GET",
-    `/services/data/v${apiVersion(conn)}/sobjects/${encodeURIComponent(objectName)}/describe`,
+    `/sobjects/${encodeURIComponent(objectName)}/describe`,
   );
 }
 
-export async function soslSearch(conn: Connection, sosl: string): Promise<SalesforceSearchResult> {
-  return requestJson<SalesforceSearchResult>(
-    conn,
-    "GET",
-    `/services/data/v${apiVersion(conn)}/search/?q=${encodeURIComponent(sosl)}`,
-  );
+export async function soslSearch(
+  sf: SoqlConnection,
+  sosl: string,
+): Promise<SalesforceSearchResult> {
+  return requestJson<SalesforceSearchResult>(sf, "GET", "/search/", undefined, { q: sosl });
 }
 
-export async function orgLimits(conn: Connection): Promise<Record<string, unknown>> {
-  return requestJson<Record<string, unknown>>(
-    conn,
-    "GET",
-    `/services/data/v${apiVersion(conn)}/limits`,
-  );
+export async function orgLimits(sf: SoqlConnection): Promise<Record<string, unknown>> {
+  return requestJson<Record<string, unknown>>(sf, "GET", "/limits");
 }
 
-export async function listSObjects(conn: Connection): Promise<{
+export async function listSObjects(sf: SoqlConnection): Promise<{
   sobjects?: Array<{
     name: string;
     label?: string;
@@ -179,7 +150,7 @@ export async function listSObjects(conn: Connection): Promise<{
       queryable?: boolean;
       searchable?: boolean;
     }>;
-  }>(conn, "GET", `/services/data/v${apiVersion(conn)}/sobjects`);
+  }>(sf, "GET", "/sobjects");
 }
 
 export function apiCall(method: string, path: string, detail?: string): SoqlApiCallRailItem {

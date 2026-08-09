@@ -19,21 +19,19 @@ product, report builder, or CLI wrapper. Broad human exploration remains with
 ```text
 Extension loads
   ├─ register /sf-soql command
-  └─ session_start
-       ├─ clear cached Salesforce connections
-       └─ register sf_soql tool
+  └─ session_start → register sf_soql tool
 
 sf_soql action
-  ├─ resolves @salesforce/core connection lazily
-  ├─ runs native REST/Tooling API calls
+  ├─ enters the shared Salesforce Connection Module
+  ├─ resolves target + latest/configured-fallback API version lazily
+  ├─ runs bounded native REST/Tooling API calls
   ├─ writes raw/flattened evidence as SOQL Artifacts
   └─ returns compact SOQL Run Digest + human SOQL Result Card
 ```
 
 ## Key Architecture Decisions
 
-- **API-native hot path** — actions use `@salesforce/core` plus REST/Tooling APIs;
-  recurring CLI gaps should become native actions instead of subprocess fallbacks.
+- **Shared API-native hot path** — actions use the common Salesforce Connection Module for target resolution, latest-first API-version selection, authentication, and bounded REST/Tooling calls; recurring CLI gaps should become native actions instead of subprocess fallbacks.
 - **One family tool** — `sf_soql` uses dotted actions to keep prompt footprint low.
 - **Bounded execution** — `query.sample` defaults to a small limit, and `query.run`
   safety-gates broad queries without `LIMIT` unless `max_rows` or `allow_unbounded`
@@ -58,8 +56,7 @@ sf_soql action
 | Event/Trigger             | Condition                       | Result                                                                  |
 | ------------------------- | ------------------------------- | ----------------------------------------------------------------------- |
 | extension load            | always                          | Register `/sf-soql` command.                                            |
-| session_start             | extension enabled               | Register `sf_soql` tool and clear connections.                          |
-| session_shutdown          | always                          | Clear cached Salesforce connections.                                    |
+| session_start             | extension enabled               | Register `sf_soql`; the shared Module owns connection lifecycle.        |
 | `/sf-soql`                | interactive                     | Open the SF SOQL panel.                                                 |
 | `/sf-soql status`         | any mode                        | Print concise extension status.                                         |
 | `sf_soql org.preflight`   | explicit tool call              | Check native query readiness.                                           |
@@ -139,6 +136,7 @@ extensions/sf-soql/
     flattener.test.ts       ← unit / smoke test
     parser.test.ts          ← unit / smoke test
     render.test.ts          ← unit / smoke test
+    shared-connection.test.ts← unit / smoke test
     smoke.test.ts           ← unit / smoke test
   AGENT_GUIDE.md            ← supporting file
   index.ts                  ← Pi extension entry point

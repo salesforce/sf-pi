@@ -9,8 +9,16 @@
 
 import path from "node:path";
 import type { ConfigAggregator as ConfigAggregatorClass, Connection } from "@salesforce/core";
-import { clearConnectionCache, clearConnectionCacheEntry, orgFromAlias } from "./connection.ts";
+import {
+  clearConnectionCache,
+  clearConnectionCacheEntry,
+  orgFromAlias,
+  resolveOrgIdentity,
+  type OrgIdentity,
+  type ResolveOrgIdentityOptions,
+} from "./connection.ts";
 import { connRequest, type HttpMethod } from "./request.ts";
+export type { HttpMethod } from "./request.ts";
 import {
   buildSalesforceApiPath,
   isVersionedSalesforceResource,
@@ -103,6 +111,7 @@ export interface SalesforceSession {
   readonly target: SalesforceTarget;
   /** Verified/configured SDK connection for SDK-only, SOAP, and metadata operations. */
   readonly connection: Connection;
+  identity(options?: ResolveOrgIdentityOptions): Promise<OrgIdentity>;
   path(resource: string, query?: SalesforceQueryParams): string;
   request<T = unknown>(input: SalesforceRequestInput): Promise<SalesforceResponse<T>>;
   query<T = Record<string, unknown>>(
@@ -464,7 +473,10 @@ function createSession(connection: Connection, target: SalesforceTarget): Salesf
     };
   };
 
-  return { target, connection, path: buildPublicPath, request, query };
+  const identity = (options?: ResolveOrgIdentityOptions): Promise<OrgIdentity> =>
+    resolveOrgIdentity(connection, options);
+
+  return { target, connection, identity, path: buildPublicPath, request, query };
 }
 
 interface QueryPage<T> {

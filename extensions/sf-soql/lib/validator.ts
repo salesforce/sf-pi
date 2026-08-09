@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Parse + describe-backed SOQL validation. */
 
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, describeSObject } from "./api.ts";
 import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
@@ -49,7 +49,7 @@ export async function validateQuery(conn: Connection, params: SfSoqlParams): Pro
     apiCalls.push(
       apiCall(
         "GET",
-        `/sobjects/${shape.primary_object}/describe`,
+        conn.path(`/sobjects/${shape.primary_object}/describe`),
         `fields=${describe.fields.length}`,
       ),
     );
@@ -105,7 +105,7 @@ export async function validateQuery(conn: Connection, params: SfSoqlParams): Pro
     apiCalls.push(
       apiCall(
         "GET",
-        "/query?explain=SELECT...",
+        conn.path("/query", { explain: "SELECT..." }),
         plan.relative_cost !== undefined ? `cost=${plan.relative_cost}` : undefined,
       ),
     );

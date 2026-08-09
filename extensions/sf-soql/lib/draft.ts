@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Deterministic SOQL draft generation from explicit intent/object/fields/filters. */
 
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, describeSObject } from "./api.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { parseSoql } from "./parser.ts";
@@ -66,7 +66,11 @@ export async function queryDraft(conn: Connection, params: SfSoqlParams): Promis
           ],
     },
     api_calls: [
-      apiCall("GET", `/sobjects/${objectName}/describe`, `fields=${describe.fields.length}`),
+      apiCall(
+        "GET",
+        conn.path(`/sobjects/${objectName}/describe`),
+        `fields=${describe.fields.length}`,
+      ),
     ],
     sections: [
       section("📝", "Draft", [

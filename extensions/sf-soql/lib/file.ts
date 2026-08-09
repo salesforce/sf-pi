@@ -3,7 +3,7 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Connection } from "@salesforce/core";
+import type { SoqlConnection as Connection } from "./api.ts";
 import { apiVersion } from "./api.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { parseSoql } from "./parser.ts";

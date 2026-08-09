@@ -5,7 +5,7 @@ import { Text } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
-import { soqlConnection } from "./api.ts";
+import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
 import { errorResult } from "./errors.ts";
 import { renderSoqlResultMarkdown } from "./render.ts";
 import type { SfSoqlParams, SfSoqlSessionState, ToolResult } from "./types.ts";
@@ -126,7 +126,11 @@ export function registerSfSoqlTool(pi: ExtensionAPI): void {
       const params = rawParams as SfSoqlParams;
       try {
         if (params.action === "history.last") return lastHistory(state);
-        const conn = await soqlConnection(params.target_org, signal);
+        const conn = await connectSalesforce({
+          cwd: ctx.cwd,
+          targetOrg: params.target_org,
+          signal,
+        });
         switch (params.action) {
           case "status":
             return status(conn, params);
