@@ -24,7 +24,7 @@ import path from "node:path";
 // Config reads remain lazy so importing environment status code does not load
 // the Salesforce SDK or contact an org on the boot path.
 import type { ConfigAggregator as ConfigAggregatorClass } from "@salesforce/core";
-import { connectSalesforce } from "../sf-conn/index.ts";
+import { connectSalesforce, getCachedSalesforceTarget } from "../sf-conn/index.ts";
 
 const DETECT_ORG_TIMEOUT_MS = 10_000;
 
@@ -215,7 +215,8 @@ function normalizeConfigLocation(
 // -------------------------------------------------------------------------------------------------
 
 /**
- * Resolve org details for `targetOrg` via the cached `Org`. No subprocess.
+ * Resolve local/cached org details for status presentation. Only an explicit
+ * refresh performs authoritative API-version discovery.
  */
 export interface DetectOrgOptions {
   /** Recreate the shared target session. Used only by explicit user refreshes. */
@@ -228,24 +229,46 @@ export async function detectOrg(
   options: DetectOrgOptions = {},
 ): Promise<OrgInfo> {
   try {
-    const session = await connectSalesforce({
-      cwd: options.cwd ?? process.cwd(),
+    const cwd = options.cwd ?? process.cwd();
+    if (options.freshConnection) {
+      const session = await connectSalesforce({
+        cwd,
+        targetOrg,
+        fresh: true,
+        timeoutMs: DETECT_ORG_TIMEOUT_MS,
+      });
+      return {
+        detected: true,
+        alias: session.target.alias ?? targetOrg,
+        username: session.target.username,
+        orgId: session.target.orgId,
+        instanceUrl: session.target.instanceUrl,
+        orgType: session.target.orgType,
+        connectedStatus: "Connected",
+        apiVersion: session.target.apiVersion,
+        apiVersionSource: session.target.versionSource === "org-latest" ? "resolved" : "configured",
+        namespacePrefix: session.target.namespacePrefix,
+        orgEdition: session.target.orgEdition,
+      };
+    }
+
+    const target = await getCachedSalesforceTarget({
+      cwd,
       targetOrg,
-      fresh: options.freshConnection,
       timeoutMs: DETECT_ORG_TIMEOUT_MS,
     });
     return {
       detected: true,
-      alias: session.target.alias ?? targetOrg,
-      username: session.target.username,
-      orgId: session.target.orgId,
-      instanceUrl: session.target.instanceUrl,
-      orgType: session.target.orgType,
+      alias: target.alias ?? targetOrg,
+      username: target.username,
+      orgId: target.orgId,
+      instanceUrl: target.instanceUrl,
+      orgType: target.orgType,
       connectedStatus: "Connected",
-      apiVersion: session.target.apiVersion,
-      apiVersionSource: session.target.versionSource === "org-latest" ? "resolved" : "configured",
-      namespacePrefix: session.target.namespacePrefix,
-      orgEdition: session.target.orgEdition,
+      apiVersion: target.apiVersion,
+      apiVersionSource: target.apiVersionSource,
+      namespacePrefix: target.namespacePrefix,
+      orgEdition: target.orgEdition,
     };
   } catch (err) {
     return {
@@ -353,7 +376,7 @@ export async function detectEnvironment(
   // Layer 3: Config (in-process, ConfigAggregator)
   const config = await detectConfig(cwd);
 
-  // Layer 4: Org (in-process, cached Org/Connection)
+  // Layer 4: Org (local/cache-first unless this is an explicit deep refresh)
   let org: OrgInfo;
   if (config.hasTargetOrg && config.targetOrg) {
     org = await detectOrg(config.targetOrg, {

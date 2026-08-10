@@ -196,11 +196,11 @@ describe("resolveOrgIdentity", () => {
     expect(conn.identity).not.toHaveBeenCalled();
   });
 
-  test("refreshes auth once when bounded userinfo returns 401/403", async () => {
+  test("refreshes auth once when bounded userinfo returns 401", async () => {
     const mod = await import("../sf-conn/connection.ts");
     const fetchImpl = vi
       .fn()
-      .mockResolvedValueOnce(new Response("", { status: 403 }))
+      .mockResolvedValueOnce(new Response("", { status: 401 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -235,6 +235,135 @@ describe("resolveOrgIdentity", () => {
     expect(fetchImpl.mock.calls[1][1]).toEqual(
       expect.objectContaining({ headers: { Authorization: "Bearer NEW" } }),
     );
+  });
+
+  test("shares one auth refresh with a concurrent REST request", async () => {
+    const mod = await import("../sf-conn/connection.ts");
+    const { connRequest } = await import("../sf-conn/request.ts");
+    let releaseRefresh!: () => void;
+    const refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const requestFetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const token = new Headers(init?.headers).get("Authorization");
+      return token === "Bearer OLD"
+        ? new Response(JSON.stringify([{ errorCode: "INVALID_SESSION_ID" }]), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          })
+        : new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+    });
+    const identityFetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      const token = new Headers(init?.headers).get("Authorization");
+      return token === "Bearer OLD"
+        ? new Response("", { status: 401 })
+        : new Response(
+            JSON.stringify({
+              user_id: "005000000000001",
+              organization_id: "00D000000000001",
+            }),
+            { status: 200 },
+          );
+    });
+    vi.stubGlobal("fetch", requestFetch);
+    const conn = {
+      accessToken: "OLD",
+      instanceUrl: "https://example.my.salesforce.com",
+      refreshAuth: vi.fn().mockImplementation(async function (this: { accessToken: string }) {
+        await refreshGate;
+        this.accessToken = "NEW";
+      }),
+      request: vi.fn(),
+      identity: vi.fn(),
+    } as unknown as Connection;
+
+    const request = connRequest(conn, { method: "GET", url: "/services/data/v67.0/limits" });
+    const identity = mod.resolveOrgIdentity(conn, { fetchImpl: identityFetch });
+    await vi.waitFor(() => {
+      expect(requestFetch).toHaveBeenCalledTimes(1);
+      expect(identityFetch).toHaveBeenCalledTimes(1);
+      expect(
+        (conn as unknown as { refreshAuth: ReturnType<typeof vi.fn> }).refreshAuth,
+      ).toHaveBeenCalled();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      (conn as unknown as { refreshAuth: ReturnType<typeof vi.fn> }).refreshAuth,
+    ).toHaveBeenCalledTimes(1);
+
+    releaseRefresh();
+    await expect(request).resolves.toEqual({ status: 200, body: { ok: true } });
+    await expect(identity).resolves.toMatchObject({
+      org_id: "00D000000000001",
+      user_id: "005000000000001",
+    });
+    expect(
+      (conn as unknown as { refreshAuth: ReturnType<typeof vi.fn> }).refreshAuth,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  test("uses one total timeout across userinfo, auth refresh, and retry", async () => {
+    vi.useFakeTimers();
+    const mod = await import("../sf-conn/connection.ts");
+    const fetchImpl = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          setTimeout(() => resolve(new Response("", { status: 401 })), 60);
+        }),
+    );
+    const conn = {
+      accessToken: "OLD",
+      instanceUrl: "https://example.my.salesforce.com",
+      refreshAuth: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            setTimeout(resolve, 60);
+          }),
+      ),
+      identity: vi.fn(),
+    } as unknown as Connection;
+
+    let settled = false;
+    const pending = mod
+      .resolveOrgIdentity(conn, { fetchImpl, timeoutMs: 100 })
+      .catch((error: unknown) => error)
+      .finally(() => {
+        settled = true;
+      });
+    await vi.advanceTimersByTimeAsync(60);
+    await vi.advanceTimersByTimeAsync(40);
+    const settledAtDeadline = settled;
+    await vi.advanceTimersByTimeAsync(100);
+
+    await expect(pending).resolves.toMatchObject({
+      name: "OrgIdentityTimeoutError",
+      timedOutAfterMs: 100,
+    });
+    expect(settledAtDeadline).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  test("does not refresh bounded userinfo after a permission 403", async () => {
+    const mod = await import("../sf-conn/connection.ts");
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status: 403 }));
+    const conn = {
+      accessToken: "TOKEN",
+      instanceUrl: "https://example.my.salesforce.com",
+      refreshAuth: vi.fn(),
+      identity: vi.fn().mockResolvedValue({}),
+    } as unknown as Connection;
+
+    await expect(mod.resolveOrgIdentity(conn, { fetchImpl })).rejects.toMatchObject({
+      name: "OrgIdentityHttpError",
+      status: 403,
+    });
+    expect(
+      (conn as unknown as { refreshAuth: ReturnType<typeof vi.fn> }).refreshAuth,
+    ).not.toHaveBeenCalled();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   test("falls back to bounded conn.identity when no access token is available", async () => {

@@ -28,7 +28,9 @@ The Module never uses JSforce's implicit API `50.0`, a project `sourceApiVersion
 
 Callers provide versionless resource paths. The Module returns target/version provenance with every result and exposes its already-versioned SDK Connection only for genuine SDK, SOAP, or metadata operations. Product-specific hosts such as Agentforce Evaluation or SFAP remain extension-owned Adapters, while their ordinary Salesforce instance REST/SOQL and base org identity use the shared Module.
 
-Status-only surfaces remain cache-first and can display a **Last-Known Usable Status**, but cached presentation state does not authorize a Salesforce request.
+Authentication refresh is single-flight per SDK Connection. A request retries once only after a definite expired-session response (HTTP 401 or `INVALID_SESSION_ID`), never after an ordinary permission 403, and it retains the originally selected API version.
+
+Status-only surfaces remain cache-first and can display a **Last-Known Usable Status**, but cached presentation state does not authorize a Salesforce request. They use `getCachedSalesforceTarget()` to read local auth/config presentation facts without API discovery; only an explicit refresh may call `connectSalesforce()`.
 
 ## Consequences
 

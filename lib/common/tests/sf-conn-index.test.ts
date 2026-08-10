@@ -24,6 +24,7 @@ import {
   beginSalesforceConnectionSession,
   clearSalesforceConnectionCache,
   connectSalesforce,
+  getCachedSalesforceTarget,
   salesforceSessionForConnection,
 } from "../sf-conn/index.ts";
 
@@ -101,6 +102,41 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
   clearSalesforceConnectionCache();
+});
+
+describe("getCachedSalesforceTarget presentation state", () => {
+  test("reads local auth state without API discovery and labels SDK 50 as fallback", async () => {
+    const conn = fakeConnection("50.0");
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const target = await getCachedSalesforceTarget({ cwd: "/workspace" });
+
+    expect(target).toMatchObject({
+      targetOrg: "ExampleOrg",
+      alias: "ExampleOrg",
+      apiVersion: "50.0",
+      apiVersionSource: "sdk-fallback",
+      orgType: "sandbox",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(conn.setApiVersion).not.toHaveBeenCalled();
+  });
+
+  test("labels an explicit configured connection API without discovering org latest", async () => {
+    mockConfig("ExampleOrg", "50.0");
+    const conn = fakeConnection("50.0");
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const target = await getCachedSalesforceTarget({ cwd: "/workspace" });
+
+    expect(target.apiVersion).toBe("50.0");
+    expect(target.apiVersionSource).toBe("configured");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("connectSalesforce version selection", () => {
@@ -372,6 +408,27 @@ describe("Salesforce connection cache and refresh", () => {
     await expect(patient).resolves.toMatchObject({ target: { apiVersion: "67.0" } });
   });
 
+  test("cache reset does not register a superseded in-flight session", async () => {
+    const conn = fakeConnection();
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    let resolveDiscovery: ((response: Response) => void) | undefined;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveDiscovery = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = connectSalesforce({ cwd: "/workspace", timeoutMs: 5_000 });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    clearSalesforceConnectionCache();
+    resolveDiscovery?.(versionsResponse("67.0"));
+    const superseded = await pending;
+
+    expect(salesforceSessionForConnection(superseded.connection)).toBeUndefined();
+  });
+
   test("fresh connection replaces only the matching cwd and target", async () => {
     const oldConn = fakeConnection();
     const freshConn = fakeConnection();
@@ -591,6 +648,19 @@ describe("SalesforceSession request and query", () => {
     expect(response.status).toBe(500);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[0]).toContain("/services/data/v67.0/example");
+  });
+
+  test("rejects fractional maxRows before issuing a query", async () => {
+    const conn = fakeConnection();
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    const fetchMock = vi.fn().mockResolvedValue(versionsResponse("67.0"));
+    vi.stubGlobal("fetch", fetchMock);
+    const sf = await connectSalesforce({ cwd: "/workspace" });
+
+    await expect(sf.query({ soql: "SELECT Id FROM Account", maxRows: 1.9 })).rejects.toThrow(
+      /positive integer/i,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   test("query paginates through the shared request seam and enforces maxRows", async () => {

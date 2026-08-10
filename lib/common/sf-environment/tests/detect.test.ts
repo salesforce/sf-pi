@@ -20,6 +20,7 @@ import path from "node:path";
 const configGetInfoMock = vi.fn<(key: string) => unknown>();
 const configCreateMock = vi.fn();
 const connectSalesforceMock = vi.fn();
+const getCachedSalesforceTargetMock = vi.fn();
 
 vi.mock("@salesforce/core", () => ({
   ConfigAggregator: {
@@ -29,6 +30,7 @@ vi.mock("@salesforce/core", () => ({
 
 vi.mock("../../sf-conn/index.ts", () => ({
   connectSalesforce: (options: unknown) => connectSalesforceMock(options),
+  getCachedSalesforceTarget: (options: unknown) => getCachedSalesforceTargetMock(options),
 }));
 
 // orgFromAlias caches Org promises — clear between tests.
@@ -37,6 +39,7 @@ beforeEach(async () => {
   configCreateMock.mockReset();
   configCreateMock.mockResolvedValue({ getInfo: configGetInfoMock });
   connectSalesforceMock.mockReset();
+  getCachedSalesforceTargetMock.mockReset();
 });
 
 import {
@@ -102,6 +105,31 @@ afterEach(() => {
  * Build a fake Org-like object that exposes the surface readOrgInfo touches.
  * `authFields` becomes the AuthInfoFields jsforce returns.
  */
+function fakeTarget(opts: {
+  alias?: string;
+  username?: string;
+  orgId?: string;
+  instanceUrl?: string;
+  orgType?: "sandbox" | "scratch" | "developer" | "production";
+  apiVersion?: string;
+  apiVersionSource?: "configured" | "resolved" | "sdk-fallback" | "unknown";
+  namespacePrefix?: string | null;
+  orgEdition?: string;
+}) {
+  return {
+    targetOrg: opts.alias ?? "RequestedOrg",
+    alias: opts.alias,
+    username: opts.username,
+    orgId: opts.orgId,
+    instanceUrl: opts.instanceUrl ?? "https://example.sandbox.my.salesforce.com",
+    orgType: opts.orgType ?? "sandbox",
+    apiVersion: opts.apiVersion ?? "67.0",
+    apiVersionSource: opts.apiVersionSource ?? "resolved",
+    namespacePrefix: opts.namespacePrefix,
+    orgEdition: opts.orgEdition,
+  };
+}
+
 function fakeSession(opts: {
   alias?: string;
   username?: string;
@@ -379,15 +407,16 @@ describe("inferOrgType", () => {
 // -------------------------------------------------------------------------------------------------
 
 describe("detectOrg", () => {
-  it("projects shared target facts into OrgInfo", async () => {
-    connectSalesforceMock.mockResolvedValueOnce(
-      fakeSession({
+  it("projects cache-first target facts without live API discovery", async () => {
+    getCachedSalesforceTargetMock.mockResolvedValueOnce(
+      fakeTarget({
         alias: "TestOrg",
         username: "user@test.com",
         orgId: "00D000000000001",
         instanceUrl: "https://test.sandbox.my.salesforce.com",
         orgType: "sandbox",
-        apiVersion: "67.0",
+        apiVersion: "50.0",
+        apiVersionSource: "sdk-fallback",
         namespacePrefix: "pkg",
         orgEdition: "Enterprise Edition",
       }),
@@ -398,36 +427,44 @@ describe("detectOrg", () => {
       detected: true,
       alias: "TestOrg",
       orgType: "sandbox",
-      apiVersion: "67.0",
-      apiVersionSource: "resolved",
+      apiVersion: "50.0",
+      apiVersionSource: "sdk-fallback",
       connectedStatus: "Connected",
       orgId: "00D000000000001",
       namespacePrefix: "pkg",
       orgEdition: "Enterprise Edition",
     });
+    expect(getCachedSalesforceTargetMock).toHaveBeenCalledWith({
+      cwd: "/workspace",
+      targetOrg: "TestOrg",
+      timeoutMs: 10_000,
+    });
+    expect(connectSalesforceMock).not.toHaveBeenCalled();
+  });
+
+  it("uses authoritative discovery only for explicit refresh", async () => {
+    connectSalesforceMock.mockResolvedValueOnce(
+      fakeSession({ alias: "TestOrg", apiVersion: "67.0", versionSource: "org-latest" }),
+    );
+
+    const result = await detectOrg("TestOrg", { cwd: "/workspace", freshConnection: true });
+
+    expect(result.apiVersion).toBe("67.0");
+    expect(result.apiVersionSource).toBe("resolved");
     expect(connectSalesforceMock).toHaveBeenCalledWith({
       cwd: "/workspace",
       targetOrg: "TestOrg",
-      fresh: undefined,
+      fresh: true,
       timeoutMs: 10_000,
     });
+    expect(getCachedSalesforceTargetMock).not.toHaveBeenCalled();
   });
 
-  it("maps configured fallback provenance without treating it as an org release", async () => {
-    connectSalesforceMock.mockResolvedValueOnce(
-      fakeSession({ alias: "PinnedOrg", apiVersion: "62.0", versionSource: "configured-fallback" }),
-    );
-
-    const result = await detectOrg("PinnedOrg");
-    expect(result.apiVersion).toBe("62.0");
-    expect(result.apiVersionSource).toBe("configured");
-  });
-
-  it("captures shared connection errors as undetected org state", async () => {
-    connectSalesforceMock.mockRejectedValueOnce(new Error("auth expired"));
+  it("captures local target errors as undetected org state", async () => {
+    getCachedSalesforceTargetMock.mockRejectedValueOnce(new Error("auth missing"));
     const result = await detectOrg("BadOrg");
     expect(result.detected).toBe(false);
-    expect(result.error).toContain("auth expired");
+    expect(result.error).toContain("auth missing");
     expect(result.orgType).toBe("unknown");
   });
 });
@@ -449,15 +486,15 @@ describe("detectEnvironment", () => {
     expect(env.org.detected).toBe(false);
   });
 
-  it("runs the full chain through the shared Salesforce Connection Module", async () => {
+  it("runs the full status chain through the cache-first target seam", async () => {
     const exec = mockExec({
       "sf --version": { stdout: "@salesforce/cli/2.130.9 darwin-arm64\n" },
     });
     configGetInfoMock.mockImplementation((key) =>
       key === "target-org" ? { value: "TestOrg", location: "Global" } : { value: undefined },
     );
-    connectSalesforceMock.mockResolvedValueOnce(
-      fakeSession({ alias: "TestOrg", orgType: "sandbox", apiVersion: "67.0" }),
+    getCachedSalesforceTargetMock.mockResolvedValueOnce(
+      fakeTarget({ alias: "TestOrg", orgType: "sandbox", apiVersion: "67.0" }),
     );
     const dir = createTempDir();
     createSfdxProject(dir);
@@ -471,9 +508,10 @@ describe("detectEnvironment", () => {
       apiVersion: "67.0",
       apiVersionSource: "resolved",
     });
-    expect(connectSalesforceMock).toHaveBeenCalledWith(
+    expect(getCachedSalesforceTargetMock).toHaveBeenCalledWith(
       expect.objectContaining({ cwd: dir, targetOrg: "TestOrg" }),
     );
+    expect(connectSalesforceMock).not.toHaveBeenCalled();
   });
 
   it("skips org resolution when no target-org is configured", async () => {
@@ -484,5 +522,6 @@ describe("detectEnvironment", () => {
     expect(env.config.hasTargetOrg).toBe(false);
     expect(env.org.detected).toBe(false);
     expect(connectSalesforceMock).not.toHaveBeenCalled();
+    expect(getCachedSalesforceTargetMock).not.toHaveBeenCalled();
   });
 });

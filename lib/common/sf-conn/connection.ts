@@ -25,6 +25,10 @@
 // past `session_start` and the user is interacting. The type-only `Connection`
 // import is erased at TS compile time and costs nothing at runtime.
 import type { Org as OrgType, Connection } from "@salesforce/core";
+import {
+  getSalesforceConnectionAccessToken,
+  refreshSalesforceConnectionAuth,
+} from "./auth-refresh.ts";
 
 let orgCtor: typeof OrgType | undefined;
 async function getOrgCtor(): Promise<typeof OrgType> {
@@ -215,13 +219,6 @@ export class OrgIdentityHttpError extends Error {
   }
 }
 
-function getAccessToken(conn: Connection): string | undefined {
-  return (
-    (conn as unknown as { accessToken?: string }).accessToken ??
-    (conn.getConnectionOptions?.() as { accessToken?: string } | undefined)?.accessToken
-  );
-}
-
 async function boundedOrgIdentity<T>(
   promise: Promise<T>,
   opts: ResolveOrgIdentityOptions = {},
@@ -253,7 +250,7 @@ async function fetchOrgIdentity(
   conn: Connection,
   opts: ResolveOrgIdentityOptions,
 ): Promise<{ user_id?: string; organization_id?: string }> {
-  const accessToken = getAccessToken(conn);
+  const accessToken = getSalesforceConnectionAccessToken(conn);
   if (!accessToken) throw new Error("Connection has no access token for bounded userinfo fetch.");
   if (!conn.instanceUrl)
     throw new Error("Connection has no instanceUrl for bounded userinfo fetch.");
@@ -300,7 +297,7 @@ export async function resolveOrgIdentity(
   opts: ResolveOrgIdentityOptions = {},
 ): Promise<OrgIdentity> {
   if (opts.signal?.aborted) throw new OrgIdentityAbortedError();
-  const userInfo = getAccessToken(conn)
+  const userInfo = getSalesforceConnectionAccessToken(conn)
     ? await fetchOrgIdentityWithRefresh(conn, opts)
     : ((await boundedOrgIdentity(conn.identity(), opts)) as {
         user_id?: string;
@@ -323,13 +320,36 @@ async function fetchOrgIdentityWithRefresh(
   conn: Connection,
   opts: ResolveOrgIdentityOptions,
 ): Promise<{ user_id?: string; organization_id?: string }> {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_ORG_IDENTITY_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
+  const remainingOptions = (): ResolveOrgIdentityOptions => ({
+    ...opts,
+    timeoutMs: remainingOrgIdentityTime(deadline, timeoutMs),
+  });
+  const failedAccessToken = getSalesforceConnectionAccessToken(conn);
   try {
-    return await fetchOrgIdentity(conn, opts);
+    return await fetchOrgIdentity(conn, remainingOptions());
   } catch (err) {
-    if (!(err instanceof OrgIdentityHttpError) || ![401, 403].includes(err.status)) throw err;
-    const refreshAuth = (conn as unknown as { refreshAuth?: () => Promise<unknown> }).refreshAuth;
-    if (typeof refreshAuth !== "function") throw err;
-    await boundedOrgIdentity(refreshAuth.call(conn), opts);
-    return fetchOrgIdentity(conn, opts);
+    if (err instanceof OrgIdentityTimeoutError) {
+      throw new OrgIdentityTimeoutError(timeoutMs);
+    }
+    if (!(err instanceof OrgIdentityHttpError) || err.status !== 401) throw err;
+    const pending = refreshSalesforceConnectionAuth(conn, failedAccessToken);
+    if (!pending) throw err;
+    try {
+      await boundedOrgIdentity(pending, remainingOptions());
+      return await fetchOrgIdentity(conn, remainingOptions());
+    } catch (recoveryError) {
+      if (recoveryError instanceof OrgIdentityTimeoutError) {
+        throw new OrgIdentityTimeoutError(timeoutMs);
+      }
+      throw recoveryError;
+    }
   }
+}
+
+function remainingOrgIdentityTime(deadline: number, originalTimeoutMs: number): number {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) throw new OrgIdentityTimeoutError(originalTimeoutMs);
+  return remaining;
 }

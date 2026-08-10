@@ -28,12 +28,14 @@ import {
   normalizeSalesforceResource,
   type SalesforceQueryParams,
 } from "./path.ts";
-import type { OrgType } from "../sf-environment/types.ts";
+import type { ConnectionApiVersionSource, OrgType } from "../sf-environment/types.ts";
 
 const DEFAULT_CONNECTION_TIMEOUT_MS = 90_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 const MAX_QUERY_PAGES = 100;
 const API_VERSION_RE = /^\d+(?:\.\d+)?$/;
+const JSFORCE_DEFAULT_API_VERSION = "50.0";
+const SDK_API_VERSION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 let configAggregatorCtor: typeof ConfigAggregatorClass | undefined;
 async function getConfigAggregatorCtor(): Promise<typeof ConfigAggregatorClass> {
@@ -70,6 +72,28 @@ export interface ConnectSalesforceOptions {
   cwd: string;
   targetOrg?: string;
   fresh?: boolean;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+/** Presentation-only target state read from local auth/config caches. */
+export interface CachedSalesforceTarget {
+  readonly targetOrg: string;
+  readonly alias?: string;
+  readonly username?: string;
+  readonly orgId?: string;
+  readonly instanceUrl: string;
+  readonly orgType: OrgType;
+  readonly namespacePrefix?: string | null;
+  readonly orgEdition?: string;
+  /** Last-known/configured SDK value. Never authorizes a Salesforce request. */
+  readonly apiVersion?: string;
+  readonly apiVersionSource: ConnectionApiVersionSource;
+}
+
+export interface GetCachedSalesforceTargetOptions {
+  cwd: string;
+  targetOrg?: string;
   signal?: AbortSignal;
   timeoutMs?: number;
 }
@@ -146,6 +170,7 @@ interface VersionEntry {
 
 const sessionCache = new Map<string, Promise<SalesforceSession>>();
 let sessionByConnection = new WeakMap<Connection, SalesforceSession>();
+let connectionCacheGeneration = 0;
 const observedSessionStarts = new WeakSet<object>();
 
 export async function connectSalesforce(
@@ -164,7 +189,8 @@ export async function connectSalesforce(
 
   let pending = sessionCache.get(cacheKey);
   if (!pending) {
-    pending = initializeSalesforceSession(config, cacheKey, options.fresh).catch(
+    const generation = connectionCacheGeneration;
+    pending = initializeSalesforceSession(config, cacheKey, options.fresh, generation).catch(
       (error: unknown) => {
         if (sessionCache.get(cacheKey) === pending) {
           sessionCache.delete(cacheKey);
@@ -176,6 +202,64 @@ export async function connectSalesforce(
     sessionCache.set(cacheKey, pending);
   }
   return waitForCaller(pending, remainingCallerTime(deadline, timeoutMs), options.signal);
+}
+
+/**
+ * Read target identity and last-known API presentation state without contacting
+ * Salesforce. This snapshot is never request authority; operations must call
+ * `connectSalesforce()` and complete latest-version discovery.
+ */
+export async function getCachedSalesforceTarget(
+  options: GetCachedSalesforceTargetOptions,
+): Promise<CachedSalesforceTarget> {
+  if (options.signal?.aborted) throw new SalesforceConnectionAbortedError();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_CONNECTION_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
+  const config = await waitForCaller(
+    resolveConnectionConfig(options.cwd, options.targetOrg),
+    remainingCallerTime(deadline, timeoutMs),
+    options.signal,
+  );
+  const cacheKey = connectionCacheKey(options.cwd, config.targetOrg);
+  const org = await orgFromAlias(config.targetOrg, {
+    cacheKey,
+    timeoutMs: remainingCallerTime(deadline, timeoutMs),
+    signal: options.signal,
+  });
+  const connection = org.getConnection();
+  const fields = connection.getAuthInfoFields() as {
+    alias?: string;
+    username?: string;
+    orgId?: string;
+    instanceUrl?: string;
+    isSandbox?: boolean;
+    isScratch?: boolean;
+    isDevHub?: boolean;
+    trailExpirationDate?: string | null;
+    namespacePrefix?: string | null;
+    orgEdition?: string;
+    instanceApiVersion?: string;
+    instanceApiVersionLastRetrieved?: string;
+  };
+  const instanceUrl = fields.instanceUrl ?? connection.instanceUrl;
+  if (!instanceUrl) {
+    throw new SalesforceTargetOrgError(
+      `Resolved Salesforce target '${config.targetOrg}' has no instance URL.`,
+    );
+  }
+  const apiVersion = connection.getApiVersion();
+  return Object.freeze({
+    targetOrg: config.targetOrg,
+    alias: fields.alias,
+    username: fields.username,
+    orgId: fields.orgId,
+    instanceUrl,
+    orgType: inferOrgType(fields, instanceUrl),
+    namespacePrefix: fields.namespacePrefix,
+    orgEdition: fields.orgEdition,
+    apiVersion,
+    apiVersionSource: classifyCachedApiVersion(apiVersion, fields, config.configuredApiVersion),
+  });
 }
 
 /** Return the shared session's already-versioned SDK Connection for SDK-specific adapters. */
@@ -231,6 +315,7 @@ export function beginSalesforceConnectionSession(event: unknown): void {
 
 /** Clear every shared session and underlying SDK Org. Primarily for tests. */
 export function clearSalesforceConnectionCache(): void {
+  connectionCacheGeneration += 1;
   sessionCache.clear();
   sessionByConnection = new WeakMap<Connection, SalesforceSession>();
   clearConnectionCache();
@@ -335,10 +420,40 @@ function normalizeConfiguredApiVersion(value: unknown): string | undefined {
   return normalized;
 }
 
+function classifyCachedApiVersion(
+  apiVersion: string,
+  fields: { instanceApiVersion?: string; instanceApiVersionLastRetrieved?: string },
+  configuredApiVersion: string | undefined,
+): ConnectionApiVersionSource {
+  if (configuredApiVersion) {
+    return configuredApiVersion === apiVersion ? "configured" : "unknown";
+  }
+  if (hasFreshSdkApiVersionCache(apiVersion, fields)) return "resolved";
+  return apiVersion === JSFORCE_DEFAULT_API_VERSION ? "sdk-fallback" : "resolved";
+}
+
+function hasFreshSdkApiVersionCache(
+  apiVersion: string,
+  fields: { instanceApiVersion?: string; instanceApiVersionLastRetrieved?: string },
+): boolean {
+  if (sdkApiVersionCacheDisabled()) return false;
+  if (fields.instanceApiVersion !== apiVersion || !fields.instanceApiVersionLastRetrieved) {
+    return false;
+  }
+  const retrievedAt = Date.parse(fields.instanceApiVersionLastRetrieved);
+  return Number.isFinite(retrievedAt) && Date.now() - retrievedAt <= SDK_API_VERSION_CACHE_TTL_MS;
+}
+
+function sdkApiVersionCacheDisabled(): boolean {
+  const value = process.env.SFDX_IGNORE_API_VERSION_CACHE?.trim().toLowerCase();
+  return value === "true" || value === "1";
+}
+
 async function initializeSalesforceSession(
   config: ResolvedConnectionConfig,
   cacheKey: string,
   fresh = false,
+  generation = connectionCacheGeneration,
 ): Promise<SalesforceSession> {
   const org = await orgFromAlias(config.targetOrg, {
     cacheKey,
@@ -389,7 +504,7 @@ async function initializeSalesforceSession(
   });
 
   const session = createSession(connection, target);
-  sessionByConnection.set(connection, session);
+  if (generation === connectionCacheGeneration) sessionByConnection.set(connection, session);
   return session;
 }
 
@@ -485,10 +600,10 @@ function createSession(connection: Connection, target: SalesforceTarget): Salesf
   const query = async <T = Record<string, unknown>>(
     input: SalesforceQueryInput,
   ): Promise<SalesforceQueryResult<T>> => {
-    const maxRows = Math.floor(input.maxRows);
-    if (!Number.isFinite(maxRows) || maxRows <= 0) {
+    if (!Number.isFinite(input.maxRows) || !Number.isInteger(input.maxRows) || input.maxRows <= 0) {
       throw new Error("Salesforce query maxRows must be a positive integer.");
     }
+    const maxRows = input.maxRows;
     if (input.queryAll && input.api === "tooling") {
       throw new Error("Salesforce queryAll is available only for the REST data API.");
     }
