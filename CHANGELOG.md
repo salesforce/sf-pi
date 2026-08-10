@@ -521,6 +521,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.263.3](https://github.com/salesforce/sf-pi/compare/v0.263.2...v0.263.3) (2026-08-10)
+
+
+### Bug Fixes
+
+* **docs:** make catalog validation fail closed ([8aaac2a](https://github.com/salesforce/sf-pi/commit/8aaac2a9fafdd15a1128d0be0bfdb3b23c2c5579))
+
 ## [0.263.2](https://github.com/salesforce/sf-pi/compare/v0.263.1...v0.263.2) (2026-08-10)
 
 
