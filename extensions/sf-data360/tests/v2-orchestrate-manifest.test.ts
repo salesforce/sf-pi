@@ -8,10 +8,17 @@ const orgCreateMock = vi.fn();
 const requestMock = vi.fn();
 
 vi.mock("@salesforce/core", () => ({
+  ConfigAggregator: {
+    create: () =>
+      Promise.resolve({
+        getInfo: (key: string) => ({ value: key === "target-org" ? "AgentforceSTDM" : undefined }),
+      }),
+  },
   Org: { create: (opts: unknown) => orgCreateMock(opts) },
 }));
 
-import { clearConnectionCache } from "../../../lib/common/sf-conn/connection.ts";
+import { clearSalesforceConnectionCache } from "../../../lib/common/sf-conn/index.ts";
+import { createTestSalesforceOrg } from "./test-salesforce-connection.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { runData360V2Action } from "../lib/v2/dispatcher.ts";
 
@@ -38,10 +45,10 @@ describe("Data 360 v2 CSV manifest orchestration", () => {
   });
 
   beforeEach(() => {
-    clearConnectionCache();
+    clearSalesforceConnectionCache();
     requestMock.mockReset();
     orgCreateMock.mockReset();
-    orgCreateMock.mockResolvedValue({ getConnection: () => ({ request: requestMock }) });
+    orgCreateMock.mockResolvedValue(createTestSalesforceOrg(requestMock));
   });
 
   it("infers an Ingestion API schema from a CSV", async () => {

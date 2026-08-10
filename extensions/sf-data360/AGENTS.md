@@ -13,19 +13,19 @@ Agent rules for editing this extension. Repo-level rules still apply.
 
 ## File map
 
-| Responsibility                                              | File                                |
-| ----------------------------------------------------------- | ----------------------------------- |
-| Extension entry, command, and tool registration             | `index.ts`                          |
-| Registry facade and deterministic runbooks                  | `lib/facade-tool.ts`, `lib/facade/` |
-| Tool registration and raw `@salesforce/core` REST execution | `lib/api-tool.ts`                   |
-| Compact DMO/DLO metadata list and describe helper           | `lib/metadata-tool.ts`              |
-| Read-only Data 360 readiness probe                          | `lib/probe-tool.ts`                 |
-| Read-only sf-pi manager settings panel                      | `lib/config-panel.ts`               |
-| REST path and query-string normalization                    | `lib/path.ts`                       |
-| Method/path safety classification                           | `lib/safety.ts`                     |
-| Output truncation                                           | `lib/truncation.ts`                 |
-| Progressive-disclosure guidance                             | `references/*.md`                   |
-| Generated phase references                                  | `references/phases/*.md`            |
+| Responsibility                                          | File                                |
+| ------------------------------------------------------- | ----------------------------------- |
+| Extension entry, command, and tool registration         | `index.ts`                          |
+| Registry facade and deterministic runbooks              | `lib/facade-tool.ts`, `lib/facade/` |
+| Tool registration and shared Salesforce REST execution  | `lib/api-tool.ts`                   |
+| Compact DMO/DLO metadata list and describe helper       | `lib/metadata-tool.ts`              |
+| Read-only Data 360 readiness probe                      | `lib/probe-tool.ts`                 |
+| Read-only sf-pi manager settings panel                  | `lib/config-panel.ts`               |
+| Connection, API version, REST paths, auth, and timeouts | `lib/common/sf-conn/index.ts`       |
+| Method/path safety classification                       | `lib/safety.ts`                     |
+| Output truncation                                       | `lib/truncation.ts`                 |
+| Progressive-disclosure guidance                         | `references/*.md`                   |
+| Generated phase references                              | `references/phases/*.md`            |
 
 ## Conventions
 

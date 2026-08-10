@@ -5,11 +5,18 @@ const orgCreateMock = vi.fn();
 const requestMock = vi.fn();
 
 vi.mock("@salesforce/core", () => ({
+  ConfigAggregator: {
+    create: () =>
+      Promise.resolve({
+        getInfo: (key: string) => ({ value: key === "target-org" ? "AgentforceSTDM" : undefined }),
+      }),
+  },
   Org: { create: (opts: unknown) => orgCreateMock(opts) },
 }));
 
 import { D360FacadeParams, runFacade } from "../lib/facade-tool.ts";
-import { clearConnectionCache } from "../../../lib/common/sf-conn/connection.ts";
+import { clearSalesforceConnectionCache } from "../../../lib/common/sf-conn/index.ts";
+import { createTestSalesforceOrg } from "./test-salesforce-connection.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 
 const env: SfEnvironment = {
@@ -46,10 +53,10 @@ describe("d360 capability execution", () => {
   });
 
   beforeEach(() => {
-    clearConnectionCache();
+    clearSalesforceConnectionCache();
     requestMock.mockReset();
     orgCreateMock.mockReset();
-    orgCreateMock.mockResolvedValue({ getConnection: () => ({ request: requestMock }) });
+    orgCreateMock.mockResolvedValue(createTestSalesforceOrg(requestMock));
   });
 
   it("resolves examples by capability name", async () => {
@@ -140,7 +147,7 @@ describe("d360 capability execution", () => {
     expect(requestMock).toHaveBeenCalledWith(
       expect.objectContaining({
         method: "POST",
-        url: "/services/data/v66.0/ssot/query-sql?dataspaceName=default",
+        url: "/services/data/v67.0/ssot/query-sql?dataspaceName=default",
       }),
     );
   });

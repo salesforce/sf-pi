@@ -13,9 +13,11 @@
  * DMO or sample spans should fail the run instead of producing a clean skip.
  */
 
-import { connFromAlias } from "../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../lib/common/sf-conn/request.ts";
-import { buildApiPath } from "../../extensions/sf-data360/lib/path.ts";
+import {
+  connectSalesforce,
+  type SalesforceResponse,
+  type SalesforceSession,
+} from "../../lib/common/sf-conn/index.ts";
 import {
   APT_SPAN_DLO,
   APT_SPAN_DMO,
@@ -57,16 +59,19 @@ function skip(detail: string): never {
 }
 
 async function main() {
-  section("1. Resolve org through @salesforce/core Connection");
-  const conn = await connFromAlias(ALIAS);
-  const apiVersion = conn.getApiVersion();
+  section("1. Resolve org through the Salesforce Connection Module");
+  const sf = await connectSalesforce({ cwd: process.cwd(), targetOrg: ALIAS });
+  const apiVersion = sf.target.apiVersion;
   console.log(`  target=${ALIAS}`);
   console.log(`  apiVersion=${apiVersion}`);
-  ok("connection resolved without sf subprocess");
+  ok("connection resolved without sf subprocess", sf.target.versionSource);
 
   section("2. Verify Agent Platform Tracing DLO metadata");
-  const describePath = buildApiPath(`/ssot/data-lake-objects/${APT_SPAN_DLO}`, apiVersion);
-  const describe = await connRequest<unknown>(conn, { method: "GET", url: describePath });
+  const describePath = sf.path(`/ssot/data-lake-objects/${APT_SPAN_DLO}`);
+  const describe = await sf.request<unknown>({
+    method: "GET",
+    path: `/ssot/data-lake-objects/${APT_SPAN_DLO}`,
+  });
   if (describe.status === 403 || describe.status === 404) {
     skip(`${APT_SPAN_DLO} is not visible in this org (HTTP ${describe.status}).`);
   }
@@ -77,14 +82,13 @@ async function main() {
   }
 
   section("3. Resolve data space when available");
-  const dataSpaceName = await resolveDataSpaceName(conn, apiVersion);
+  const dataSpaceName = await resolveDataSpaceName(sf);
   if (dataSpaceName) ok("data space resolved", dataSpaceName);
   else ok("data space not required or not listed", "query-sql will omit dataspaceName");
 
   section("4. Count trace spans");
   const count = await querySql<{ data?: unknown[][]; errorCode?: string; message?: string }>(
-    conn,
-    apiVersion,
+    sf,
     dataSpaceName,
     `SELECT COUNT(*) AS span_count FROM "${APT_SPAN_DMO}"`,
   );
@@ -100,8 +104,7 @@ async function main() {
 
   section("5. Query recent error spans with bounded helper SQL");
   const errors = await querySql<{ data?: unknown[][]; errorCode?: string; message?: string }>(
-    conn,
-    apiVersion,
+    sf,
     dataSpaceName,
     buildFindErrorSpansSql({ limit: 5 }),
   );
@@ -120,8 +123,7 @@ async function main() {
     "LIMIT 20",
   ].join("\n");
   const recent = await querySql<{ data?: unknown[][]; errorCode?: string; message?: string }>(
-    conn,
-    apiVersion,
+    sf,
     dataSpaceName,
     recentSql,
   );
@@ -140,7 +142,7 @@ async function main() {
         data?: unknown[][];
         errorCode?: string;
         message?: string;
-      }>(conn, apiVersion, dataSpaceName, buildTraceTreeSql(traceId));
+      }>(sf, dataSpaceName, buildTraceTreeSql(traceId));
       if (treeQuery.status !== 200 || treeQuery.body.errorCode) {
         fail("fetch trace tree", JSON.stringify(treeQuery.body).slice(0, 400));
       } else {
@@ -163,13 +165,10 @@ async function main() {
   process.exit(failures === 0 ? 0 : 1);
 }
 
-async function resolveDataSpaceName(
-  conn: Awaited<ReturnType<typeof connFromAlias>>,
-  apiVersion: string,
-) {
-  const resp = await connRequest<Record<string, unknown>>(conn, {
+async function resolveDataSpaceName(sf: SalesforceSession) {
+  const resp = await sf.request<Record<string, unknown>>({
     method: "GET",
-    url: buildApiPath("/ssot/data-spaces", apiVersion),
+    path: "/ssot/data-spaces",
   });
   if (resp.status !== 200 || !resp.body || typeof resp.body !== "object") return undefined;
 
@@ -184,18 +183,14 @@ async function resolveDataSpaceName(
 }
 
 async function querySql<T>(
-  conn: Awaited<ReturnType<typeof connFromAlias>>,
-  apiVersion: string,
+  sf: SalesforceSession,
   dataSpaceName: string | undefined,
   sql: string,
-) {
-  return connRequest<T>(conn, {
+): Promise<SalesforceResponse<T>> {
+  return sf.request<T>({
     method: "POST",
-    url: buildApiPath(
-      "/ssot/query-sql",
-      apiVersion,
-      dataSpaceName ? { dataspaceName: dataSpaceName } : undefined,
-    ),
+    path: "/ssot/query-sql",
+    query: dataSpaceName ? { dataspaceName: dataSpaceName } : undefined,
     body: { sql },
   });
 }

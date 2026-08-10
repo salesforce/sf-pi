@@ -2,6 +2,7 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { BorderedLoader } from "@earendil-works/pi-coding-agent";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
 import {
   openExtensionInManager,
   type SfPiManagerOpenRoute,
@@ -62,7 +63,8 @@ export default function sfDataExplorer(pi: ExtensionAPI) {
 
   registerManagerDetailActions(pi, COMMAND, buildDataExplorerManagerActions(pi));
 
-  pi.on("session_start", () => {
+  pi.on("session_start", (event) => {
+    beginSalesforceConnectionSession(event);
     clearExplorerCache();
   });
   pi.on("session_shutdown", () => {

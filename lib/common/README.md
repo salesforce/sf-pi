@@ -35,8 +35,6 @@ code lives in `extensions/<id>/lib/`.
 | `sf-conn/connection.ts`                       | `sf-conn/index.ts` implementation                                  | Lazy cached `@salesforce/core` Org lookup with bounded targeted refresh                      |
 | `sf-conn/request.ts`                          | `sf-conn/index.ts` implementation                                  | Bounded HTTP-as-data transport with one authentication refresh and total deadline            |
 | `sf-conn/path.ts`                             | `sf-conn/index.ts` implementation                                  | Safe version-owned resource path and query-string construction                               |
-| `sf-rest/path.ts`                             | migration-only consumers                                           | Legacy REST path helper; deleted after Salesforce Connection Module migration                |
-| `sf-rest/target-org.ts`                       | migration-only consumers                                           | Legacy target/version helper; deleted after Salesforce Connection Module migration           |
 | `glyph-policy.ts`                             | `sf-welcome`, `sf-devbar`                                          | Decides emoji vs ASCII glyphs based on terminal + user prefs + env vars                      |
 | `display/types.ts`                            | `sf-pi-manager`, `sf-lsp`, `sf-agentscript-…`                      | `SfPiDisplayProfile` union + shared display types                                            |
 | `display/settings.ts`                         | `sf-pi-manager`                                                    | Read/write the shared `sfPi.display.profile` setting (project > global)                      |

@@ -5,10 +5,17 @@ const orgCreateMock = vi.fn();
 const requestMock = vi.fn();
 
 vi.mock("@salesforce/core", () => ({
+  ConfigAggregator: {
+    create: () =>
+      Promise.resolve({
+        getInfo: (key: string) => ({ value: key === "target-org" ? "AgentforceSTDM" : undefined }),
+      }),
+  },
   Org: { create: (opts: unknown) => orgCreateMock(opts) },
 }));
 
-import { clearConnectionCache } from "../../../lib/common/sf-conn/connection.ts";
+import { clearSalesforceConnectionCache } from "../../../lib/common/sf-conn/index.ts";
+import { createTestSalesforceOrg } from "./test-salesforce-connection.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { runData360V2Action } from "../lib/v2/dispatcher.ts";
 
@@ -31,10 +38,10 @@ const ctx = { hasUI: false } as never;
 
 describe("Data 360 v2 dispatcher", () => {
   beforeEach(() => {
-    clearConnectionCache();
+    clearSalesforceConnectionCache();
     requestMock.mockReset();
     orgCreateMock.mockReset();
-    orgCreateMock.mockResolvedValue({ getConnection: () => ({ request: requestMock }) });
+    orgCreateMock.mockResolvedValue(createTestSalesforceOrg(requestMock));
   });
 
   it("describes the endpoint behind an action without a network call", async () => {
@@ -93,7 +100,7 @@ describe("Data 360 v2 dispatcher", () => {
         body: expect.objectContaining({ schemas: expect.any(Array) }),
       },
     });
-    expect(orgCreateMock).not.toHaveBeenCalled();
+    expect(orgCreateMock).toHaveBeenCalledTimes(1);
   });
 
   it("searches the cross-family catalog through data360_discover", async () => {
@@ -196,7 +203,7 @@ describe("Data 360 v2 dispatcher", () => {
       },
       safety: { level: "read", requiresConfirmation: false },
     });
-    expect(orgCreateMock).not.toHaveBeenCalled();
+    expect(orgCreateMock).toHaveBeenCalledTimes(1);
   });
 
   it("dry-runs Data 360 readiness probes through data360_discover", async () => {
@@ -228,7 +235,7 @@ describe("Data 360 v2 dispatcher", () => {
         }),
       ]),
     );
-    expect(orgCreateMock).not.toHaveBeenCalled();
+    expect(orgCreateMock).toHaveBeenCalledTimes(1);
   });
 
   it("exports a known Agentforce session through the OTel API", async () => {
@@ -286,7 +293,7 @@ describe("Data 360 v2 dispatcher", () => {
         path: "/services/data/v67.0/einstein/audit/otel/session%2Fwith%20space",
       },
     });
-    expect(orgCreateMock).not.toHaveBeenCalled();
+    expect(orgCreateMock).toHaveBeenCalledTimes(1);
   });
 
   it("emits lightweight progress for runbook-backed observe actions", async () => {
@@ -541,6 +548,6 @@ describe("Data 360 v2 dispatcher", () => {
       expect.objectContaining({ tool: "data360_prepare", action: "ingest_job.poll" }),
       expect.objectContaining({ tool: "data360_query", action: "sql.verify_rows" }),
     ]);
-    expect(orgCreateMock).not.toHaveBeenCalled();
+    expect(orgCreateMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -21,6 +21,7 @@ import {
   SalesforceConnectionAbortedError,
   SalesforceConnectionTimeoutError,
   SalesforceRequestError,
+  beginSalesforceConnectionSession,
   clearSalesforceConnectionCache,
   connectSalesforce,
 } from "../sf-conn/index.ts";
@@ -407,6 +408,28 @@ describe("Salesforce connection cache and refresh", () => {
     expect(first.target).toMatchObject({ targetOrg: "FirstOrg", apiVersion: "61.0" });
     expect(refreshed.target).toMatchObject({ targetOrg: "SecondOrg", apiVersion: "62.0" });
     expect(configClearMock).toHaveBeenCalledWith("/workspace");
+  });
+
+  test("one shared session-start event resets cached auth exactly once", async () => {
+    orgCreateMock
+      .mockResolvedValueOnce(fakeOrg(fakeConnection()))
+      .mockResolvedValueOnce(fakeOrg(fakeConnection()))
+      .mockResolvedValueOnce(fakeOrg(fakeConnection()));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => Promise.resolve(versionsResponse("67.0"))),
+    );
+
+    await connectSalesforce({ cwd: "/workspace" });
+    const firstStart = {};
+    beginSalesforceConnectionSession(firstStart);
+    await connectSalesforce({ cwd: "/workspace" });
+    beginSalesforceConnectionSession(firstStart);
+    await connectSalesforce({ cwd: "/workspace" });
+    beginSalesforceConnectionSession({});
+    await connectSalesforce({ cwd: "/workspace" });
+
+    expect(orgCreateMock).toHaveBeenCalledTimes(3);
   });
 
   test("failed initialization is evicted so the next call can retry", async () => {

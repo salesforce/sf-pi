@@ -148,7 +148,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Connector detail returns `NOT_FOUND`
 - `data360_*` tools are missing
 - A mutating call is blocked in headless mode
-- The wrong API version appears in my path
+- A versioned path is rejected
 
 **[SF Docs](./extensions/sf-docs.md#troubleshooting)**
 

@@ -17,11 +17,11 @@ import {
   getSharedSfEnvironment,
 } from "../../../lib/common/sf-environment/shared-runtime.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../../lib/common/sf-conn/request.ts";
-import { buildApiPath, type QueryParams } from "./path.ts";
+import {
+  connectSalesforce,
+  type SalesforceQueryParams as QueryParams,
+} from "../../../lib/common/sf-conn/index.ts";
 import { responseLooksLikeError } from "./api-tool.ts";
-import { resolveTargetOrgContext } from "./target-org.ts";
 import { facadeResultToLlmText } from "./display/facade-card.ts";
 import { renderD360Call, renderD360Result } from "./display/render.ts";
 import {
@@ -219,16 +219,10 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 const DEFAULT_CONNECTION_TIMEOUT_MS = 15_000;
 const MAX_CONNECTION_TIMEOUT_MS = 30_000;
 
-function connectionOptions(
-  input: Pick<D360FacadeInput, "timeout_ms">,
-  signal: AbortSignal | undefined,
-): { timeoutMs: number; signal: AbortSignal | undefined } {
+function connectionTimeout(input: Pick<D360FacadeInput, "timeout_ms">): number {
   const requested =
     typeof input.timeout_ms === "number" ? input.timeout_ms : DEFAULT_CONNECTION_TIMEOUT_MS;
-  return {
-    timeoutMs: Math.max(1, Math.min(requested, MAX_CONNECTION_TIMEOUT_MS)),
-    signal,
-  };
+  return Math.max(1, Math.min(requested, MAX_CONNECTION_TIMEOUT_MS));
 }
 
 async function runExecute(
@@ -243,7 +237,7 @@ async function runExecute(
     throw new Error(`Unknown Data 360 capability '${capabilityName}'. Use d360 search first.`);
 
   if (capability.kind === "runbook") {
-    return runRunbookCapability(capability, input, env, signal);
+    return runRunbookCapability(capability, input, ctx, signal);
   }
 
   const operation = capability.operation;
@@ -253,11 +247,14 @@ async function runExecute(
     );
   }
 
-  const { targetOrg, apiVersion, targetOrgInfo } = await resolveTargetOrgContext(
-    input.target_org,
-    env,
-  );
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectSalesforce({
+    cwd: ctx.cwd || process.cwd(),
+    targetOrg: input.target_org,
+    signal,
+    timeoutMs: connectionTimeout(input),
+  });
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const params = input.params ?? {};
 
   if (isLocalD360Helper(operation.name)) {
@@ -284,7 +281,7 @@ async function runExecute(
   }
 
   const { path, query, body } = resolveOperationRequest(operation, params);
-  const apiPath = buildApiPath(path, apiVersion, query);
+  const apiPath = session.path(path, query);
   if (input.dry_run) {
     return {
       ok: true,
@@ -317,7 +314,7 @@ async function runExecute(
     operation,
     targetOrg,
     env,
-    targetOrgInfo,
+    targetOrgInfo: { alias: session.target.alias },
     hasUI: ctx.hasUI,
   });
   if (destructiveBlock.blocked) {
@@ -333,13 +330,13 @@ async function runExecute(
     };
   }
 
-  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
   const preflight = resolveDestructivePreflightRequest(operation.name, params);
   if (preflight) {
     if (signal?.aborted) throw new Error("d360 execute cancelled before destructive preflight.");
-    const preflightResp = await connRequest<unknown>(conn, {
+    const preflightResp = await session.request<unknown>({
       method: "GET",
-      url: buildApiPath(preflight.path, apiVersion, preflight.query),
+      path: preflight.path,
+      query: preflight.query,
       timeoutMs: input.timeout_ms ?? 120_000,
       signal,
     });
@@ -360,7 +357,7 @@ async function runExecute(
         response: preflightResp.body,
         preflight: {
           method: "GET",
-          path: buildApiPath(preflight.path, apiVersion, preflight.query),
+          path: session.path(preflight.path, preflight.query),
         },
         summary: `${operation.name} preflight failed HTTP ${preflightResp.status}`,
         error:
@@ -371,9 +368,10 @@ async function runExecute(
 
   await enforceOperationSafety(ctx, operation);
   if (signal?.aborted) throw new Error("d360 execute cancelled before request.");
-  const resp = await connRequest<unknown>(conn, {
+  const resp = await session.request<unknown>({
     method: operation.method,
-    url: apiPath,
+    path,
+    query,
     body,
     timeoutMs: input.timeout_ms ?? 120_000,
     signal,
@@ -399,12 +397,16 @@ async function runExecute(
 async function runRunbookCapability(
   capability: D360Capability,
   input: D360FacadeInput,
-  env: SfEnvironment,
+  ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
   const runbookName = capability.runbook?.name;
   if (!runbookName) throw new Error(`Capability '${capability.name}' is not backed by a runbook.`);
-  const result = await runRunbook({ ...input, runbook: runbookName }, env, signal);
+  const result = await runRunbook(
+    { ...input, runbook: runbookName },
+    ctx.cwd || process.cwd(),
+    signal,
+  );
   return {
     ...result,
     action: "execute",
@@ -415,25 +417,31 @@ async function runRunbookCapability(
 
 async function runRunbook(
   input: D360FacadeInput,
-  env: SfEnvironment,
+  cwd: string,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
   const runbookName = requiredName(input.runbook, "runbook");
   const runbook = findRunbook(runbookName);
   if (!runbook)
     throw new Error(`Unknown Data 360 runbook '${runbookName}'. Use d360 search first.`);
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
-  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
+  const session = await connectSalesforce({
+    cwd,
+    targetOrg: input.target_org,
+    signal,
+    timeoutMs: connectionTimeout(input),
+  });
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const params = input.params ?? {};
   const dataspaceName = typeof params.dataspaceName === "string" ? params.dataspaceName : "default";
 
   try {
     const result = await runAgentObservabilityRunbook(runbookName, params, async (sql) => {
       if (signal?.aborted) throw new Error("d360 runbook cancelled before query.");
-      const resp = await connRequest<unknown>(conn, {
+      const resp = await session.request<unknown>({
         method: "POST",
-        url: buildApiPath("/ssot/query-sql", apiVersion, { dataspaceName }),
+        path: "/ssot/query-sql",
+        query: { dataspaceName },
         body: { sql },
         timeoutMs: input.timeout_ms ?? 45_000,
         signal,
@@ -708,7 +716,7 @@ interface DestructiveExecutionGuardInput {
   operation: Pick<D360Operation, "name" | "safety">;
   targetOrg: string;
   env: SfEnvironment;
-  targetOrgInfo?: SfEnvironment["org"];
+  targetOrgInfo?: Partial<SfEnvironment["org"]>;
   hasUI: boolean;
 }
 
@@ -743,7 +751,7 @@ export function evaluateDestructiveExecutionGuard(input: DestructiveExecutionGua
 export function isAgentforceStdmTarget(
   targetOrg: string,
   env: SfEnvironment,
-  targetOrgInfo?: SfEnvironment["org"],
+  targetOrgInfo?: Partial<SfEnvironment["org"]>,
 ): boolean {
   return (
     targetOrg === DESTRUCTIVE_ALLOWED_TARGET_ORG ||

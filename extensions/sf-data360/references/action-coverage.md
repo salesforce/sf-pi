@@ -129,7 +129,7 @@ required fields are mapped`. Validate IR payload in dry-run + readiness
 A clean recursive run must prove these properties before broad live mutation:
 
 - Explicit `target_org` on every call.
-- Paths normalized to the active target API version.
+- Versionless resources are routed through the shared Salesforce Connection Module using org-latest or configured-fallback API selection.
 - GET = read-only.
 - POST safe-list narrow; unknown `actions/...` POSTs are confirmed.
 - DELETE always confirmed.

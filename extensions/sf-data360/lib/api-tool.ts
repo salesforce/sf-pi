@@ -3,23 +3,14 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 
-import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
 import {
-  getCachedSfEnvironment,
-  getSharedSfEnvironment,
-} from "../../../lib/common/sf-environment/shared-runtime.ts";
-import type { OrgInfo, OrgType, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../../lib/common/sf-conn/request.ts";
-import { buildApiPath, type QueryParams } from "./path.ts";
+  connectSalesforce,
+  type SalesforceQueryParams,
+  type SalesforceSession,
+} from "../../../lib/common/sf-conn/index.ts";
+import type { OrgType } from "../../../lib/common/sf-environment/types.ts";
 import { apiResultToCard } from "./display/api-card.ts";
 import { renderD360ApiCall, renderD360ApiResult } from "./display/render.ts";
-import {
-  normalizeTargetOrg,
-  resolveApiVersion,
-  resolveExplicitTargetOrg,
-  resolveOrgType,
-} from "./target-org.ts";
 import {
   buildD360Envelope,
   D360_OUTPUT_SUFFIX,
@@ -42,7 +33,7 @@ export const D360ApiParams = Type.Object({
   }),
   path: Type.String({
     description:
-      "Path relative to /services/data/vXX.X, e.g. /ssot/data-model-objects or /connect/search/metadata/results. A supplied /services/data/vNN.N prefix is normalized to the active org API version.",
+      "Versionless path relative to /services/data/vXX.X, e.g. /ssot/data-model-objects or /connect/search/metadata/results.",
   }),
   query: Type.Optional(
     Type.Record(Type.String(), Type.Any(), {
@@ -82,7 +73,7 @@ export const D360ApiParams = Type.Object({
 export interface D360ApiInput {
   method: string;
   path: string;
-  query?: QueryParams;
+  query?: SalesforceQueryParams;
   body?: unknown;
   target_org?: string;
   dry_run?: boolean;
@@ -93,15 +84,13 @@ export interface D360ApiInput {
 interface ResolvedRequest {
   method: D360Method;
   apiPath: string;
-  targetOrg?: string;
+  targetOrg: string;
   apiVersion: string;
   orgType: OrgType | "unknown";
   safety: D360SafetyDecision;
 }
 
 export function registerD360ApiTool(pi: ExtensionAPI): void {
-  const exec = buildExecFn(pi);
-
   pi.registerTool({
     name: D360_TOOL_NAME,
     label: "Data 360 API",
@@ -123,8 +112,7 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
     renderResult: renderD360ApiResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const input = params as D360ApiInput;
-      const env = await resolveEnvironment(exec, ctx);
-      const resolved = await resolveRequestForExecution(input, env);
+      const { resolved, session } = await resolveRequestForExecution(input, ctx.cwd, signal);
 
       if (input.dry_run) {
         return buildResult(
@@ -149,7 +137,7 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
 
       await enforceSafety(ctx, resolved);
 
-      const { text, status, ok } = await callD360Rest(resolved, input, signal);
+      const { text, status, ok } = await callD360Rest(session, resolved, input, signal);
       return buildResult(text, input.output_mode ?? "inline", {
         ok,
         action: "call",
@@ -171,33 +159,26 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
  * ok/text/status envelope without try/catch sprawl.
  */
 async function callD360Rest(
+  session: SalesforceSession,
   resolved: ResolvedRequest,
   input: D360ApiInput,
   signal: AbortSignal | undefined,
 ): Promise<{ text: string; status: number; ok: boolean }> {
-  if (!resolved.targetOrg) {
-    throw new Error(
-      "No Salesforce target org is configured. Pass target_org or set sf config target-org.",
-    );
-  }
-  if (signal?.aborted) {
-    throw new Error("d360_api call cancelled before request.");
-  }
+  if (signal?.aborted) throw new Error("d360_api call cancelled before request.");
 
-  const conn = await connFromAlias(resolved.targetOrg);
-  // Some sf CLI versions errored on DELETE without an explicit body; the
-  // REST endpoint itself accepts an empty body. Preserve the prior shape
-  // by sending `{}` for DELETE when the caller didn't pass one.
+  // Preserve the prior DELETE shape by sending `{}` when no body was supplied.
   const body =
     resolved.method === "GET"
       ? undefined
       : (input.body ?? (resolved.method === "DELETE" ? {} : undefined));
 
-  const resp = await connRequest<unknown>(conn, {
+  const resp = await session.request<unknown>({
     method: resolved.method,
-    url: resolved.apiPath,
+    path: input.path,
+    query: input.query,
     body,
     timeoutMs: typeof input.timeout_ms === "number" ? input.timeout_ms : 120_000,
+    signal,
   });
 
   const text = stringifyResponseBody(resp.body);
@@ -215,36 +196,33 @@ function stringifyResponseBody(body: unknown): string {
   }
 }
 
-async function resolveEnvironment(
-  exec: ReturnType<typeof buildExecFn>,
-  ctx: ExtensionContext,
-): Promise<SfEnvironment> {
-  return getCachedSfEnvironment(ctx.cwd) ?? (await getSharedSfEnvironment(exec, ctx.cwd));
-}
-
 export async function resolveRequestForExecution(
   input: D360ApiInput,
-  env: SfEnvironment,
-): Promise<ResolvedRequest> {
-  const targetOrg = normalizeTargetOrg(input.target_org, env);
-  const targetOrgInfo = await resolveExplicitTargetOrg(targetOrg, env);
-  return resolveRequest(input, env, targetOrgInfo);
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<{ resolved: ResolvedRequest; session: SalesforceSession }> {
+  const session = await connectSalesforce({
+    cwd,
+    targetOrg: input.target_org,
+    signal,
+    timeoutMs: input.timeout_ms,
+  });
+  return { resolved: resolveRequest(input, session), session };
 }
 
-export function resolveRequest(
-  input: D360ApiInput,
-  env: SfEnvironment,
-  targetOrgInfo?: OrgInfo,
-): ResolvedRequest {
+export function resolveRequest(input: D360ApiInput, session: SalesforceSession): ResolvedRequest {
   const method = normalizeMethod(input.method);
-  const targetOrg = normalizeTargetOrg(input.target_org, env);
-  const resolvedTargetOrgInfo = targetOrgInfo?.detected ? targetOrgInfo : undefined;
-  const apiVersion = resolveApiVersion(env, resolvedTargetOrgInfo);
-  const apiPath = buildApiPath(input.path, apiVersion, input.query);
-  const orgType = resolveOrgType(targetOrg, env, resolvedTargetOrgInfo);
-  const safety = classifyD360Request(method, input.path, orgType);
+  const apiPath = session.path(input.path, input.query);
+  const safety = classifyD360Request(method, input.path, session.target.orgType);
 
-  return { method, apiPath, targetOrg, apiVersion, orgType, safety };
+  return {
+    method,
+    apiPath,
+    targetOrg: session.target.targetOrg,
+    apiVersion: session.target.apiVersion,
+    orgType: session.target.orgType,
+    safety,
+  };
 }
 
 async function enforceSafety(ctx: ExtensionContext, resolved: ResolvedRequest): Promise<void> {

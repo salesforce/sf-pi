@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SalesforceSession, SalesforceTarget } from "../../../lib/common/sf-conn/index.ts";
 
-const orgCreateMock = vi.fn();
-
-vi.mock("@salesforce/core", () => ({
-  ConfigAggregator: { create: () => Promise.resolve({ getInfo: () => ({ value: undefined }) }) },
-  Org: { create: (opts: unknown) => orgCreateMock(opts) },
-}));
+const connectSalesforceMock = vi.fn();
+vi.mock("../../../lib/common/sf-conn/index.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/common/sf-conn/index.ts")>();
+  return { ...actual, connectSalesforce: (options: unknown) => connectSalesforceMock(options) };
+});
 
 import {
   responseLooksLikeError,
@@ -14,113 +14,103 @@ import {
   resolveRequestForExecution,
   type D360ApiInput,
 } from "../lib/api-tool.ts";
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 
-beforeEach(async () => {
-  orgCreateMock.mockReset();
-  const conn = await import("../../../lib/common/sf-conn/connection.ts");
-  conn.clearConnectionCache();
-});
-
-function fakeOrg(opts: { authFields: Record<string, unknown>; apiVersion?: string }) {
-  const conn = {
-    getAuthInfoFields: () => opts.authFields,
-    instanceUrl: (opts.authFields as { instanceUrl?: string }).instanceUrl ?? "",
-    getApiVersion: () => opts.apiVersion ?? "66.0",
+function fakeSession(overrides: Partial<SalesforceTarget> = {}): SalesforceSession {
+  const target = Object.freeze({
+    targetOrg: "my-sandbox",
+    alias: "my-sandbox",
+    instanceUrl: "https://example.sandbox.my.salesforce.com",
+    orgType: "sandbox" as const,
+    apiVersion: "67.0",
+    maxApiVersion: "67.0",
+    versionSource: "org-latest" as const,
+    ...overrides,
+  });
+  return {
+    target,
+    connection: {} as SalesforceSession["connection"],
+    identity: vi.fn(),
+    path: vi.fn((resource: string) => {
+      if (/^\/?services\/data\/v\d/i.test(resource)) {
+        throw new Error("Salesforce callers must provide a versionless resource path.");
+      }
+      return `/services/data/v${target.apiVersion}${resource}`;
+    }),
+    request: vi.fn() as SalesforceSession["request"],
+    continueRequest: vi.fn() as SalesforceSession["continueRequest"],
+    query: vi.fn() as SalesforceSession["query"],
   };
-  return { getConnection: () => conn };
 }
 
-const env: SfEnvironment = {
-  cli: { installed: true, version: "2.132.14" },
-  project: { detected: true, sourceApiVersion: "65.0" },
-  config: { hasTargetOrg: true, targetOrg: "my-sandbox", location: "Global" },
-  org: {
-    detected: true,
-    alias: "my-sandbox",
-    username: "user@example.invalid",
-    instanceUrl: "https://example.my.salesforce.com",
-    orgType: "sandbox",
-    apiVersion: "66.0",
-  },
-  detectedAt: 1,
-};
+beforeEach(() => connectSalesforceMock.mockReset());
 
 describe("sf-data360 request resolution", () => {
-  it("uses active org api version and default target org", () => {
-    const input: D360ApiInput = {
-      method: "GET",
-      path: "/services/data/v60.0/ssot/data-model-objects",
-    };
+  it("uses the shared session target, org type, and selected version", () => {
+    const input: D360ApiInput = { method: "GET", path: "/ssot/data-model-objects" };
 
-    expect(resolveRequest(input, env)).toMatchObject({
+    expect(resolveRequest(input, fakeSession())).toMatchObject({
       method: "GET",
-      apiPath: "/services/data/v66.0/ssot/data-model-objects",
+      apiPath: "/services/data/v67.0/ssot/data-model-objects",
       targetOrg: "my-sandbox",
-      apiVersion: "66.0",
+      apiVersion: "67.0",
       orgType: "sandbox",
       safety: { level: "read", requiresConfirmation: false },
     });
   });
 
-  it("treats non-default target org type as unknown until execution resolves it", () => {
+  it("rejects caller-owned versioned Data 360 paths", () => {
     const input: D360ApiInput = {
-      method: "POST",
-      path: "/ssot/data-model-objects",
-      target_org: "other-org",
+      method: "GET",
+      path: "/services/data/v60.0/ssot/data-model-objects",
     };
 
-    expect(resolveRequest(input, env)).toMatchObject({
-      targetOrg: "other-org",
-      orgType: "unknown",
-      safety: { level: "create", requiresConfirmation: true },
-    });
+    expect(() => resolveRequest(input, fakeSession())).toThrow(/versionless/i);
   });
 
-  it("resolves explicit non-default target orgs before execution", async () => {
+  it("resolves explicit target orgs through the shared connection before execution", async () => {
     const input: D360ApiInput = {
       method: "POST",
       path: "/ssot/data-model-objects",
       target_org: "other-org",
     };
-    orgCreateMock.mockResolvedValueOnce(
-      fakeOrg({
-        authFields: {
-          alias: "other-org",
-          username: "other@example.invalid",
-          instanceUrl: "https://other-dev-ed.develop.my.salesforce.com",
-        },
-        apiVersion: "66.0",
-      }),
-    );
-    const resolved = await resolveRequestForExecution(input, env);
+    const session = fakeSession({
+      targetOrg: "other-org",
+      alias: "other-org",
+      instanceUrl: "https://other-dev-ed.develop.my.salesforce.com",
+      orgType: "developer",
+    });
+    connectSalesforceMock.mockResolvedValue(session);
+    const signal = new AbortController().signal;
 
-    expect(resolved).toMatchObject({
+    const execution = await resolveRequestForExecution(input, "/workspace", signal);
+
+    expect(execution.resolved).toMatchObject({
       targetOrg: "other-org",
       orgType: "developer",
-      apiVersion: "66.0",
+      apiVersion: "67.0",
       safety: { level: "create", requiresConfirmation: false },
     });
-    expect(orgCreateMock).toHaveBeenCalledWith({ aliasOrUsername: "other-org" });
-  });
-
-  it("keeps explicit target orgs fail-closed when Org.create rejects", async () => {
-    const input: D360ApiInput = {
-      method: "POST",
-      path: "/ssot/data-model-objects",
-      target_org: "missing-org",
-    };
-    orgCreateMock.mockRejectedValueOnce(new Error("auth failed"));
-    const resolved = await resolveRequestForExecution(input, env);
-
-    expect(resolved).toMatchObject({
-      targetOrg: "missing-org",
-      orgType: "unknown",
-      safety: { level: "create", requiresConfirmation: true },
+    expect(execution.session).toBe(session);
+    expect(connectSalesforceMock).toHaveBeenCalledWith({
+      cwd: "/workspace",
+      targetOrg: "other-org",
+      signal,
+      timeoutMs: undefined,
     });
   });
 
-  it("detects application-level REST errors even when the CLI exits zero", () => {
+  it("fails explicitly when the shared connection cannot resolve the target", async () => {
+    connectSalesforceMock.mockRejectedValueOnce(new Error("auth failed"));
+
+    await expect(
+      resolveRequestForExecution(
+        { method: "GET", path: "/ssot/data-spaces", target_org: "missing-org" },
+        "/workspace",
+      ),
+    ).rejects.toThrow(/auth failed/);
+  });
+
+  it("detects application-level REST errors even when HTTP succeeds", () => {
     expect(responseLooksLikeError('{"content":[],"error":{"message":"Nope"},"size":0}')).toBe(true);
     expect(responseLooksLikeError('[{"errorCode":"NOT_FOUND","message":"Missing"}]')).toBe(true);
     expect(responseLooksLikeError('{"dataModelObject":[]}')).toBe(false);

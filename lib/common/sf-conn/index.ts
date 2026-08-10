@@ -19,6 +19,7 @@ import {
 } from "./connection.ts";
 import { connRequest, type HttpMethod } from "./request.ts";
 export type { HttpMethod } from "./request.ts";
+export { normalizeSalesforceResource } from "./path.ts";
 export type { SalesforceQueryParams, SalesforceQueryValue } from "./path.ts";
 import {
   buildSalesforceApiPath,
@@ -142,6 +143,7 @@ interface VersionEntry {
 }
 
 const sessionCache = new Map<string, Promise<SalesforceSession>>();
+const observedSessionStarts = new WeakSet<object>();
 
 export async function connectSalesforce(
   options: ConnectSalesforceOptions,
@@ -173,7 +175,22 @@ export async function connectSalesforce(
   return waitForCaller(pending, remainingCallerTime(deadline, timeoutMs), options.signal);
 }
 
-/** Clear every shared session and underlying SDK Org. Primarily for tests/shutdown. */
+/**
+ * Reset shared connections once for one Pi session_start event object.
+ * Multiple connection-owning extensions receive the same event; only the first
+ * call clears, so auth/config changes are picked up without cross-extension races.
+ */
+export function beginSalesforceConnectionSession(event: unknown): void {
+  if (!event || typeof event !== "object") {
+    clearSalesforceConnectionCache();
+    return;
+  }
+  if (observedSessionStarts.has(event)) return;
+  observedSessionStarts.add(event);
+  clearSalesforceConnectionCache();
+}
+
+/** Clear every shared session and underlying SDK Org. Primarily for tests. */
 export function clearSalesforceConnectionCache(): void {
   sessionCache.clear();
   clearConnectionCache();

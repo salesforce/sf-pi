@@ -36,6 +36,7 @@ import {
   type LifecycleActionId,
 } from "../../lib/common/extension-toggle.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { registerSfApexTool } from "./lib/sf-apex-tool.ts";
 import { diagnoseApexFile, isApexFile, resolveToolPath } from "./lib/diagnostics.ts";
@@ -68,7 +69,8 @@ const SF_APEX_ACTIONS: CommandPanelAction<SfApexAction>[] = [
 export default function (pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-apex")) return;
 
-  pi.on("session_start", async () => {
+  pi.on("session_start", async (event) => {
+    beginSalesforceConnectionSession(event);
     registerSfApexTool(pi);
   });
   pi.on("tool_result", async (event, ctx) => handleToolResult(event, ctx));

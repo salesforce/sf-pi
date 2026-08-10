@@ -6,24 +6,15 @@
  * endpoints. It deliberately returns compact lists/descriptions and leaves raw
  * endpoint access to d360_api for advanced workflows.
  */
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 
-import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
-import {
-  getCachedSfEnvironment,
-  getSharedSfEnvironment,
-} from "../../../lib/common/sf-environment/shared-runtime.ts";
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../../lib/common/sf-conn/request.ts";
-import { buildApiPath } from "./path.ts";
+import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
 import { responseLooksLikeError } from "./api-tool.ts";
 import { renderCardForLlm } from "./display/card.ts";
 import { metadataResultToCard } from "./display/metadata-card.ts";
 import { renderD360MetadataCall, renderD360MetadataResult } from "./display/render.ts";
-import { resolveTargetOrgContext } from "./target-org.ts";
 import { buildD360Envelope, truncateD360Output, writeFullD360Output } from "./truncation.ts";
 
 export const D360_METADATA_TOOL_NAME = "d360_metadata";
@@ -96,8 +87,6 @@ interface DataField {
 }
 
 export function registerD360MetadataTool(pi: ExtensionAPI): void {
-  const exec = buildExecFn(pi);
-
   pi.registerTool({
     name: D360_METADATA_TOOL_NAME,
     label: "Data 360 Metadata",
@@ -115,24 +104,22 @@ export function registerD360MetadataTool(pi: ExtensionAPI): void {
     renderResult: renderD360MetadataResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const input = params as D360MetadataInput;
-      const env = await resolveEnvironment(exec, ctx);
-      // Resolve apiVersion against the *target* org, not the active sf-pi org.
-      // Otherwise a target_org on a different release than the default produces
-      // /services/data/v<wrong>/... URLs that 404 silently.
-      const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-      if (!targetOrg)
-        throw new Error(
-          "No Salesforce target org is configured. Pass target_org or set sf config target-org.",
-        );
-
+      const session = await connectSalesforce({
+        cwd: ctx.cwd,
+        targetOrg: input.target_org,
+        signal,
+        timeoutMs: input.timeout_ms,
+      });
+      const targetOrg = session.target.targetOrg;
+      const apiVersion = session.target.apiVersion;
       const plan = buildMetadataExecutionPlan(input);
-      const apiPath = buildApiPath(plan.path, apiVersion);
+      const apiPath = session.path(plan.path);
       if (signal?.aborted) throw new Error("d360_metadata call cancelled before request.");
-      const conn = await connFromAlias(targetOrg);
-      const resp = await connRequest<unknown>(conn, {
+      const resp = await session.request<unknown>({
         method: "GET",
-        url: apiPath,
+        path: plan.path,
         timeoutMs: typeof input.timeout_ms === "number" ? input.timeout_ms : 120_000,
+        signal,
       });
       const output = stringifyMetadataBody(resp.body);
       const ok = resp.status >= 200 && resp.status < 300 && !responseLooksLikeError(output);
@@ -196,13 +183,6 @@ export function registerD360MetadataTool(pi: ExtensionAPI): void {
       };
     },
   });
-}
-
-async function resolveEnvironment(
-  exec: ReturnType<typeof buildExecFn>,
-  ctx: ExtensionContext,
-): Promise<SfEnvironment> {
-  return getCachedSfEnvironment(ctx.cwd) ?? (await getSharedSfEnvironment(exec, ctx.cwd));
 }
 
 function stringifyMetadataBody(body: unknown): string {

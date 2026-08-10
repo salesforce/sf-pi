@@ -15,14 +15,11 @@
  * on any failure.
  *
  * Useful when validating a Data 360 org on a different API release than the
- * active sf-pi default — the cross-org apiVersion resolution and the
- * connRequest body serialization contract are pinned by the early sections.
+ * active sf-pi default — shared target/API-version resolution and request
+ * body serialization are exercised through the same connection Module.
  */
 
-import { connFromAlias } from "../../lib/common/sf-conn/connection.ts";
-import { connRequest, serializeBody } from "../../lib/common/sf-conn/request.ts";
-import { resolveTargetOrgContext } from "../../extensions/sf-data360/lib/target-org.ts";
-import { buildApiPath, normalizeD360Path } from "../../extensions/sf-data360/lib/path.ts";
+import { connectSalesforce } from "../../lib/common/sf-conn/index.ts";
 import {
   classifyConnectionProbeResult,
   summarizeReadiness,
@@ -34,8 +31,6 @@ import {
   type D360MetadataInput,
 } from "../../extensions/sf-data360/lib/metadata-tool.ts";
 import { resolveRequest } from "../../extensions/sf-data360/lib/api-tool.ts";
-import { detectEnvironment } from "../../lib/common/sf-environment/detect.ts";
-import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 
 const ALIAS = process.argv[2] ?? process.env.D360_E2E_ORG;
 if (!ALIAS) {
@@ -57,63 +52,33 @@ function section(title: string) {
 }
 
 async function main() {
-  const env: SfEnvironment = await detectEnvironment(async (cmd, args) => {
-    const { spawn } = await import("node:child_process");
-    return new Promise((resolve) => {
-      const p = spawn(cmd, args);
-      let stdout = "",
-        stderr = "";
-      p.stdout.on("data", (d) => (stdout += d));
-      p.stderr.on("data", (d) => (stderr += d));
-      p.on("close", (code) => resolve({ stdout, stderr, code }));
-    });
-  }, process.cwd());
+  const sf = await connectSalesforce({ cwd: process.cwd(), targetOrg: ALIAS });
+  const apiVersion = sf.target.apiVersion;
 
-  console.log(`Active sf-pi env:`);
-  console.log(`  default org: ${env.config.targetOrg ?? "(none)"}`);
-  console.log(`  default org apiVersion: ${env.org.apiVersion ?? "(none)"}`);
-
-  section("1. Bug 1 — cross-org API version resolution");
-  const ctx = await resolveTargetOrgContext(ALIAS, env);
-  console.log(`  target=${ctx.targetOrg} apiVersion=${ctx.apiVersion} orgType=${ctx.orgType}`);
-  if (ctx.targetOrg !== ALIAS) fail("target alias preserved", `got ${ctx.targetOrg}`);
+  section("1. Shared target and API-version resolution");
+  console.log(
+    `  target=${sf.target.targetOrg} apiVersion=${apiVersion} source=${sf.target.versionSource} orgType=${sf.target.orgType}`,
+  );
+  if (sf.target.targetOrg !== ALIAS) fail("target alias preserved", `got ${sf.target.targetOrg}`);
   else ok("target alias preserved");
-  if (!ctx.apiVersion) fail("target apiVersion resolved", "undefined");
-  else ok("target apiVersion resolved", ctx.apiVersion);
-  // Cross-org check: when the explicit target's apiVersion differs from the
-  // active env's, the resolver must use the *target's* version. This is the
-  // bug that produced /services/data/v<wrong>/... 404s pre-fix.
-  if (env.org.apiVersion && env.org.apiVersion !== ctx.apiVersion)
-    ok(`cross-org: target=${ctx.apiVersion} ≠ active=${env.org.apiVersion}`);
-  else ok(`target apiVersion matches active env (${env.org.apiVersion ?? "n/a"})`);
+  if (!apiVersion) fail("target apiVersion resolved", "undefined");
+  else ok("target apiVersion resolved", apiVersion);
 
-  section("2. Bug 2 — body serialization contract");
-  if (serializeBody(undefined) !== undefined) fail("undefined → omitted", "regression");
-  else ok("undefined → omitted");
-  if (serializeBody({ sql: "x" }) !== '{"sql":"x"}') fail("object → JSON once", "regression");
-  else ok("object → JSON once");
-  const raw = '{"sql":"SELECT 1"}';
-  if (serializeBody(raw) !== raw) fail("string → passthrough", "regression");
-  else ok("string → passthrough");
+  section("2. Version-owned path construction");
+  const built = sf.path("/ssot/foo", { limit: 1 });
+  if (built !== `/services/data/v${apiVersion}/ssot/foo?limit=1`)
+    fail("shared path", `got ${built}`);
+  else ok("shared path stitches selected version + query");
 
-  section("3. Path normalization");
-  if (normalizeD360Path("/services/data/v60.0/ssot/foo") !== "/ssot/foo")
-    fail("strips inbound /services/data/vNN.N", "regression");
-  else ok("strips inbound /services/data/vNN.N");
-  const built = buildApiPath("/ssot/foo", "66.0", { limit: 1 });
-  if (built !== "/services/data/v66.0/ssot/foo?limit=1") fail("buildApiPath", `got ${built}`);
-  else ok("buildApiPath stitches version + query");
-
-  section("4. resolveRequest pins apiVersion to target org");
+  section("3. resolveRequest uses the shared session");
   const resolved = resolveRequest(
     { method: "GET", path: "/ssot/data-spaces", target_org: ALIAS },
-    env,
-    ctx.targetOrgInfo,
+    sf,
   );
-  if (resolved.apiPath !== "/services/data/v66.0/ssot/data-spaces")
+  if (resolved.apiPath !== `/services/data/v${apiVersion}/ssot/data-spaces`)
     fail("apiPath uses target apiVersion", `got ${resolved.apiPath}`);
   else ok("apiPath uses target apiVersion", resolved.apiPath);
-  if (resolved.orgType !== "developer") fail("orgType detected", `got ${resolved.orgType}`);
+  if (resolved.orgType !== sf.target.orgType) fail("orgType detected", `got ${resolved.orgType}`);
   else ok("orgType detected", resolved.orgType);
   if (resolved.safety.requiresConfirmation !== false) fail("read GET is no-confirm", "regression");
   else ok("read GET is no-confirm");
@@ -131,10 +96,9 @@ async function main() {
   if (!deletePush.requiresConfirmation) fail("DELETE requires confirm", "regression");
   else ok("DELETE requires confirm");
 
-  const conn = await connFromAlias(ALIAS);
-  console.log(`\n  jsforce conn apiVersion = ${conn.getApiVersion()}`);
+  console.log(`\n  shared connection apiVersion = ${apiVersion}`);
 
-  section("6. Probe — full d360_probe surface (16 paths)");
+  section("4. Probe — full d360_probe surface (16 paths)");
   const PROBES = [
     { name: "data_spaces", path: "/ssot/data-spaces", required: true },
     { name: "dmo_catalog", path: "/ssot/data-model-objects?limit=1", required: true },
@@ -158,8 +122,7 @@ async function main() {
   ];
   const probeResults = await Promise.all(
     PROBES.map(async (p) => {
-      const url = buildApiPath(p.path, ctx.apiVersion);
-      const resp = await connRequest(conn, { method: "GET", url });
+      const resp = await sf.request({ method: "GET", path: p.path });
       return classifyConnectionProbeResult(p.name, p.path, resp.status, resp.body);
     }),
   );
@@ -172,11 +135,11 @@ async function main() {
   if (summary.state === "blocked") fail("readiness !== blocked (post-fix)", summary.state);
   else ok("readiness summary classified", summary.state);
 
-  section("7. list_dmos via metadata-tool plan");
+  section("5. list_dmos via metadata-tool plan");
   const listInput: D360MetadataInput = { action: "list_dmos" };
   const listPlan = buildMetadataExecutionPlan(listInput);
-  const listPath = buildApiPath(listPlan.path, ctx.apiVersion);
-  const listResp = await connRequest<unknown>(conn, { method: "GET", url: listPath });
+  const listPath = sf.path(listPlan.path);
+  const listResp = await sf.request<unknown>({ method: "GET", path: listPlan.path });
   if (listResp.status !== 200) fail("list_dmos status 200", `got ${listResp.status}`);
   else ok(`list_dmos status 200 — ${listPath}`);
   const listSummary = summarizeMetadataOutput(
@@ -188,14 +151,14 @@ async function main() {
   if (dmoCount < 30) fail("expected ≥30 DMOs", `got ${dmoCount}`);
   else ok("DMO inventory", `${dmoCount} entries`);
 
-  section("8. describe_dmo on ssot__AiAgentSession__dlm");
+  section("6. describe_dmo on ssot__AiAgentSession__dlm");
   const descInput: D360MetadataInput = {
     action: "describe_dmo",
     api_name: "ssot__AiAgentSession__dlm",
   };
   const descPlan = buildMetadataExecutionPlan(descInput);
-  const descPath = buildApiPath(descPlan.path, ctx.apiVersion);
-  const descResp = await connRequest<unknown>(conn, { method: "GET", url: descPath });
+  const descPath = sf.path(descPlan.path);
+  const descResp = await sf.request<unknown>({ method: "GET", path: descPlan.path });
   if (descResp.status !== 200) fail("describe status 200", `got ${descResp.status}`);
   else ok(`describe status 200 — ${descPath}`);
   const descSummary = summarizeMetadataOutput(
@@ -207,28 +170,27 @@ async function main() {
   if (fieldCount < 10) fail("expected ≥10 fields", `got ${fieldCount}`);
   else ok("field count", String(fieldCount));
 
-  section("9. SQL via /ssot/query-sql — both body shapes");
-  const sqlPath = buildApiPath("/ssot/query-sql", ctx.apiVersion);
-  const sqlA = await connRequest<{
+  section("7. SQL via /ssot/query-sql — both body shapes");
+  const sqlA = await sf.request<{
     data?: number[][];
     metadata?: unknown;
     errorCode?: string;
-  }>(conn, {
+  }>({
     method: "POST",
-    url: sqlPath,
+    path: "/ssot/query-sql",
     body: { sql: "SELECT COUNT(*) AS n FROM ssot__AiAgentSession__dlm" },
   });
   if (sqlA.status !== 200 || sqlA.body.errorCode)
     fail("SQL with object body", JSON.stringify(sqlA.body).slice(0, 200));
   else ok("SQL with object body", `count=${sqlA.body.data?.[0]?.[0]}`);
 
-  const sqlB = await connRequest<{
+  const sqlB = await sf.request<{
     data?: number[][];
     metadata?: unknown;
     errorCode?: string;
-  }>(conn, {
+  }>({
     method: "POST",
-    url: sqlPath,
+    path: "/ssot/query-sql",
     body: '{"sql":"SELECT COUNT(*) AS n FROM ssot__AiAgentInteractionMessage__dlm"}',
   });
   if (sqlB.status !== 200 || sqlB.body.errorCode)
@@ -238,7 +200,7 @@ async function main() {
     );
   else ok("SQL with pre-stringified body (Bug 2 was here)", `count=${sqlB.body.data?.[0]?.[0]}`);
 
-  section("10. Aggregations across joined DMOs");
+  section("8. Aggregations across joined DMOs");
   const aggSql = `
     SELECT b.ssot__DeveloperName__c, COUNT(*) AS turns
     FROM ssot__AiAgentInteractionStep__dlm s
@@ -248,16 +210,16 @@ async function main() {
     WHERE s.ssot__AiAgentInteractionStepType__c = 'LLM_STEP'
     GROUP BY b.ssot__DeveloperName__c
     ORDER BY turns DESC LIMIT 10`;
-  const agg = await connRequest<{ data?: unknown[][]; errorCode?: string }>(conn, {
+  const agg = await sf.request<{ data?: unknown[][]; errorCode?: string }>({
     method: "POST",
-    url: sqlPath,
+    path: "/ssot/query-sql",
     body: { sql: aggSql },
   });
   if (agg.body.errorCode) {
     console.log(`  (joined SQL not supported by org: ${agg.body.errorCode}) — falling back`);
-    const fallback = await connRequest<{ data?: unknown[][]; errorCode?: string }>(conn, {
+    const fallback = await sf.request<{ data?: unknown[][]; errorCode?: string }>({
       method: "POST",
-      url: sqlPath,
+      path: "/ssot/query-sql",
       body: {
         sql: "SELECT ssot__AiAgentInteractionStepType__c, COUNT(*) FROM ssot__AiAgentInteractionStep__dlm GROUP BY ssot__AiAgentInteractionStepType__c ORDER BY 2 DESC LIMIT 10",
       },
@@ -274,10 +236,10 @@ async function main() {
     for (const row of agg.body.data ?? []) console.log(`    ${(row as unknown[]).join("\t")}`);
   }
 
-  section("11. Read-only error-path coverage");
-  const notFound = await connRequest(conn, {
+  section("9. Read-only error-path coverage");
+  const notFound = await sf.request({
     method: "GET",
-    url: buildApiPath("/ssot/this-does-not-exist", ctx.apiVersion),
+    path: "/ssot/this-does-not-exist",
   });
   if (notFound.status !== 404)
     fail("404 surfaced as data, not exception", `status=${notFound.status}`);

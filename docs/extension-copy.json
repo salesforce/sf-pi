@@ -178,9 +178,9 @@
       "Use curated capabilities for repeatable Data 360 workflows."
     ],
     "whatYouGet": [
-      "Capability search/examples/execute through `d360`.",
-      "Direct REST escape hatch through `d360_api`.",
-      "Compact metadata helpers and readiness probes."
+      "Action discovery and readiness guidance through `data360_discover`.",
+      "Version-owned REST escape hatch through `data360_api`.",
+      "Lifecycle-focused `data360_*` tools for metadata, ingestion, query, segmentation, activation, and observability."
     ]
   },
   "sf-devbar": {

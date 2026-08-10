@@ -18,14 +18,14 @@
  *   Event/Trigger          | Result
  *   -----------------------|-----------------------------------------------------------
  *   extension load         | Register data360_* family tools and /sf-data360
- *   session_start          | Re-register tools if enabled; clear cached @salesforce/core Org
- *   session_shutdown       | Clear cached @salesforce/core Org so resume re-auths cleanly
+ *   session_start          | Re-register tools if enabled; reset shared connections once per session
+ *   session_shutdown       | Reset tool-registration state
  *   resources_discover     | Re-register tools on reload; no skill contribution
  *   /sf-data360 (no args)  | Open SF Data 360 in the SF Pi Manager
  *   /sf-data360 status     | Print enablement, tools, target org, and API version
  *   /sf-data360 help       | Print command usage
- *   data360_* dry_run      | Resolve action/org/safety without calling Salesforce
- *   data360_* read         | Call Data 360 REST endpoint via @salesforce/core Connection
+ *   data360_* dry_run      | Resolve target/version/request without the business mutation
+ *   data360_* read         | Call Data 360 REST through the shared Salesforce Connection Module
  *   data360_* mutating     | Confirm dangerous calls according to safety policy
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
@@ -52,7 +52,7 @@ import {
   getSharedSfEnvironment,
 } from "../../lib/common/sf-environment/shared-runtime.ts";
 import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
-import { clearConnectionCache } from "../../lib/common/sf-conn/connection.ts";
+import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { registerData360V2Tools, DATA360_V2_TOOL_DEFS } from "./lib/v2/tools.ts";
@@ -72,20 +72,15 @@ export default function sfData360(pi: ExtensionAPI) {
   }
 
   pi.on("session_start", (event, ctx) => {
+    beginSalesforceConnectionSession(event);
     // /reload can reuse the same extension closure. Re-register on reload so
     // tool schemas, renderers, and registry-backed closures pick up code/data
     // changes without requiring a full pi restart.
     if (event.reason === "reload") toolsRegistered = false;
     if (isSfPiExtensionEnabled(ctx.cwd, "sf-data360")) ensureToolsRegistered();
-    // Drop the cached @salesforce/core Org so resumed sessions re-auth and
-    // pick up any token refresh that happened outside this process. Cache
-    // is global; clearing it here is harmless when other extensions also
-    // wire the same hook.
-    clearConnectionCache();
   });
   pi.on("session_shutdown", () => {
     toolsRegistered = false;
-    clearConnectionCache();
   });
 
   registerManagerDetailActions(pi, "sf-data360", buildSfData360ManagerActions(pi));
@@ -225,7 +220,7 @@ function buildStatusText(enabled: boolean, env: SfEnvironment): string {
     `SF CLI: ${env.cli.installed ? (env.cli.version ?? "installed") : "not installed"}`,
     `Target org: ${env.config.targetOrg ?? "not configured"}`,
     `Org type: ${env.org.orgType}`,
-    `API version: ${env.org.apiVersion ?? env.project.sourceApiVersion ?? "66.0"}`,
+    "Request API: resolved lazily by the shared Salesforce Connection Module (org latest → configured fallback)",
     "",
     "Use data360_* family tools for Data 360 work; read extensions/sf-data360/references/ for deeper guidance.",
   ].join("\n");

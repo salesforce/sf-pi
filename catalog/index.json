@@ -149,7 +149,7 @@
     "entry": "extensions/sf-apex/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4490
+    "srcLoc": 4492
   },
   {
     "id": "sf-brain",
@@ -371,7 +371,7 @@
     "entry": "extensions/sf-data-explorer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2914
+    "srcLoc": 2916
   },
   {
     "id": "sf-data360",
@@ -405,7 +405,7 @@
       "resources_discover"
     ],
     "docs": {
-      "summary": "Data 360 v2 family tool surface over the generated operation registry: compact action discovery, dry-run planning, target-org resolution, safety confirmation, bounded output, journey orchestration, and a raw REST escape hatch through @salesforce/core Connection.",
+      "summary": "Data 360 v2 family tool surface over the generated operation registry: compact action discovery, dry-run planning, shared target/version resolution, safety confirmation, bounded output, journey orchestration, and a raw REST escape hatch through the Salesforce Connection Module.",
       "primaryFiles": [
         "index.ts",
         "lib/v2/tools.ts",
@@ -414,7 +414,6 @@
         "lib/facade/registry.ts",
         "lib/facade-tool.ts",
         "lib/api-tool.ts",
-        "lib/path.ts",
         "lib/safety.ts",
         "lib/settings.ts",
         "lib/config-panel.ts",
@@ -423,7 +422,7 @@
       ],
       "safety": [
         "No MCP runtime or Java subprocess is used.",
-        "The v2 data360_* tools route through the shared action registry and existing safety gates.",
+        "The v2 data360_* tools route through the shared Salesforce Connection Module, action registry, and existing safety gates.",
         "Mutating calls are classified by method/path and confirmed when required.",
         "The extension uses plain reference docs instead of contributing Agent Skills."
       ]
@@ -431,7 +430,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11096
+    "srcLoc": 11027
   },
   {
     "id": "sf-devbar",
@@ -1115,7 +1114,7 @@
     "entry": "extensions/sf-soql/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3171
+    "srcLoc": 3173
   },
   {
     "id": "sf-tldraw",

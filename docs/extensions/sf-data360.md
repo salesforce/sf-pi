@@ -42,14 +42,14 @@ You can also manage this extension from the SF Pi home base:
 
 ## What you get
 
-- Capability search/examples/execute through `d360`.
-- Direct REST escape hatch through `d360_api`.
-- Compact metadata helpers and readiness probes.
+- Action discovery and readiness guidance through `data360_discover`.
+- Version-owned REST escape hatch through `data360_api`.
+- Lifecycle-focused `data360_*` tools for metadata, ingestion, query, segmentation, activation, and observability.
 
 ## Safety notes
 
 - No MCP runtime or Java subprocess is used.
-- The v2 data360_* tools route through the shared action registry and existing safety gates.
+- The v2 data360_* tools route through the shared Salesforce Connection Module, action registry, and existing safety gates.
 - Mutating calls are classified by method/path and confirmed when required.
 - The extension uses plain reference docs instead of contributing Agent Skills.
 

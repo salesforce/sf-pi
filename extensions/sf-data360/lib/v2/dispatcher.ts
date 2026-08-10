@@ -4,9 +4,11 @@ import { createHash } from "node:crypto";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import type { SfEnvironment } from "../../../../lib/common/sf-environment/types.ts";
-import { connFromAlias } from "../../../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../../../lib/common/sf-conn/request.ts";
-import { buildApiPath, type QueryParams } from "../path.ts";
+import {
+  connectSalesforce,
+  type SalesforceQueryParams as QueryParams,
+  type SalesforceSession,
+} from "../../../../lib/common/sf-conn/index.ts";
 import { planCleanup } from "./cleanup.ts";
 import { inferCsvSchema } from "./csv-schema.ts";
 import {
@@ -34,7 +36,6 @@ import {
   summarizeReadiness,
   type ProbeResult,
 } from "../probe-tool.ts";
-import { resolveTargetOrgContext } from "../target-org.ts";
 import {
   findData360Action,
   getData360ActionsForTool,
@@ -70,7 +71,7 @@ export async function runData360V2Action(
     if (discovery) return discovery;
   }
   if (input.tool === "data360_api") {
-    const api = await runApiAction(input, env, signal);
+    const api = await runApiAction(input, ctx, signal);
     if (api) return api;
   }
 
@@ -99,7 +100,7 @@ async function runDiscoveryAction(
 ): Promise<Record<string, unknown> | undefined> {
   switch (input.action) {
     case "readiness.probe":
-      return runReadinessProbe(input, env, signal, progress);
+      return runReadinessProbe(input, ctx.cwd, signal, progress);
     case "catalog.search":
       return runCatalogSearch(input);
     case "catalog.action":
@@ -113,7 +114,7 @@ async function runDiscoveryAction(
 
 async function runApiAction(
   input: Data360V2Input,
-  env: SfEnvironment,
+  ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown> | undefined> {
   if (input.action !== "rest.request") return undefined;
@@ -122,7 +123,7 @@ async function runApiAction(
   const path = requiredStringParam(params, "path");
   const query = asQueryParams(params.query);
   const body = params.body;
-  const resolved = await resolveRequestForExecution(
+  const { resolved, session } = await resolveRequestForExecution(
     {
       method,
       path,
@@ -133,7 +134,8 @@ async function runApiAction(
       output_mode: input.output_mode,
       dry_run: input.dry_run,
     },
-    env,
+    ctx.cwd || process.cwd(),
+    signal,
   );
   if (input.dry_run) {
     return {
@@ -149,7 +151,6 @@ async function runApiAction(
       summary: `Resolved raw Data 360 REST ${resolved.method} ${resolved.apiPath}`,
     };
   }
-  if (!resolved.targetOrg) throw new Error("No Salesforce target org is configured.");
   if (resolved.safety.requiresConfirmation && !input.allow_confirmed) {
     return {
       ok: false,
@@ -163,10 +164,10 @@ async function runApiAction(
     };
   }
   if (signal?.aborted) throw new Error("data360_api rest.request cancelled before request.");
-  const conn = await connFromAlias(resolved.targetOrg, connectionOptions(input, signal));
-  const resp = await connRequest<unknown>(conn, {
+  const resp = await session.request<unknown>({
     method: resolved.method,
-    url: resolved.apiPath,
+    path,
+    query,
     body: resolved.method === "GET" ? undefined : body,
     timeoutMs: input.timeout_ms ?? 120_000,
     signal,
@@ -190,16 +191,23 @@ async function runApiAction(
 const DEFAULT_CONNECTION_TIMEOUT_MS = 15_000;
 const MAX_CONNECTION_TIMEOUT_MS = 30_000;
 
-function connectionOptions(
-  input: Pick<Data360V2Input, "timeout_ms">,
-  signal: AbortSignal | undefined,
-): { timeoutMs: number; signal: AbortSignal | undefined } {
+function connectionTimeout(input: Pick<Data360V2Input, "timeout_ms">): number {
   const requested =
     typeof input.timeout_ms === "number" ? input.timeout_ms : DEFAULT_CONNECTION_TIMEOUT_MS;
-  return {
-    timeoutMs: Math.max(1, Math.min(requested, MAX_CONNECTION_TIMEOUT_MS)),
+  return Math.max(1, Math.min(requested, MAX_CONNECTION_TIMEOUT_MS));
+}
+
+function connectData360(
+  input: Data360V2Input,
+  cwd: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<SalesforceSession> {
+  return connectSalesforce({
+    cwd: cwd || process.cwd(),
+    targetOrg: input.target_org,
     signal,
-  };
+    timeoutMs: connectionTimeout(input),
+  });
 }
 
 function probeFailure(name: string, path: string, err: unknown): ProbeResult {
@@ -230,12 +238,13 @@ function progressStatusForProbe(probe: ProbeResult): Data360ProgressEvent["statu
 
 async function runReadinessProbe(
   input: Data360V2Input,
-  env: SfEnvironment,
+  cwd: string,
   signal: AbortSignal | undefined,
   progress?: Data360ProgressSink,
 ): Promise<Record<string, unknown>> {
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectData360(input, cwd, signal);
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   if (input.dry_run) {
     return {
       ok: true,
@@ -246,22 +255,20 @@ async function runReadinessProbe(
       apiVersion,
       probes: PROBES.map((probe) => ({
         name: probe.name,
-        path: buildApiPath(probe.path, apiVersion),
+        path: session.path(probe.path),
       })),
       summary: `Resolved ${PROBES.length} read-only Data 360 readiness probes`,
     };
   }
   emitProgress(progress, input, "execute", "running", `Running ${PROBES.length} readiness probes`);
-  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
   const timeoutMs = typeof input.timeout_ms === "number" ? input.timeout_ms : 15_000;
   const probes: ProbeResult[] = await Promise.all(
     PROBES.map(async (probe) => {
       if (signal?.aborted) throw new Error("Data 360 readiness probe cancelled.");
-      const apiPath = buildApiPath(probe.path, apiVersion);
       try {
-        const resp = await connRequest<unknown>(conn, {
+        const resp = await session.request<unknown>({
           method: "GET",
-          url: apiPath,
+          path: probe.path,
           timeoutMs,
           signal,
         });
@@ -499,9 +506,9 @@ async function runMappedAction(
 ): Promise<Record<string, unknown>> {
   const match = findData360Action(input.tool, input.action);
   if (!match) return unknownAction(input, input.action);
-  const metadataResult = await runCompactMetadataAction(input, match, env, signal);
+  const metadataResult = await runCompactMetadataAction(input, match, ctx.cwd, signal);
   if (metadataResult) return metadataResult;
-  if (match.implementation?.kind === "local") return runLocalAction(input, match, env, signal);
+  if (match.implementation?.kind === "local") return runLocalAction(input, match, ctx, signal);
   if (match.implementation?.kind === "journey") {
     emitProgress(progress, input, "execute", "running", `Running journey ${match.action}`);
     const result = await runJourneyAction(input, match, env, ctx, signal, progress);
@@ -515,9 +522,9 @@ async function runMappedAction(
     return result;
   }
   if (match.implementation?.kind === "tenant_ingest")
-    return runTenantIngestAction(input, match, env);
+    return runTenantIngestAction(input, match, ctx.cwd, signal);
   if (match.implementation?.kind === "tenant_ingest_auth")
-    return runTenantIngestAuthAction(input, match, env);
+    return runTenantIngestAuthAction(input, match, ctx.cwd, signal);
   if (!match.capability) {
     return {
       ok: false,
@@ -564,15 +571,16 @@ async function runMappedAction(
 async function runCompactMetadataAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
-  env: SfEnvironment,
+  cwd: string,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown> | undefined> {
   const metadataInput = metadataInputFor(input, action.action);
   if (!metadataInput) return undefined;
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectData360(input, cwd, signal);
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const path = metadataPath(metadataInput);
-  const apiPath = buildApiPath(path, apiVersion);
+  const apiPath = session.path(path);
   if (input.dry_run) {
     return {
       ok: true,
@@ -585,10 +593,9 @@ async function runCompactMetadataAction(
       summary: `Resolved compact metadata ${input.action}`,
     };
   }
-  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
-  const resp = await connRequest<unknown>(conn, {
+  const resp = await session.request<unknown>({
     method: "GET",
-    url: apiPath,
+    path,
     timeoutMs: input.timeout_ms ?? 120_000,
     signal,
   });
@@ -683,10 +690,12 @@ function requiredAnyString(params: Record<string, unknown>, keys: string[]): str
 async function runTenantIngestAuthAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
-  env: SfEnvironment,
+  cwd: string,
+  signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectData360(input, cwd, signal);
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const params = input.params ?? {};
   if (action.action === "auth.pkce_start") {
     const result = startTenantIngestPkce(params);
@@ -814,10 +823,12 @@ async function runTenantIngestAuthAction(
 async function runTenantIngestAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
-  env: SfEnvironment,
+  cwd: string,
+  signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectData360(input, cwd, signal);
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const plan = planTenantIngestRequest(action.action as TenantIngestActionName, input.params ?? {});
   if (!input.dry_run && plan.request.method !== "GET" && input.allow_confirmed !== true) {
     return tenantIngestConfirmationRequired(input, action, targetOrg, apiVersion, plan);
@@ -2171,7 +2182,7 @@ function sleep(ms: number): Promise<void> {
 async function runLocalAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
-  env: SfEnvironment,
+  ctx: ExtensionContext,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
   if (action.implementation?.name === "csv_schema.infer") {
@@ -2185,7 +2196,7 @@ async function runLocalAction(
     };
   }
   if (action.implementation?.name === "stdm.session_otel") {
-    return runStdmSessionOtelAction(input, action, env, signal);
+    return runStdmSessionOtelAction(input, action, ctx.cwd, signal);
   }
   if (action.implementation?.name !== "sql.verify_rows") {
     return {
@@ -2196,14 +2207,15 @@ async function runLocalAction(
       summary: `Unknown local action ${action.implementation?.name ?? "(none)"}`,
     };
   }
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectData360(input, ctx.cwd, signal);
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const dloName = requiredSafeApiName(input.params, "dloName");
   const dataspaceName = stringParam(input.params, "dataspaceName", "default");
   const sql = `SELECT COUNT(*) AS row_count FROM ${dloName}`;
   const request = {
     method: "POST" as const,
-    path: buildApiPath("/ssot/query-sql", apiVersion, { dataspaceName }),
+    path: session.path("/ssot/query-sql", { dataspaceName }),
     body: { sql },
   };
   if (input.dry_run) {
@@ -2221,10 +2233,10 @@ async function runLocalAction(
       next_actions: nextActionsFor(action),
     };
   }
-  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
-  const resp = await connRequest<unknown>(conn, {
+  const resp = await session.request<unknown>({
     method: request.method,
-    url: request.path,
+    path: "/ssot/query-sql",
+    query: { dataspaceName },
     body: request.body,
     timeoutMs: input.timeout_ms ?? 120_000,
     signal,
@@ -2251,13 +2263,15 @@ async function runLocalAction(
 async function runStdmSessionOtelAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
-  env: SfEnvironment,
+  cwd: string,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectData360(input, cwd, signal);
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const sessionId = requiredStringParam(input.params, "session_id");
-  const apiPath = buildApiPath(`/einstein/audit/otel/${encodeURIComponent(sessionId)}`, apiVersion);
+  const resourcePath = `/einstein/audit/otel/${encodeURIComponent(sessionId)}`;
+  const apiPath = session.path(resourcePath);
   const request = { method: "GET" as const, path: apiPath };
   if (input.dry_run) {
     return {
@@ -2274,10 +2288,9 @@ async function runStdmSessionOtelAction(
     };
   }
 
-  const conn = await connFromAlias(targetOrg, connectionOptions(input, signal));
-  const resp = await connRequest<unknown>(conn, {
+  const resp = await session.request<unknown>({
     method: request.method,
-    url: request.path,
+    path: resourcePath,
     timeoutMs: input.timeout_ms ?? 45_000,
     signal,
   });
@@ -2537,8 +2550,9 @@ async function runJourneyAction(
     };
   }
   if (action.implementation?.name === "ingest_auth.pkce_interactive") {
-    const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-    if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+    const session = await connectData360(input, ctx.cwd, signal);
+    const targetOrg = session.target.targetOrg;
+    const apiVersion = session.target.apiVersion;
     const plan = planInteractivePkceAuth(input.params ?? {});
     if (input.dry_run) {
       return {
@@ -2580,8 +2594,9 @@ async function runJourneyAction(
       summary: `Unknown journey ${action.implementation?.name ?? "(none)"}`,
     };
   }
-  const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  const session = await connectData360(input, ctx.cwd, signal);
+  const targetOrg = session.target.targetOrg;
+  const apiVersion = session.target.apiVersion;
   const params = input.params ?? {};
   const sourceName = requiredStringParam(params, "sourceName");
   const schemaObjectName = requiredSafeApiName(params, "schemaObjectName");

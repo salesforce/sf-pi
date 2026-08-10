@@ -9,7 +9,7 @@
  */
 
 import type { OrgType } from "../../../lib/common/sf-environment/types.ts";
-import { normalizeD360Path } from "./path.ts";
+import { normalizeSalesforceResource } from "../../../lib/common/sf-conn/index.ts";
 
 export type D360Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -67,7 +67,7 @@ export function classifyD360Request(
   path: string,
   orgType: OrgType | "unknown",
 ): D360SafetyDecision {
-  const normalized = stripQueryAndHash(normalizeD360Path(path));
+  const normalized = stripQueryAndHash(normalizeSalesforceResource(path));
   const productionLike = orgType === "production" || orgType === "unknown";
 
   if (method === "GET") {

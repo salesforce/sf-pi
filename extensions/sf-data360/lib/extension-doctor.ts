@@ -20,8 +20,7 @@ import {
   getCachedSfEnvironment,
   getSharedSfEnvironment,
 } from "../../../lib/common/sf-environment/shared-runtime.ts";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../../lib/common/sf-conn/request.ts";
+import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
 import { classifyConnectionProbeResult } from "./probe-tool.ts";
 
 const QUICK_PROBE_PATH = "/ssot/data-spaces";
@@ -74,14 +73,18 @@ export function buildSfData360Doctor(pi: ExtensionAPI) {
       detail: `${env.org.instanceUrl ?? "instance unknown"} — ${env.org.orgType ?? "type unknown"}`,
     });
 
-    const apiVersion = env.org.apiVersion ?? env.project.sourceApiVersion ?? "66.0";
-    const probePath = `/services/data/v${apiVersion}${QUICK_PROBE_PATH}`;
+    let probePath = QUICK_PROBE_PATH;
 
     try {
-      const conn = await connFromAlias(targetOrg);
-      const resp = await connRequest<unknown>(conn, {
+      const session = await connectSalesforce({
+        cwd,
+        targetOrg,
+        timeoutMs: QUICK_PROBE_TIMEOUT_MS,
+      });
+      probePath = session.path(QUICK_PROBE_PATH);
+      const resp = await session.request<unknown>({
         method: "GET",
-        url: probePath,
+        path: QUICK_PROBE_PATH,
         timeoutMs: QUICK_PROBE_TIMEOUT_MS,
       });
       const probe = classifyConnectionProbeResult(

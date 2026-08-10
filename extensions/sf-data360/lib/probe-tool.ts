@@ -7,22 +7,13 @@
  * read-only surfaces and returns a classification instead of relying on one
  * endpoint.
  */
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
-import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
-import {
-  getCachedSfEnvironment,
-  getSharedSfEnvironment,
-} from "../../../lib/common/sf-environment/shared-runtime.ts";
-import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../../lib/common/sf-conn/request.ts";
-import { buildApiPath } from "./path.ts";
+import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
 import { renderCardForLlm } from "./display/card.ts";
 import { probeResultToCard } from "./display/probe-card.ts";
 import { renderD360ProbeCall, renderD360ProbeResult } from "./display/render.ts";
-import { resolveTargetOrgContext } from "./target-org.ts";
 import { buildD360Envelope, writeFullD360Output } from "./truncation.ts";
 
 export const D360_PROBE_TOOL_NAME = "d360_probe";
@@ -91,8 +82,6 @@ export const PROBES: Array<{ name: string; path: string; requiredForReady?: bool
 ];
 
 export function registerD360ProbeTool(pi: ExtensionAPI): void {
-  const exec = buildExecFn(pi);
-
   pi.registerTool({
     name: D360_PROBE_TOOL_NAME,
     label: "Data 360 Probe",
@@ -109,18 +98,14 @@ export function registerD360ProbeTool(pi: ExtensionAPI): void {
     renderResult: renderD360ProbeResult,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const input = params as D360ProbeInput;
-      const env = await resolveEnvironment(exec, ctx);
-      // Resolve apiVersion against the *target* org, not the active sf-pi org.
-      // Otherwise a target_org on a different release than the default produces
-      // /services/data/v<wrong>/... URLs that 404 every probe and falsely
-      // report "blocked".
-      const { targetOrg, apiVersion } = await resolveTargetOrgContext(input.target_org, env);
-      if (!targetOrg)
-        throw new Error(
-          "No Salesforce target org is configured. Pass target_org or set sf config target-org.",
-        );
-
-      const conn = await connFromAlias(targetOrg);
+      const session = await connectSalesforce({
+        cwd: ctx.cwd,
+        targetOrg: input.target_org,
+        signal,
+        timeoutMs: input.timeout_ms,
+      });
+      const targetOrg = session.target.targetOrg;
+      const apiVersion = session.target.apiVersion;
       const timeoutMs = typeof input.timeout_ms === "number" ? input.timeout_ms : 45_000;
       // Fan out all 15 probes in parallel. Each is a read-only GET; the org's
       // /ssot/* surfaces are happy with concurrent requests. Order is
@@ -128,11 +113,11 @@ export function registerD360ProbeTool(pi: ExtensionAPI): void {
       const probes: ProbeResult[] = await Promise.all(
         PROBES.map(async (probe) => {
           if (signal?.aborted) throw new Error("Data 360 readiness probe cancelled.");
-          const apiPath = buildApiPath(probe.path, apiVersion);
-          const resp = await connRequest<unknown>(conn, {
+          const resp = await session.request<unknown>({
             method: "GET",
-            url: apiPath,
+            path: probe.path,
             timeoutMs,
+            signal,
           });
           return classifyConnectionProbeResult(probe.name, probe.path, resp.status, resp.body);
         }),
@@ -175,13 +160,6 @@ export function registerD360ProbeTool(pi: ExtensionAPI): void {
       };
     },
   });
-}
-
-async function resolveEnvironment(
-  exec: ReturnType<typeof buildExecFn>,
-  ctx: ExtensionContext,
-): Promise<SfEnvironment> {
-  return getCachedSfEnvironment(ctx.cwd) ?? (await getSharedSfEnvironment(exec, ctx.cwd));
 }
 
 /**
