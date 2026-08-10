@@ -210,6 +210,19 @@ function connectData360(
   });
 }
 
+function localTargetContext(
+  input: Data360V2Input,
+  env: SfEnvironment,
+): { targetOrg: string; apiVersion: string } {
+  const targetOrg = input.target_org ?? env.config.targetOrg ?? env.org.alias ?? env.org.username;
+  if (!targetOrg) throw new Error("No Salesforce target org is configured.");
+  return {
+    targetOrg,
+    // Orientation only for tenant-host/local planning; never request authority.
+    apiVersion: env.org.apiVersion ?? "not-required",
+  };
+}
+
 function probeFailure(name: string, path: string, err: unknown): ProbeResult {
   return {
     name,
@@ -522,9 +535,9 @@ async function runMappedAction(
     return result;
   }
   if (match.implementation?.kind === "tenant_ingest")
-    return runTenantIngestAction(input, match, ctx.cwd, signal);
+    return runTenantIngestAction(input, match, env);
   if (match.implementation?.kind === "tenant_ingest_auth")
-    return runTenantIngestAuthAction(input, match, ctx.cwd, signal);
+    return runTenantIngestAuthAction(input, match, env);
   if (!match.capability) {
     return {
       ok: false,
@@ -690,12 +703,9 @@ function requiredAnyString(params: Record<string, unknown>, keys: string[]): str
 async function runTenantIngestAuthAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
-  cwd: string,
-  signal: AbortSignal | undefined,
+  env: SfEnvironment,
 ): Promise<Record<string, unknown>> {
-  const session = await connectData360(input, cwd, signal);
-  const targetOrg = session.target.targetOrg;
-  const apiVersion = session.target.apiVersion;
+  const { targetOrg, apiVersion } = localTargetContext(input, env);
   const params = input.params ?? {};
   if (action.action === "auth.pkce_start") {
     const result = startTenantIngestPkce(params);
@@ -823,12 +833,9 @@ async function runTenantIngestAuthAction(
 async function runTenantIngestAction(
   input: Data360V2Input,
   action: Data360V2ActionDefinition,
-  cwd: string,
-  signal: AbortSignal | undefined,
+  env: SfEnvironment,
 ): Promise<Record<string, unknown>> {
-  const session = await connectData360(input, cwd, signal);
-  const targetOrg = session.target.targetOrg;
-  const apiVersion = session.target.apiVersion;
+  const { targetOrg, apiVersion } = localTargetContext(input, env);
   const plan = planTenantIngestRequest(action.action as TenantIngestActionName, input.params ?? {});
   if (!input.dry_run && plan.request.method !== "GET" && input.allow_confirmed !== true) {
     return tenantIngestConfirmationRequired(input, action, targetOrg, apiVersion, plan);
@@ -2550,9 +2557,7 @@ async function runJourneyAction(
     };
   }
   if (action.implementation?.name === "ingest_auth.pkce_interactive") {
-    const session = await connectData360(input, ctx.cwd, signal);
-    const targetOrg = session.target.targetOrg;
-    const apiVersion = session.target.apiVersion;
+    const { targetOrg, apiVersion } = localTargetContext(input, env);
     const plan = planInteractivePkceAuth(input.params ?? {});
     if (input.dry_run) {
       return {
@@ -2594,9 +2599,7 @@ async function runJourneyAction(
       summary: `Unknown journey ${action.implementation?.name ?? "(none)"}`,
     };
   }
-  const session = await connectData360(input, ctx.cwd, signal);
-  const targetOrg = session.target.targetOrg;
-  const apiVersion = session.target.apiVersion;
+  const { targetOrg, apiVersion } = localTargetContext(input, env);
   const params = input.params ?? {};
   const sourceName = requiredStringParam(params, "sourceName");
   const schemaObjectName = requiredSafeApiName(params, "schemaObjectName");

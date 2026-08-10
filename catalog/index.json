@@ -93,7 +93,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 36849
+    "srcLoc": 37008
   },
   {
     "id": "sf-apex",
@@ -430,7 +430,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11027
+    "srcLoc": 11029
   },
   {
     "id": "sf-devbar",
