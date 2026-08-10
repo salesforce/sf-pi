@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.263.0-2026-08-10",
-  "latestVersion": "0.263.0",
+  "revision": "release-0.263.1-2026-08-10",
+  "latestVersion": "0.263.1",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.263.0",
+      "id": "release-0.263.1",
       "kind": "update",
-      "title": "sf-pi v0.263.0 — sf-conn: centralize Salesforce connections",
+      "title": "sf-pi v0.263.1 — sf-agentscript: reconcile mirrored safety telemetry",
       "publishedAt": "2026-08-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.263.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.263.1",
       "severity": "info",
-      "body": "sf-conn: centralize Salesforce connections"
+      "body": "sf-agentscript: reconcile mirrored safety telemetry"
     },
     {
       "id": "pi-0.73-required",
