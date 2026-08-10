@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.262.1-2026-08-09",
-  "latestVersion": "0.262.1",
+  "revision": "release-0.263.0-2026-08-10",
+  "latestVersion": "0.263.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.262.1",
+      "id": "release-0.263.0",
       "kind": "update",
-      "title": "sf-pi v0.262.1 — sf-environment: expose API version fallback",
-      "publishedAt": "2026-08-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.262.1",
+      "title": "sf-pi v0.263.0 — sf-conn: centralize Salesforce connections",
+      "publishedAt": "2026-08-10T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.263.0",
       "severity": "info",
-      "body": "sf-environment: expose API version fallback"
+      "body": "sf-conn: centralize Salesforce connections"
     },
     {
       "id": "pi-0.73-required",
