@@ -521,6 +521,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.263.0](https://github.com/salesforce/sf-pi/compare/v0.262.1...v0.263.0) (2026-08-10)
+
+
+### Features
+
+* **sf-conn:** centralize Salesforce connections ([7ee4e98](https://github.com/salesforce/sf-pi/commit/7ee4e98ad38922fe0d87ca4e4ce0d63bc65e6c97))
+
 ## [0.262.1](https://github.com/salesforce/sf-pi/compare/v0.262.0...v0.262.1) (2026-08-09)
 
 
