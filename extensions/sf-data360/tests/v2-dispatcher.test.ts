@@ -1,21 +1,24 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const orgCreateMock = vi.fn();
+const connectSalesforceMock = vi.fn();
 const requestMock = vi.fn();
 
-vi.mock("@salesforce/core", () => ({
-  ConfigAggregator: {
-    create: () =>
-      Promise.resolve({
-        getInfo: (key: string) => ({ value: key === "target-org" ? "AgentforceSTDM" : undefined }),
-      }),
-  },
-  Org: { create: (opts: unknown) => orgCreateMock(opts) },
-}));
+vi.mock("../../../lib/common/sf-conn/index.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/common/sf-conn/index.ts")>();
+  return {
+    ...actual,
+    connectSalesforce: (options: unknown) => connectSalesforceMock(options),
+    clearSalesforceConnectionCache: vi.fn(),
+  };
+});
 
-import { clearSalesforceConnectionCache } from "../../../lib/common/sf-conn/index.ts";
-import { createTestSalesforceOrg } from "./test-salesforce-connection.ts";
+import {
+  clearSalesforceConnectionCache,
+  type SalesforceRequestInput,
+  type SalesforceSession,
+} from "../../../lib/common/sf-conn/index.ts";
+import { buildSalesforceApiPath } from "../../../lib/common/sf-conn/path.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { runData360V2Action } from "../lib/v2/dispatcher.ts";
 
@@ -36,12 +39,77 @@ const env: SfEnvironment = {
 
 const ctx = { hasUI: false } as never;
 
+function createDispatcherSession(): SalesforceSession {
+  const target = {
+    targetOrg: "AgentforceSTDM",
+    alias: "AgentforceSTDM",
+    instanceUrl: "https://example.sandbox.my.salesforce.com",
+    orgType: "sandbox" as const,
+    apiVersion: "67.0",
+    maxApiVersion: "67.0",
+    versionSource: "org-latest" as const,
+  };
+  const path = (resource: string, query?: SalesforceRequestInput["query"]) =>
+    buildSalesforceApiPath(resource, target.apiVersion, query);
+  const request = async <T>(input: SalesforceRequestInput) => {
+    const timeoutMs = input.timeoutMs ?? 120_000;
+    const timedOut = Symbol("timed-out");
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<typeof timedOut>((resolve) => {
+      timer = setTimeout(() => resolve(timedOut), timeoutMs);
+    });
+    const pending = requestMock({
+      method: input.method,
+      url: path(input.path, input.query),
+      body:
+        input.body === undefined
+          ? undefined
+          : typeof input.body === "string"
+            ? input.body
+            : JSON.stringify(input.body),
+    }) as Promise<T>;
+    try {
+      const body = await Promise.race([pending, timeout]);
+      return body === timedOut
+        ? {
+            status: 408,
+            body: {
+              name: "ConnRequestTimeoutError",
+              errorCode: "REQUEST_TIMEOUT",
+              message: `conn.request timed out after ${timeoutMs}ms.`,
+            } as T,
+            path: path(input.path, input.query),
+            target,
+            warnings: [],
+          }
+        : {
+            status: 200,
+            body,
+            path: path(input.path, input.query),
+            target,
+            warnings: [],
+          };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+  return {
+    target,
+    connection: {} as never,
+    identity: vi.fn(),
+    path,
+    request,
+    continueRequest: request,
+    query: vi.fn(),
+  } as SalesforceSession;
+}
+
 describe("Data 360 v2 dispatcher", () => {
   beforeEach(() => {
     clearSalesforceConnectionCache();
     requestMock.mockReset();
-    orgCreateMock.mockReset();
-    orgCreateMock.mockResolvedValue(createTestSalesforceOrg(requestMock));
+    connectSalesforceMock.mockReset();
+    connectSalesforceMock.mockResolvedValue(createDispatcherSession());
   });
 
   it("describes the endpoint behind an action without a network call", async () => {
@@ -67,7 +135,7 @@ describe("Data 360 v2 dispatcher", () => {
         endpoint: { method: "POST", path: "/ssot/data-streams" },
       }),
     });
-    expect(orgCreateMock).not.toHaveBeenCalled();
+    expect(connectSalesforceMock).not.toHaveBeenCalled();
   });
 
   it("dry-runs a source schema test through the existing REST execution path", async () => {
@@ -100,7 +168,7 @@ describe("Data 360 v2 dispatcher", () => {
         body: expect.objectContaining({ schemas: expect.any(Array) }),
       },
     });
-    expect(orgCreateMock).toHaveBeenCalledTimes(1);
+    expect(connectSalesforceMock).toHaveBeenCalledTimes(1);
   });
 
   it("searches the cross-family catalog through data360_discover", async () => {
@@ -203,7 +271,7 @@ describe("Data 360 v2 dispatcher", () => {
       },
       safety: { level: "read", requiresConfirmation: false },
     });
-    expect(orgCreateMock).toHaveBeenCalledTimes(1);
+    expect(connectSalesforceMock).toHaveBeenCalledTimes(1);
   });
 
   it("dry-runs Data 360 readiness probes through data360_discover", async () => {
@@ -235,7 +303,7 @@ describe("Data 360 v2 dispatcher", () => {
         }),
       ]),
     );
-    expect(orgCreateMock).toHaveBeenCalledTimes(1);
+    expect(connectSalesforceMock).toHaveBeenCalledTimes(1);
   });
 
   it("exports a known Agentforce session through the OTel API", async () => {
@@ -293,7 +361,7 @@ describe("Data 360 v2 dispatcher", () => {
         path: "/services/data/v67.0/einstein/audit/otel/session%2Fwith%20space",
       },
     });
-    expect(orgCreateMock).toHaveBeenCalledTimes(1);
+    expect(connectSalesforceMock).toHaveBeenCalledTimes(1);
   });
 
   it("emits lightweight progress for runbook-backed observe actions", async () => {
@@ -548,6 +616,6 @@ describe("Data 360 v2 dispatcher", () => {
       expect.objectContaining({ tool: "data360_prepare", action: "ingest_job.poll" }),
       expect.objectContaining({ tool: "data360_query", action: "sql.verify_rows" }),
     ]);
-    expect(orgCreateMock).not.toHaveBeenCalled();
+    expect(connectSalesforceMock).not.toHaveBeenCalled();
   });
 });
