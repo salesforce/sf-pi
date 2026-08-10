@@ -41,6 +41,7 @@ import {
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import {
   buildApexGuruBrowserFollowUp,
@@ -217,6 +218,7 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
   registerManagerDetailActions(pi, "sf-code-analyzer", buildCodeAnalyzerManagerActions(pi));
 
   pi.on("session_start", (event, ctx) => {
+    beginSalesforceConnectionSession(event);
     if (event.reason === "reload") toolsRegistered = false;
     if (isSfPiExtensionEnabled(ctx.cwd, "sf-code-analyzer")) ensureToolsRegistered();
     if (ctx.hasUI && isSfPiExtensionEnabled(ctx.cwd, "sf-code-analyzer")) {
@@ -224,7 +226,7 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
         void refreshCodeAnalyzerReadiness(exec).catch(() => {
           // Cache refresh is best-effort. Doctor surfaces the error when requested.
         });
-        void refreshApexGuruReadiness().catch(() => {
+        void refreshApexGuruReadiness(undefined, ctx.cwd).catch(() => {
           // ApexGuru readiness is optional and must not affect startup.
         });
       }, 6_000);

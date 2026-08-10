@@ -9,7 +9,7 @@ import { renderSfPiProgressText } from "../../../lib/common/display/result-card.
 import { Type } from "typebox";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
 import { nextReportPath } from "./artifacts.ts";
-import { runApexGuru, validateApexGuru } from "./apexguru.ts";
+import { DEFAULT_APEXGURU_TIMEOUT_MS, runApexGuru, validateApexGuru } from "./apexguru.ts";
 import {
   buildApexGuruBrowserFollowUp,
   formatApexGuruSetupRunbook,
@@ -356,7 +356,15 @@ async function executeReportAction(
     const file = input.target?.[0];
     if (!file)
       throw new Error("code_analyzer action='apexguru' requires target with one Apex file.");
-    const availability = await validateApexGuru(input.target_org);
+    const totalTimeout = input.timeout_ms ?? DEFAULT_APEXGURU_TIMEOUT_MS;
+    const deadline = Date.now() + totalTimeout;
+    const remaining = (): number => {
+      const value = deadline - Date.now();
+      if (value <= 0)
+        throw new Error(`ApexGuru timed out after ${Math.round(totalTimeout / 1000)}s.`);
+      return value;
+    };
+    const availability = await validateApexGuru(input.target_org, ctx.cwd, remaining());
     if (availability.access !== "enabled") {
       return {
         kind: "run",
@@ -376,7 +384,8 @@ async function executeReportAction(
       file,
       cwd: ctx.cwd,
       target_org: input.target_org,
-      timeout_ms: input.timeout_ms,
+      timeout_ms: remaining(),
+      deadline_ms: deadline,
       reportFile: nextReportPath(ctx, "run", "json"),
     });
   }

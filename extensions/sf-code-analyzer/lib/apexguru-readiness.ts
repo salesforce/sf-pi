@@ -62,9 +62,10 @@ export function isApexGuruReadyForAutoInsight(entry = readApexGuruReadiness()): 
 
 export async function refreshApexGuruReadiness(
   targetOrg?: string,
+  cwd = process.cwd(),
 ): Promise<ApexGuruReadinessEntry> {
   try {
-    const validation = await validateApexGuru(targetOrg);
+    const validation = await validateApexGuru(targetOrg, cwd);
     const entry: ApexGuruReadinessEntry = {
       checkedAt: new Date().toISOString(),
       access: validation.access as ApexGuruReadinessEntry["access"],

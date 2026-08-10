@@ -48,8 +48,10 @@ describe("ApexGuru readiness", () => {
         apiVersion: "67.0",
       });
 
-    await readiness.refreshApexGuruReadiness("a");
-    await readiness.refreshApexGuruReadiness("b");
+    await readiness.refreshApexGuruReadiness("a", "/workspace-a");
+    await readiness.refreshApexGuruReadiness("b", "/workspace-b");
+    expect(apex.validateApexGuru).toHaveBeenNthCalledWith(1, "a", "/workspace-a");
+    expect(apex.validateApexGuru).toHaveBeenNthCalledWith(2, "b", "/workspace-b");
 
     const state = readiness.readApexGuruReadinessState();
     expect(Object.keys(state.entries)).toHaveLength(2);

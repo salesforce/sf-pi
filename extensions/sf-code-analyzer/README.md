@@ -136,10 +136,7 @@ not create panes on its own.
 
 ### ApexGuru
 
-ApexGuru is org-backed, not a local Code Analyzer engine. It requires a target
-org whose ApexGuru service is enabled for the current org/user. When unavailable,
-SF Pi can suggest an SF Browser setup check, but it will not open Setup or click
-Enable/Accept/Save without user approval.
+ApexGuru is org-backed, not a local Code Analyzer engine. It requires a target org whose ApexGuru service is enabled for the current org/user. Its target, latest/configured-fallback API version, authentication, and bounded requests come from the shared Salesforce Connection Module. When unavailable, SF Pi can suggest an SF Browser setup check, but it will not open Setup or click Enable/Accept/Save without user approval.
 
 Use:
 
@@ -271,6 +268,7 @@ extensions/sf-code-analyzer/
     types.ts                ← implementation module
   tests/
     apexguru-readiness.test.ts← unit / smoke test
+    apexguru-shared-connection.test.ts← unit / smoke test
     auto-scan-followup.test.ts← unit / smoke test
     auto-scan-orchestration.test.ts← unit / smoke test
     auto-scan-plan.test.ts  ← unit / smoke test

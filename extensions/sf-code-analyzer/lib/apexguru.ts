@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Explicit ApexGuru action support. */
+/** Explicit ApexGuru action support through the shared Salesforce Connection Module. */
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
+import { connectSalesforce, type SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import type {
   CodeAnalyzerReportSummary,
   CodeAnalyzerRunJson,
@@ -10,35 +10,49 @@ import type {
 } from "./types.ts";
 
 const POLL_INTERVAL_MS = 1_000;
-const DEFAULT_TIMEOUT_MS = 60_000;
+export const DEFAULT_APEXGURU_TIMEOUT_MS = 60_000;
 
 export async function runApexGuru(input: {
   file: string;
   cwd: string;
   target_org?: string;
   timeout_ms?: number;
+  /** Internal absolute deadline shared with validation. */
+  deadline_ms?: number;
   reportFile?: string;
 }): Promise<CodeAnalyzerReportSummary> {
   const started = Date.now();
+  const totalTimeout = input.timeout_ms ?? DEFAULT_APEXGURU_TIMEOUT_MS;
+  const deadline = input.deadline_ms ?? started + totalTimeout;
+  const remaining = () => remainingTime(deadline, totalTimeout);
   const file = path.resolve(input.cwd, input.file);
-  const conn = await connFromAlias(input.target_org);
-  const apiVersion = getApiVersion(conn);
+  const session = await connectSalesforce({
+    cwd: input.cwd,
+    targetOrg: input.target_org,
+    timeoutMs: remaining(),
+  });
   const content = readFileSync(file, "utf8");
-  const request = (await conn.request({
+  const response = await session.request<{
+    status?: string;
+    requestId?: string;
+    message?: string;
+  }>({
     method: "POST",
-    url: `/services/data/v${apiVersion}/apexguru/request`,
-    body: JSON.stringify({ classContent: Buffer.from(content).toString("base64") }),
-  })) as { status?: string; requestId?: string; message?: string };
+    path: "/apexguru/request",
+    body: { classContent: Buffer.from(content).toString("base64") },
+    timeoutMs: remaining(),
+  });
+  if (response.status >= 400) {
+    throw new Error(`ApexGuru request failed HTTP ${response.status}.`);
+  }
+  const request = response.body;
   if (request.status?.toLowerCase() !== "new" || !request.requestId) {
-    throw new Error(request.message ?? `Unexpected ApexGuru response: ${JSON.stringify(request)}`);
+    throw new Error(
+      request.message ?? `Unexpected ApexGuru status: ${request.status ?? "unknown"}`,
+    );
   }
 
-  const payload = await pollApexGuru(
-    conn,
-    apiVersion,
-    request.requestId,
-    input.timeout_ms ?? DEFAULT_TIMEOUT_MS,
-  );
+  const payload = await pollApexGuru(session, request.requestId, deadline, totalTimeout);
   const rawViolations = JSON.parse(Buffer.from(payload.report, "base64").toString("utf8")) as Array<
     Omit<CodeAnalyzerViolation, "engine"> & { resources?: string[]; tags?: string[] }
   >;
@@ -77,7 +91,11 @@ export async function runApexGuru(input: {
   };
 }
 
-export async function validateApexGuru(targetOrg?: string): Promise<{
+export async function validateApexGuru(
+  targetOrg?: string,
+  cwd = process.cwd(),
+  timeoutMs = DEFAULT_APEXGURU_TIMEOUT_MS,
+): Promise<{
   access: string;
   message: string;
   orgId?: string;
@@ -86,53 +104,66 @@ export async function validateApexGuru(targetOrg?: string): Promise<{
   apiVersion?: string;
   targetOrg?: string;
 }> {
-  const conn = await connFromAlias(targetOrg);
-  const apiVersion = getApiVersion(conn);
-  const response = (await conn.request({
+  const deadline = Date.now() + timeoutMs;
+  const remaining = () => remainingTime(deadline, timeoutMs);
+  const session = await connectSalesforce({ cwd, targetOrg, timeoutMs: remaining() });
+  const response = await session.request<{ status?: string; message?: string }>({
     method: "GET",
-    url: `/services/data/v${apiVersion}/apexguru/validate`,
-  })) as { status?: string; message?: string };
-  const status = response.status?.toLowerCase() ?? "unknown";
-  const identity = await conn
-    .identity()
-    .catch(() => undefined as { organization_id?: string; user_id?: string } | undefined);
+    path: "/apexguru/validate",
+    timeoutMs: remaining(),
+  });
+  if (response.status >= 400)
+    throw new Error(`ApexGuru validation failed HTTP ${response.status}.`);
+  const status = response.body.status?.toLowerCase() ?? "unknown";
+  const identity = await session.identity({ timeoutMs: remaining() }).catch(() => undefined);
   return {
     access: status === "success" ? "enabled" : status === "failed" ? "eligible" : "ineligible",
     message:
-      response.message ??
+      response.body.message ??
       (status === "success" ? "ApexGuru access is enabled." : `ApexGuru status: ${status}`),
-    orgId: identity?.organization_id,
+    orgId: identity?.org_id,
     userId: identity?.user_id,
-    instanceUrl: conn.instanceUrl,
-    apiVersion,
+    instanceUrl: session.target.instanceUrl,
+    apiVersion: session.target.apiVersion,
     targetOrg,
   };
 }
 
 async function pollApexGuru(
-  conn: Awaited<ReturnType<typeof connFromAlias>>,
-  apiVersion: string,
+  session: SalesforceSession,
   requestId: string,
-  timeoutMs: number,
+  deadline: number,
+  totalTimeout: number,
 ): Promise<{ report: string }> {
-  const started = Date.now();
-  let last: unknown;
-  while (Date.now() - started < timeoutMs) {
-    const response = (await conn.request({
+  let lastStatus = "unknown";
+  while (Date.now() < deadline) {
+    const remaining = remainingTime(deadline, totalTimeout);
+    const response = await session.request<{ status?: string; report?: string; message?: string }>({
       method: "GET",
-      url: `/services/data/v${apiVersion}/apexguru/request/${requestId}`,
-    })) as { status?: string; report?: string; message?: string };
-    last = response;
-    const status = response.status?.toLowerCase();
-    if (status === "success" && response.report) return { report: response.report };
+      path: `/apexguru/request/${encodeURIComponent(requestId)}`,
+      timeoutMs: remaining,
+    });
+    if (response.status >= 400) throw new Error(`ApexGuru poll failed HTTP ${response.status}.`);
+    const status = response.body.status?.toLowerCase();
+    lastStatus = status ?? "unknown";
+    if (status === "success" && response.body.report) return { report: response.body.report };
     if (status === "failed" || status === "error") {
-      throw new Error(response.message ?? `ApexGuru ${status}`);
+      throw new Error(response.body.message ?? `ApexGuru ${status}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    const sleepMs = Math.min(POLL_INTERVAL_MS, deadline - Date.now());
+    if (sleepMs > 0) await new Promise((resolve) => setTimeout(resolve, sleepMs));
   }
   throw new Error(
-    `ApexGuru timed out after ${Math.round(timeoutMs / 1000)}s. Last response: ${JSON.stringify(last)}`,
+    `ApexGuru timed out after ${Math.round(totalTimeout / 1000)}s. Last status: ${lastStatus}`,
   );
+}
+
+function remainingTime(deadline: number, totalTimeout: number): number {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) {
+    throw new Error(`ApexGuru timed out after ${Math.round(totalTimeout / 1000)}s.`);
+  }
+  return remaining;
 }
 
 function buildViolationCounts(
@@ -144,8 +175,4 @@ function buildViolationCounts(
     if (key in counts) counts[key] += 1;
   }
   return counts;
-}
-
-function getApiVersion(conn: Awaited<ReturnType<typeof connFromAlias>>): string {
-  return String((conn as unknown as { getApiVersion?: () => string }).getApiVersion?.() ?? "67.0");
 }
