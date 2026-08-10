@@ -12,8 +12,8 @@ import { existsSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { Connection } from "@salesforce/core";
-import { apiVersion, requestJson, soqlConnection } from "../../extensions/sf-soql/lib/api.ts";
+import { connectSalesforce, type SalesforceSession } from "../../lib/common/sf-conn/index.ts";
+import { requestJson } from "../../extensions/sf-soql/lib/api.ts";
 import { schemaDescribe, schemaRelationships } from "../../extensions/sf-soql/lib/schema.ts";
 import { orgPreflight } from "../../extensions/sf-soql/lib/status.ts";
 import { validateQuery } from "../../extensions/sf-soql/lib/validator.ts";
@@ -90,7 +90,7 @@ interface HarnessData {
   contactIds: string[];
 }
 
-async function createHarnessData(conn: Connection): Promise<HarnessData> {
+async function createHarnessData(conn: SalesforceSession): Promise<HarnessData> {
   const stamp = Date.now();
   const account = await createRecord(conn, "Account", { Name: `SF SOQL E2E ${stamp}` });
   const contactA = await createRecord(conn, "Contact", {
@@ -106,36 +106,36 @@ async function createHarnessData(conn: Connection): Promise<HarnessData> {
   return { accountId: account.id, contactIds: [contactA.id, contactB.id] };
 }
 
-async function cleanupHarnessData(conn: Connection, data: HarnessData): Promise<void> {
+async function cleanupHarnessData(conn: SalesforceSession, data: HarnessData): Promise<void> {
   for (const contactId of data.contactIds) await deleteRecord(conn, "Contact", contactId);
   await deleteRecord(conn, "Account", data.accountId);
 }
 
 async function createRecord(
-  conn: Connection,
+  conn: SalesforceSession,
   objectName: string,
   body: Record<string, unknown>,
 ): Promise<{ id: string; success: boolean }> {
   return requestJson<{ id: string; success: boolean }>(
     conn,
     "POST",
-    `/services/data/v${apiVersion(conn)}/sobjects/${objectName}`,
+    `/sobjects/${objectName}`,
     body,
   );
 }
 
-async function deleteRecord(conn: Connection, objectName: string, id: string): Promise<void> {
-  await requestJson(
-    conn,
-    "DELETE",
-    `/services/data/v${apiVersion(conn)}/sobjects/${objectName}/${id}`,
-  );
+async function deleteRecord(
+  conn: SalesforceSession,
+  objectName: string,
+  id: string,
+): Promise<void> {
+  await requestJson(conn, "DELETE", `/sobjects/${objectName}/${id}`);
 }
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const targetOrg = requireOrg(args);
-  const conn = await soqlConnection(targetOrg);
+  const conn = await connectSalesforce({ cwd: process.cwd(), targetOrg });
   const state: SfSoqlSessionState = {};
 
   const run = async (

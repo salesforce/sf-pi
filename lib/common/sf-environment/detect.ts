@@ -21,21 +21,12 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-// Lazy-import `@salesforce/core`: type-only references stay static (erased
-// at TS compile time, no runtime cost), but the value imports are deferred
-// to the first time `detectConfig()` / `readOrgInfo()` actually runs. This
-// keeps the multi-MB `@salesforce/core` tree (jsforce, keytar, crypto
-// bindings, etc.) off the boot path — no extension's `index.ts` should pay
-// for it just because they import a type from this file.
-// Renamed the Org type alias to `SfOrg` to avoid collision with the local
-// `OrgType` ("sandbox" | "scratch" | "production" | ...) re-exported from
-// ./types below.
-import type { ConfigAggregator as ConfigAggregatorClass, Org as SfOrg } from "@salesforce/core";
-import { orgFromAlias } from "../sf-conn/connection.ts";
+// Config reads remain lazy so importing environment status code does not load
+// the Salesforce SDK or contact an org on the boot path.
+import type { ConfigAggregator as ConfigAggregatorClass } from "@salesforce/core";
+import { connectSalesforce } from "../sf-conn/index.ts";
 
 const DETECT_ORG_TIMEOUT_MS = 10_000;
-const JSFORCE_DEFAULT_API_VERSION = "50.0";
-const SDK_API_VERSION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 let configAggregatorCtor: typeof ConfigAggregatorClass | undefined;
 async function getConfigAggregatorCtor(): Promise<typeof ConfigAggregatorClass> {
@@ -47,7 +38,6 @@ async function getConfigAggregatorCtor(): Promise<typeof ConfigAggregatorClass> 
 import type {
   CliInfo,
   ConfigInfo,
-  ConnectionApiVersionSource,
   OrgInfo,
   OrgType,
   PackageDirectory,
@@ -184,10 +174,10 @@ function normalizePackageDir(raw: {
  * `~/.sfdx/config.json` + project `.sf/config.json` files the `sf` CLI does;
  * just skips the subprocess + JSON parse.
  */
-export async function detectConfig(): Promise<ConfigInfo> {
+export async function detectConfig(cwd?: string): Promise<ConfigInfo> {
   try {
     const ConfigAggregator = await getConfigAggregatorCtor();
-    const aggregator = await ConfigAggregator.create();
+    const aggregator = await ConfigAggregator.create(cwd ? { projectPath: cwd } : undefined);
     const targetInfo = aggregator.getInfo("target-org");
     const apiVersionInfo = aggregator.getInfo("org-api-version");
     const targetOrg =
@@ -228,12 +218,9 @@ function normalizeConfigLocation(
  * Resolve org details for `targetOrg` via the cached `Org`. No subprocess.
  */
 export interface DetectOrgOptions {
-  /** Recreate the cached SDK Org. Used only by explicit user refreshes. */
+  /** Recreate the shared target session. Used only by explicit user refreshes. */
   freshConnection?: boolean;
-  /** Explicit org-api-version found by ConfigAggregator, when checked. */
-  configuredApiVersion?: string;
-  /** Whether absence of configuredApiVersion is authoritative for this lookup. */
-  apiVersionConfigurationChecked?: boolean;
+  cwd?: string;
 }
 
 export async function detectOrg(
@@ -241,11 +228,25 @@ export async function detectOrg(
   options: DetectOrgOptions = {},
 ): Promise<OrgInfo> {
   try {
-    const org = await orgFromAlias(targetOrg, {
-      timeoutMs: DETECT_ORG_TIMEOUT_MS,
+    const session = await connectSalesforce({
+      cwd: options.cwd ?? process.cwd(),
+      targetOrg,
       fresh: options.freshConnection,
+      timeoutMs: DETECT_ORG_TIMEOUT_MS,
     });
-    return readOrgInfo(org, targetOrg, options);
+    return {
+      detected: true,
+      alias: session.target.alias ?? targetOrg,
+      username: session.target.username,
+      orgId: session.target.orgId,
+      instanceUrl: session.target.instanceUrl,
+      orgType: session.target.orgType,
+      connectedStatus: "Connected",
+      apiVersion: session.target.apiVersion,
+      apiVersionSource: session.target.versionSource === "org-latest" ? "resolved" : "configured",
+      namespacePrefix: session.target.namespacePrefix,
+      orgEdition: session.target.orgEdition,
+    };
   } catch (err) {
     return {
       detected: false,
@@ -253,88 +254,6 @@ export async function detectOrg(
       error: err instanceof Error ? err.message : "Unknown error",
     };
   }
-}
-
-/**
- * Read every field we care about off a resolved `Org` instance.
- *
- * Mirrors the shape the old `sf org display --json` parser produced. We
- * deliberately don't issue an extra REST call here — `Org.create` already
- * succeeded against the auth files, which matches the offline behavior of
- * `sf org display`.
- */
-function readOrgInfo(org: SfOrg, requestedAlias: string, options: DetectOrgOptions): OrgInfo {
-  const conn = org.getConnection();
-  const fields = conn.getAuthInfoFields() as {
-    instanceUrl?: string;
-    username?: string;
-    orgId?: string;
-    alias?: string;
-    isSandbox?: boolean;
-    isScratch?: boolean;
-    isDevHub?: boolean;
-    trailExpirationDate?: string | null;
-    namespacePrefix?: string | null;
-    orgEdition?: string;
-    instanceApiVersion?: string;
-    instanceApiVersionLastRetrieved?: string;
-  };
-
-  const instanceUrl = fields.instanceUrl ?? conn.instanceUrl;
-  const apiVersion = conn.getApiVersion();
-  return {
-    detected: true,
-    alias: fields.alias ?? requestedAlias,
-    username: fields.username,
-    orgId: fields.orgId,
-    instanceUrl,
-    orgType: inferOrgType({
-      isSandbox: fields.isSandbox,
-      isScratch: fields.isScratch,
-      isDevHub: fields.isDevHub,
-      instanceUrl,
-      trailExpirationDate: fields.trailExpirationDate ?? undefined,
-    }),
-    connectedStatus: "Connected",
-    apiVersion,
-    apiVersionSource: classifyConnectionApiVersion(apiVersion, fields, options),
-    namespacePrefix: fields.namespacePrefix,
-    orgEdition: fields.orgEdition,
-  };
-}
-
-function classifyConnectionApiVersion(
-  apiVersion: string,
-  fields: { instanceApiVersion?: string; instanceApiVersionLastRetrieved?: string },
-  options: DetectOrgOptions,
-): ConnectionApiVersionSource {
-  if (!options.apiVersionConfigurationChecked) return "unknown";
-
-  if (options.configuredApiVersion) {
-    return options.configuredApiVersion === apiVersion ? "configured" : "unknown";
-  }
-
-  if (hasFreshSdkApiVersionCache(apiVersion, fields)) return "resolved";
-  return apiVersion === JSFORCE_DEFAULT_API_VERSION ? "sdk-fallback" : "resolved";
-}
-
-function hasFreshSdkApiVersionCache(
-  apiVersion: string,
-  fields: { instanceApiVersion?: string; instanceApiVersionLastRetrieved?: string },
-): boolean {
-  // Mirror @salesforce/core: this environment flag forces live discovery and
-  // makes auth-file cache fields ineligible as provenance for this connection.
-  if (sdkApiVersionCacheDisabled()) return false;
-  if (fields.instanceApiVersion !== apiVersion || !fields.instanceApiVersionLastRetrieved) {
-    return false;
-  }
-  const retrievedAt = Date.parse(fields.instanceApiVersionLastRetrieved);
-  return Number.isFinite(retrievedAt) && Date.now() - retrievedAt <= SDK_API_VERSION_CACHE_TTL_MS;
-}
-
-function sdkApiVersionCacheDisabled(): boolean {
-  const value = process.env.SFDX_IGNORE_API_VERSION_CACHE?.trim().toLowerCase();
-  return value === "true" || value === "1";
 }
 
 /**
@@ -432,15 +351,14 @@ export async function detectEnvironment(
   const project = detectProject(cwd);
 
   // Layer 3: Config (in-process, ConfigAggregator)
-  const config = await detectConfig();
+  const config = await detectConfig(cwd);
 
   // Layer 4: Org (in-process, cached Org/Connection)
   let org: OrgInfo;
   if (config.hasTargetOrg && config.targetOrg) {
     org = await detectOrg(config.targetOrg, {
+      cwd,
       freshConnection: options.freshOrgConnection,
-      configuredApiVersion: config.apiVersion,
-      apiVersionConfigurationChecked: true,
     });
   } else {
     org = { detected: false, orgType: "unknown" };

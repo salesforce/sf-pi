@@ -53,6 +53,8 @@ export interface SalesforceTarget {
   readonly orgId?: string;
   readonly instanceUrl: string;
   readonly orgType: OrgType;
+  readonly namespacePrefix?: string | null;
+  readonly orgEdition?: string;
   /** Effective API version selected for every request on this session. */
   readonly apiVersion: string;
   /** Highest version advertised by the org, when discovery succeeded. */
@@ -360,6 +362,8 @@ async function initializeSalesforceSession(
     isScratch?: boolean;
     isDevHub?: boolean;
     trailExpirationDate?: string | null;
+    namespacePrefix?: string | null;
+    orgEdition?: string;
   };
   const instanceUrl = fields.instanceUrl ?? connection.instanceUrl;
   if (!instanceUrl) {
@@ -375,6 +379,8 @@ async function initializeSalesforceSession(
     orgId: fields.orgId,
     instanceUrl,
     orgType: inferOrgType(fields, instanceUrl),
+    namespacePrefix: fields.namespacePrefix,
+    orgEdition: fields.orgEdition,
     apiVersion: selection.apiVersion,
     maxApiVersion: selection.maxApiVersion,
     versionSource: selection.source,

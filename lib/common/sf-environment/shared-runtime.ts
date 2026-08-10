@@ -19,7 +19,7 @@ import {
   readPersistedSfEnvironment,
   writePersistedSfEnvironment,
 } from "./persisted-cache.ts";
-import { clearConnectionCache } from "../sf-conn/connection.ts";
+import { clearSalesforceConnectionCache } from "../sf-conn/index.ts";
 import type { SfEnvironment } from "./types.ts";
 import type { CustomEntry, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
@@ -216,7 +216,7 @@ export function peekSharedSfEnvironment(cwd: string): SfEnvironment | null {
 export function clearSharedSfEnvironment(cwd?: string): void {
   if (cwd === undefined) {
     cache.clear();
-    clearConnectionCache();
+    clearSalesforceConnectionCache();
     return;
   }
 

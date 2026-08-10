@@ -548,6 +548,6 @@ describe("Data 360 v2 dispatcher", () => {
       expect.objectContaining({ tool: "data360_prepare", action: "ingest_job.poll" }),
       expect.objectContaining({ tool: "data360_query", action: "sql.verify_rows" }),
     ]);
-    expect(orgCreateMock).toHaveBeenCalledTimes(1);
+    expect(orgCreateMock).not.toHaveBeenCalled();
   });
 });

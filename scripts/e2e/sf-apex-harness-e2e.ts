@@ -21,7 +21,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { apexConnection } from "../../extensions/sf-apex/lib/api.ts";
+import {
+  connectSalesforce,
+  clearSalesforceConnectionCache,
+  type SalesforceSession,
+} from "../../lib/common/sf-conn/index.ts";
 import {
   apexSearch,
   coverageSummary,
@@ -38,7 +42,6 @@ import {
   traceStatus,
 } from "../../extensions/sf-apex/lib/operations.ts";
 import type { SfApexSessionState, ToolResult } from "../../extensions/sf-apex/lib/types.ts";
-import { clearConnectionCache } from "../../lib/common/sf-conn/connection.ts";
 
 const args = process.argv.slice(2);
 const ORG =
@@ -129,10 +132,10 @@ function expectAnonymousSoapEvidence(name: string, result: ToolResult) {
 }
 
 async function main() {
-  clearConnectionCache();
+  clearSalesforceConnectionCache();
   section("1. Resolve native connection");
-  const conn = await apexConnection(ORG);
-  ok("connection resolved", `${ORG} · API v${conn.getApiVersion()}`);
+  const conn = await connectSalesforce({ cwd: HARNESS_CWD, targetOrg: ORG });
+  ok("connection resolved", `${ORG} · API v${conn.target.apiVersion}`);
 
   section("2. Native discovery and planning");
   expectOk("org.preflight", await orgPreflight(conn, { action: "org.preflight", target_org: ORG }));
@@ -280,7 +283,7 @@ async function main() {
   );
 }
 
-async function runFailureProbes(conn: Awaited<ReturnType<typeof apexConnection>>) {
+async function runFailureProbes(conn: SalesforceSession) {
   section("4b. Controlled failure probes");
   expectText(
     "anon.run compile failure",
@@ -330,7 +333,7 @@ async function runFailureProbes(conn: Awaited<ReturnType<typeof apexConnection>>
   }
 }
 
-async function runFlowSmoke(conn: Awaited<ReturnType<typeof apexConnection>>, flowName: string) {
+async function runFlowSmoke(conn: SalesforceSession, flowName: string) {
   section("4c. Flow observation smoke");
   const body = [
     "System.debug('SF_APEX_E2E_FLOW start');",
@@ -379,7 +382,7 @@ try {
 } finally {
   if (traceStarted) {
     try {
-      const conn = await apexConnection(ORG);
+      const conn = await connectSalesforce({ cwd: HARNESS_CWD, targetOrg: ORG });
       await stopTrace(conn, { action: "trace.stop", target_org: ORG }, state);
       ok("trace cleanup after failure");
     } catch (err) {

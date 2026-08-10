@@ -39,7 +39,7 @@ import path from "node:path";
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import { connFromAlias } from "../../lib/common/sf-conn/connection.ts";
+import { connectSalesforce, type SalesforceSession } from "../../lib/common/sf-conn/index.ts";
 import { runAgentBrowser } from "../../extensions/sf-browser/lib/agent-browser.ts";
 import {
   commitEvidenceCapture,
@@ -271,11 +271,13 @@ async function screenshot(id: string, sessionId: string): Promise<string> {
 
 async function resolveAppPath(targetOrg: string, appDevName: string): Promise<string | undefined> {
   try {
-    const conn = await connFromAlias(targetOrg);
-    const result = (await conn.query(
-      `SELECT DurableId FROM AppDefinition WHERE DeveloperName = '${appDevName.replace(/'/g, "")}' LIMIT 1`,
-    )) as { records?: Array<{ DurableId?: string }> };
-    const durableId = result.records?.[0]?.DurableId;
+    const conn = await connectSalesforce({ cwd: process.cwd(), targetOrg });
+    const result = await conn.query<{ DurableId?: string }>({
+      soql: `SELECT DurableId FROM AppDefinition WHERE DeveloperName = '${appDevName.replace(/'/g, "")}' LIMIT 1`,
+      api: "tooling",
+      maxRows: 1,
+    });
+    const durableId = result.records[0]?.DurableId;
     return durableId ? `/lightning/app/${durableId}` : undefined;
   } catch {
     return undefined;
@@ -422,7 +424,7 @@ async function runRoutesSuite(
   );
 
   // Routes that need live data: sample from the org, skip cleanly if absent.
-  const conn = await connFromAlias(targetOrg);
+  const conn = await connectSalesforce({ cwd: process.cwd(), targetOrg });
   const recordId = await sampleRecordId(conn, object);
   out.push(
     recordId
@@ -487,7 +489,7 @@ async function verifyRoute(
   group: string,
 ): Promise<EntryResult> {
   try {
-    const verified = await resolveVerifiedRoutePath(targetOrg, route);
+    const verified = await resolveVerifiedRoutePath(targetOrg, route, process.cwd());
     return await verifyNav(targetOrg, sessionId, {
       id,
       label,
@@ -527,28 +529,29 @@ function skippedRoute(id: string, note: string, group: string): EntryResult {
 }
 
 async function sampleRecordId(
-  conn: Awaited<ReturnType<typeof connFromAlias>>,
+  conn: SalesforceSession,
   object: string,
 ): Promise<string | undefined> {
   try {
-    const result = (await conn.query(`SELECT Id FROM ${object} LIMIT 1`)) as {
-      records?: Array<{ Id?: string }>;
-    };
-    return result.records?.[0]?.Id;
+    const result = await conn.query<{ Id?: string }>({
+      soql: `SELECT Id FROM ${object} LIMIT 1`,
+      maxRows: 1,
+    });
+    return result.records[0]?.Id;
   } catch {
     return undefined;
   }
 }
 
 async function sampleListView(
-  conn: Awaited<ReturnType<typeof connFromAlias>>,
+  conn: SalesforceSession,
   object: string,
 ): Promise<string | undefined> {
   try {
-    const response = (await conn.request(
-      `/services/data/v${conn.version}/ui-api/list-info/${object}?pageSize=5`,
-    )) as { lists?: Array<{ id?: string; apiName?: string; developerName?: string }> };
-    const first = response.lists?.[0];
+    const response = await conn.request<{
+      lists?: Array<{ id?: string; apiName?: string; developerName?: string }>;
+    }>({ method: "GET", path: `/ui-api/list-info/${object}`, query: { pageSize: 5 } });
+    const first = response.body.lists?.[0];
     return first?.apiName || first?.developerName || first?.id || undefined;
   } catch {
     return undefined;
@@ -556,14 +559,15 @@ async function sampleListView(
 }
 
 async function sampleRelatedList(
-  conn: Awaited<ReturnType<typeof connFromAlias>>,
+  conn: SalesforceSession,
   object: string,
 ): Promise<string | undefined> {
   try {
-    const response = (await conn.request(
-      `/services/data/v${conn.version}/ui-api/related-list-info/${object}`,
-    )) as { relatedLists?: Array<{ relatedListId?: string }> };
-    return response.relatedLists?.[0]?.relatedListId || undefined;
+    const response = await conn.request<{ relatedLists?: Array<{ relatedListId?: string }> }>({
+      method: "GET",
+      path: `/ui-api/related-list-info/${object}`,
+    });
+    return response.body.relatedLists?.[0]?.relatedListId || undefined;
   } catch {
     return undefined;
   }

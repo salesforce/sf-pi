@@ -56,6 +56,9 @@ node scripts/check-panel-consistency.mjs
 banner "Boot-path import check"
 node scripts/check-boot-path.mjs
 
+banner "Salesforce Connection Module check"
+node scripts/check-salesforce-connection-module.mjs
+
 banner "Lifecycle-script allowlist check"
 node scripts/check-lifecycle-scripts.mjs
 
