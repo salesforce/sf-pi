@@ -50,7 +50,7 @@ export async function resolveOpenOrgUrl(
     );
   }
 
-  const resolvedPath = await resolveOpenPathForBrowser(targetOrg, input);
+  const resolvedPath = await resolveOpenPathForBrowser(targetOrg, input, ctx.cwd);
   const pathValue = resolvedPath.path;
   const args = ["org", "open", "--url-only", "--json", "-o", targetOrg];
   if (pathValue) args.push("--path", pathValue);
@@ -100,12 +100,13 @@ export function resolveOpenPath(input: OpenOrgInput): string | undefined {
 async function resolveOpenPathForBrowser(
   targetOrg: string,
   input: OpenOrgInput,
+  cwd: string,
 ): Promise<{ path?: string; verifiedRoute?: VerifiedRouteResult }> {
   if (!input.route) return { path: resolveOpenPath(input) };
   // Data Cloud routes resolve against the local verified Destination Pack, like
   // setup destinations; they are known Lightning paths and need no API check.
   if (input.route.type === "data-cloud") return { path: resolveOpenPath(input) };
-  const verifiedRoute = await resolveVerifiedRoutePath(targetOrg, input.route);
+  const verifiedRoute = await resolveVerifiedRoutePath(targetOrg, input.route, cwd);
   return { path: verifiedRoute.path, verifiedRoute };
 }
 

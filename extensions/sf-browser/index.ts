@@ -36,6 +36,7 @@ import {
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { getCachedSfEnvironment } from "../../lib/common/sf-environment/shared-runtime.ts";
 import { readCachedBrowserRuntimeStatus } from "../../lib/common/browser-runtime-status/store.ts";
@@ -85,6 +86,7 @@ export default function sfBrowser(pi: ExtensionAPI): void {
   }
 
   pi.on("session_start", (event, ctx) => {
+    beginSalesforceConnectionSession(event);
     if (event.reason === "reload") toolsRegistered = false;
     if (isSfPiExtensionEnabled(ctx.cwd, EXTENSION_ID)) ensureToolsRegistered();
   });

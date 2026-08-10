@@ -1,42 +1,85 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Tests for verified Salesforce route resolution. */
 import { describe, expect, it, vi } from "vitest";
-import { verifySalesforceRoute } from "../lib/salesforce-route-verifier.ts";
+
+const connectSalesforceMock = vi.fn();
+vi.mock("../../../lib/common/sf-conn/index.ts", () => ({
+  connectSalesforce: (options: unknown) => connectSalesforceMock(options),
+}));
+
+import {
+  resolveVerifiedRoutePath,
+  verifySalesforceRoute,
+} from "../lib/salesforce-route-verifier.ts";
 
 function fakeConnection(options?: {
   recordFound?: boolean;
   listViews?: unknown[];
   relatedLists?: unknown[];
 }) {
-  return {
-    version: "66.0",
-    describe: vi.fn(async (objectApiName: string) => ({
-      name: objectApiName,
-      createable: objectApiName !== "ReadOnly__c",
-      queryable: true,
-    })),
-    query: vi.fn(async () => ({ totalSize: options?.recordFound === false ? 0 : 1, records: [] })),
-    request: vi.fn(async (path: string) => {
-      if (path.includes("/ui-api/list-info/")) {
-        return {
+  const target = {
+    targetOrg: "ExampleOrg",
+    instanceUrl: "https://example.sandbox.my.salesforce.com",
+    orgType: "sandbox" as const,
+    apiVersion: "67.0",
+    maxApiVersion: "67.0",
+    versionSource: "org-latest" as const,
+  };
+  const describe = vi.fn(async (objectApiName: string) => ({
+    name: objectApiName,
+    createable: objectApiName !== "ReadOnly__c",
+    queryable: true,
+  }));
+  const query = vi.fn(async () => ({
+    totalSize: options?.recordFound === false ? 0 : 1,
+    records: [],
+    done: true,
+    truncated: false,
+    target,
+  }));
+  const request = vi.fn(async (input: { path: string }) => {
+    const body = input.path.includes("/ui-api/list-info/")
+      ? {
           lists: options?.listViews ?? [
             { id: "00B000000000001AAA", apiName: "AllAccounts", label: "All Accounts" },
           ],
-        };
-      }
-      if (path.includes("/ui-api/related-list-info/")) {
-        return {
+        }
+      : {
           relatedLists: options?.relatedLists ?? [
             { relatedListId: "Contacts", label: "Contacts", objectApiName: "Contact" },
           ],
         };
-      }
-      throw new Error(`Unexpected path ${path}`);
-    }),
+    return { status: 200, body, path: `/services/data/v67.0${input.path}`, target, warnings: [] };
+  });
+  return {
+    target,
+    connection: { describe },
+    identity: vi.fn(),
+    path: vi.fn(),
+    request,
+    continueRequest: vi.fn(),
+    query,
   };
 }
 
 describe("salesforce route verifier", () => {
+  it("resolves target sessions through the shared Salesforce Connection Module", async () => {
+    const session = fakeConnection();
+    connectSalesforceMock.mockResolvedValue(session);
+
+    const result = await resolveVerifiedRoutePath(
+      "ExampleOrg",
+      { type: "object-list", objectApiName: "Account" },
+      "/workspace",
+    );
+
+    expect(connectSalesforceMock).toHaveBeenCalledWith({
+      cwd: "/workspace",
+      targetOrg: "ExampleOrg",
+    });
+    expect(result.path).toBe("/lightning/o/Account/list");
+  });
+
   it("verifies object and record routes", async () => {
     const conn = fakeConnection();
 
@@ -50,10 +93,12 @@ describe("salesforce route verifier", () => {
         recordId: "001000000000001AAA",
       }),
     ).resolves.toMatchObject({ path: "/lightning/r/Account/001000000000001AAA/view" });
-    expect(conn.describe).toHaveBeenCalledWith("Account");
-    expect(conn.query).toHaveBeenCalledWith(
-      "SELECT Id FROM Account WHERE Id = '001000000000001AAA' LIMIT 1",
-    );
+    expect(conn.connection.describe).toHaveBeenCalledWith("Account");
+    expect(conn.query).toHaveBeenCalledWith({
+      soql: "SELECT Id FROM Account WHERE Id = '001000000000001AAA' LIMIT 1",
+      api: "rest",
+      maxRows: 1,
+    });
   });
 
   it("resolves list views by label, api name, or id", async () => {

@@ -6,8 +6,7 @@
  * uses this module for structured `route` inputs so partial user intent is
  * verified through Salesforce APIs before the browser navigates.
  */
-import type { Connection } from "@salesforce/core";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
+import { connectSalesforce, type SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import type { SalesforceRoute } from "./salesforce-path-resolver.ts";
 
 export interface VerifiedRouteResult {
@@ -37,11 +36,6 @@ interface ObjectDescribeLike {
   createable?: boolean;
 }
 
-interface QueryResultLike {
-  totalSize: number;
-  records?: unknown[];
-}
-
 interface ListInfoResponse {
   lists?: ListInfoItem[];
 }
@@ -69,15 +63,17 @@ const SALESFORCE_ID_RE = /^[a-zA-Z0-9]{15}([a-zA-Z0-9]{3})?$/;
 export async function resolveVerifiedRoutePath(
   targetOrg: string,
   route: SalesforceRoute,
+  cwd = process.cwd(),
 ): Promise<VerifiedRouteResult> {
-  const conn = await connFromAlias(targetOrg);
-  return verifySalesforceRoute(conn, route);
+  const session = await connectSalesforce({ cwd, targetOrg });
+  return verifySalesforceRoute(session, route);
 }
 
 export async function verifySalesforceRoute(
-  conn: Connection,
+  session: SalesforceSession,
   route: SalesforceRoute,
 ): Promise<VerifiedRouteResult> {
+  const conn = session;
   switch (route.type) {
     case "home":
       return { path: "/lightning/page/home" };
@@ -136,10 +132,13 @@ export async function verifySalesforceRoute(
   }
 }
 
-async function verifyObject(conn: Connection, objectApiName: string): Promise<ObjectDescribeLike> {
+async function verifyObject(
+  conn: SalesforceSession,
+  objectApiName: string,
+): Promise<ObjectDescribeLike> {
   const safeObject = validateApiName(objectApiName, "objectApiName");
   try {
-    const described = (await conn.describe(safeObject)) as ObjectDescribeLike;
+    const described = (await conn.connection.describe(safeObject)) as ObjectDescribeLike;
     if (!described?.name) throw new Error(`Describe returned no name for ${safeObject}.`);
     return described;
   } catch (error) {
@@ -153,30 +152,35 @@ async function verifyObject(conn: Connection, objectApiName: string): Promise<Ob
 }
 
 async function verifyRecordExists(
-  conn: Connection,
+  conn: SalesforceSession,
   objectApiName: string,
   recordId: string,
 ): Promise<void> {
   const safeId = validateSalesforceId(recordId, "recordId");
-  const result = (await conn.query(
-    `SELECT Id FROM ${objectApiName} WHERE Id = '${safeId}' LIMIT 1`,
-  )) as QueryResultLike;
+  const result = await conn.query({
+    soql: `SELECT Id FROM ${objectApiName} WHERE Id = '${safeId}' LIMIT 1`,
+    api: "rest",
+    maxRows: 1,
+  });
   if (result.totalSize !== 1) {
     throw new Error(`Record ${safeId} was not found or is not accessible on ${objectApiName}.`);
   }
 }
 
 async function resolveListView(
-  conn: Connection,
+  conn: SalesforceSession,
   objectApiName: string,
   rawFilterName: string,
 ): Promise<VerifiedListView> {
   const value = rawFilterName.trim();
   if (!value) throw new Error("list-view route requires filterName.");
-  const response = (await conn.request(
-    `/services/data/v${conn.version}/ui-api/list-info/${objectApiName}?pageSize=200`,
-  )) as ListInfoResponse;
-  const lists = response.lists ?? [];
+  const response = await conn.request<ListInfoResponse>({
+    method: "GET",
+    path: `/ui-api/list-info/${objectApiName}`,
+    query: { pageSize: 200 },
+  });
+  if (response.status >= 400) throw new Error(`List view metadata failed HTTP ${response.status}.`);
+  const lists = response.body.lists ?? [];
   const matches = lists.filter((item) => matchesListView(item, value));
   if (matches.length === 1) return listViewFromItem(matches[0] as ListInfoItem, value);
   if (matches.length > 1) {
@@ -213,16 +217,20 @@ function listViewFromItem(item: ListInfoItem, fallback: string): VerifiedListVie
 }
 
 async function resolveRelatedList(
-  conn: Connection,
+  conn: SalesforceSession,
   objectApiName: string,
   rawRelatedList: string,
 ): Promise<VerifiedRelatedList> {
   const value = rawRelatedList.trim();
   if (!value) throw new Error("record-related-list route requires relatedListApiName.");
-  const response = (await conn.request(
-    `/services/data/v${conn.version}/ui-api/related-list-info/${objectApiName}`,
-  )) as RelatedListInfoResponse;
-  const relatedLists = response.relatedLists ?? [];
+  const response = await conn.request<RelatedListInfoResponse>({
+    method: "GET",
+    path: `/ui-api/related-list-info/${objectApiName}`,
+  });
+  if (response.status >= 400) {
+    throw new Error(`Related-list metadata failed HTTP ${response.status}.`);
+  }
+  const relatedLists = response.body.relatedLists ?? [];
   const matches = relatedLists.filter((item) => matchesRelatedList(item, value));
   if (matches.length === 1) return relatedListFromItem(matches[0] as RelatedListInfoItem);
   if (matches.length > 1) {
