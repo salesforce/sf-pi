@@ -73,15 +73,13 @@ export function buildSfData360Doctor(pi: ExtensionAPI) {
       detail: `${env.org.instanceUrl ?? "instance unknown"} — ${env.org.orgType ?? "type unknown"}`,
     });
 
-    let probePath = QUICK_PROBE_PATH;
-
     try {
       const session = await connectSalesforce({
         cwd,
         targetOrg,
         timeoutMs: QUICK_PROBE_TIMEOUT_MS,
       });
-      probePath = session.path(QUICK_PROBE_PATH);
+      const probePath = session.path(QUICK_PROBE_PATH);
       const resp = await session.request<unknown>({
         method: "GET",
         path: QUICK_PROBE_PATH,
