@@ -74,7 +74,7 @@ describe("eval SOQL seed preflight", () => {
 
     expect(result.metadata.evidence_verdict).toBe("passed");
     expect(request).toHaveBeenCalledTimes(1);
-    expect(request.mock.calls[0]?.[0].url).toContain("/services/data/v66.0/query/?q=");
+    expect(request.mock.calls[0]?.[0].url).toContain("/query?q=");
     expect(
       JSON.parse(await readFile(path.join(base, "seeded", "spec.source.snapshot.json"), "utf8")),
     ).toEqual(source);

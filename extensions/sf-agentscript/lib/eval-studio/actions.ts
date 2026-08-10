@@ -8,7 +8,7 @@ import type {
   ExtensionCommandContext,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { connFromAlias } from "../../../../lib/common/sf-conn/connection.ts";
+import { connFromAlias } from "../../../../lib/common/sf-conn/index.ts";
 import { latestEvalSpec } from "../branch-state.ts";
 import { handleReportAction } from "../command/report-action.ts";
 import { resolveAgentIds } from "../eval/active-ids.ts";

@@ -13,11 +13,11 @@ import {
   clearConnectionCache,
   clearConnectionCacheEntry,
   orgFromAlias,
-  resolveOrgIdentity,
+  resolveOrgIdentity as resolveOrgIdentityInternal,
   type OrgIdentity,
   type ResolveOrgIdentityOptions,
 } from "./connection.ts";
-import { connRequest, type HttpMethod } from "./request.ts";
+import { connRequest, type ConnRequest, type ConnResponse, type HttpMethod } from "./request.ts";
 export type { HttpMethod } from "./request.ts";
 export { normalizeSalesforceResource } from "./path.ts";
 export type { SalesforceQueryParams, SalesforceQueryValue } from "./path.ts";
@@ -143,6 +143,7 @@ interface VersionEntry {
 }
 
 const sessionCache = new Map<string, Promise<SalesforceSession>>();
+let sessionByConnection = new WeakMap<Connection, SalesforceSession>();
 const observedSessionStarts = new WeakSet<object>();
 
 export async function connectSalesforce(
@@ -175,6 +176,42 @@ export async function connectSalesforce(
   return waitForCaller(pending, remainingCallerTime(deadline, timeoutMs), options.signal);
 }
 
+/** Return the shared session's already-versioned SDK Connection for SDK-specific adapters. */
+export async function connectSalesforceConnection(
+  targetOrg?: string,
+  options: Omit<ConnectSalesforceOptions, "targetOrg" | "cwd"> & { cwd?: string } = {},
+): Promise<Connection> {
+  return (
+    await connectSalesforce({
+      cwd: options.cwd ?? process.cwd(),
+      targetOrg,
+      fresh: options.fresh,
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+    })
+  ).connection;
+}
+
+/** Bounded identity lookup for shared or product-specific Salesforce connections. */
+export function resolveSalesforceOrgIdentity(
+  connection: Connection,
+  options?: ResolveOrgIdentityOptions,
+): Promise<OrgIdentity> {
+  return resolveOrgIdentityInternal(connection, options);
+}
+
+/** Compatibility names now backed exclusively by the shared Module. */
+export const connFromAlias = connectSalesforceConnection;
+export const resolveOrgIdentity = resolveSalesforceOrgIdentity;
+
+/** Bounded low-level transport for product-specific connections not created by this Module. */
+export function requestWithSalesforceConnection<T = unknown>(
+  connection: Connection,
+  request: ConnRequest,
+): Promise<ConnResponse<T>> {
+  return connRequest<T>(connection, request);
+}
+
 /**
  * Reset shared connections once for one Pi session_start event object.
  * Multiple connection-owning extensions receive the same event; only the first
@@ -193,7 +230,15 @@ export function beginSalesforceConnectionSession(event: unknown): void {
 /** Clear every shared session and underlying SDK Org. Primarily for tests. */
 export function clearSalesforceConnectionCache(): void {
   sessionCache.clear();
+  sessionByConnection = new WeakMap<Connection, SalesforceSession>();
   clearConnectionCache();
+}
+
+/** Return shared request authority for a raw SDK Connection when one exists. */
+export function salesforceSessionForConnection(
+  connection: Connection,
+): SalesforceSession | undefined {
+  return sessionByConnection.get(connection);
 }
 
 function remainingCallerTime(deadline: number, originalTimeoutMs: number): number {
@@ -337,7 +382,9 @@ async function initializeSalesforceSession(
     versionDiscoveryWarning: selection.warning,
   });
 
-  return createSession(connection, target);
+  const session = createSession(connection, target);
+  sessionByConnection.set(connection, session);
+  return session;
 }
 
 async function selectApiVersion(
@@ -502,7 +549,7 @@ function createSession(connection: Connection, target: SalesforceTarget): Salesf
   };
 
   const identity = (options?: ResolveOrgIdentityOptions): Promise<OrgIdentity> =>
-    resolveOrgIdentity(connection, options);
+    resolveOrgIdentityInternal(connection, options);
 
   return {
     target,

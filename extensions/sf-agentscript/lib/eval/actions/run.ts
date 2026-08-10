@@ -4,7 +4,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "../../agent-api-auth.ts";
-import { connFromAlias } from "../../../../../lib/common/sf-conn/connection.ts";
+import { connFromAlias } from "../../../../../lib/common/sf-conn/index.ts";
 import {
   EvalRunCancelledError,
   recordRunInIndex,

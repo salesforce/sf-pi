@@ -10,7 +10,10 @@
  */
 
 import type { Connection } from "@salesforce/core";
-import { connRequest } from "../../../lib/common/sf-conn/request.ts";
+import {
+  requestWithSalesforceConnection,
+  salesforceSessionForConnection,
+} from "../../../lib/common/sf-conn/index.ts";
 
 export const DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS = 10_000;
 
@@ -128,11 +131,11 @@ interface ConnectionAuthShape {
 function getConnectionAuthShape(conn: Connection): ConnectionAuthShape {
   const opts = conn.getConnectionOptions?.() as
     { instanceUrl?: string; accessToken?: string } | undefined;
-  let apiVersion = "67.0";
+  let apiVersion = "";
   try {
-    apiVersion = conn.getApiVersion?.() ?? apiVersion;
+    apiVersion = conn.getApiVersion?.() ?? "";
   } catch {
-    /* best-effort */
+    /* reported as a missing connection field below */
   }
   return {
     instanceUrl: conn.instanceUrl ?? opts?.instanceUrl,
@@ -171,8 +174,38 @@ export async function boundedRestRequest<T>(
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   opts: BoundedRequestOptions = {},
 ): Promise<BoundedRestResult<T>> {
-  const { instanceUrl, accessToken, apiVersion } = getConnectionAuthShape(conn);
   const timeoutMs = opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS;
+  const shared = salesforceSessionForConnection(conn);
+  if (shared && !opts.fetchImpl && !/^https?:\/\//i.test(pathOrUrl)) {
+    const response = pathOrUrl.startsWith("/services/data/")
+      ? await shared.continueRequest<T>({
+          method,
+          path: pathOrUrl,
+          headers: opts.headers,
+          body: opts.body,
+          timeoutMs,
+          signal: opts.signal,
+        })
+      : await shared.request<T>({
+          method,
+          path: pathOrUrl,
+          headers: opts.headers,
+          body: opts.body,
+          timeoutMs,
+          signal: opts.signal,
+        });
+    return response.status >= 400
+      ? {
+          ok: false,
+          reason: "http_error",
+          status: response.status,
+          body: response.body,
+          detail: `Salesforce request returned HTTP ${response.status}.`,
+        }
+      : { ok: true, status: response.status, body: response.body };
+  }
+
+  const { instanceUrl, accessToken, apiVersion } = getConnectionAuthShape(conn);
   if (!accessToken) {
     if (opts.signal?.aborted) {
       return {
@@ -214,11 +247,11 @@ export async function boundedRestRequest<T>(
       };
     }
   }
-  if (!instanceUrl) {
+  if (!instanceUrl || !apiVersion) {
     return {
       ok: false,
       reason: "missing_connection_fields",
-      detail: "Connection is missing instanceUrl.",
+      detail: `Connection is missing ${!instanceUrl ? "instanceUrl" : "a selected API version"}.`,
     };
   }
 
@@ -229,7 +262,7 @@ export async function boundedRestRequest<T>(
     ...(opts.headers ?? {}),
   };
   if (!opts.fetchImpl) {
-    const response = await connRequest<T>(conn, {
+    const response = await requestWithSalesforceConnection<T>(conn, {
       method,
       url: requestPath,
       headers: requestHeaders,
@@ -327,9 +360,33 @@ export async function boundedSoqlQuery<T>(
   soql: string,
   opts: BoundedSoqlOptions = {},
 ): Promise<BoundedSoqlResult<T>> {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS;
+  const shared = salesforceSessionForConnection(conn);
+  if (shared && !opts.fetchImpl) {
+    try {
+      const result = await shared.query<T>({
+        soql,
+        api: opts.api === "tooling" ? "tooling" : "rest",
+        maxRows: 2_000,
+        timeoutMs,
+        signal: opts.signal,
+      });
+      return {
+        ok: true,
+        records: result.records,
+        totalSize: result.totalSize ?? result.records.length,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        reason: opts.signal?.aborted ? "aborted" : "request_failed",
+        detail: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
   const { instanceUrl, accessToken, apiVersion } = getConnectionAuthShape(conn);
   const apiPath = opts.api === "tooling" ? "tooling/query" : "query";
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS;
   if (!accessToken) {
     // Legacy unit-test seam: older tests provide tokenless fake Connections
     // that implement query() or request(). Real org connections should take
@@ -380,18 +437,21 @@ export async function boundedSoqlQuery<T>(
       };
     }
   }
-  if (!instanceUrl) {
+  if (!instanceUrl || !apiVersion) {
     return {
       ok: false,
       reason: "missing_connection_fields",
-      detail: "Connection is missing instanceUrl.",
+      detail: `Connection is missing ${!instanceUrl ? "instanceUrl" : "a selected API version"}.`,
     };
   }
 
   const base = instanceUrl.endsWith("/") ? instanceUrl.slice(0, -1) : instanceUrl;
   const relativeUrl = `/services/data/v${apiVersion}/${apiPath}?q=${encodeURIComponent(soql)}`;
   if (!opts.fetchImpl) {
-    const response = await connRequest<{ records?: T[]; totalSize?: number }>(conn, {
+    const response = await requestWithSalesforceConnection<{
+      records?: T[];
+      totalSize?: number;
+    }>(conn, {
       method: "GET",
       url: relativeUrl,
       timeoutMs,

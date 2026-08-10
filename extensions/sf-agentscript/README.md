@@ -178,15 +178,16 @@ create/compile/inspect/mutate → preview → publish inactive → run_release �
 
 ## Behavior Matrix
 
-| Trigger                                 | Result                                                                |
-| --------------------------------------- | --------------------------------------------------------------------- |
-| `session_start` / `session_shutdown`    | Reset assist state and cached Salesforce connections.                 |
-| `tool_result` after `.agent` write/edit | Run compile-on-save diagnostics and enabled edit-time High hardening. |
-| `agent_settled`                         | Run enabled global quality rules for changed `.agent` files.          |
-| `agentscript_authoring`                 | Create, compile, inspect quality/review, and mutate local source.     |
-| `agentscript_preview`                   | Start/send/end preview sessions and persist traces/transcripts.       |
-| `agentscript_eval`                      | Generate/run regression specs and exact-version release contracts.    |
-| `agentscript_lifecycle`                 | Publish inactive, gate activation, list versions, and manage users.   |
+| Trigger                                 | Result                                                                 |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| `session_start`                         | Reset assist state and shared Salesforce connections once per session. |
+| `session_shutdown`                      | Stop runs and clear Agent Script-specific caches/state.                |
+| `tool_result` after `.agent` write/edit | Run compile-on-save diagnostics and enabled edit-time High hardening.  |
+| `agent_settled`                         | Run enabled global quality rules for changed `.agent` files.           |
+| `agentscript_authoring`                 | Create, compile, inspect quality/review, and mutate local source.      |
+| `agentscript_preview`                   | Start/send/end preview sessions and persist traces/transcripts.        |
+| `agentscript_eval`                      | Generate/run regression specs and exact-version release contracts.     |
+| `agentscript_lifecycle`                 | Publish inactive, gate activation, list versions, and manage users.    |
 
 ## Settings
 
@@ -406,6 +407,7 @@ extensions/sf-agentscript/
     authoring-review.test.ts← unit / smoke test
     authoring-tool.test.ts  ← unit / smoke test
     bounded-salesforce-transport.test.ts← unit / smoke test
+    bounded-shared-connection.test.ts← unit / smoke test
     catalog-event-attestation.test.ts← unit / smoke test
     code-actions.test.ts    ← unit / smoke test
     compile-summary.test.ts ← unit / smoke test
@@ -549,7 +551,7 @@ npm run validate
 
 ## Authentication
 
-Salesforce auth is resolved through `@salesforce/core` `Connection` using the same auth files the Salesforce CLI writes. Timeout-sensitive Agent Script API calls may use bounded native fetch with the resolved token so tool calls can fail or cancel cleanly; tokens stay in process and are never logged or persisted. The Agent API bootstrap creates an isolated named-user JWT connection for `/einstein/ai-agent/*` calls so normal org REST/SOQL usage remains on the regular org token.
+Ordinary target-org identity, authentication, latest/configured-fallback API selection, REST, and SOQL come from the shared Salesforce Connection Module using the same auth files the Salesforce CLI writes. Timeout-sensitive Agent Script calls use the Module's bounded transport when a shared session exists. Product-specific SFAP, Evaluation, and Agent API adapters remain local; the Agent API bootstrap creates an isolated named-user JWT connection, copies the shared session's selected API version, and never mutates the normal org token. Tokens stay in process and are never logged or persisted.
 
 ## Troubleshooting
 

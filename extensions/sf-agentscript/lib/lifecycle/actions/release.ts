@@ -4,7 +4,7 @@ import path from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { connForAgentApi } from "../../agent-api-auth.ts";
 import { getAgentScriptAnalysis } from "../../analysis-snapshot.ts";
-import { connFromAlias, resolveOrgIdentity } from "../../../../../lib/common/sf-conn/connection.ts";
+import { connFromAlias, resolveOrgIdentity } from "../../../../../lib/common/sf-conn/index.ts";
 import { checkAgentUserStatus, readAgentConfigSlice } from "../../agent-user/index.ts";
 import { buildFeatureProfile, type AgentFeatureProfile } from "../../feature-profile.ts";
 import { checkBundleVsBotDivergence } from "../../lifecycle-divergence.ts";

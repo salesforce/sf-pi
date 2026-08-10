@@ -16,7 +16,7 @@ import {
 import { buildFeatureProfile } from "../../feature-profile.ts";
 import { isAgentScriptFile } from "../../file-classify.ts";
 import { findDefinition, findReferences } from "../../inspect.ts";
-import { connFromAlias } from "../../../../../lib/common/sf-conn/connection.ts";
+import { connFromAlias } from "../../../../../lib/common/sf-conn/index.ts";
 import {
   checkActionTargets,
   checkConnectedAgentReadinessGraph,

@@ -3,7 +3,7 @@
 
 import type { Connection } from "@salesforce/core";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { connFromAlias } from "../../../../lib/common/sf-conn/connection.ts";
+import { connFromAlias } from "../../../../lib/common/sf-conn/index.ts";
 import {
   resolveAgentIds,
   type AgentVersionResolutionMode,

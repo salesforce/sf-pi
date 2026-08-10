@@ -14,7 +14,10 @@
  */
 
 import type { AuthInfo as AuthInfoType, Connection as ConnectionType } from "@salesforce/core";
-import { connFromAlias } from "../../../lib/common/sf-conn/connection.ts";
+import {
+  connFromAlias,
+  salesforceSessionForConnection,
+} from "../../../lib/common/sf-conn/index.ts";
 import { DEFAULT_BOUNDED_LOOKUP_TIMEOUT_MS } from "./bounded-salesforce-transport.ts";
 
 let corePromise:
@@ -265,11 +268,8 @@ async function createAgentApiConnection(
   const { AuthInfo, Connection } = await loadSfCore();
   const authInfo = await AuthInfo.create({ username });
   const conn = await Connection.create({ authInfo });
-  try {
-    conn.setApiVersion(baseConn.getApiVersion());
-  } catch {
-    /* best-effort: Connection defaults to the org/api default */
-  }
+  const selectedVersion = salesforceSessionForConnection(baseConn)?.target.apiVersion;
+  if (selectedVersion) conn.setApiVersion(selectedVersion);
   await upgradeConnectionToNamedUserJwt(conn, opts);
   return {
     conn,
@@ -287,12 +287,8 @@ function agentApiAuthCacheKey(
 ): string {
   const opts = conn.getConnectionOptions?.() as { instanceUrl?: string } | undefined;
   const instanceUrl = conn.instanceUrl ?? opts?.instanceUrl ?? "<unknown-instance>";
-  let apiVersion = "<unknown-api>";
-  try {
-    apiVersion = conn.getApiVersion?.() ?? apiVersion;
-  } catch {
-    /* best-effort */
-  }
+  const apiVersion =
+    salesforceSessionForConnection(conn)?.target.apiVersion ?? "<product-specific-api>";
   return [targetOrg ?? "<default>", username, instanceUrl, apiVersion].join("::");
 }
 

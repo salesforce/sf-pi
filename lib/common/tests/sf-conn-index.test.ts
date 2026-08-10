@@ -24,6 +24,7 @@ import {
   beginSalesforceConnectionSession,
   clearSalesforceConnectionCache,
   connectSalesforce,
+  salesforceSessionForConnection,
 } from "../sf-conn/index.ts";
 
 interface FakeConnection {
@@ -284,6 +285,9 @@ describe("Salesforce connection cache and refresh", () => {
     expect(first).toBe(second);
     expect(orgCreateMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(salesforceSessionForConnection(first.connection)).toBe(first);
+    clearSalesforceConnectionCache();
+    expect(salesforceSessionForConnection(first.connection)).toBeUndefined();
   });
 
   test("one caller aborting does not cancel shared initialization for another caller", async () => {

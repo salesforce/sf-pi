@@ -10,7 +10,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { connFromAlias } from "../../../../lib/common/sf-conn/connection.ts";
+import { connFromAlias } from "../../../../lib/common/sf-conn/index.ts";
 import { runEval, recordRunInIndex } from "../eval/orchestrator.ts";
 import { renderReport } from "../eval/render.ts";
 import type { EvalSpec, TracesMode } from "../eval/types.ts";

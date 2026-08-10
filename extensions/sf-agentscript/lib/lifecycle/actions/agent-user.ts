@@ -2,7 +2,7 @@
 /** Lifecycle Agent User actions: status, diagnosis, and provisioning. */
 import path from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { connFromAlias } from "../../../../../lib/common/sf-conn/connection.ts";
+import { connFromAlias } from "../../../../../lib/common/sf-conn/index.ts";
 import {
   checkAgentUserStatus,
   readAgentConfigSlice,

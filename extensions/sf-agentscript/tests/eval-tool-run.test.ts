@@ -54,8 +54,8 @@ vi.mock("../lib/eval/orchestrator.ts", async (importOriginal) => {
   };
 });
 
-vi.mock("../../../lib/common/sf-conn/connection.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../lib/common/sf-conn/connection.ts")>();
+vi.mock("../../../lib/common/sf-conn/index.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/common/sf-conn/index.ts")>();
   return { ...actual, connFromAlias: mocks.connFromAlias };
 });
 

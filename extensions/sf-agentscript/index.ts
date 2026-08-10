@@ -76,7 +76,7 @@ import { registerLifecycleTool } from "./lib/lifecycle-tool.ts";
 import { registerPreviewTool } from "./lib/preview-tool.ts";
 import { handleEvalAction } from "./lib/command/eval-action.ts";
 import { handleReportAction } from "./lib/command/report-action.ts";
-import { clearConnectionCache } from "../../lib/common/sf-conn/connection.ts";
+import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
 import { clearAgentApiAuthCache } from "./lib/agent-api-auth.ts";
 import {
   clearAgentScriptAnalysisCache,
@@ -452,9 +452,9 @@ async function handleCheckSubcommand(
 // -------------------------------------------------------------------------------------------------
 
 function registerSessionHooks(pi: ExtensionAPI, state: AgentScriptAssistState): void {
-  pi.on("session_start", async () => {
+  pi.on("session_start", async (event) => {
     resetState(state);
-    clearConnectionCache();
+    beginSalesforceConnectionSession(event);
     clearAgentApiAuthCache();
     clearAgentScriptAnalysisCache();
     clearSfapEndpointCache();
@@ -463,7 +463,6 @@ function registerSessionHooks(pi: ExtensionAPI, state: AgentScriptAssistState): 
   pi.on("session_shutdown", async () => {
     interruptStudioRuns();
     resetState(state);
-    clearConnectionCache();
     clearAgentApiAuthCache();
     clearAgentScriptAnalysisCache();
     clearSfapEndpointCache();

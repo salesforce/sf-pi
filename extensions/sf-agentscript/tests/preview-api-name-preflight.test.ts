@@ -72,6 +72,7 @@ function fakeConn(opts: {
   return {
     accessToken: "JWT",
     instanceUrl: "https://example.my.salesforce.com",
+    getApiVersion: () => "67.0",
     getConnectionOptions: () => ({ accessToken: "JWT" }),
     query: vi.fn(async (soql: string) => {
       queryCalls++;

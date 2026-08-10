@@ -130,8 +130,11 @@ describe("connForAgentApi isolation", () => {
       ReturnType<typeof fakeConn> & { setApiVersion: ReturnType<typeof vi.fn> }
     > = [];
 
-    vi.doMock("../../../lib/common/sf-conn/connection.ts", () => ({
+    vi.doMock("../../../lib/common/sf-conn/index.ts", () => ({
       connFromAlias: vi.fn(async () => baseConn),
+      salesforceSessionForConnection: vi.fn((conn) => ({
+        target: { apiVersion: conn.getApiVersion() },
+      })),
     }));
     vi.doMock("@salesforce/core", () => ({
       AuthInfo: { create: vi.fn(async () => ({ username: "agent@example.com" })) },
@@ -157,12 +160,13 @@ describe("connForAgentApi isolation", () => {
     expect(one.conn).toBe(two.conn);
     expect(two.conn).toBe(three.conn);
     expect(created).toHaveLength(1);
+    expect(created[0]?.setApiVersion).toHaveBeenCalledWith("67.0");
     expect(created.every((c) => c.accessToken === JWT)).toBe(true);
     expect(one.cache).toBe("miss");
     expect(two.cache).toBe("hit");
     expect(three.cache).toBe("hit");
 
-    vi.doUnmock("../../../lib/common/sf-conn/connection.ts");
+    vi.doUnmock("../../../lib/common/sf-conn/index.ts");
     vi.doUnmock("@salesforce/core");
   });
 
@@ -183,10 +187,15 @@ describe("connForAgentApi isolation", () => {
       getUsername: () => "agent@example.com",
       getApiVersion: () => "67.0",
     };
-    const created: Array<ReturnType<typeof fakeConn>> = [];
+    const created: Array<
+      ReturnType<typeof fakeConn> & { setApiVersion: ReturnType<typeof vi.fn> }
+    > = [];
 
-    vi.doMock("../../../lib/common/sf-conn/connection.ts", () => ({
+    vi.doMock("../../../lib/common/sf-conn/index.ts", () => ({
       connFromAlias: vi.fn(async () => baseConn),
+      salesforceSessionForConnection: vi.fn((conn) => ({
+        target: { apiVersion: conn.getApiVersion() },
+      })),
     }));
     vi.doMock("@salesforce/core", () => ({
       AuthInfo: { create: vi.fn(async () => ({ username: "agent@example.com" })) },
@@ -210,8 +219,9 @@ describe("connForAgentApi isolation", () => {
     expect(two.cache).toBe("miss");
     expect(one.conn).not.toBe(two.conn);
     expect(created).toHaveLength(2);
+    expect(created.every((conn) => conn.setApiVersion.mock.calls[0]?.[0] === "67.0")).toBe(true);
 
-    vi.doUnmock("../../../lib/common/sf-conn/connection.ts");
+    vi.doUnmock("../../../lib/common/sf-conn/index.ts");
     vi.doUnmock("@salesforce/core");
   });
 });

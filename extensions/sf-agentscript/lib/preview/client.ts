@@ -778,11 +778,7 @@ async function fetchLatestApexDebugLog(
   if (r.ok === false) return undefined;
   const logId = r.records[0]?.Id;
   if (!logId) return undefined;
-  const body = await boundedRestRequest<string>(
-    conn,
-    `/services/data/v${conn.getApiVersion()}/sobjects/ApexLog/${logId}/Body`,
-    "GET",
-  );
+  const body = await boundedRestRequest<string>(conn, `/sobjects/ApexLog/${logId}/Body`, "GET");
   if (body.ok === false) return undefined;
   return typeof body.body === "string" ? body.body : undefined;
 }

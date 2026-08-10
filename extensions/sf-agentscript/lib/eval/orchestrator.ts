@@ -60,8 +60,8 @@ import {
   type AgentVersionResolutionMode,
   type ResolvedAgentIds,
 } from "./active-ids.ts";
-import { resolveOrgIdentity } from "../../../../lib/common/sf-conn/connection.ts";
-import { connRequest } from "../../../../lib/common/sf-conn/request.ts";
+import { resolveOrgIdentity } from "../../../../lib/common/sf-conn/index.ts";
+import { boundedSoqlQuery } from "../bounded-salesforce-transport.ts";
 import type {
   EvalApiResponse,
   EvalBatchFailure,
@@ -204,17 +204,16 @@ async function queryEvalSeed(
   soql: string,
   signal?: AbortSignal,
 ): Promise<{ records: Array<Record<string, unknown>> }> {
-  const version = (conn as unknown as { version?: string }).version ?? "66.0";
-  const response = await connRequest<{ records?: Array<Record<string, unknown>> }>(conn, {
-    method: "GET",
-    url: `/services/data/v${version}/query/?q=${encodeURIComponent(soql)}`,
+  const response = await boundedSoqlQuery<Record<string, unknown>>(conn, soql, {
     timeoutMs: 30_000,
     signal,
   });
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`Eval seed SOQL failed with HTTP ${response.status}.`);
+  if (response.ok === false) {
+    throw new Error(
+      `Eval seed SOQL failed${response.status ? ` with HTTP ${response.status}` : ""}: ${response.detail}`,
+    );
   }
-  return { records: response.body.records ?? [] };
+  return { records: response.records };
 }
 
 function errorPayload(err: unknown): { name?: string; message: string } {
