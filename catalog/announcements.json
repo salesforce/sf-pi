@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.263.2-2026-08-10",
-  "latestVersion": "0.263.2",
+  "revision": "release-0.263.3-2026-08-10",
+  "latestVersion": "0.263.3",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.263.2",
+      "id": "release-0.263.3",
       "kind": "update",
-      "title": "sf-pi v0.263.2 — docs: enforce current catalog documentation contract",
+      "title": "sf-pi v0.263.3 — docs: make catalog validation fail closed",
       "publishedAt": "2026-08-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.263.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.263.3",
       "severity": "info",
-      "body": "docs: enforce current catalog documentation contract"
+      "body": "docs: make catalog validation fail closed"
     },
     {
       "id": "pi-0.73-required",
