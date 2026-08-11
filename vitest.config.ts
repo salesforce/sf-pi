@@ -25,13 +25,14 @@ export default defineConfig({
         "catalog/registry.ts",
         "lib/common/test-fixtures.ts",
       ],
-      // Pragmatic floor reflecting current baseline. Ratchet up over time.
-      // Baseline (2026-04-21): lines 38%, statements 38%, functions 39%, branches 33%.
+      // Full-suite observation (2026-08-10): lines 65.51%, statements 63.46%,
+      // functions 69.38%, branches 52.01%. Floors retain roughly three points
+      // of headroom so small source additions do not pin CI to one peak run.
       thresholds: {
-        lines: 35,
-        statements: 35,
-        functions: 35,
-        branches: 30,
+        lines: 62,
+        statements: 60,
+        functions: 66,
+        branches: 49,
       },
       reportsDirectory: "./coverage",
     },
