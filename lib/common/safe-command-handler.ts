@@ -71,16 +71,25 @@ export async function withSafeCommandHandler<T>(
 ): Promise<T | undefined> {
   const statusKey = `sf-pi-safe-cmd:${commandName}`;
   const threshold = options?.runningThresholdMs ?? SAFE_HANDLER_RUNNING_THRESHOLD_MS;
+  // Read session-bound properties before the body can replace or reload the
+  // session. Pi invalidates the old command ctx as soon as that transition
+  // completes, so even a later `ctx.hasUI` getter access can throw.
+  const hasUI = ctx.hasUI;
   let statusShown = false;
 
   // Start the pill timer immediately. If the handler returns inside the
   // threshold, the pill never appears. If it hangs or runs long, the user
   // sees "running…" and can tell their input was received.
   const statusTimer =
-    Number.isFinite(threshold) && ctx.hasUI
+    Number.isFinite(threshold) && hasUI
       ? setTimeout(() => {
           statusShown = true;
-          ctx.ui.setStatus(statusKey, `/${commandName} running…`);
+          try {
+            ctx.ui.setStatus(statusKey, `/${commandName} running…`);
+          } catch {
+            // The command may have reloaded or replaced the session before
+            // this timer fired; the old ctx is intentionally unusable then.
+          }
         }, threshold)
       : null;
 
@@ -93,7 +102,7 @@ export async function withSafeCommandHandler<T>(
     // avoid duplicating the message in the popup body.
     const stackBody = stack ? stripStackHeader(stack, message) : "";
     const body = stackBody ? `${message}\n\n${stackBody}` : message;
-    if (ctx.hasUI) {
+    if (hasUI) {
       try {
         await openInfoPanel(ctx, {
           title: `/${commandName} failed`,
@@ -104,16 +113,24 @@ export async function withSafeCommandHandler<T>(
         // openInfoPanel is itself overlay-mode ctx.ui.custom; if pi's UI
         // is mid-teardown (resetExtensionUI during reload, session swap)
         // it can reject. Fall back to notify so the failure is still
-        // visible in the chat scroll.
-        ctx.ui.notify(`/${commandName} failed: ${message}`, "error");
+        // visible in the chat scroll when the ctx remains current.
+        try {
+          ctx.ui.notify(`/${commandName} failed: ${message}`, "error");
+        } catch {
+          // A stale ctx has no valid UI surface left to notify.
+        }
       }
     } else {
-      ctx.ui.notify(`/${commandName} failed: ${message}`, "error");
+      try {
+        ctx.ui.notify(`/${commandName} failed: ${message}`, "error");
+      } catch {
+        // A stale ctx has no valid UI surface left to notify.
+      }
     }
     return undefined;
   } finally {
     if (statusTimer) clearTimeout(statusTimer);
-    if (statusShown && ctx.hasUI) {
+    if (statusShown && hasUI) {
       try {
         ctx.ui.setStatus(statusKey, undefined);
       } catch {

@@ -239,6 +239,7 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ### Bug Fixes
 
+- **sf-skills: stop reporting a stale command context after funnel saves (#604).** The shared safe command wrapper now snapshots UI availability before a command can reload or replace its session and treats delayed status cleanup against the invalidated context as a no-op. Skill Funnel changes still reload immediately, but the completed save no longer ends with a misleading extension error.
 - **sf-llm-gateway: make setup and runtime status agree with Pi-owned authentication.** Setup now persists non-secret overrides without waiting on model or usage network work, runtime consumers consistently use the effective endpoint stored with Pi credentials, and status distinguishes saved overrides from effective provider auth. Model discovery failures retain bounded authentication/route/service/timeout guidance with a Doctor handoff and explicitly report whether last-known models were retained.
 - **sf-llm-gateway: preserve explicit gateway model allow-lists
   across restarts (#163).** Startup now registers the previous local model

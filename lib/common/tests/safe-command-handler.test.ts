@@ -127,6 +127,46 @@ describe("withSafeCommandHandler", () => {
     expect(lastCall?.[1]).toBeUndefined();
   });
 
+  it("does not inspect a stale command ctx after a slow body reloads", async () => {
+    const base = makeStubCtx(true);
+    let stale = false;
+    let resolveBody: () => void = () => {};
+    const staleError = new Error("This extension ctx is stale after reload");
+    const ctx = {
+      mode: base.mode,
+      cwd: base.cwd,
+      get hasUI() {
+        if (stale) throw staleError;
+        return true;
+      },
+      get ui() {
+        if (stale) throw staleError;
+        return base.ui;
+      },
+    };
+
+    const promise = withSafeCommandHandler(
+      ctx as any,
+      "sf-skills",
+      () =>
+        new Promise<void>((resolve) => {
+          resolveBody = resolve;
+        }),
+    );
+    await vi.advanceTimersByTimeAsync(400);
+    expect(base.ui.setStatus).toHaveBeenCalledWith(
+      expect.stringContaining("sf-skills"),
+      expect.stringContaining("running"),
+    );
+
+    // ctx.reload() invalidates the command context before the command's
+    // promise unwinds through withSafeCommandHandler.
+    stale = true;
+    resolveBody();
+
+    await expect(promise).resolves.toBeUndefined();
+  });
+
   it("clears the running pill even when the body throws", async () => {
     const ctx = makeStubCtx(true);
     let rejectBody: (err: Error) => void = () => {};
