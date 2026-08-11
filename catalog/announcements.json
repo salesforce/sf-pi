@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.264.0-2026-08-10",
-  "latestVersion": "0.264.0",
+  "revision": "release-0.265.0-2026-08-11",
+  "latestVersion": "0.265.0",
   "feedUrl": "https://jaganpro.github.io/sf-pi/announcements.json",
   "announcements": [
     {
-      "id": "release-0.264.0",
+      "id": "release-0.265.0",
       "kind": "update",
-      "title": "sf-pi v0.264.0 — manager: complete Manager-first navigation",
-      "publishedAt": "2026-08-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.264.0",
+      "title": "sf-pi v0.265.0 — ui: honor NO_COLOR across SF Pi surfaces",
+      "publishedAt": "2026-08-11T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.265.0",
       "severity": "info",
-      "body": "manager: complete Manager-first navigation"
+      "body": "ui: honor NO_COLOR across SF Pi surfaces"
     },
     {
       "id": "pi-0.73-required",
