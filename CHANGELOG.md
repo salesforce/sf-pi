@@ -521,6 +521,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
     `Tip:` footer inline so users see actionable next steps even when pi's
     outer retry renders the error itself.
 
+## [0.265.0](https://github.com/salesforce/sf-pi/compare/v0.264.0...v0.265.0) (2026-08-11)
+
+
+### Features
+
+* **ui:** honor NO_COLOR across SF Pi surfaces ([69bcfb5](https://github.com/salesforce/sf-pi/commit/69bcfb59eb5a877567efbe5e155a95dbb11cec78))
+
 ## [0.264.0](https://github.com/salesforce/sf-pi/compare/v0.263.3...v0.264.0) (2026-08-10)
 
 
