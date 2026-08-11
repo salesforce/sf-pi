@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.265.1-2026-08-11",
-  "latestVersion": "0.265.1",
+  "revision": "release-0.266.0-2026-08-11",
+  "latestVersion": "0.266.0",
   "announcements": [
     {
-      "id": "release-0.265.1",
+      "id": "release-0.266.0",
       "kind": "update",
-      "title": "sf-pi v0.265.1 — ui: avoid control-character regexes",
+      "title": "sf-pi v0.266.0 — data360: align live proof with v2 dispatcher",
       "publishedAt": "2026-08-11T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.265.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.266.0",
       "severity": "info",
-      "body": "ui: avoid control-character regexes"
+      "body": "data360: align live proof with v2 dispatcher"
     }
   ]
 }
