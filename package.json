@@ -143,12 +143,12 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@dagrejs/dagre": "3.0.0",
-    "@lwc/compiler": "^9.3.6",
+    "@dagrejs/dagre": "3.1.1",
+    "@lwc/compiler": "^9.4.0",
     "@lwc/template-compiler": "^9.3.4",
     "@salesforce-ux/design-system": "2.264.0",
-    "@salesforce/apex-node": "^9.0.0",
-    "@salesforce/core": "^9.1.0",
+    "@salesforce/apex-node": "^9.0.3",
+    "@salesforce/core": "^9.1.1",
     "@salesforce/kit": "^4.0.0",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
