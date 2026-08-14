@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.266.1](https://github.com/salesforce/sf-pi/compare/v0.266.0...v0.266.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **code-analyzer:** cancel stale readiness timers ([#607](https://github.com/salesforce/sf-pi/issues/607)) ([b8bb747](https://github.com/salesforce/sf-pi/commit/b8bb747816e8a09286ddb64033aea81d5a927142))
+
 ## [0.266.0](https://github.com/salesforce/sf-pi/compare/v0.265.1...v0.266.0) (2026-08-11)
 
 
