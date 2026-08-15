@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.266.2](https://github.com/salesforce/sf-pi/compare/v0.266.1...v0.266.2) (2026-08-15)
+
+
+### Bug Fixes
+
+* **sf-skills:** avoid stale ctx error after reload ([#605](https://github.com/salesforce/sf-pi/issues/605)) ([586328f](https://github.com/salesforce/sf-pi/commit/586328fcad7e67142441a21ea86e75a738267cc3))
+
 ## [0.266.1](https://github.com/salesforce/sf-pi/compare/v0.266.0...v0.266.1) (2026-08-14)
 
 
