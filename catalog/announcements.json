@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.266.1-2026-08-14",
-  "latestVersion": "0.266.1",
+  "revision": "release-0.266.2-2026-08-15",
+  "latestVersion": "0.266.2",
   "announcements": [
     {
-      "id": "release-0.266.1",
+      "id": "release-0.266.2",
       "kind": "update",
-      "title": "sf-pi v0.266.1 — code-analyzer: cancel stale readiness timers",
-      "publishedAt": "2026-08-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.266.1",
+      "title": "sf-pi v0.266.2 — sf-skills: avoid stale ctx error after reload",
+      "publishedAt": "2026-08-15T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.266.2",
       "severity": "info",
-      "body": "code-analyzer: cancel stale readiness timers"
+      "body": "sf-skills: avoid stale ctx error after reload"
     }
   ]
 }
