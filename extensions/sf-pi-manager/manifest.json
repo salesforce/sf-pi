@@ -1,7 +1,7 @@
 {
   "id": "sf-pi-manager",
   "name": "SF Pi Manager",
-  "description": "Core manager — provides /sf-pi commands",
+  "description": "Core manager \u2014 provides /sf-pi commands",
   "category": "manager",
   "maturity": "stable",
   "defaultEnabled": true,
@@ -16,18 +16,9 @@
       "index.ts",
       "lib/overlay.ts",
       "lib/extension-details.ts",
-      "lib/render.ts",
-      "lib/announcements.ts",
-      "lib/recommendations.ts",
       "lib/doctor-command.ts",
-      "lib/skill-sources-command.ts",
-      "lib/auto-update-command.ts",
       "lib/auto-update-coordinator.ts",
-      "lib/auto-update-package-plan.ts",
-      "lib/auto-update-runner.ts",
-      "lib/auto-update-transcript.ts",
-      "lib/config-panel.ts",
-      "../../lib/common/auto-update/store.ts"
+      "lib/config-panel.ts"
     ],
     "stateFiles": [
       "~/.pi/agent/settings.json (sf-pi package filter list)",

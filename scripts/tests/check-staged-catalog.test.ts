@@ -20,6 +20,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const GENERATOR_PATH = path.join(ROOT, "scripts", "generate-catalog.mjs");
 const ADR_LIFECYCLE_PATH = path.join(ROOT, "scripts", "lib", "adr-lifecycle.mjs");
+const DOCUMENTATION_INVENTORIES_PATH = path.join(
+  ROOT,
+  "scripts",
+  "lib",
+  "documentation-inventories.mjs",
+);
 const CHECKER_PATH = path.join(ROOT, "scripts", "check-staged-catalog.mjs");
 const PRETTIER_ROOT = path.dirname(createRequire(import.meta.url).resolve("prettier/package.json"));
 
@@ -99,7 +105,10 @@ function snapshotWorkingTree(): Record<string, string> {
 }
 
 function createRepository(): void {
-  writeJson("package.json", { pi: { extensions: ["./extensions/alpha/index.ts"] } });
+  writeJson("package.json", {
+    scripts: {},
+    pi: { extensions: ["./extensions/alpha/index.ts"] },
+  });
   writeText(".gitignore", "node_modules/\n");
   writeText("extensions/alpha/index.ts", "export default function alpha() {}\n");
   writeJson("extensions/alpha/manifest.json", {
@@ -114,10 +123,20 @@ function createRepository(): void {
       primaryFiles: ["index.ts"],
     },
   });
+  writeText("README.md", "# Fixture\n");
   writeText(
-    "README.md",
-    "# Fixture\n\n<!-- GENERATED:bundled-extensions:start -->\nstale\n<!-- GENERATED:bundled-extensions:end -->\n\n<!-- GENERATED:command-reference:start -->\nstale\n<!-- GENERATED:command-reference:end -->\n",
+    "CONTRIBUTING.md",
+    "# Contributing\n\n<!-- GENERATED:contributor-scripts:start -->\nstale\n<!-- GENERATED:contributor-scripts:end -->\n",
   );
+  writeText(
+    "lib/common/README.md",
+    "# Common\n\n<!-- GENERATED:common-modules:start -->\nstale\n<!-- GENERATED:common-modules:end -->\n",
+  );
+  writeText(
+    "scripts/e2e/README.md",
+    "# E2E\n\n<!-- GENERATED:e2e-harnesses:start -->\nstale\n<!-- GENERATED:e2e-harnesses:end -->\n",
+  );
+  writeJson("scripts/e2e/harnesses.json", { schemaVersion: 1, harnesses: [] });
   writeText(
     "ARCHITECTURE.md",
     "# Architecture\n\n<!-- GENERATED:folder-layout:start -->\nstale\n<!-- GENERATED:folder-layout:end -->\n",
@@ -146,6 +165,10 @@ function createRepository(): void {
   mkdirSync(path.join(repository, "scripts/lib"), { recursive: true });
   cpSync(GENERATOR_PATH, path.join(repository, "scripts/generate-catalog.mjs"));
   cpSync(ADR_LIFECYCLE_PATH, path.join(repository, "scripts/lib/adr-lifecycle.mjs"));
+  cpSync(
+    DOCUMENTATION_INVENTORIES_PATH,
+    path.join(repository, "scripts/lib/documentation-inventories.mjs"),
+  );
   cpSync(CHECKER_PATH, path.join(repository, "scripts/check-staged-catalog.mjs"));
 
   mkdirSync(path.join(repository, "node_modules"), { recursive: true });

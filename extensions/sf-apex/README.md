@@ -2,84 +2,19 @@
 
 ## What It Does
 
-SF Apex is a lean, API-native **Apex Lifecycle Extension** for pi. It helps the
-agent move through the Apex loop:
+SF Apex provides an API-native Apex lifecycle for Pi:
 
 ```text
-author → diagnose → trace/log/watch → anon probe → targeted test → fix
+author → diagnose → trace/log/watch → bounded probe → targeted test → fix
 ```
 
-It deliberately does **not** edit source files itself. Agents still use normal
-Pi `read`, `write`, and `edit` tools for code changes. `sf-apex` provides the
-Apex-specific lifecycle primitives around those edits:
+Normal Pi file tools still own source edits. The `sf_apex` family owns Apex
+planning, diagnostics, trace flags, logs, Anonymous Apex probes, targeted tests,
+and coverage evidence. Raw logs and reports are stored as Apex Artifacts while
+model-visible output stays compact.
 
-- `org.preflight`, `apex.search`, `test.discover`, `test.plan`, `coverage.summary` — bounded native discovery actions for Apex lifecycle decisions
-- `author.plan` — lightweight authoring plan, likely tests, and existing skill hints
-- `diagnose.file` — Apex diagnostics via a managed Apex LSP during the `sf-lsp` handoff
-- `trace.start` / `trace.stop` / `trace.status` — bounded Tooling API trace setup
-- `log.latest` / `log.get` / `log.analyze` / `log.watch` — high-signal Apex log digestion
-- `anon.run` — native Anonymous Apex execution with log capture
-- `test.run` / `test.result` / `test.rerun` — native targeted test runs
-
-Full logs, digests, Anonymous Apex bodies/results, and test results are persisted
-as **Apex Artifacts** under the global agent directory. Tool output stays compact
-for the LLM and renders as human-friendly **Apex Result Cards** in the TUI.
-
-## Key Architecture Decisions
-
-- **Shared API-native hot path** — lifecycle actions use the common Salesforce Connection Module for target resolution, latest-first API-version selection, authentication, and bounded Tooling/REST calls. SDK/SOAP actions reuse the Module's already-versioned Salesforce Core connection. If a lifecycle capability is missing, prefer adding a small native action over routing `sf-apex` through Salesforce CLI subprocess stacks. See ADRs 0069 and 0103.
-- **One family tool** — `sf_apex` uses dotted actions instead of many tools,
-  keeping prompt footprint low while covering the lifecycle.
-- **Source edits stay generic** — normal Pi file tools edit Apex. `sf-apex`
-  guides, diagnoses, observes, probes, and tests.
-- **Diagnostics handoff** — Apex diagnostics move toward `sf-apex`; `sf-lsp`
-  remains the transitional fallback until the handoff is complete.
-- **Artifact-first evidence** — raw logs and test results stay on disk; the LLM
-  sees summaries and artifact pointers.
-- **API Call Rail** — human cards include a compact rail of concrete native endpoints
-  and high-signal request parameters, while raw payloads remain in structured details.
-
-## Result Cards
-
-Human-facing cards are expanded by default but avoid repeated evidence/next-step
-footers. The card title is followed by an API Call Rail, then action-specific
-sections such as Apex Log Timeline, Root Cause, Run Summary, File Gate, or Trace
-Capture.
-
-Example:
-
-```text
-❌ 🔎 Apex Log Timeline · failed · MyDevOrg · log=07L…Pmz
-   API
-   │ GET      /tooling/query ApexLog             metadata · id=07L…Pmz
-   │ GET      /tooling/sobjects/ApexLog/Body     id=07L…Pmz
-
-—— 🔥 Root Cause ——
-  🔥 Type         System.DmlException
-  💬 Message      INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST...
-  ↩️ Rollback     observed in debug markers
-
-—— ⏱️ Timeline ——
-  ▶️ start        Apex execution
-  📝 +3ms         dml · Op:Insert · Type:SfApexHarness__c · Rows:1
-  🔥 +4ms         exception · System.DmlException: ...
-```
-
-## Release Hardening Harness
-
-`sf-apex` is validated against a dedicated local harness project that deploys the
-`SfApexHarness` fixture to a development org. The harness includes:
-
-- `SfApexHarness__c` plus focused fields and permission set access.
-- service, trigger/handler, queueable, batch, schedulable, and invocable Apex.
-- matching test classes and Anonymous Apex smoke / rollback scripts.
-
-The harness has been used to validate native discovery, targeted test execution,
-coverage summaries, trace capture, log timelines, mutation guards, rollback-safe
-Anonymous Apex, controlled runtime failures, and controlled failing Apex test
-cards. A Flow observation smoke can use an existing active Autolaunched Flow via
-`Flow.Interview`; a purpose-built Flow → harness invocable scenario remains
-pending until the Flow-generation MCP pipeline is available.
+Result cards show the native API rail and action-specific evidence such as log
+timelines, root causes, run summaries, file gates, or trace captures.
 
 ## Commands
 
@@ -89,31 +24,39 @@ pending until the Flow-generation MCP pipeline is available.
 /sf-apex help     Print command and tool usage
 ```
 
-## LLM Tool
+## Actions
 
-`sf_apex` actions:
+- **Readiness and discovery:** `status`, `org.preflight`, `apex.search`,
+  `test.discover`, `test.plan`, `test.suites`, `coverage.summary`.
+- **Authoring evidence:** `author.plan`, `diagnose.file`, `apex.source.get`.
+- **Runtime evidence:** `trace.start`, `trace.stop`, `trace.status`,
+  `log.latest`, `log.get`, `log.analyze`, `log.watch`.
+- **Bounded execution:** `anon.run`, `test.run`, `test.result`, `test.rerun`.
 
-| Action             | Description                                                                      |
-| ------------------ | -------------------------------------------------------------------------------- |
-| `status`           | Resolve org connection and report active SF Pi trace flags.                      |
-| `org.preflight`    | Check target-org Apex readiness, active traces, and recent test queue state.     |
-| `apex.search`      | Search active Apex classes/triggers by name, with a test-only filter.            |
-| `test.discover`    | Find candidate test classes from targets, class names, or query terms.           |
-| `test.plan`        | Recommend the smallest useful test class to run first.                           |
-| `coverage.summary` | Summarize Tooling coverage for named classes or target files.                    |
-| `author.plan`      | Return local authoring guidance, likely tests, and skill hints.                  |
-| `diagnose.file`    | Run Apex diagnostics for one `.cls` or `.trigger` file via the managed Apex LSP. |
-| `trace.start`      | Start or refresh a bounded DEVELOPER_LOG trace for a user.                       |
-| `trace.stop`       | Stop active SF Pi Apex trace flags for a user.                                   |
-| `trace.status`     | Show active trace flags.                                                         |
-| `log.latest`       | Fetch and analyze the latest Apex log for a user.                                |
-| `log.get`          | Fetch and analyze one Apex log by Id.                                            |
-| `log.analyze`      | Parse a raw log body or local log file.                                          |
-| `log.watch`        | Bounded native tail-like observer for new Apex logs.                             |
-| `anon.run`         | Execute Anonymous Apex and capture/analyze the resulting log.                    |
-| `test.run`         | Run targeted Apex tests by class or method.                                      |
-| `test.result`      | Poll/summarize a prior targeted test run.                                        |
-| `test.rerun`       | Rerun the previous targeted test spec in this session.                           |
+The active tool schema is the exact parameter reference. Multi-step ordering and
+recovery live in [`AGENT_GUIDE.md`](./AGENT_GUIDE.md).
+
+## Safety and Data Boundaries
+
+- Startup performs no org probe; connections resolve only for explicit actions.
+- Trace flags have bounded lifetimes and can be stopped explicitly.
+- Mutation-like Anonymous Apex requires `allow_mutation=true` and remains
+  Guardrail-mediated.
+- Tests are scoped to explicit classes or methods; SF Apex is not an org-wide
+  test dashboard.
+- Full source, logs, diagnostics, and test evidence remain in artifacts rather
+  than being copied wholesale into model context.
+
+## Troubleshooting
+
+**`sf_apex` cannot resolve the org:** Confirm the alias is authenticated and
+pass `target_org` explicitly when the intended target is not the current default.
+
+**No log appears during `log.watch`:** Confirm the code path ran after the watch
+started. The watch is bounded and does not start an unbounded CLI tail process.
+
+**Anonymous Apex is refused as mutating:** Pass `allow_mutation=true` only when
+execution is intentional. Prefer a focused Apex test or rollback-safe probe.
 
 ## File Structure
 
@@ -130,34 +73,3 @@ extensions/sf-apex/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Release Checks
-
-Before release, run at minimum:
-
-```bash
-npm test -- extensions/sf-apex/tests lib/common/tests/sf-conn-connection.test.ts
-npm run check -- --pretty false
-npm run check:boot-path
-npm run e2e:sf-apex-harness -- --org <alias> --harness-cwd <path-to-harness-project> --flow <FlowApiName>
-```
-
-Recommended Code Analyzer scans:
-
-- `Recommended:Security` on `extensions/sf-apex` and shared connection helpers.
-- `sfge:Recommended` on the Apex harness project.
-- `pmd:Recommended` on harness Apex when harness files change.
-
-## Troubleshooting
-
-**`sf_apex` cannot resolve the org:**
-Confirm the target org alias is authenticated. Use `/sf-org` or pass
-`target_org` explicitly.
-
-**No log appears during `log.watch`:**
-Confirm the code path actually ran after the watch started. The watch is bounded
-and API-native; it does not start an unbounded CLI tail process.
-
-**Anonymous Apex is refused as mutating:**
-Pass `allow_mutation=true` only when the DML/async behavior is intentional.
-Prefer rollback-safe probes for data mutations.

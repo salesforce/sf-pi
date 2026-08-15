@@ -35,8 +35,8 @@ describe("orgFromAlias", () => {
     const mod = await import("../sf-conn/connection.ts");
     mod.clearConnectionCache();
 
-    const a = await mod.orgFromAlias("vivint-devint");
-    const b = await mod.orgFromAlias("vivint-devint");
+    const a = await mod.orgFromAlias("example-dev");
+    const b = await mod.orgFromAlias("example-dev");
 
     expect(a).toBe(fakeOrg);
     expect(b).toBe(fakeOrg);

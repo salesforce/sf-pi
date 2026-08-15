@@ -2,76 +2,65 @@
 
 ## What It Does
 
-SF LWC is a lean, local-native **LWC Lifecycle Extension** for pi. It helps the
-agent move through the Lightning Web Component loop:
+SF LWC provides a local-native Lightning Web Component lifecycle:
 
 ```text
-scan → inspect → diagnose → local test → artifact → iterate
+scan → inspect → diagnose → plan local Jest → run → inspect artifacts → iterate
 ```
 
-It deliberately does **not** become a UI builder, frontend app generator,
-deployment tool, org source synchronization surface, or wrapper around
-Salesforce CLI commands. Source edits remain normal Pi `read`, `write`, and
-`edit` operations. Broader static/security scans remain with `sf-code-analyzer`,
-Apex/server verification remains with `sf-apex`, schema validation remains with
-`sf-soql`, and advisory on-write diagnostics remain with `sf-lsp`.
+Normal Pi file tools own source edits. SF LWC does not create components,
+deploy/retrieve source, synchronize with an org, install dependencies, start
+watch mode, or replace Code Analyzer, Apex, schema, or browser evidence.
 
-Full scans, component inspections, diagnostics, and Jest output are persisted as
-**LWC Artifacts** under the global agent directory. Tool output stays compact for
-the LLM and renders as human-friendly **LWC Result Cards** in the TUI.
-
-## Key Architecture Decisions
-
-- **Local-native hot path** — V1 works against the checked-out SFDX project. It
-  does not call Salesforce CLI or org APIs.
-- **Public LWC compiler adapter** — V1 uses current public `@lwc/*` compiler
-  packages behind SF Pi diagnostics helpers. The public LWC language-server
-  package remains the conceptual reference used by `sf-lsp`, but is not a direct
-  `sf-lwc` runtime dependency until its transitive dependency tree is release-clean.
-- **One family tool** — `sf_lwc` uses dotted actions to keep prompt footprint low.
-- **SFDX package-directory boundary** — scans are limited to package directories
-  registered by `sfdx-project.json`; non-SFDX and workspace-wide scans are not
-  supported in V1.
-- **Bounded local tests** — `test.run` may execute `node_modules/.bin/lwc-jest`
-  directly with bounded args/timeouts. It never installs dependencies, starts
-  watch mode, updates snapshots by default, or runs arbitrary package scripts as
-  the primary path.
-- **Diagnostics coexistence** — `sf-lsp` keeps advisory on-write LWC diagnostics;
-  `sf_lwc file.diagnose` provides explicit lifecycle diagnostics and artifacts.
-- **Artifact-first evidence** — raw Jest JSON, stdout/stderr, diagnostics JSON,
-  scans, inspections, and summaries are persisted; LLM output stays compact.
-- **LWC Local Rail** — cards show the local project/file/compiler/runner context
-  used for the action rather than hiding the execution path.
-- **Skill-aware, tool-first guidance** — authoring and test actions recommend
-  `generating-lwc-components`; style/SLDS signals additionally recommend
-  `uplifting-components-to-slds2`. These are guidance hints only: `sf_lwc`
-  remains the lifecycle evidence authority, Code Analyzer owns explicit SLDS
-  scans today, and a future `sf-slds2` extension can own SLDS2 uplift workflows.
+Full scans, inspections, diagnostics, and Jest output are stored as LWC
+Artifacts while model-visible output stays compact.
 
 ## Commands
 
 ```text
 /sf-lwc          Open SF LWC in the SF Pi Manager
-/sf-lwc status   Print extension status
+/sf-lwc status   Print local readiness
 /sf-lwc help     Print command and tool usage
 ```
 
-## LLM Tool
+## Actions
 
-`sf_lwc` actions:
+`sf_lwc` supports `status`, `project.scan`, `component.list`,
+`component.inspect`, `file.diagnose`, `test.discover`, `test.plan`, `test.run`,
+`history.last`, and `history.rerun`. The active schema is the exact parameter
+reference.
 
-| Action              | Description                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------- |
-| `status`            | Report local SFDX/LWC Jest/compiler readiness.                                                    |
-| `project.scan`      | Scan registered SFDX package directories for LWC bundles and test signals.                        |
-| `component.list`    | List local LWC bundles with exposure/test/file signals.                                           |
-| `component.inspect` | Inspect one bundle's metadata, public API, imports, child tags, style signals, tests, and issues. |
-| `file.diagnose`     | Diagnose `.html`, `.js`, `.ts`, and `.js-meta.xml` LWC files.                                     |
-| `test.discover`     | Discover local LWC Jest test files and runner availability.                                       |
-| `test.plan`         | Recommend the smallest useful local LWC Jest run for a component or file.                         |
-| `test.run`          | Run a bounded local LWC Jest test and persist JSON/stdout/stderr/summary.                         |
-| `history.last`      | Return the previous LWC Run Digest in this session.                                               |
-| `history.rerun`     | Rerun the previous local LWC Jest action.                                                         |
+Project scans are limited to SFDX package directories. Diagnostics use public
+LWC compiler packages. `test.run` invokes the project's local
+`node_modules/.bin/lwc-jest` with bounded arguments and timeout.
+
+## Safety and Data Boundaries
+
+- Startup performs no project scan, subprocess, or org probe.
+- Every lifecycle action is local-only; no Salesforce org or CLI operation runs.
+- The extension never installs dependencies, invokes arbitrary package scripts,
+  updates snapshots by default, or starts Jest watch mode.
+- Full evidence remains in artifacts; result cards show only bounded project,
+  compiler, runner, finding, and path facts.
+- Style signals recommend the SLDS2 skill or Code Analyzer; SF LWC does not own
+  SLDS lint execution or autofix.
+
+## Troubleshooting
+
+**No `sfdx-project.json` is found:** Pass `workspace` or run from the project
+root.
+
+**No components are found:** Verify `packageDirectories` and the LWC bundle
+location.
+
+**The local Jest runner is missing:** Install the project's dependencies outside
+SF LWC, then rerun discovery or planning.
+
+**Jest fails without JSON:** Inspect the persisted stdout/stderr artifacts and
+narrow the test target.
+
+**Apex or schema validation is needed:** Use `sf_apex` or `sf_soql`; component
+inspection only reports import and field hints.
 
 ## File Structure
 
@@ -88,14 +77,3 @@ extensions/sf-lwc/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Troubleshooting
-
-| Symptom                                     | Likely cause                                                     | Fix                                                                                                                                  |
-| ------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `No sfdx-project.json found`                | Tool was called outside an SFDX project.                         | Pass `workspace` or run from the project root.                                                                                       |
-| No components found                         | No LWC bundles in registered package dirs.                       | Check `sfdx-project.json` packageDirectories.                                                                                        |
-| Local Jest runner missing                   | Project dependencies are not installed.                          | Install project dependencies outside `sf-lwc`, then rerun.                                                                           |
-| `test.run` fails with no Jest JSON          | Runner crashed before writing output.                            | Inspect stdout/stderr artifacts and narrow the test scope.                                                                           |
-| Need Apex/schema validation from imports    | `component.inspect` only extracts hints.                         | Use `sf_apex` for Apex and `sf_soql` for schema validation.                                                                          |
-| Need SLDS2 uplift or styling-hook migration | `sf_lwc` only detects style signals and recommends skills/tools. | Use `uplifting-components-to-slds2` for guidance and `code_analyzer` SLDS rules or a future `sf-slds2` extension for lint execution. |

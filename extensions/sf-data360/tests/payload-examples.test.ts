@@ -17,6 +17,7 @@ const upstreamParity = JSON.parse(
   summary?: { payloadExamples?: Record<string, unknown> };
 };
 const readme = readFileSync("extensions/sf-data360/README.md", "utf8");
+const referenceIndex = readFileSync("extensions/sf-data360/references/README.md", "utf8");
 
 describe("d360 payload example parity", () => {
   it("keeps top-level examples capability-shaped", () => {
@@ -38,9 +39,11 @@ describe("d360 payload example parity", () => {
     expect(packageJson.scripts?.lint).toContain("generate-d360-payload-examples:check");
   });
 
-  it("documents payload example variants in the extension README", () => {
-    expect(readme).toContain('"variant": "profile"');
-    expect(readme).toContain('"capability": "d360_dmo_create"');
+  it("routes payload examples through current references instead of legacy README details", () => {
+    expect(readme).toContain("references/README.md");
+    expect(referenceIndex).toContain("examples.md");
+    expect(referenceIndex).toContain("data-shapes.md");
+    expect(readme).not.toContain('"capability": "d360_dmo_create"');
   });
 
   it("includes payload example coverage in the generated upstream parity report", () => {

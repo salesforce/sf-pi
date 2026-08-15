@@ -31,49 +31,11 @@
       "summary": "Owns the entire Agent Script lifecycle: compile and quality hardening, structural review, preview, local-first Eval Studio, exact-version release eval contracts, inactive publication, and Guardrail-mediated activation.",
       "primaryFiles": [
         "index.ts",
-        "lib/diagnostics.ts",
-        "lib/feedback.ts",
-        "lib/sdk.ts",
-        "lib/inspect.ts",
-        "lib/mutate.ts",
-        "lib/tool-types.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "lib/quality/catalog.ts",
-        "lib/quality/settings.ts",
-        "lib/quality/engine.ts",
-        "lib/quality/auto-scan.ts",
-        "lib/llm-response-sequence.ts",
-        "lib/render/response-sequence.ts",
-        "lib/render/conversation.ts",
-        "lib/eval/response-integrity.ts",
-        "lib/eval/conversation-summary.ts",
         "lib/authoring-tool.ts",
-        "lib/branch-state.ts",
-        "lib/authoring/params.ts",
-        "lib/authoring/actions/compile.ts",
-        "lib/authoring/actions/create.ts",
-        "lib/authoring/actions/inspect.ts",
-        "lib/authoring/actions/mutate.ts",
-        "lib/eval/sfap.ts",
-        "lib/eval/normalize.ts",
-        "lib/eval/active-ids.ts",
-        "lib/eval/orchestrator.ts",
-        "lib/eval/eval-client.ts",
-        "lib/eval/trace-client.ts",
-        "lib/eval/render.ts",
-        "lib/eval/persist.ts",
-        "lib/eval/verdict.ts",
-        "lib/eval-studio/discovery.ts",
-        "lib/eval-studio/component.ts",
-        "lib/eval-studio/run-coordinator.ts",
-        "lib/preview/client.ts",
-        "lib/preview/session-store.ts",
         "lib/preview-tool.ts",
         "lib/eval-tool.ts",
         "lib/lifecycle-tool.ts",
-        "lib/release-contract.ts",
-        "AGENT_GUIDE.md"
+        "lib/release-contract.ts"
       ],
       "safety": [
         "Compile-on-save stays silent on unsupported files and on failed write/edit results; only enabled edit-time High hardening rules join that feedback.",
@@ -91,12 +53,19 @@
         "Untested activation is a distinct Guardrail Safety Envelope; acknowledge_untested_activation is intent, never approval.",
         "5xx-only retry on POST avoids amplifying server-side overload (no Retry-After contract on the Eval API); client-side Eval API batch timeouts are terminal and configurable through batch_timeout_ms.",
         "Preview sessions land under .sfdx/agents/** (sf-guardrail carve-out); rest of .sfdx/** stays blocked."
+      ],
+      "referenceRoots": [
+        {
+          "path": "docs",
+          "index": "docs/README.md",
+          "role": "current"
+        }
       ]
     },
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 37017
+    "srcLoc": 37015
   },
   {
     "id": "sf-apex",
@@ -127,16 +96,7 @@
         "lib/sf-apex-tool.ts",
         "lib/operations.ts",
         "lib/api.ts",
-        "lib/author.ts",
-        "lib/diagnostics.ts",
-        "lib/trace.ts",
-        "lib/logs.ts",
-        "lib/anonymous.ts",
-        "lib/tests.ts",
-        "lib/log-parser.ts",
-        "lib/artifacts.ts",
-        "../../docs/adr/0069-sf-apex-api-native-lifecycle-extension.md",
-        "AGENT_GUIDE.md"
+        "lib/artifacts.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/sf-pi/sf-apex/logs/*",
@@ -180,12 +140,7 @@
         "index.ts",
         "lib/constitution.ts",
         "lib/routing-summary.ts",
-        "lib/instruction-surface-report.ts",
-        "lib/instruction-surface-runtime.ts",
-        "lib/instruction-surface-panel.ts",
-        "instruction-surface-baseline.json",
-        "SF_CONSTITUTION.md",
-        "AGENT_GUIDE.md"
+        "lib/instruction-surface-report.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md",
@@ -239,26 +194,9 @@
       "primaryFiles": [
         "index.ts",
         "lib/agent-browser.ts",
-        "../../lib/common/browser-runtime-status/store.ts",
-        "lib/evidence-report.ts",
         "lib/operations.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "lib/failure-diagnostics.ts",
-        "lib/editor-surfaces.ts",
-        "lib/setup-destinations.ts",
-        "lib/overlay-dismissal.ts",
-        "lib/snapshot-summary.ts",
-        "lib/lightning-wait.ts",
-        "lib/sf_browser_editor-tool.ts",
-        "lib/sf_browser_select-tool.ts",
-        "lib/sf_browser_resolve_path-tool.ts",
         "lib/salesforce-path-resolver.ts",
-        "lib/salesforce-route-verifier.ts",
-        "AGENT_GUIDE.md",
-        "docs/setup-runbooks.md",
-        "docs/setup-destinations.md",
-        "docs/live-smoke.md"
+        "lib/evidence-report.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/sf-pi/browser-artifacts/sessions/<session-id>/index.json",
@@ -273,6 +211,13 @@
         "Browser Evidence is artifact-first and stored outside the project by default.",
         "Snapshots publish compact ref metadata so SF Guardrail can classify committing click refs from the latest accessible label.",
         "Session-bearing Salesforce org-open URLs are passed to agent-browser but not echoed in tool results."
+      ],
+      "referenceRoots": [
+        {
+          "path": "docs",
+          "index": "docs/README.md",
+          "role": "current"
+        }
       ]
     },
     "entry": "extensions/sf-browser/index.ts",
@@ -311,19 +256,7 @@
         "lib/code_analyzer-tool.ts",
         "lib/auto-scan.ts",
         "lib/cli.ts",
-        "lib/apexguru.ts",
-        "lib/apexguru-guidance.ts",
-        "lib/apexguru-readiness.ts",
-        "lib/display.ts",
-        "lib/artifacts.ts",
-        "lib/readiness.ts",
-        "lib/recipes.ts",
-        "lib/report-filter.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "lib/types.ts",
-        "lib/extension-doctor.ts",
-        "AGENT_GUIDE.md"
+        "lib/apexguru.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/sf-pi/code-analyzer/sessions/<workspace-session-id>/*"
@@ -338,7 +271,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4452
+    "srcLoc": 4462
   },
   {
     "id": "sf-data-explorer",
@@ -364,14 +297,9 @@
       "summary": "Keyboard-first read-only Salesforce data explorer with object/field browsing, editable query text, query execution, result detail view, JSON/CSV export, shortcut help, and explorer switching. Uses sf-pi @salesforce/core connection plumbing; no LLM required.",
       "primaryFiles": [
         "index.ts",
-        "lib/transport.ts",
         "lib/command.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "lib/ui/explorer-spa.ts",
-        "lib/modes/soql.ts",
-        "lib/modes/sosl.ts",
-        "lib/modes/data360-sql.ts"
+        "lib/transport.ts",
+        "lib/ui/explorer-spa.ts"
       ],
       "safety": [
         "Read-only v1: only describe, query, search, compact Data 360 metadata GETs, and Data 360 SELECT SQL calls are issued.",
@@ -428,26 +356,37 @@
         "lib/v2/tools.ts",
         "lib/v2/dispatcher.ts",
         "lib/v2/action-registry.ts",
-        "lib/facade/registry.ts",
-        "lib/facade-tool.ts",
-        "lib/api-tool.ts",
-        "lib/safety.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "references/README.md",
-        "AGENT_GUIDE.md"
+        "lib/safety.ts"
       ],
       "safety": [
         "No MCP runtime or Java subprocess is used.",
         "The v2 data360_* tools route through the shared Salesforce Connection Module, action registry, and existing safety gates.",
         "Mutating calls are classified by method/path and confirmed when required.",
         "The extension uses plain reference docs instead of contributing Agent Skills."
+      ],
+      "referenceRoots": [
+        {
+          "path": "references",
+          "index": "references/README.md",
+          "role": "current"
+        },
+        {
+          "path": "references/phases",
+          "index": "references/README.md",
+          "role": "generated-current",
+          "generatedBy": "scripts/generate-d360-references.mjs"
+        },
+        {
+          "path": "references/compatibility",
+          "index": "references/compatibility/README.md",
+          "role": "compatibility"
+        }
       ]
     },
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11028
+    "srcLoc": 11128
   },
   {
     "id": "sf-devbar",
@@ -482,13 +421,9 @@
       "primaryFiles": [
         "index.ts",
         "lib/top-bar.ts",
-        "lib/runtime-facts.ts",
         "lib/bottom-bar.ts",
-        "lib/colors.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "lib/git-changes.ts",
-        "lib/settings-reader.ts"
+        "lib/runtime-facts.ts",
+        "lib/config-panel.ts"
       ]
     },
     "entry": "extensions/sf-devbar/index.ts",
@@ -525,21 +460,11 @@
       "summary": "Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to the Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport, stores the token in Pi's auth store, and keeps settings limited to non-secret defaults.",
       "primaryFiles": [
         "index.ts",
-        "AGENTS.md",
-        "docs/cheatsheet.md",
         "lib/sf_docs-tool.ts",
         "lib/client.ts",
         "lib/auth.ts",
-        "lib/config-panel.ts",
-        "lib/manager-action-panels.ts",
-        "lib/preferences.ts",
-        "lib/catalog-cache.ts",
         "lib/collection-profiles.ts",
-        "lib/developer-reference.ts",
-        "lib/release-notes.ts",
-        "lib/render.ts",
-        "lib/types.ts",
-        "AGENT_GUIDE.md"
+        "lib/render.ts"
       ],
       "stateFiles": [
         "~/.pi/agent/auth.json entry: sf-docs",
@@ -555,6 +480,13 @@
         "Uses native fetch plus a small local SSE parser; no MCP server, MCP SDK, or extra runtime dependency is required.",
         "Caches only the collection catalog and never caches search results, answer text, fetched document bodies, prompts, or citations.",
         "Tool output keeps URLs and citations visible while redacting token-bearing values from errors and UI surfaces."
+      ],
+      "referenceRoots": [
+        {
+          "path": "docs",
+          "index": "docs/README.md",
+          "role": "current"
+        }
       ]
     },
     "entry": "extensions/sf-docs/index.ts",
@@ -583,11 +515,9 @@
       "primaryFiles": [
         "index.ts",
         "lib/diagnostics.ts",
-        "lib/github.ts",
         "lib/sanitize.ts",
-        "lib/issue-template.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts"
+        "lib/github.ts",
+        "lib/issue-template.ts"
       ],
       "safety": [
         "Never submits a GitHub issue without user confirmation.",
@@ -629,26 +559,9 @@
       "primaryFiles": [
         "index.ts",
         "lib/safety-kernel.ts",
-        "lib/safety-subject.ts",
-        "lib/safety-envelope.ts",
         "lib/native-tool-risk-registry.ts",
-        "lib/native-tool-risk-gate.ts",
-        "lib/rule-behavior.ts",
-        "lib/file-policy-gate.ts",
-        "lib/policies.ts",
-        "lib/command-risk-gate.ts",
         "lib/command-gate.ts",
-        "lib/org-aware-risk-gate.ts",
         "lib/org-aware-gate.ts",
-        "lib/guidance.ts",
-        "lib/hitl.ts",
-        "lib/approval-detail.ts",
-        "lib/preferences.ts",
-        "lib/guardrail-settings.ts",
-        "lib/config-panel-model.ts",
-        "lib/production-aliases-panel.ts",
-        "lib/approval-ledger.ts",
-        "lib/fingerprint.ts",
         "lib/config.ts"
       ],
       "stateFiles": [
@@ -700,13 +613,7 @@
         "index.ts",
         "lib/sf_herdr_plan-tool.ts",
         "lib/settings.ts",
-        "lib/status.ts",
-        "lib/tool-result-normalizer.ts",
-        "lib/config-panel.ts",
-        "../../lib/common/herdr.ts",
-        "../../lib/common/herdr-runtime.ts",
-        "../../docs/adr/0102-forward-only-current-herdr-tools.md",
-        "AGENT_GUIDE.md"
+        "lib/status.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/settings.json → sfPi.herdr"
@@ -759,12 +666,8 @@
         "lib/provider.ts",
         "lib/transport.ts",
         "lib/models.ts",
-        "lib/model-resolution.ts",
-        "lib/stale-usage-refresh.ts",
         "lib/config.ts",
-        "lib/config-panel.ts",
-        "lib/monthly-usage.ts",
-        "lib/doctor.ts"
+        "lib/command-surface.ts"
       ],
       "stateFiles": [
         "~/.pi/agent/auth.json (Pi-owned API-key credential + default non-secret URL)",
@@ -809,10 +712,7 @@
         "index.ts",
         "lib/lsp-client.ts",
         "lib/feedback.ts",
-        "lib/file-classify.ts",
         "lib/activity.ts",
-        "lib/working-indicator.ts",
-        "lib/command-panel.ts",
         "lib/config-panel.ts"
       ],
       "safety": [
@@ -853,13 +753,7 @@
         "lib/sf-lwc-tool.ts",
         "lib/operations.ts",
         "lib/project.ts",
-        "lib/component.ts",
-        "lib/diagnostics.ts",
-        "lib/tests.ts",
-        "lib/artifacts.ts",
-        "lib/render.ts",
-        "../../docs/adr/0071-sf-lwc-local-native-lifecycle-extension.md",
-        "AGENT_GUIDE.md"
+        "lib/tests.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/sf-pi/sf-lwc/scans/*",
@@ -903,10 +797,9 @@
       "summary": "Pi setWorkingIndicator-driven spinner with Ohana and Calm modes. Pi manages start/stop based on streaming activity; this extension owns frame generation and a small mode preference.",
       "primaryFiles": [
         "index.ts",
-        "lib/config-panel.ts",
         "lib/settings.ts",
-        "lib/messages.ts",
-        "lib/rainbow.ts"
+        "lib/rainbow.ts",
+        "lib/messages.ts"
       ],
       "stateFiles": [
         "settings.json → sfPi.ohanaSpinner.mode"
@@ -944,18 +837,9 @@
         "index.ts",
         "lib/overlay.ts",
         "lib/extension-details.ts",
-        "lib/render.ts",
-        "lib/announcements.ts",
-        "lib/recommendations.ts",
         "lib/doctor-command.ts",
-        "lib/skill-sources-command.ts",
-        "lib/auto-update-command.ts",
         "lib/auto-update-coordinator.ts",
-        "lib/auto-update-package-plan.ts",
-        "lib/auto-update-runner.ts",
-        "lib/auto-update-transcript.ts",
-        "lib/config-panel.ts",
-        "../../lib/common/auto-update/store.ts"
+        "lib/config-panel.ts"
       ],
       "stateFiles": [
         "~/.pi/agent/settings.json (sf-pi package filter list)",
@@ -1006,17 +890,8 @@
         "lib/catalog.ts",
         "lib/gather.ts",
         "lib/resolution.ts",
-        "lib/funnel-view/index.ts",
         "lib/funnel-view/model.ts",
-        "lib/settings-coverage.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "lib/hud-component.ts",
-        "lib/skill-state.ts",
-        "lib/defaults.ts",
-        "lib/skills-command.ts",
-        "lib/usage-store.ts",
-        "lib/prune.ts"
+        "lib/settings.ts"
       ]
     },
     "entry": "extensions/sf-skills/index.ts",
@@ -1064,16 +939,11 @@
       "summary": "Full Slack integration. Read-only search/thread/history/channel/user/file/canvas plus confirmed send and scheduled-message management. Tools register only after a token resolves (Pi auth store -> SLACK_USER_TOKEN), keeping the system prompt cache stable when Slack is not configured.",
       "primaryFiles": [
         "index.ts",
-        "lib/auth.ts",
-        "lib/api.ts",
         "lib/tools.ts",
         "lib/research-tool.ts",
         "lib/send-tool.ts",
         "lib/schedule-tool.ts",
-        "lib/recipient-confirm.ts",
-        "lib/config-panel.ts",
-        "lib/preferences-panel.ts",
-        "AGENT_GUIDE.md"
+        "lib/auth.ts"
       ],
       "stateFiles": [
         "Pi auth store via /login sf-slack",
@@ -1124,22 +994,9 @@
         "index.ts",
         "lib/sf-soql-tool.ts",
         "lib/operations.ts",
-        "lib/api.ts",
-        "lib/parser.ts",
         "lib/schema.ts",
-        "lib/search.ts",
-        "lib/draft.ts",
-        "lib/file.ts",
-        "lib/export.ts",
-        "lib/sosl.ts",
-        "lib/lsp.ts",
-        "lib/validator.ts",
         "lib/runner.ts",
-        "lib/flattener.ts",
-        "lib/artifacts.ts",
-        "lib/render.ts",
-        "../../docs/adr/0070-sf-soql-api-native-query-lifecycle-extension.md",
-        "AGENT_GUIDE.md"
+        "lib/export.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/sf-pi/sf-soql/runs/*",
@@ -1187,21 +1044,11 @@
       "summary": "Provides one Salesforce-focused `tldraw_canvas` family tool for tldraw offline v1.12 runtime status, explicit document creation, document discovery, and deterministic Data Model, System/Solution Architecture, and Interaction/Sequence profiles. Data Model pages use a title-only header with a configurable stacked Relationships key. Render actions use strict Spec v2 with explicit grounding, inspectable provenance, render-privacy checks, pinned SLDS icons, preserve-by-default updates, and readiness-gated screenshot evidence; generic canvas work stays with the upstream tldraw-offline skill.",
       "primaryFiles": [
         "index.ts",
-        "AGENTS.md",
-        "docs/cheatsheet.md",
         "lib/tldraw_canvas-tool.ts",
         "lib/runtime-client.ts",
-        "lib/runtime-surface.ts",
-        "lib/redaction.ts",
-        "lib/spec-schema.ts",
         "lib/spec-validation.ts",
-        "lib/assets.ts",
         "lib/profiles.ts",
-        "lib/canvas-program.ts",
-        "lib/artifacts.ts",
-        "lib/settings.ts",
-        "lib/config-panel.ts",
-        "AGENT_GUIDE.md"
+        "lib/artifacts.ts"
       ],
       "stateFiles": [
         "~/Library/Application Support/tldraw/server.json (read-only runtime discovery on macOS)",
@@ -1223,6 +1070,13 @@
         "Reads the per-launch bearer token for each request, never prints or persists it, and redacts runtime error details.",
         "Generic canvas search, raw execution, standalone screenshots, and document scripts are not exposed by SF tldraw; the upstream app-managed skill owns those workflows.",
         "Screenshot sources used by Salesforce renders must be regular JPEG/PNG files inside tldraw's dedicated temporary capture directory before private 0600 artifact copies are exposed."
+      ],
+      "referenceRoots": [
+        {
+          "path": "docs",
+          "index": "docs/README.md",
+          "role": "current"
+        }
       ]
     },
     "entry": "extensions/sf-tldraw/index.ts",
@@ -1258,20 +1112,8 @@
         "index.ts",
         "lib/splash-component.ts",
         "lib/splash-data.ts",
-        "lib/recommendations-status.ts",
-        "lib/release-status.ts",
-        "lib/sf-cli-status.ts",
-        "lib/sf-skills-status.ts",
         "lib/extension-health.ts",
-        "lib/font-installer.ts",
-        "lib/font-status.ts",
-        "lib/font-status-cache.ts",
-        "lib/hunk-status.ts",
-        "lib/homebrew-status.ts",
-        "lib/herdr-runtime-status.ts",
-        "../../lib/common/sf-lsp-health/index.ts",
-        "../../lib/common/auto-update/store.ts",
-        "lib/welcome-settings.ts",
+        "lib/sf-cli-status.ts",
         "lib/config-panel.ts"
       ],
       "stateFiles": [

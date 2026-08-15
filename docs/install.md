@@ -11,34 +11,35 @@ setup in order.
 ## Requirements
 
 - Node.js `>=22.19`
-- npm 11
+- the npm version bundled with a supported Node.js installation; SF Pi declares
+  no separate npm floor
 - pi coding agent `>=0.82.0 <1.0.0`
-- macOS, Linux, WSL, or native Windows
+- a Salesforce CLI installation appropriate for the host platform
 
 ## 1. Install Node.js and npm
 
-Install [Node.js](https://nodejs.org/) **22.19 or newer**, then use npm 11:
+Install [Node.js](https://nodejs.org/) **22.19 or newer** and verify the bundled
+npm client:
 
 ```bash
 node --version
-npm install --global npm@11
 npm --version
 ```
 
-## 2. Allow immediate package updates
+## 2. Review optional npm release-age policy
 
-Some managed npm configurations delay newly published packages for seven days.
-Set the user-level release age to zero so Pi and its packages can update
-immediately:
+Some managed npm 11+ configurations delay newly published packages. If
+`npm config get min-release-age` reports a nonzero value and you intentionally
+want immediate Pi/package availability, set the user-level value to zero:
 
 ```bash
+npm config get min-release-age
 npm config set min-release-age 0 --location=user
 npm config get min-release-age
 ```
 
-The final command must print `0`. This writes to the user npm configuration,
-normally `~/.npmrc`, and changes the policy for every npm install run by your
-user—not only Pi. See npm's
+This is an optional user-wide npm policy, not an SF Pi runtime requirement.
+Older npm clients that do not expose this setting can skip this step. See npm's
 [`min-release-age` documentation](https://docs.npmjs.com/cli/v11/using-npm/config/#min-release-age)
 for details.
 
@@ -146,10 +147,21 @@ Restart Pi or run `/reload`, then verify with `/sf-pi doctor`.
 
 ### Platform notes
 
-macOS, Linux, and WSL are the primary targets. Native Windows is supported,
-with WSL recommended for parity with Unix shell tooling.
+Required CI continuously proves Ubuntu with Node 22. SF Pi contains documented
+macOS, Linux, and WSL paths, but they are not all required release-blocking
+matrix jobs. Native Windows receives manual fallbacks for some installers and is
+best-effort; use WSL when Unix shell parity is required.
 
 </details>
+
+## Maintained support evidence
+
+| Claim                | Maintained proof                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| Node.js `>=22.19`    | `package.json` engines, preinstall check, doctor diagnostics, and required Ubuntu CI       |
+| Pi `>=0.82.0 <1.0.0` | peer dependency, runtime-floor checks, and nightly exact-version compatibility jobs        |
+| npm client           | no independent engine/package-manager floor; required CI uses the npm bundled by Node 22   |
+| Operating systems    | required CI proves Ubuntu; other platform paths are documented at their actual proof level |
 
 ## Next step
 

@@ -1,6 +1,7 @@
 ---
 title: "SF Browser"
 description: "Salesforce-aware browser automation for last-mile UI work using agent-browser."
+editLink: false
 ---
 
 # SF Browser
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-browser
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-browser
+/sf-pi open sf-browser
 /sf-pi enable sf-browser
 /sf-pi disable sf-browser
 ```
@@ -56,6 +57,7 @@ Manage its package state with:
 - [Full extension README](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-browser/README.md)
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-browser)
 - [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-browser/AGENT_GUIDE.md)
+- [Reference index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-browser/docs/README.md)
 
 ## Troubleshooting
 

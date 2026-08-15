@@ -991,10 +991,9 @@ function parseDocument(
 }
 
 // -------------------------------------------------------------------------------------------------
-// Field-key snapshot + post-emit verification (Issue 3 hotfix — see
-// docs/POSTMORTEM_E2E_DEMO.md). These two helpers exist so set_field can
-// (a) refuse to add fields it can't actually serialize, and (b) catch the
-// silent-no-op class of bug if it ever resurfaces from the SDK side.
+// Field-key snapshot + post-emit verification. These helpers ensure set_field
+// refuses fields the SDK cannot serialize and catches a silent no-op if a
+// future emitter changes how newly inserted scalar fields are represented.
 // -------------------------------------------------------------------------------------------------
 
 /**

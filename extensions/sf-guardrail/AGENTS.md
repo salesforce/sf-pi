@@ -5,12 +5,11 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## Read first
 
-1. `extensions/sf-guardrail/README.md` — current human behavior and usage
-2. `extensions/sf-guardrail/CONTEXT.md` — canonical safety language
-3. `extensions/sf-guardrail/index.ts` — event wiring
-4. `extensions/sf-guardrail/lib/types.ts` — schema boundary
-5. The specific `lib/*.ts` module you're editing
-6. The matching focused test
+1. `extensions/sf-guardrail/CONTEXT.md` — canonical safety language
+2. `extensions/sf-guardrail/index.ts` — event wiring
+3. `extensions/sf-guardrail/lib/types.ts` — schema boundary
+4. The specific `lib/*.ts` module you're editing
+5. The matching focused test
 
 ## File map (what lives where)
 

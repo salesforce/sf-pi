@@ -1,6 +1,6 @@
 # sf-tldraw editing rules
 
-Read [`README.md`](./README.md) and [`docs/cheatsheet.md`](./docs/cheatsheet.md) before changing behavior.
+Start from `index.ts`, the relevant implementation module below, and its focused Behavior Proof. Use [`docs/README.md`](./docs/README.md) only for task-specific reference depth.
 
 ## File map
 

@@ -291,8 +291,8 @@ describe("/sf-slack sent command", () => {
 });
 
 describe("routeRecipient — channel label resolution", () => {
-  // Live repro (v0.14.1): `slack_send action=channel to=C09MFCX4A2H`
-  // rendered a bare ID instead of `#jag-fde-ai-sharelab`. Fix shipped a
+  // Regression fixture: `slack_send action=channel to=C01ABCEXAMPLE`
+  // rendered a bare ID instead of `#project-support`. The fix added a
   // raw-ID async fallback in routeRecipient. The unified-confirm flow keeps
   // verification in resolveChannel, but still offers an explicit raw-ID path
   // for user-supplied IDs that Slack cannot verify with the available scopes.

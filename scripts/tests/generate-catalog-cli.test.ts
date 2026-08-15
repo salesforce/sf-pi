@@ -55,27 +55,26 @@ function createExtension(directory: string, manifest: Manifest): void {
 }
 
 function writePackage(entries: unknown = ["./extensions/alpha/index.ts"]): void {
-  writeJson("package.json", { pi: { extensions: entries } });
+  writeJson("package.json", { scripts: {}, pi: { extensions: entries } });
 }
 
 function createFixture(): void {
   writePackage();
   createExtension("alpha", { ...BASE_MANIFEST });
+  writeText("README.md", "# Fixture\n");
   writeText(
-    "README.md",
-    [
-      "# Fixture",
-      "",
-      "<!-- GENERATED:bundled-extensions:start -->",
-      "stale",
-      "<!-- GENERATED:bundled-extensions:end -->",
-      "",
-      "<!-- GENERATED:command-reference:start -->",
-      "stale",
-      "<!-- GENERATED:command-reference:end -->",
-      "",
-    ].join("\n"),
+    "CONTRIBUTING.md",
+    "# Contributing\n\n<!-- GENERATED:contributor-scripts:start -->\nstale\n<!-- GENERATED:contributor-scripts:end -->\n",
   );
+  writeText(
+    "lib/common/README.md",
+    "# Common\n\n<!-- GENERATED:common-modules:start -->\nstale\n<!-- GENERATED:common-modules:end -->\n",
+  );
+  writeText(
+    "scripts/e2e/README.md",
+    "# E2E\n\n<!-- GENERATED:e2e-harnesses:start -->\nstale\n<!-- GENERATED:e2e-harnesses:end -->\n",
+  );
+  writeJson("scripts/e2e/harnesses.json", { schemaVersion: 1, harnesses: [] });
   writeText(
     "ARCHITECTURE.md",
     [
@@ -189,6 +188,27 @@ describe("generate-catalog CLI", () => {
     const detailPath = path.join(root, "docs/extensions/alpha.md");
     expect(existsSync(detailPath)).toBe(true);
     expect(readFileSync(detailPath, "utf8")).not.toContain("## Troubleshooting");
+    expect(readFileSync(path.join(root, "CONTRIBUTING.md"), "utf8")).toContain(
+      "Show all 0 package scripts",
+    );
+    expect(readFileSync(path.join(root, "lib/common/README.md"), "utf8")).toContain(
+      "This complete top-level inventory",
+    );
+    expect(readFileSync(path.join(root, "scripts/e2e/README.md"), "utf8")).toContain(
+      "scripts/e2e/harnesses.json",
+    );
+
+    const check = runGenerator(["--check"]);
+    expect(check.status, output(check)).toBe(0);
+  });
+
+  it("fails closed when an E2E package script lacks declared safety metadata", () => {
+    writeText("scripts/e2e/missing.ts", "export {};\n");
+    writeJson("package.json", {
+      scripts: { "e2e:missing": "node scripts/e2e/missing.ts" },
+      pi: { extensions: ["./extensions/alpha/index.ts"] },
+    });
+    expectFailure("package.json e2e:* scripts must equal scripts/e2e/harnesses.json scripts");
   });
 
   it("fails closed when an extension manifest is missing", () => {
@@ -273,6 +293,80 @@ describe("generate-catalog CLI", () => {
     expectFailure(fragment);
   });
 
+  it("rejects more than eight docs.primaryFiles entries", () => {
+    const primaryFiles = ["index.ts"];
+    for (let index = 1; index <= 8; index++) {
+      const relativePath = `lib/entry-${index}.ts`;
+      writeText(`extensions/alpha/${relativePath}`, `export const entry${index} = true;\n`);
+      primaryFiles.push(relativePath);
+    }
+    writeJson("extensions/alpha/manifest.json", {
+      ...BASE_MANIFEST,
+      docs: { ...BASE_MANIFEST.docs, primaryFiles },
+    });
+    expectFailure("docs.primaryFiles must contain at most 8 entries");
+  });
+
+  it("requires index.ts to be the first primary entrypoint", () => {
+    writeText("extensions/alpha/lib/entry.ts", "export const entry = true;\n");
+    writeJson("extensions/alpha/manifest.json", {
+      ...BASE_MANIFEST,
+      docs: { ...BASE_MANIFEST.docs, primaryFiles: ["lib/entry.ts", "index.ts"] },
+    });
+    expectFailure("docs.primaryFiles must start with index.ts");
+  });
+
+  it("keeps Markdown role and reference files out of primaryFiles", () => {
+    writeText("extensions/alpha/README.md", "# Alpha\n");
+    writeJson("extensions/alpha/manifest.json", {
+      ...BASE_MANIFEST,
+      docs: { ...BASE_MANIFEST.docs, primaryFiles: ["index.ts", "README.md"] },
+    });
+    expectFailure("implementation entrypoints, not Markdown role/reference files");
+  });
+
+  it("requires a reference root for extension docs", () => {
+    writeText("extensions/alpha/docs/guide.md", "# Guide\n");
+    expectFailure("docs/guide.md is not covered by docs.referenceRoots");
+  });
+
+  it("requires a current reference index to link each direct document", () => {
+    writeText("extensions/alpha/docs/README.md", "# References\n");
+    writeText("extensions/alpha/docs/guide.md", "# Guide\n");
+    writeJson("extensions/alpha/manifest.json", {
+      ...BASE_MANIFEST,
+      docs: {
+        ...BASE_MANIFEST.docs,
+        referenceRoots: [{ path: "docs", index: "docs/README.md", role: "current" }],
+      },
+    });
+    expectFailure("docs/README.md must link direct reference guide.md");
+  });
+
+  it("rejects an invalid reference root role", () => {
+    writeText("extensions/alpha/docs/README.md", "# References\n");
+    writeJson("extensions/alpha/manifest.json", {
+      ...BASE_MANIFEST,
+      docs: {
+        ...BASE_MANIFEST.docs,
+        referenceRoots: [{ path: "docs", index: "docs/README.md", role: "historical" }],
+      },
+    });
+    expectFailure('docs.referenceRoots role "historical" is invalid');
+  });
+
+  it("requires generated reference roots to name their generator", () => {
+    writeText("extensions/alpha/docs/README.md", "# References\n");
+    writeJson("extensions/alpha/manifest.json", {
+      ...BASE_MANIFEST,
+      docs: {
+        ...BASE_MANIFEST.docs,
+        referenceRoots: [{ path: "docs", index: "docs/README.md", role: "generated-current" }],
+      },
+    });
+    expectFailure("generated-current reference root must declare generatedBy");
+  });
+
   it("requires a role declaration for an existing extension AGENTS file", () => {
     writeText("extensions/alpha/AGENTS.md", "# Alpha editing rules\n");
     expectFailure('docs.editingRules must be "AGENTS.md"');
@@ -341,6 +435,45 @@ describe("generate-catalog CLI", () => {
   ])("rejects invalid late %s structure before changing outputs", (_label, relativePath) => {
     writeJson(relativePath, {});
     expectFailure(`${relativePath} is invalid`);
+  });
+
+  it("rejects a transient announcement without a lifecycle bound", () => {
+    writeJson("catalog/announcements.json", {
+      schemaVersion: 1,
+      revision: "fixture",
+      announcements: [{ id: "temporary", kind: "note", title: "Temporary notice" }],
+    });
+    expectFailure("must declare expiresAt, maxVersion, or evergreen=true");
+  });
+
+  it("accepts an explicitly evergreen maintainer announcement", () => {
+    writeJson("catalog/announcements.json", {
+      schemaVersion: 1,
+      revision: "fixture",
+      announcements: [
+        { id: "evergreen", kind: "note", title: "Evergreen guidance", evergreen: true },
+      ],
+    });
+
+    const result = runGenerator();
+    expect(result.status, output(result)).toBe(0);
+  });
+
+  it("rejects contradictory evergreen and expiry metadata", () => {
+    writeJson("catalog/announcements.json", {
+      schemaVersion: 1,
+      revision: "fixture",
+      announcements: [
+        {
+          id: "contradictory",
+          kind: "note",
+          title: "Contradictory notice",
+          evergreen: true,
+          expiresAt: "2026-09-01T00:00:00Z",
+        },
+      ],
+    });
+    expectFailure("evergreen=true cannot be combined with expiresAt or maxVersion");
   });
 
   it("preflights all required marker pairs before changing outputs", () => {

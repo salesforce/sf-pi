@@ -26,6 +26,12 @@ Use the Data 360 family tool that owns the current phase. Every family shares ac
 6. Prefer count, sample, and row verification before broad reads.
 7. Keep full responses and journey evidence in Data 360 Artifacts.
 
+## Focused references
+
+Use [`references/README.md`](./references/README.md) to select one current
+workflow reference. Material under `references/compatibility/` is legacy facade
+evidence and must not drive public tool selection.
+
 ## Boundaries
 
 Use standard `sf_soql` for CRM SOQL. Use `data360_observe` for production Agentforce telemetry and Agent Script tools for local authoring/preview/eval. Do not hand-roll REST calls when a family action exists.

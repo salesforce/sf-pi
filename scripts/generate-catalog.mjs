@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 // Generate catalog/registry.ts, catalog/index.json, docs inventory pages, the
-// ADR lifecycle index, and root documentation blocks from validated sources.
+// ADR lifecycle index, and contributor-facing structural inventories from
+// validated sources.
 //
 // Run:
 //   node scripts/generate-catalog.mjs
@@ -10,13 +11,15 @@
 //   node scripts/generate-catalog.mjs --check
 //   npm run generate-catalog:check
 //
-// The manifest.json in each extension folder is the source of truth.
+// Extension manifests own catalog facts; package scripts, the E2E harness
+// manifest, and source trees own their corresponding structural inventories.
 
 import {
   existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -24,6 +27,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import prettier from "prettier";
 import { loadAdrRecords, renderAdrIndex } from "./lib/adr-lifecycle.mjs";
+import {
+  COMMON_MODULES_END_MARKER,
+  COMMON_MODULES_START_MARKER,
+  CONTRIBUTOR_SCRIPTS_END_MARKER,
+  CONTRIBUTOR_SCRIPTS_START_MARKER,
+  E2E_HARNESSES_END_MARKER,
+  E2E_HARNESSES_START_MARKER,
+  loadDocumentationInventories,
+  renderCommonModuleInventory,
+  renderContributorScriptInventory,
+  renderE2EHarnessInventory,
+} from "./lib/documentation-inventories.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,8 +52,10 @@ const ROOT =
 const EXTENSIONS_DIR = path.join(ROOT, "extensions");
 const CATALOG_DIR = path.join(ROOT, "catalog");
 const DOCS_DIR = path.join(ROOT, "docs");
-const README_PATH = path.join(ROOT, "README.md");
 const ARCHITECTURE_PATH = path.join(ROOT, "ARCHITECTURE.md");
+const CONTRIBUTING_PATH = path.join(ROOT, "CONTRIBUTING.md");
+const COMMON_README_PATH = path.join(ROOT, "lib", "common", "README.md");
+const E2E_README_PATH = path.join(ROOT, "scripts", "e2e", "README.md");
 const COMMANDS_DOC_PATH = path.join(DOCS_DIR, "commands.md");
 const EXTENSIONS_DOC_PATH = path.join(DOCS_DIR, "extensions.md");
 const TROUBLESHOOTING_DOC_PATH = path.join(DOCS_DIR, "troubleshooting.md");
@@ -64,10 +81,6 @@ const ALLOWED_RECOMMENDED_LICENSES = new Set([
   "0BSD",
 ]);
 
-const README_START_MARKER = "<!-- GENERATED:bundled-extensions:start -->";
-const README_END_MARKER = "<!-- GENERATED:bundled-extensions:end -->";
-const README_COMMANDS_START_MARKER = "<!-- GENERATED:command-reference:start -->";
-const README_COMMANDS_END_MARKER = "<!-- GENERATED:command-reference:end -->";
 const ARCH_FOLDER_START_MARKER = "<!-- GENERATED:folder-layout:start -->";
 const ARCH_FOLDER_END_MARKER = "<!-- GENERATED:folder-layout:end -->";
 const TROUBLESHOOTING_INDEX_START_MARKER =
@@ -78,6 +91,8 @@ const EXT_FILE_STRUCTURE_END_MARKER = "<!-- GENERATED:file-structure:end -->";
 const README_CATEGORY_ORDER = ["manager", "provider", "agent-tool", "safety", "assistive", "ui"];
 const VALID_CATEGORIES = new Set(README_CATEGORY_ORDER);
 const VALID_MATURITIES = new Set(["stable", "beta", "experimental"]);
+const VALID_REFERENCE_ROLES = new Set(["current", "generated-current", "compatibility"]);
+const MAX_PRIMARY_FILES = 8;
 const EXTENSION_INTENT_ORDER = [
   "Build agents",
   "Build apps",
@@ -200,6 +215,7 @@ function discoverManifests() {
       }
       validatePrimaryFiles(entry.name, docs.primaryFiles);
       validateManifestDocRoles(entry.name, manifest);
+      validateManifestReferenceRoots(entry.name, docs.referenceRoots);
     }
 
     results.push({ dir: entry.name, manifest });
@@ -300,6 +316,11 @@ function validatePrimaryFiles(extensionDir, primaryFiles) {
   const extensionRoot = path.join(EXTENSIONS_DIR, extensionDir);
   const resolvedPaths = new Set();
 
+  if (primaryFiles.length > MAX_PRIMARY_FILES) {
+    fail(
+      `extensions/${extensionDir}/manifest.json docs.primaryFiles must contain at most ${MAX_PRIMARY_FILES} entries`,
+    );
+  }
   for (const primaryFile of primaryFiles) {
     if (typeof primaryFile !== "string" || primaryFile.length === 0) {
       console.error(
@@ -340,6 +361,159 @@ function validatePrimaryFiles(extensionDir, primaryFiles) {
     }
     resolvedPaths.add(resolved);
   }
+
+  if (primaryFiles[0] !== "index.ts") {
+    fail(`extensions/${extensionDir}/manifest.json docs.primaryFiles must start with index.ts`);
+  }
+  if (primaryFiles.some((primaryFile) => primaryFile.endsWith(".md"))) {
+    fail(
+      `extensions/${extensionDir}/manifest.json docs.primaryFiles must contain implementation entrypoints, not Markdown role/reference files`,
+    );
+  }
+}
+
+function validateManifestReferenceRoots(extensionDir, referenceRoots) {
+  const extensionRoot = path.join(EXTENSIONS_DIR, extensionDir);
+  const roots = referenceRoots ?? [];
+  if (!Array.isArray(roots)) {
+    fail(`extensions/${extensionDir}/manifest.json docs.referenceRoots must be an array`);
+  }
+
+  const normalizedRoots = [];
+  const seenRoots = new Set();
+  for (const root of roots) {
+    if (!root || typeof root !== "object" || Array.isArray(root)) {
+      fail(`extensions/${extensionDir}/manifest.json docs.referenceRoots entries must be objects`);
+    }
+    for (const field of ["path", "index", "role"]) {
+      if (typeof root[field] !== "string" || root[field].length === 0) {
+        fail(
+          `extensions/${extensionDir}/manifest.json docs.referenceRoots ${field} must be a non-empty string`,
+        );
+      }
+    }
+    if (!VALID_REFERENCE_ROLES.has(root.role)) {
+      fail(
+        `extensions/${extensionDir}/manifest.json docs.referenceRoots role "${root.role}" is invalid`,
+      );
+    }
+    if (root.role === "generated-current" && !root.generatedBy) {
+      fail(
+        `extensions/${extensionDir}/manifest.json generated-current reference root must declare generatedBy`,
+      );
+    }
+
+    const resolvedRoot = resolveContainedPath(extensionRoot, root.path, `${root.path}`);
+    if (!existsSync(resolvedRoot) || !statSync(resolvedRoot).isDirectory()) {
+      fail(
+        `extensions/${extensionDir}/manifest.json docs.referenceRoots path "${root.path}" must resolve to a directory`,
+      );
+    }
+    const normalizedRoot = path.relative(extensionRoot, resolvedRoot).replaceAll(path.sep, "/");
+    if (seenRoots.has(normalizedRoot)) {
+      fail(
+        `extensions/${extensionDir}/manifest.json docs.referenceRoots contains duplicate path "${root.path}"`,
+      );
+    }
+    seenRoots.add(normalizedRoot);
+
+    const resolvedIndex = resolveContainedPath(extensionRoot, root.index, `${root.index}`);
+    if (!existsSync(resolvedIndex) || !statSync(resolvedIndex).isFile()) {
+      fail(
+        `extensions/${extensionDir}/manifest.json docs.referenceRoots index "${root.index}" does not exist`,
+      );
+    }
+    if (!root.index.endsWith(".md")) {
+      fail(
+        `extensions/${extensionDir}/manifest.json docs.referenceRoots index "${root.index}" must be Markdown`,
+      );
+    }
+    const indexSource = readFileSync(resolvedIndex, "utf8");
+    if (root.role === "generated-current") {
+      if (!indexSource.includes(`${path.basename(normalizedRoot)}/`)) {
+        fail(
+          `extensions/${extensionDir}/${root.index} must link generated reference root ${root.path}/`,
+        );
+      }
+    } else {
+      for (const entry of readdirSync(resolvedRoot, { withFileTypes: true })) {
+        if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+        const reference = path.join(resolvedRoot, entry.name);
+        if (reference === resolvedIndex) continue;
+        const relativeLink = path
+          .relative(path.dirname(resolvedIndex), reference)
+          .replaceAll(path.sep, "/");
+        if (!indexSource.includes(relativeLink)) {
+          fail(
+            `extensions/${extensionDir}/${root.index} must link direct reference ${relativeLink}`,
+          );
+        }
+      }
+    }
+
+    if (root.generatedBy !== undefined) {
+      if (typeof root.generatedBy !== "string" || root.generatedBy.length === 0) {
+        fail(
+          `extensions/${extensionDir}/manifest.json docs.referenceRoots generatedBy must be a non-empty repository-relative path`,
+        );
+      }
+      const generator = path.resolve(ROOT, root.generatedBy);
+      const relativeGenerator = path.relative(ROOT, generator);
+      if (
+        relativeGenerator === "" ||
+        relativeGenerator === ".." ||
+        relativeGenerator.startsWith(`..${path.sep}`) ||
+        !existsSync(generator) ||
+        !statSync(generator).isFile()
+      ) {
+        fail(
+          `extensions/${extensionDir}/manifest.json docs.referenceRoots generatedBy "${root.generatedBy}" does not resolve to a repository file`,
+        );
+      }
+    }
+
+    normalizedRoots.push(normalizedRoot);
+  }
+
+  for (const referenceFile of extensionReferenceMarkdown(extensionRoot)) {
+    if (
+      !normalizedRoots.some(
+        (root) => referenceFile === root || referenceFile.startsWith(`${root}/`),
+      )
+    ) {
+      fail(`extensions/${extensionDir}/${referenceFile} is not covered by docs.referenceRoots`);
+    }
+  }
+}
+
+function resolveContainedPath(extensionRoot, relativePath, label) {
+  if (path.isAbsolute(relativePath)) {
+    fail(`docs.referenceRoots path "${label}" must be extension-relative`);
+  }
+  const resolved = path.resolve(extensionRoot, relativePath);
+  const relative = path.relative(extensionRoot, resolved);
+  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`)) {
+    fail(`docs.referenceRoots path "${label}" escapes its extension directory`);
+  }
+  return resolved;
+}
+
+function extensionReferenceMarkdown(extensionRoot) {
+  const files = [];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(absolute);
+      else if (entry.isFile() && entry.name.endsWith(".md")) {
+        files.push(path.relative(extensionRoot, absolute).replaceAll(path.sep, "/"));
+      }
+    }
+  };
+  for (const directoryName of ["docs", "references"]) {
+    const directory = path.join(extensionRoot, directoryName);
+    if (existsSync(directory)) walk(directory);
+  }
+  return files.sort();
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -510,6 +684,24 @@ function extensionDocLink(dir) {
   return `./extensions/${dir}`;
 }
 
+function referenceIndexes(dir, manifest) {
+  const byIndex = new Map();
+  for (const root of manifest.docs?.referenceRoots ?? []) {
+    const roles = byIndex.get(root.index) ?? new Set();
+    roles.add(root.role);
+    byIndex.set(root.index, roles);
+  }
+  return [...byIndex.entries()].map(([index, roles]) => ({
+    link: sourceFileLink(dir, index),
+    label:
+      roles.size === 1 && roles.has("compatibility")
+        ? "Compatibility evidence index"
+        : roles.size === 1 && roles.has("generated-current")
+          ? "Generated reference index"
+          : "Reference index",
+  }));
+}
+
 function extensionReadmeHasSection(dir, section) {
   const readmePath = path.join(EXTENSIONS_DIR, dir, "README.md");
   if (!existsSync(readmePath)) return false;
@@ -517,65 +709,20 @@ function extensionReadmeHasSection(dir, section) {
   return new RegExp(`^##\\s+${section}\\s*$`, "im").test(readme);
 }
 
-function generateReadmeBundledExtensions(manifests) {
-  const sorted = sortByCategoryThenName(manifests);
-
-  const lines = [
-    README_START_MARKER,
-    "For the canonical machine-readable bundle list, see [`catalog/index.json`](./catalog/index.json).",
-    "",
-    "**Default** column: `on` = enabled on install, `opt-in` = disabled on install (enable with `/sf-pi enable <id>`), `always-on` = cannot be disabled.",
-    "",
-    "| Extension | Category | Default | Description |",
-    "|-----------|----------|---------|-------------|",
-  ];
-
-  for (const { dir, manifest } of sorted) {
-    const description = manifest.alwaysActive
-      ? `${manifest.description} (always active)`
-      : manifest.description;
-    lines.push(
-      `| [${manifest.name}](./extensions/${dir}/) | ${manifest.category} | ${defaultLabel(manifest)} | ${description} |`,
-    );
-  }
-
-  lines.push(README_END_MARKER);
-  return lines.join("\n");
-}
-
 // -------------------------------------------------------------------------------------------------
-// Command reference (root README block + docs/commands.md)
+// Command reference (docs/commands.md)
 // -------------------------------------------------------------------------------------------------
-
-function generateCommandReferenceBlock(manifests) {
-  const sorted = sortByCategoryThenName(manifests).filter(
-    ({ manifest }) => Array.isArray(manifest.commands) && manifest.commands.length > 0,
-  );
-
-  const lines = [
-    README_COMMANDS_START_MARKER,
-    "Every slash command exposed by a bundled extension. See each extension README for subcommands and flags.",
-    "",
-    "| Command | Extension | Category |",
-    "|---------|-----------|----------|",
-  ];
-
-  for (const { dir, manifest } of sorted) {
-    for (const command of manifest.commands) {
-      lines.push(
-        `| \`${command}\` | [${manifest.name}](./extensions/${dir}/) | ${manifest.category} |`,
-      );
-    }
-  }
-
-  lines.push(README_COMMANDS_END_MARKER);
-  return lines.join("\n");
-}
 
 function generateCommandsDoc(manifests) {
   const sorted = sortByCategoryThenName(manifests);
 
   const lines = [
+    "---",
+    "title: sf-pi Command Reference",
+    "description: Generated top-level slash-command inventory for bundled SF Pi extensions.",
+    "editLink: false",
+    "---",
+    "",
     "# sf-pi Command Reference",
     "",
     "> **Auto-generated from `extensions/*/manifest.json`.**",
@@ -644,6 +791,7 @@ function generateExtensionsDoc(manifests) {
     "---",
     "title: Browse SF Pi Extensions",
     "description: Pick the SF Pi extension that matches what you want to do next.",
+    "editLink: false",
     "---",
     "",
     "# Browse SF Pi extensions",
@@ -709,6 +857,7 @@ function generateExtensionDetailDoc(dir, manifest) {
     "---",
     `title: ${JSON.stringify(manifest.name)}`,
     `description: ${JSON.stringify(manifest.description)}`,
+    "editLink: false",
     "---",
     "",
     `# ${manifest.name}`,
@@ -749,10 +898,10 @@ function generateExtensionDetailDoc(dir, manifest) {
 
   if (!manifest.alwaysActive) {
     lines.push(
-      "Manage its package state with:",
+      "Open its Manager detail or change its package state with:",
       "",
       "```text",
-      `/sf-pi status ${manifest.id}`,
+      `/sf-pi open ${manifest.id}`,
       `/sf-pi enable ${manifest.id}`,
       `/sf-pi disable ${manifest.id}`,
       "```",
@@ -797,6 +946,9 @@ function generateExtensionDetailDoc(dir, manifest) {
     ...(manifest.docs?.contextGlossary
       ? [`- [Domain glossary](${sourceFileLink(dir, manifest.docs.contextGlossary)})`]
       : []),
+    ...referenceIndexes(dir, manifest).map(
+      (reference) => `- [${reference.label}](${reference.link})`,
+    ),
   );
 
   if (extensionReadmeHasSection(dir, "Troubleshooting")) {
@@ -1033,6 +1185,12 @@ async function writeOrCheckExtensionReadmes(manifests) {
 function generateAgentOrientationDoc(manifests) {
   const sorted = sortByCategoryThenName(manifests);
   const lines = [
+    "---",
+    "title: sf-pi Agent Orientation",
+    "description: Generated owner and role-specific document map for SF Pi agents and contributors.",
+    "editLink: false",
+    "---",
+    "",
     "# sf-pi Agent Orientation",
     "",
     "> **Auto-generated from manifests and repo layout.**",
@@ -1051,8 +1209,8 @@ function generateAgentOrientationDoc(manifests) {
     "",
     "Use this table to locate the owner. Exact summaries, maturity, defaults, providers, tool names, events, safety notes, state paths, and environment variables remain in `catalog/index.json`.",
     "",
-    "| Extension | Category | Commands | Tools | Editing rules | Operating guide | Entry point |",
-    "| --------- | -------- | -------- | ----: | ------------- | --------------- | ----------- |",
+    "| Extension | Category | Commands | Tools | Editing rules | Operating guide | References | Entry point |",
+    "| --------- | -------- | -------- | ----: | ------------- | --------------- | ---------- | ----------- |",
   ];
 
   for (const { dir, manifest } of sorted) {
@@ -1062,8 +1220,13 @@ function generateAgentOrientationDoc(manifests) {
     const agentGuide = manifest.docs?.agentGuide
       ? `[guide](${sourceFileLink(dir, manifest.docs.agentGuide)})`
       : "_none_";
+    const references = referenceIndexes(dir, manifest);
+    const referenceLinks =
+      references.length > 0
+        ? references.map((reference) => `[index](${reference.link})`).join(", ")
+        : "_none_";
     lines.push(
-      `| [${manifest.name}](${sourceTreeLink(`extensions/${dir}`)}) | ${manifest.category} | ${generatedList(manifest.commands ?? [])} | ${(manifest.tools ?? []).length} | ${editingRules} | ${agentGuide} | \`extensions/${dir}/index.ts\` |`,
+      `| [${manifest.name}](${sourceTreeLink(`extensions/${dir}`)}) | ${manifest.category} | ${generatedList(manifest.commands ?? [])} | ${(manifest.tools ?? []).length} | ${editingRules} | ${agentGuide} | ${referenceLinks} | \`extensions/${dir}/index.ts\` |`,
     );
   }
 
@@ -1071,9 +1234,9 @@ function generateAgentOrientationDoc(manifests) {
     "",
     "## Manifest doc metadata",
     "",
-    "Every extension manifest must provide non-empty `docs.summary` and `docs.primaryFiles` fields. Extension-local `AGENTS.md`, `AGENT_GUIDE.md`, and `CONTEXT.md` files are declared explicitly as `docs.editingRules`, `docs.agentGuide`, and `docs.contextGlossary`. Tool-owning extensions require an agent guide. `docs.stateFiles`, `docs.env`, and `docs.safety` remain optional.",
+    "Every extension manifest must provide non-empty `docs.summary` and `docs.primaryFiles` fields. Extension-local `AGENTS.md`, `AGENT_GUIDE.md`, and `CONTEXT.md` files are declared explicitly as `docs.editingRules`, `docs.agentGuide`, and `docs.contextGlossary`. Tool-owning extensions require an agent guide. `docs.referenceRoots` routes every Markdown file under extension `docs/` and `references/` as current, generated-current, or compatibility material. `docs.stateFiles`, `docs.env`, and `docs.safety` remain optional.",
     "",
-    "Each `docs.primaryFiles` entry is extension-relative. It may use `..` traversal only when the normalized path remains inside the repository root, and it must resolve to an existing unique path.",
+    `Each \`docs.primaryFiles\` entry is extension-relative, resolves to an existing unique path, and the read-first set is capped at ${MAX_PRIMARY_FILES}. Reference-root indexes are also extension-relative; generated-current roots name their repository generator.`,
     "",
     "## Runtime surfaces",
     "",
@@ -1141,13 +1304,14 @@ function generateAgentOrientationDoc(manifests) {
     "- `docs/commands.md`",
     "- `docs/agent-orientation.md`",
     "- `docs/adr/README.md`",
-    "- generated marker blocks in `README.md` and `ARCHITECTURE.md`",
+    "- generated marker blocks in `ARCHITECTURE.md`, `CONTRIBUTING.md`, `lib/common/README.md`, `scripts/e2e/README.md`, and `docs/troubleshooting.md`",
     "- generated file-structure marker blocks in `extensions/*/README.md`",
     "- normalized `catalog/announcements.json` release entry",
     "",
     "## Automation shortcuts",
     "",
-    "- `npm run docs:health:check` — documentation drift and public-safety lint.",
+    "- `npm run docs:health:check` — documentation drift and tracked public-artifact lint.",
+    "- `npm run check:architecture` — source-size advisories and shared state-placement policy.",
     "- `npm run check:manager-first` — real-factory no-args Manager routing proof.",
     "- `npm run test:runtime-surface` — real-factory manifest registration attestation.",
     "- `npm run validate:ci` — local approximation of CI's validation lane.",
@@ -1213,9 +1377,14 @@ function readMarkedFile(filePath, startMarker, endMarker) {
 }
 
 function preflightRequiredMarkers(manifests) {
-  readMarkedFile(README_PATH, README_START_MARKER, README_END_MARKER);
-  readMarkedFile(README_PATH, README_COMMANDS_START_MARKER, README_COMMANDS_END_MARKER);
   readMarkedFile(ARCHITECTURE_PATH, ARCH_FOLDER_START_MARKER, ARCH_FOLDER_END_MARKER);
+  readMarkedFile(
+    CONTRIBUTING_PATH,
+    CONTRIBUTOR_SCRIPTS_START_MARKER,
+    CONTRIBUTOR_SCRIPTS_END_MARKER,
+  );
+  readMarkedFile(COMMON_README_PATH, COMMON_MODULES_START_MARKER, COMMON_MODULES_END_MARKER);
+  readMarkedFile(E2E_README_PATH, E2E_HARNESSES_START_MARKER, E2E_HARNESSES_END_MARKER);
   readMarkedFile(
     TROUBLESHOOTING_DOC_PATH,
     TROUBLESHOOTING_INDEX_START_MARKER,
@@ -1235,34 +1404,41 @@ async function replaceMarkedBlock(filePath, label, startMarker, endMarker, rawBl
 
   const before = current.slice(0, startIndex).replace(/\s*$/, "");
   const after = current.slice(endIndex + endMarker.length).replace(/^\s*/, "");
-  const next = `${before}\n\n${generatedBlock}\n\n${after}`;
+  const next = after
+    ? `${before}\n\n${generatedBlock}\n\n${after}`
+    : `${before}\n\n${generatedBlock}\n`;
 
   writeOrCheck(filePath, next, label);
 }
 
-async function writeOrCheckGeneratedMarkdownBlocks(manifests) {
-  await replaceMarkedBlock(
-    README_PATH,
-    "README.md bundled extensions section",
-    README_START_MARKER,
-    README_END_MARKER,
-    generateReadmeBundledExtensions(manifests),
-  );
-
-  await replaceMarkedBlock(
-    README_PATH,
-    "README.md command reference section",
-    README_COMMANDS_START_MARKER,
-    README_COMMANDS_END_MARKER,
-    generateCommandReferenceBlock(manifests),
-  );
-
+async function writeOrCheckGeneratedMarkdownBlocks(manifests, inventories) {
   await replaceMarkedBlock(
     TROUBLESHOOTING_DOC_PATH,
     "docs/troubleshooting.md extension troubleshooting index",
     TROUBLESHOOTING_INDEX_START_MARKER,
     TROUBLESHOOTING_INDEX_END_MARKER,
     generateTroubleshootingIndex(manifests),
+  );
+  await replaceMarkedBlock(
+    CONTRIBUTING_PATH,
+    "CONTRIBUTING.md package script inventory",
+    CONTRIBUTOR_SCRIPTS_START_MARKER,
+    CONTRIBUTOR_SCRIPTS_END_MARKER,
+    renderContributorScriptInventory(inventories.scripts),
+  );
+  await replaceMarkedBlock(
+    COMMON_README_PATH,
+    "lib/common/README.md module inventory",
+    COMMON_MODULES_START_MARKER,
+    COMMON_MODULES_END_MARKER,
+    renderCommonModuleInventory(ROOT),
+  );
+  await replaceMarkedBlock(
+    E2E_README_PATH,
+    "scripts/e2e/README.md harness inventory",
+    E2E_HARNESSES_START_MARKER,
+    E2E_HARNESSES_END_MARKER,
+    renderE2EHarnessInventory(inventories.harnesses),
   );
 }
 
@@ -1337,8 +1513,10 @@ async function writeOrCheckExtensionSidebar(manifests) {
 const manifests = discoverManifests();
 validatePackageExtensions(manifests);
 let adrRecords;
+let documentationInventories;
 try {
   adrRecords = loadAdrRecords(ADR_DIR);
+  documentationInventories = loadDocumentationInventories(ROOT);
 } catch (error) {
   fail(error.message);
 }
@@ -1363,7 +1541,7 @@ writeOrCheck(
   `catalog/index.json — ${manifests.length} extension(s)`,
 );
 
-await writeOrCheckGeneratedMarkdownBlocks(manifests);
+await writeOrCheckGeneratedMarkdownBlocks(manifests, documentationInventories);
 
 await writeOrCheckArchitecture(manifests);
 
@@ -1703,6 +1881,9 @@ function validateAnnouncements(filePath, quiet = false) {
           `${label}.severity must be one of ${[...ANNOUNCEMENT_SEVERITIES].join(", ")} when set`,
         );
       }
+      if (item.evergreen !== undefined && typeof item.evergreen !== "boolean") {
+        errors.push(`${label}.evergreen must be a boolean when set`);
+      }
       for (const optional of [
         "body",
         "link",
@@ -1718,6 +1899,14 @@ function validateAnnouncements(filePath, quiet = false) {
       for (const dateField of ["publishedAt", "expiresAt"]) {
         if (typeof item[dateField] === "string" && Number.isNaN(Date.parse(item[dateField]))) {
           errors.push(`${label}.${dateField} must be an ISO-8601 date string`);
+        }
+      }
+      if (!isGeneratedReleaseEntry(item)) {
+        if (!item.expiresAt && !item.maxVersion && item.evergreen !== true) {
+          errors.push(`${label} must declare expiresAt, maxVersion, or evergreen=true`);
+        }
+        if (item.evergreen === true && (item.expiresAt || item.maxVersion)) {
+          errors.push(`${label}.evergreen=true cannot be combined with expiresAt or maxVersion`);
         }
       }
     }

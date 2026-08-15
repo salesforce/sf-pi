@@ -1,7 +1,7 @@
 {
   "id": "sf-skills",
   "name": "SF Skills",
-  "description": "Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Plus a passive live-context HUD, forcedotcom/afv-library install, per-skill usage counters, and prune.",
+  "description": "Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) \u2192 gate sources \u2192 toggle skills per scope (global/project) \u2192 resolve name conflicts, all compiled to native settings.skills[]. Plus a passive live-context HUD, forcedotcom/afv-library install, per-skill usage counters, and prune.",
   "category": "ui",
   "maturity": "stable",
   "defaultEnabled": true,
@@ -17,23 +17,14 @@
   ],
   "docs": {
     "intentGroup": "Personalize pi",
-    "summary": "Skills manager built on the Skill Funnel: a five-tab view (Catalog / Sources / Global / Project / Conflicts) over one resolved Skill Catalog. Source Gate decides which roots Pi sees; Skill Gate toggles individual skills at global and project scope; Skill Conflict Resolution picks a winner by exclusion. Every decision compiles to native settings.skills[] (Compiled Skill Resolution) — no SKILL.md files are ever modified. A Source Registry remembers custom paths and gate state; conflicts that touch an auto-discovered default root are report-only. Plus a passive live-context HUD, forcedotcom/afv-library install, per-skill usage counters, and prune.",
+    "summary": "Skills manager built on the Skill Funnel: a five-tab view (Catalog / Sources / Global / Project / Conflicts) over one resolved Skill Catalog. Source Gate decides which roots Pi sees; Skill Gate toggles individual skills at global and project scope; Skill Conflict Resolution picks a winner by exclusion. Every decision compiles to native settings.skills[] (Compiled Skill Resolution) \u2014 no SKILL.md files are ever modified. A Source Registry remembers custom paths and gate state; conflicts that touch an auto-discovered default root are report-only. Plus a passive live-context HUD, forcedotcom/afv-library install, per-skill usage counters, and prune.",
     "primaryFiles": [
       "index.ts",
       "lib/catalog.ts",
       "lib/gather.ts",
       "lib/resolution.ts",
-      "lib/funnel-view/index.ts",
       "lib/funnel-view/model.ts",
-      "lib/settings-coverage.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "lib/hud-component.ts",
-      "lib/skill-state.ts",
-      "lib/defaults.ts",
-      "lib/skills-command.ts",
-      "lib/usage-store.ts",
-      "lib/prune.ts"
+      "lib/settings.ts"
     ]
   }
 }

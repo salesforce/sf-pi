@@ -1,210 +1,131 @@
 # SF LLM Gateway
 
-> **Optional gateway provider.** This extension ships with no default endpoint
-> or credentials. To use it, run `/login sf-llm-gateway`, or provide
-> compatible automation environment variables. If you do not
-> use a compatible gateway, disable it with
-> `/sf-pi disable sf-llm-gateway`.
-
-This document explains the design and runtime flow of the LLM Gateway provider
-extension. Read this before making changes.
+> **Optional provider.** SF LLM Gateway ships with no endpoint or credential.
+> Configure a compatible gateway or disable the extension globally.
 
 ## What It Does
 
-Registers one complete Pi Provider and keeps gateway endpoint handling behind
-provider-neutral protocol adapters. Pi owns credential persistence/logout, provider-scoped model
-storage, refresh coordination, and dispatch by real model API tags. SF Pi keeps
-endpoint normalization, conservative model inference, terminal error guidance,
-diagnostics, spend, and telemetry.
+SF LLM Gateway registers one complete Pi Provider whose discovered models retain
+their real API mode: Chat Completions, Responses, or Messages. Pi owns protocol
+streaming, retries, cancellation, thinking selection, credential persistence,
+provider-scoped model caching, and API dispatch. SF Pi owns gateway-root
+normalization, conservative discovered-model metadata, diagnostics, usage, and
+bounded terminal error guidance.
 
-## Key Architecture: One Complete Provider, Three APIs
-
-The canonical Provider id is `sf-llm-gateway`, matching the slash command.
-Discovered models retain their real API tag:
-
-| Discovered API mode | Generic adapter                  |
-| ------------------- | -------------------------------- |
-| Chat Completions    | `streamSfGatewayOpenAI[Full]`    |
-| Responses           | `streamSfGatewayResponses[Full]` |
-| Messages            | `streamSfGatewayAnthropic[Full]` |
-
-Pi's Provider API map dispatches from the resolved model API tag. SF Pi does not
-switch protocols after a request starts or infer backend placement from exact
-model IDs.
-
-The Provider registers with an empty static model list. Authenticated discovery
-supplies callable model IDs, and Pi restores and persists the last successful
-catalog through `ModelsStore`; configured endpoints are materialized only at
-request time and are not copied into the model cache. Startup performs no
-model-discovery network request. A fresh uncached provider exposes no models
-until login or `/sf-llm-gateway refresh` succeeds.
-
-### Authentication
-
-`/login sf-llm-gateway` is the primary setup flow:
-
-1. Pi always shows the non-secret gateway root URL. Press Enter to keep the
-   current value or type a replacement.
-2. SF Pi collects the API key through the shared fixed-mask
-   `lib/common/secure-credential-prompt.ts` component; Pi's visible stock secret
-   prompt is never called.
-3. The Provider returns a canonical `ApiKeyCredential`. Pi persists the key and
-   default URL and owns `/logout` removal.
-
-Project/global saved URLs can override the credential's default URL. Environment
-variables remain automation fallbacks. The canonical provider identity requires
-a one-time `/login sf-llm-gateway`; credentials and cache entries stored under
-prior provider identities are not copied or deleted.
-
-## Generic protocol adapters
-
-`lib/transport.ts` exposes thin adapters for Chat Completions, Responses, and
-Messages. Pi owns protocol streaming, tool serialization, retries, cancellation,
-and thinking selection. SF Pi materializes the configured gateway endpoint and
-normalizes bounded terminal error guidance; it does not encode exact route
-aliases, backend placement, traffic tiers, or model-specific payload mutations.
-
-### Discovered model metadata
-
-Authenticated model metadata supplies API mode, context/output limits,
-reasoning support, and input capabilities. When an exact discovered ID exists in
-Pi's public built-in catalog, SF Pi inherits portable name, protocol, reasoning,
-input, context/output, and thinking-map fields while keeping gateway cost at zero
-and discarding provider identity, headers, and provider-specific compatibility.
-Remaining fields use conservative defaults. Pi persists the last successful
-catalog so discovered models remain available offline.
+Startup performs no model-discovery request. Pi restores the last successful
+provider catalog; a fresh uncached installation exposes no models until login or
+an explicit refresh succeeds.
 
 ## Connecting
 
-Use Pi's provider login as the primary connection flow:
+Use native provider login:
 
 ```text
 /login sf-llm-gateway
-  → review URL (Enter keeps the current value)
-  → enter API key in SF Pi's masked component
-  → Pi persists the credential and starts a bounded provider refresh
+  → review or enter the compatible gateway root URL
+  → enter the API key in SF Pi's fixed-mask component
+  → Pi persists the credential and performs a bounded refresh
 ```
 
-`/sf-llm-gateway setup [global|project]` is non-secret, persistence-only
-configuration for the saved endpoint override and scoped model mode. It performs
-no model discovery, usage probe, enable, or disable work; those remain explicit
-Manager actions and slash subcommands. Help and certificate settings remain
-available through their documented environment or saved-config fields.
+The Manager also offers non-secret endpoint setup, token-page opening,
+configuration import, diagnostics, model refresh, and supported onboarding
+helpers. Imports may detect credential presence but never copy a secret; login
+remains the credential boundary.
 
-Adjacent **Connect** group rows make the rest of the onboarding self-service:
+## Commands
 
-- **Open token page in browser** — launches the configured gateway root in
-  your browser so you can sign in and copy a token without leaving pi.
-- **Import from Claude Code** — imports a non-secret URL and CA candidates.
-  Credential presence can be detected for guidance, but the value is never
-  returned or copied; authenticate through `/login`.
-- **One-shot onboard** — chains non-secret Claude Code import + CA discovery →
-  Pi model refresh → doctor preflight → set default in a single keystroke.
-  When the doctor surfaces a TLS-class failure on macOS, the chain hands off to
-  **Fix corporate CA**.
-- **Fix corporate CA (macOS)** — wires `NODE_EXTRA_CA_CERTS` into both the
-  LaunchAgent (Dock/Spotlight launches) and `~/.zshenv` (Terminal launches)
-  in one shot. Adopts an existing PEM found in saved candidates, shell exports,
-  or bounded Claude Code / DevBar / AI Suite locations such as
-  `~/.claude/*.pem`, `~/.devbar/*.pem`, and `~/.aisuite/conf/*.pem`; falls
-  back to downloading from saved `caBundleSource` (or
-  `SF_LLM_GATEWAY_CA_BUNDLE_SOURCE`) when the bundle source is
-  configured. Public sf-pi ships no default download URL on purpose — the
-  source is organization-specific.
+`/sf-llm-gateway` opens the Manager detail page. Available subcommands include:
 
-Splash-side, when the most recent doctor run flagged a TLS failure on
-macOS and no fix has been applied, sf-welcome adds a single muted nudge
-row under the gateway status: "`/sf-llm-gateway fix-ca-bundle` — Wire your
-corporate CA into Node — LaunchAgent + ~/.zshenv in one shot." The row is
-gated by `isSfPiExtensionEnabled("sf-llm-gateway")` so external
-users never see it, and the gate reads pre-persisted state — no live
-probing on the splash hot path.
+| Group     | Actions                                           |
+| --------- | ------------------------------------------------- |
+| Connect   | `setup`, `import-claude`, `open-token`, `onboard` |
+| Routing   | `on`, `off`, `set-default`                        |
+| Discovery | `refresh`, `models`, `doctor`, `usage-probe`      |
+| Utilities | `tokens`, `fix-ca-bundle`                         |
+| Reference | `status`, `help`                                  |
+
+No-args falls back to text status outside an interactive TUI. Display-only
+reports use human-only output and do not enter model context.
 
 ## Configuration
 
-Request authentication uses these explicit precedence rules:
+Non-secret saved configuration lives in
+`~/.pi/agent/sf-llm-gateway.json` globally or
+`.pi/sf-llm-gateway.json` per project. Project values override global values.
+Credential and endpoint precedence is:
 
-- **API key**: Pi `ApiKeyCredential` > `SF_LLM_GATEWAY_API_KEY` > missing.
-- **Base URL**: project/global saved non-secret override > URL stored with the Pi credential > `SF_LLM_GATEWAY_BASE_URL` > missing.
-- **Help URL**: saved.helpUrl > `SF_LLM_GATEWAY_HELP_URL` > unset.
-  Optional. When set, the doctor appends a trailing `More info: <url>`
-  recommendation. Empty by default; organizations can wire it via env or saved
-  config.
-- **CA bundle download URL**: saved.caBundleSource >
-  `SF_LLM_GATEWAY_CA_BUNDLE_SOURCE` > unset. Used by
-  `fix-ca-bundle` when no local PEM is found. Empty default — set this to opt
-  into the bootstrap path.
-- **CA bundle candidate paths**: saved.caBundleCandidates (string[]).
-  Extra absolute paths the `fix-ca-bundle` probe scans before the
-  built-in well-known list (`~/.aisuite/conf/*.pem`).
-- **Saved config**: `~/.pi/agent/sf-llm-gateway.json` (global),
-  `.pi/sf-llm-gateway.json` (project)
-- **Scoped model mode**: saved config can keep gateway scope **additive**
-  (prepend `sf-llm-gateway/*`) or **exclusive**
-  (replace scoped models with only gateway models and restore the prior scope on disable)
+- API key: Pi credential → `SF_LLM_GATEWAY_API_KEY` → missing;
+- root URL: project/global override → credential URL →
+  `SF_LLM_GATEWAY_BASE_URL` → missing;
+- optional help URL: saved value → `SF_LLM_GATEWAY_HELP_URL`;
+- optional CA source: saved value → `SF_LLM_GATEWAY_CA_BUNDLE_SOURCE`.
 
-Project-scoped non-secret config overrides global. A Pi-saved credential wins
-over stale key environment variables. URL userinfo is rejected so credentials
-cannot be embedded in non-secret endpoint configuration.
+Configure a generic root such as `https://your-gateway.example.com`, not a
+model-specific route. Known route suffixes are normalized before request-time
+helpers derive protocol endpoints. Saved model scope can be additive or
+exclusive; explicit enable/disable and default-model choices remain separate
+user actions.
 
-### Advanced / automation
+All gateway model costs are reported as zero because provider billing is handled
+outside Pi. Usage status uses the available user/key information endpoints and
+does not claim a lifetime counter when the service cannot prove one.
 
-Environment variables remain available for automation and CI:
+## Diagnostics
 
-- **Env vars**: `SF_LLM_GATEWAY_BASE_URL` + `SF_LLM_GATEWAY_API_KEY`
-  for shell-driven automation.
-  Direct edits of `sf-llm-gateway.json` are supported only for
-  non-secret settings. Existing `apiKey` fields are detected only for migration
-  guidance and explicit confirmed cleanup; no request, setup, or import path uses,
-  creates, copies, or silently removes them.
+`/sf-llm-gateway doctor` checks URL shape, credential readiness, model discovery,
+health, redirects, TLS, and common authentication/routing failures.
+`usage-probe` performs a fresh read-only usage lookup after key rotation or when
+cached numbers look surprising.
 
-Configure the base URL as your organization's gateway **root URL**, for
-example `https://your-gateway.example.com`. If a user pastes a known route
-suffix such as `/v1` or a model-specific route suffix, the config layer
-canonicalizes it back to the root. Runtime endpoint helpers then derive the
-correct routes: OpenAI-compatible chat/model discovery uses the gateway's `/v1`
-route, Anthropic Messages uses the gateway root because the SDK appends
-`/v1/messages`, and admin calls such as `/v2/user/info`, `/user/info`, and
-`/key/info` use the gateway root.
+For an opt-in local wire trace:
 
-## Zero-cost gateway billing
+```bash
+SF_LLM_GATEWAY_TRACE=1 pi
+```
 
-All models report `cost: 0` because the gateway is pre-paid. Billing is tracked
-separately via user-info endpoints. The footer prefers the lightweight
-`/v2/user/info` self-lookup, uses `/key/info` only for key-scoped details, and
-falls back to the legacy `/user/info` route for older or v2-denying gateways.
+The trace is truncated on launch, filtered to the configured gateway root, and
+written to `~/.pi/agent/sf-llm-gateway.trace.jsonl`. It can contain request and
+response material; treat it as private diagnostic evidence and never commit it.
 
-## Command Surface
+## Safety and Data Boundaries
 
-`/sf-llm-gateway` with no args opens SF LLM Gateway in the SF Pi Manager. The first
-group, **Connect**, exposes endpoint setup, native `/login` guidance, open
-the token page in a browser, or import from Claude Code. Subsequent groups
-cover post-connect tweaks (`on`, `off`, `set-default`), discovery and
-diagnostics, utilities, and reference output.
+- SF Pi's fixed-mask component collects API keys; Pi alone persists and removes
+  active credentials.
+- Setup and import paths store only non-secret settings and never print, copy, or
+  delete credentials.
+- Settings updates use the shared race-aware Pi settings helpers.
+- No default URL, private hostname, certificate source, route alias, traffic
+  policy, or secret ships in source.
+- Provider setup performs no hidden model selection, enable/disable, discovery,
+  usage probe, or update beyond the explicitly chosen action.
+- CA installation/download steps are explicit and human-confirmed.
 
-The slash command and provider identity are both `sf-llm-gateway`, so setup,
-model routing, and `/login` use one canonical name.
+## Troubleshooting
 
-The Manager detail page preserves the grouped command surface. Press `S` to switch global/project scope. The `setup` action edits only non-secret endpoint and model-scope settings; read-only reports use the standard Manager info popup. In headless/print/RPC mode, the no-args command falls back to text status.
+**No models are available after installation:** Run native login, then
+`/sf-llm-gateway refresh`. Later offline starts can restore the last successful
+catalog.
 
-Primary actions are grouped as:
+**Login saved the credential but refresh failed:** Run the doctor to distinguish
+wrong root, authentication, redirect, TLS, timeout, or service failure. A failed
+refresh does not replace the last successful cache.
 
-| Group                   | Actions                                           | Purpose                                                                                          |
-| ----------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Connect                 | `setup`, `import-claude`, `open-token`, `onboard` | Configure non-secret settings, discover existing setup, and hand credentials to native `/login`. |
-| Setup                   | `on`, `off`, `set-default`                        | Enable/disable routing and control defaults.                                                     |
-| Discovery & diagnostics | `refresh`, `models`, `doctor`, `usage-probe`      | Re-probe model discovery, health, and usage scope.                                               |
-| Utilities               | `tokens`                                          | Count prompt tokens/cost.                                                                        |
-| Reference               | `status`, `help`                                  | Print complete text reports for copying or headless use.                                         |
+**A discovered model shows conservative metadata:** Refresh the catalog. Exact
+public Pi catalog matches can contribute portable metadata, but provider
+identity, headers, cost, and provider-specific compatibility are never copied.
 
-Slash completions use the same command metadata as the panel, so subcommands
-such as `tokens`, `onboard`, `open-token`, `import-claude`, `doctor`, and
-`usage-probe` show short self-explanatory descriptions while typing.
+**Requests fail while `curl` works on macOS:** Node may not trust a private CA
+from the system keychain. Use the confirmed `fix-ca-bundle` action with an
+explicit local candidate or configured source, then rerun the doctor.
 
-Display-only command reports stay outside model context. TUI uses the existing
-information panel, RPC emits notifications, JSON emits state-only custom-entry
-events, and print mode writes the report while appending the same model-invisible
-entry to the active session.
+**Usage or throttle status is stale:** Run `refresh` or `usage-probe`. Runtime
+telemetry clears after a successful response and usage caches are bounded.
+
+**Thinking changes after a model switch:** SF Pi never writes the active thinking
+level. Review Pi's `/thinking` choice and `defaultThinkingLevel` setting.
+
+**Saved and environment credentials conflict:** Pi's saved credential wins. Use
+native login to replace it or remove the stale environment fallback.
 
 ## File Structure
 
@@ -221,160 +142,3 @@ extensions/sf-llm-gateway/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Doctor: `/sf-llm-gateway doctor`
-
-Run `/sf-llm-gateway doctor` when the gateway appears connected but
-requests fail. It is read-only and checks the configured URL, the normalized
-OpenAI-compatible route, the gateway root route, API key presence, model
-discovery, and gateway health. It interprets common failures such as 401 auth
-errors, SSO/browser redirects, and `model=v1` routing mistakes.
-
-## Usage probe: `/sf-llm-gateway usage-probe`
-
-Run `/sf-llm-gateway usage-probe` after key rotation or when usage
-numbers look surprising. It forces a read-only user-info + `/key/info` refresh,
-reports the live gateway connection classification, shows monthly/user spend and
-current-key spend separately, and explicitly explains whether the available data
-proves a true lifetime user counter. The welcome splash does not render a Lifetime
-Usage line because the currently available gateway endpoints do not prove true
-user-lifetime spend.
-
-## Debugging: wire trace
-
-When the gateway returns empty or unexpected responses, enable the opt-in
-wire trace to capture raw request/response bytes on disk:
-
-```bash
-SF_LLM_GATEWAY_TRACE=1 pi
-```
-
-On activation, `lib/wire-trace.ts` wraps `globalThis.fetch` and logs one JSON
-line per request, response header block, and SSE chunk to
-`~/.pi/agent/sf-llm-gateway.trace.jsonl`. The file is truncated on
-each pi launch and filtered by the gateway base URL, so other providers'
-requests pass through untouched.
-
-The `/sf-llm-gateway status` report shows a `Wire trace: ON` line
-with the file path while tracing is active; the line is omitted when the
-env var is not `1`.
-
-A fetch wrapper is preferred over Pi's `onPayload` / `onChunk` hooks because
-`onChunk` runs after pi-ai's SSE parser — if pi-ai drops a chunk, `onChunk`
-wouldn't show it. The raw body is ground truth from the gateway.
-
-## Troubleshooting
-
-**A discovered model shows its raw ID or conservative 128K/4K metadata:**
-Reload the extension or restart Pi, then run `/sf-llm-gateway refresh`. Exact
-discovered IDs inherit portable metadata from Pi's public model catalog during
-refresh. If Pi previously clamped thinking while the conservative entry was
-active, select the desired level again with `/thinking`; SF Pi never changes the
-user-owned thinking setting itself.
-
-**Startup warning `No models match pattern "sf-llm-gateway/*"`:**
-A fresh uncached provider has no models until authenticated discovery succeeds.
-Run `/login sf-llm-gateway`, then `/sf-llm-gateway refresh`. Later
-offline starts restore the last successful catalog from Pi's model store.
-
-**Model discovery only returns `no-default-models`:**
-Some LiteLLM configurations use `no-default-models` as an access-control
-sentinel rather than a callable model id. The extension filters that sentinel
-from `/v1/models`; when no callable peers remain, discovery fails without
-replacing the last successful cached catalog. Run `/sf-llm-gateway doctor` to
-verify endpoint and credential readiness.
-
-**Login says the API key was saved but the model catalog could not be refreshed:**
-Credential persistence succeeded, but the required `/v1/models` request failed.
-Run `/sf-llm-gateway doctor` to distinguish authentication, wrong-root/redirect,
-TLS, timeout, and service failures. The status report preserves only bounded,
-public-safe failure categories and says explicitly when no cached catalog is
-available. Setup remains usable because saving non-secret settings never waits
-for discovery.
-
-**Gateway fails on startup or tool calls error out immediately:**
-Run `/login sf-llm-gateway` for first-time onboarding. Login collects
-a missing non-secret root URL and then opens SF Pi's masked API-key component.
-`/sf-llm-gateway setup` edits only non-secret project/global overrides; Claude
-Code import never copies credentials. Environment variables remain automation
-fallbacks. The base URL should be the gateway root, for
-example `https://your-gateway.example.com`. If a user pastes a route with a
-public suffix `/v1`, the extension canonicalizes it back to the gateway root.
-Run `/sf-llm-gateway doctor` for endpoint and credential preflight checks.
-
-**A discovered model fails during a request:**
-The public client does not infer deployment routes, traffic tiers, strict-tool
-support, or advanced thinking from a model ID. Confirm that authenticated
-metadata reports the correct API mode, or use Pi's local `models.json` override
-for supported model fields.
-
-**Footer shows `⚠` badge after a 429 or 5xx:**
-`provider-telemetry.ts` parses retry-after headers and surfaces a 60s
-badge. The next successful 2xx/3xx clears it. If the badge sticks, check
-`/sf-llm-gateway status` for the live throttle/upstream signal.
-
-**I set `/thinking` to a different level but subsequent model switches reset it:**
-SF Pi never selects or persists a Gateway thinking level. Gateway model metadata
-may advertise reasoning support, while Pi inherits and clamps the active
-user/settings choice when models change. Check Pi's `/thinking` selection
-and `defaultThinkingLevel` setting if an unexpected level remains active.
-
-**Monthly-usage footer is stale or missing:**
-Usage is cached for 60 seconds and refreshes automatically on every
-`turn_end`; run `/sf-llm-gateway refresh` to force a usage probe
-immediately. The extension first tries the lightweight `/v2/user/info`
-self-lookup. If a gateway requires an explicit user id, it derives the
-current id from `/key/info` and retries `/v2/user/info?user_id=...`; if v2
-is unavailable, it falls back to legacy `/user/info`. If you're using
-sf-welcome or sf-devbar as consumers, they read from the shared store in
-`lib/common/monthly-usage/` — the gateway must be registered and have
-succeeded at least once.
-
-**Old and new gateway keys are confusing status or tests:**
-Saved pi config wins over `SF_LLM_GATEWAY_API_KEY`. If both are set
-and differ, `/sf-llm-gateway status` and `doctor` warn that the env var is
-ignored. If the env key is newer, run `/sf-llm-gateway` to save it; otherwise
-remove the stale env var from your shell or Keychain setup. If the gateway
-reports multiple keys on the
-account, confirm the active masked key in status, verify pi works with the
-current key, then prune older unused keys in the gateway UI.
-
-**Doctor reports `WARN: fetch failed` on macOS even though `curl` works:**
-Node on macOS ignores the system keychain. When the gateway sits behind a
-corporate CA, every Node fetch fails with a generic `fetch failed` while
-`curl` (which uses the keychain) succeeds. The doctor recognizes this
-fingerprint and points at `/sf-llm-gateway fix-ca-bundle`, which wires
-`NODE_EXTRA_CA_CERTS` into both the LaunchAgent (Dock/Spotlight launches)
-and `~/.zshenv` (Terminal launches) in one shot. The fix probes
-well-known paths in Claude Code, DevBar, and AI Suite config folders, adopts
-valid PEM paths already referenced by `NODE_EXTRA_CA_CERTS` in `~/.zshrc`,
-`~/.zprofile`, `~/.zshenv`, or the sf-pi LaunchAgent, and includes any extras
-saved under `caBundleCandidates` in the gateway saved config. If `NODE_EXTRA_CA_CERTS` is only
-in `~/.zshrc` or `~/.zprofile`, doctor calls that out because pi may not see it
-for every launch path; `fix-ca-bundle` mirrors the valid bundle into
-`~/.zshenv` and the LaunchAgent. When no candidate is found and
-saved `caBundleSource` (or `SF_LLM_GATEWAY_CA_BUNDLE_SOURCE`)
-is set, the action downloads the bundle into
-`~/.pi/agent/sf-llm-gateway/ca-bundle.pem` after explicit
-confirmation. Each disk-mutating step is HITL-gated; a sentinel-guarded
-block in `~/.zshenv` makes re-applies idempotent.
-
-**`/sf-llm-gateway onboard` says `not configured`:**
-The one-shot chain stops short when no saved gateway URL+key exists post‑
-import. Either run `/sf-llm-gateway setup` to enter them manually, or
-run `/sf-llm-gateway open-token` to grab a token from the gateway UI.
-The chain also saves detected CA bundle candidates so a later TLS handoff can
-adopt an existing bundle instead of requiring a download URL. It halts before
-`set-default` when the doctor preflight fails — follow the next-action hint
-embedded in the report (TLS → fix-ca-bundle, auth → setup, redirect → fix the
-base URL).
-
-**Splash keeps showing the `/sf-llm-gateway fix-ca-bundle` nudge after I
-ran the fix:**
-The nudge gates on `~/.pi/agent/sf-pi/sf-llm-gateway/ca-bundle-fixer.json`
-being populated. The fix-ca-bundle action writes that file on a successful
-apply. If the file is missing (e.g. the apply was interrupted or you
-rolled it back manually), re-run the action so the splash sees the
-applied state. The same row also clears once the next doctor run
-persists `failureClass: null` to `ca-probe.json`, which happens
-automatically on the deferred `turn_end` refresh.

@@ -1,6 +1,6 @@
 # AGENTS.md — sf-docs
 
-Read `README.md` and `docs/cheatsheet.md` before changing behavior. SF Docs owns Salesforce documentation lookup inside SF Pi.
+SF Docs owns Salesforce documentation lookup inside SF Pi. Start from `index.ts`, the relevant implementation module, and its focused Behavior Proof; use `docs/README.md` only for task-specific reference depth.
 
 ## File map
 

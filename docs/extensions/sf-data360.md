@@ -1,6 +1,7 @@
 ---
 title: "SF Data 360"
 description: "Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch"
+editLink: false
 ---
 
 # SF Data 360
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-data360
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-data360
+/sf-pi open sf-data360
 /sf-pi enable sf-data360
 /sf-pi disable sf-data360
 ```
@@ -57,6 +58,8 @@ Manage its package state with:
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-data360)
 - [Agent editing rules](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/AGENTS.md)
 - [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/AGENT_GUIDE.md)
+- [Reference index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/references/README.md)
+- [Compatibility evidence index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/references/compatibility/README.md)
 
 ## Troubleshooting
 

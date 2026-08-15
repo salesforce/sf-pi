@@ -3,8 +3,8 @@
  * TUI rendering for sf-slack tool calls and results.
  *
  * Design goals (P7 — conversation polish):
- *   1. No raw IDs on screen. Channel IDs like `C0958CRG806` resolve to
- *      `#agentscript-dev` via the channel cache pre-warmed on session_start
+ *   1. No raw IDs on screen. Channel IDs like `C01ABCEXAMPLE` resolve to
+ *      `#project-support` via the channel cache pre-warmed on session_start
  *      (plus a per-call fire-and-forget fill). Author `<@UID>` mentions and
  *      user IDs resolve via the user cache.
  *   2. No raw Slack `ts:1776790851.230879` strings in call headers. We show
@@ -16,8 +16,8 @@
  *        │ ↳ Reply 2
  *        │   (consecutive same-author replies merge under one header)
  *   4. Authors get stable color badges (two-letter initials) hashed from
- *      their display name, so "Marcelino" always looks the same across
- *      messages and stands out from "Setu" or "Allen".
+ *      their display name, so "Alice" always looks the same across
+ *      messages and stands out from "Bob" or "Carol".
  *   5. Every message gets an OSC 8 clickable permalink chip — both in
  *      collapsed and expanded views — so the user can Cmd/Ctrl-click
  *      straight into Slack.

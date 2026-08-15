@@ -222,6 +222,54 @@ describe("Data 360 v2 execute parity across action kinds", () => {
     });
   });
 
+  it("executes exact sweep-owned v2 cleanup through the dispatcher", async () => {
+    const targetOrg = env.config.targetOrg!;
+    requestMock.mockResolvedValueOnce({ name: "PiV2SweepDlo_20260811A__dll" });
+    requestMock.mockResolvedValueOnce({});
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_prepare",
+        action: "dlo.delete",
+        target_org: targetOrg,
+        allow_confirmed: true,
+        params: { dloName: "PiV2SweepDlo_20260811A__dll" },
+      },
+      env,
+      ctx,
+      undefined,
+      undefined,
+      {
+        ownedSweepCleanup: {
+          runId: "20260811A",
+          mutationTargetOrg: targetOrg,
+          destructiveTargetOrg: targetOrg,
+        },
+      },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      action: "dlo.delete",
+      capability: "d360_dlo_delete",
+      safety: "destructive",
+    });
+    expect(requestMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        method: "GET",
+        url: "/services/data/v67.0/ssot/data-lake-objects/PiV2SweepDlo_20260811A__dll",
+      }),
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        method: "DELETE",
+        url: "/services/data/v67.0/ssot/data-lake-objects/PiV2SweepDlo_20260811A__dll",
+      }),
+    );
+  });
+
   it("executes representative local helper actions", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "pi-d360-local-"));
     const csvPath = path.join(dir, "demo.csv");

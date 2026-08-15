@@ -1,6 +1,7 @@
 ---
 title: "SF Ohana Spinner"
 description: "Salesforce-themed rainbow spinner during LLM thinking"
+editLink: false
 ---
 
 # SF Ohana Spinner
@@ -15,10 +16,10 @@ Pi setWorkingIndicator-driven spinner with Ohana and Calm modes. Pi manages star
 
 This extension is enabled by default and works automatically.
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-ohana-spinner
+/sf-pi open sf-ohana-spinner
 /sf-pi enable sf-ohana-spinner
 /sf-pi disable sf-ohana-spinner
 ```

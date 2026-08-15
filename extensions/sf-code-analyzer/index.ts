@@ -205,7 +205,14 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-code-analyzer")) return;
 
   let toolsRegistered = false;
+  let readinessTimer: ReturnType<typeof setTimeout> | undefined;
   const exec = buildExecFn(pi);
+
+  function clearReadinessTimer(): void {
+    if (readinessTimer === undefined) return;
+    clearTimeout(readinessTimer);
+    readinessTimer = undefined;
+  }
 
   function ensureToolsRegistered(): void {
     if (toolsRegistered) return;
@@ -219,22 +226,26 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
 
   pi.on("session_start", (event, ctx) => {
     beginSalesforceConnectionSession(event);
+    clearReadinessTimer();
     if (event.reason === "reload") toolsRegistered = false;
-    if (isSfPiExtensionEnabled(ctx.cwd, "sf-code-analyzer")) ensureToolsRegistered();
-    if (ctx.hasUI && isSfPiExtensionEnabled(ctx.cwd, "sf-code-analyzer")) {
-      const timer = setTimeout(() => {
+    const cwd = ctx.cwd;
+    if (isSfPiExtensionEnabled(cwd, "sf-code-analyzer")) ensureToolsRegistered();
+    if (ctx.hasUI && isSfPiExtensionEnabled(cwd, "sf-code-analyzer")) {
+      readinessTimer = setTimeout(() => {
+        readinessTimer = undefined;
         void refreshCodeAnalyzerReadiness(exec).catch(() => {
           // Cache refresh is best-effort. Doctor surfaces the error when requested.
         });
-        void refreshApexGuruReadiness(undefined, ctx.cwd).catch(() => {
+        void refreshApexGuruReadiness(undefined, cwd).catch(() => {
           // ApexGuru readiness is optional and must not affect startup.
         });
       }, 6_000);
-      timer.unref?.();
+      readinessTimer.unref?.();
     }
   });
 
   pi.on("session_shutdown", () => {
+    clearReadinessTimer();
     toolsRegistered = false;
   });
 

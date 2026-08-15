@@ -1,6 +1,7 @@
 ---
 title: "SF Data Explorer"
 description: "Read-only interactive TUI explorer for SOQL, SOSL, and Data 360 SQL using sf-pi Salesforce transport plumbing."
+editLink: false
 ---
 
 # SF Data Explorer
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-data-explorer
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-data-explorer
+/sf-pi open sf-data-explorer
 /sf-pi enable sf-data-explorer
 /sf-pi disable sf-data-explorer
 ```

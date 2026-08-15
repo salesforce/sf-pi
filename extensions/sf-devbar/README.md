@@ -2,155 +2,68 @@
 
 ## What It Does
 
-A bespoke Salesforce developer status bar that renders two persistent UI surfaces:
+SF DevBar renders two non-blocking Salesforce-oriented terminal surfaces:
 
-- **Top bar** (widget above editor): SF Pi brand, model name with gateway detection,
-  rainbow thinking level, working folder, git branch + changes, context window progress bar,
-  an optional bounded Pi session name, and (when non-default) an `img:Nc` pill reflecting
-  `terminal.imageWidthCells`. Cross-extension readiness belongs in SF Welcome rather than
-  permanently competing with session context for DevBar width.
-- **Bottom bar** (custom footer): deterministic left order of active LLM gateway
-  monthly budget, SF Pi package count, then `SFDX Project → <authenticated org> [type]`
-  only inside a Salesforce DX project; Slack remains right-aligned when `sf-slack`
-  is enabled and ready/warning-worthy.
+- a **top bar** with SF Pi branding, model and thinking level, workspace, Git
+  state, context usage, optional session name, and non-default image width;
+- a **bottom bar** with active gateway usage, SF Pi package count, Salesforce DX
+  project and authenticated org context, plus Slack readiness when useful.
 
-Every data source is async and non-blocking. The bars render immediately with
-cached/partial data and fill in as results arrive. When `NO_COLOR` is set, both
-bars preserve text and layout while stripping theme, raw true-color, and
-upstream status ANSI styling.
-
-## How It Differs from the Default Pi Footer
-
-| Default Pi footer                | sf-devbar                                                                      |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| Model name + git branch          | SF-first: org context, gateway badge, thinking level                           |
-| No org awareness                 | Shows `SFDX Project →` authenticated org and type when inside an SF DX project |
-| Compact native context indicator | Visual progress bar with explicit post-compaction unknown state                |
-| No package/cost grouping         | Active LLM gateway budget, then SF Pi package count, then org on the left      |
-| No git change counts             | Branch + added/modified/deleted counts                                         |
-| No SF LLM Gateway detection      | Gold badge when using the internal gateway                                     |
-| Native thinking indicator        | Salesforce-oriented rainbow thinking badge                                     |
-| No keyboard toggle               | Ctrl+Shift+B to toggle bars on/off                                             |
-
-## Pi SDK Features Used (27)
-
-### Rendering
-
-- `ctx.ui.setWidget()` — top bar above editor
-- `ctx.ui.setFooter()` — bottom bar below editor
-- `ctx.ui.setTitle()` — terminal tab title
-- `theme.fg()` / `theme.bold()` — all colors and styling
-
-### Events
-
-- `session_start` — activate bars, load data, start async checks
-- `session_shutdown` — restore default footer, clear widget
-- `model_select` — update model display, detect gateway
-- `session_info_changed` — repaint the optional session-name segment
-- `thinking_level_select` — repaint thinking badge instantly on level change (pi ≥ 0.71; no-op on older)
-- `turn_start` — set thinking indicator
-- `turn_end` — context refresh + footer repaint
-- `agent_end` — final git refresh + footer repaint
-
-### Data Sources
-
-- `pi.getThinkingLevel()` — thinking level for rainbow badge
-- `ctx.getContextUsage()` — authoritative nullable context percentage and window size
-- `pi.getSessionName()` — optional Pi-owned session display name
-- `ctx.model` — model name, provider detection
-- `ctx.cwd` — working folder name
-- `pi.exec()` — git status
-- `footerData.getGitBranch()` — reactive git branch
-- `footerData.onBranchChange()` — reactive re-render
-- `footerData.getExtensionStatuses()` — other extension statuses
-- `ctx.hasUI` — skip rendering in print/JSON mode
-
-### Registration
-
-- `pi.registerCommand()` — `/sf-devbar` status/control panel plus text subcommands
-- `pi.registerShortcut()` — Ctrl+Shift+B toggle
-- `pi.registerFlag()` — `--no-devbar` CLI flag
-
-## Async Architecture
-
-Every data source loads independently. The bars render immediately and update
-as results arrive:
-
-| Data Source      | Timing                                           | Loading State                                            |
-| ---------------- | ------------------------------------------------ | -------------------------------------------------------- |
-| SF Environment   | Reads shared sf-environment cache — instant warm | Shows last cached, then updates                          |
-| Model + Thinking | Synchronous from `ctx.model` / thinking API      | Always available                                         |
-| Git branch       | Reactive via `footerData.onBranchChange()`       | Immediate from Pi's tracking                             |
-| Git changes      | Async `git status` — refreshed on agent_end      | Shows "…" until first result                             |
-| Context usage    | Read from Pi on render and repainted on turn_end | Hidden when absent; unknown after compaction; then fills |
-| Session name     | Read from Pi on render and repainted on rename   | Hidden until the user assigns one                        |
+Each source loads independently from cached or reactive state. `NO_COLOR` keeps
+the same text and layout while removing SF DevBar-owned ANSI styling.
 
 ## Commands
 
-| Command               | Description                                                  |
+| Command               | Purpose                                                      |
 | --------------------- | ------------------------------------------------------------ |
-| `/sf-devbar`          | Open SF DevBar in SF Pi Manager; show status in no-UI mode   |
-| `/sf-devbar status`   | Show current org/environment details                         |
-| `/sf-devbar toggle`   | Toggle bars on/off                                           |
-| `/sf-devbar refresh`  | Recreate the target connection and re-detect the environment |
-| `/sf-devbar settings` | Open DevBar color settings in SF Pi Manager                  |
-| `/sf-devbar help`     | Show help                                                    |
+| `/sf-devbar`          | Open SF DevBar in the Manager; print status without UI       |
+| `/sf-devbar status`   | Show current environment details                             |
+| `/sf-devbar toggle`   | Toggle both bars                                             |
+| `/sf-devbar refresh`  | Recreate the target connection and refresh environment state |
+| `/sf-devbar settings` | Open color settings                                          |
+| `/sf-devbar help`     | Print help                                                   |
 | `/sf-org`             | Show detected Salesforce org status                          |
-| `/sf-org refresh`     | Recreate the target connection and re-detect org status      |
-| `Ctrl+Shift+B`        | Keyboard toggle                                              |
-| `pi --no-devbar`      | Launch without status bars                                   |
+| `/sf-org refresh`     | Recreate the target connection and refresh org status        |
+| `Ctrl+Shift+B`        | Toggle both bars from the TUI                                |
+| `pi --no-devbar`      | Start without SF DevBar                                      |
 
-## API Version Status
+## API version status
 
-`/sf-org` keeps project and connection versions distinct:
+`/sf-org` keeps the SFDX project's source API version separate from the
+connection API version selected by the Salesforce SDK. An explicit
+`org-api-version` override is labeled `configured`. An unexplained SDK fallback
+is labeled unverified rather than being presented as the org's release version.
 
-- **Project Source API** comes from `sfdx-project.json` and describes source/metadata compatibility.
-- **Connection API** is the version selected by the Salesforce SDK for API requests.
+## Configuration
 
-An intentional `org-api-version` override remains valid and is labeled `configured`. When no override or fresh SDK version cache explains JSforce's built-in `50.0` default, SF Pi labels it `unverified SDK fallback`; it does not imply that the org itself runs an old release. Explicit refresh actions recreate only the resolved target-org connection before retrying detection. Background startup refreshes remain cache-first and non-blocking.
+**SF Pi Manager → SF DevBar → Settings** edits colors under
+`sfPi.devbar.colors`. Project values override global values per field, then fall
+back to the classic palette. Accepted values are `#RGB` and `#RRGGBB`; palettes
+accept comma-separated colors in the panel or JSON arrays in settings.
 
-## Color Preferences
+Configurable roles include folder/model text, missing-org warning,
+sandbox/trial labels, context bar foreground/background, gateway rainbow, and
+thinking rainbow. Production warnings and Git state continue to use semantic
+Pi theme colors. `s` saves from the settings list without reloading Pi; `Esc`
+cancels a focused field edit.
 
-DevBar colors are configurable from **SF Pi Manager → SF DevBar → Settings**
-or directly with `/sf-devbar settings` in TUI mode. The panel is explicitly
-labeled **Color Settings** and shows the selected token's rendering purpose;
-for example, **Missing org warning** is a color used only when an SFDX project
-has no detected/default org. Settings are saved in Pi's native settings files
-under `sfPi.devbar.colors`.
+## Troubleshooting
 
-Project settings override global settings per field; omitted fields inherit
-from the next source and ultimately from the classic DevBar defaults. Invalid
-manual JSON values fail soft and fall back to the next valid source.
+**The bars do not appear:** SF DevBar skips print/JSON/headless modes. In a TTY,
+check `--no-devbar`, then use `/sf-devbar toggle`.
 
-```json
-{
-  "sfPi": {
-    "devbar": {
-      "colors": {
-        "folderPath": "#5fafff",
-        "modelName": "#d7afff",
-        "orgWarning": "#ffaf5f",
-        "sandboxTrial": "#82d8ff",
-        "contextEmptyFg": "#5c5c66",
-        "contextEmptyBg": "#24242a",
-        "gatewayRainbow": ["#b281d6", "#5fafff", "#82d8ff"],
-        "thinkingRainbow": ["#d7afff", "#ffaf5f", "#82d8ff"]
-      }
-    }
-  }
-}
-```
+**The org segment stays pending:** Run `/sf-org refresh`. Environment data is
+cache-first, so a cold authenticated lookup can take longer than later sessions.
 
-Accepted color formats are `#RGB` and `#RRGGBB`; the settings panel normalizes
-values to lowercase `#rrggbb`. Palette fields accept comma-separated colors in
-the panel, or JSON arrays in settings files. Press `Enter` on a color row to open
-a focused edit page with a visible draft cursor; `Esc` cancels that field edit
-and returns to the settings list. Press `s` from the settings list to save in
-place without reloading Pi.
+**Context says `unknown`:** Immediately after compaction, Pi can know the window
+size while the percentage is unavailable. The percentage returns after the next
+assistant turn.
 
-Only DevBar-owned hardcoded true-color accents are configurable. Semantic theme
-colors such as production warnings and git status continue to come from the
-active Pi theme.
+**The gateway badge color is unexpected:** It follows the active model provider
+identity. Verify the selected provider/model in Pi before changing colors.
+
+**An `img:Nc` pill appears:** It reflects a non-default
+`terminal.imageWidthCells` setting and is intentionally hidden at the default.
 
 ## File Structure
 
@@ -167,42 +80,3 @@ extensions/sf-devbar/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Dependencies
-
-- **shared Salesforce environment runtime** — reads `getCachedSfEnvironment()` from the
-  shared runtime cache. Zero duplicate CLI calls.
-- **sf-llm-gateway** — detected by provider name (`sf-llm-gateway`)
-  from `ctx.model.provider`. No import dependency, just a string match.
-
-## Troubleshooting
-
-**Bars don't appear at all:**
-Confirm you have a TTY — sf-devbar skips rendering in `pi -p` / JSON /
-print mode via `ctx.hasUI`. If you're in a real terminal, try
-`/sf-devbar` to open controls or `/sf-devbar toggle` to toggle. The `--no-devbar` CLI flag suppresses rendering
-for the session if you've launched with it.
-
-**Org segment shows `…` or takes a long time:**
-Org data is async and shared with sf-welcome via the
-`lib/common/sf-environment/` cache. The first warm-up after a cold
-start calls the SF CLI; subsequent sessions read the persisted snapshot
-instantly. If it never resolves, run `sf org display --json` directly to
-confirm the CLI can see the org.
-
-**Context bar is hidden or says `unknown`:**
-The bar is hidden when Pi has no usable context fact. Immediately after
-compaction, Pi can know the context window while its percentage is explicitly
-unknown; DevBar shows `unknown` rather than a false `0%`. The percentage fills
-from Pi's public `ctx.getContextUsage().percent` after the next assistant turn.
-
-**Gateway badge color is wrong when using sf-llm-gateway:**
-The gold badge triggers on `ctx.model.provider === "sf-llm-gateway"`
-or the Anthropic-native provider. If your selected model is routed under
-one of those names in `/sf-llm-gateway models`, the badge will
-match.
-
-**`img:Nc` pill appears unexpectedly:**
-It reflects a non-default `terminal.imageWidthCells` setting in
-`~/.pi/agent/settings.json` or `.pi/settings.json`. The pill is hidden at
-the default value; any override surfaces it so the change is visible.

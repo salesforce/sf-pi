@@ -1,6 +1,6 @@
 # sf-agentscript editing rules
 
-Read `README.md` before changing behavior. This extension owns the Agent Script developer loop: local authoring, preview, eval, and lifecycle.
+This extension owns the Agent Script developer loop: local authoring, preview, eval, and lifecycle. Start from `index.ts`, the relevant family-tool/action module, and its focused Behavior Proof.
 
 ## Public LLM tool surface
 

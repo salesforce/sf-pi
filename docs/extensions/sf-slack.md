@@ -1,6 +1,7 @@
 ---
 title: "SF Slack"
 description: "Slack integration — search messages, read threads, browse channel history"
+editLink: false
 ---
 
 # SF Slack
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-slack
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-slack
+/sf-pi open sf-slack
 /sf-pi enable sf-slack
 /sf-pi disable sf-slack
 ```

@@ -1,29 +1,43 @@
+---
+evidence: manual-live-verification
+as_of: 2026-08-11
+owner: sf-data360
+revalidate_after: 2026-11-11
+revalidation_trigger: Public upstream parity, v2 action routing, dispatcher behavior, or mutation safety changes
+---
+
 # SF Data 360 Live Verification
 
-This public-safe summary records the latest manual live verification pass for the
-Data 360 upstream-parity refresh. Raw responses, org aliases, record IDs, and
-instance URLs were kept in private local artifacts and are not committed.
+This public-safe summary records a dated manual live-verification pass for the
+Data 360 v2 registry and dispatcher. Raw responses, org aliases, resource names,
+record IDs, and instance URLs remain in private local artifacts and are not
+committed.
 
-## 2026-07-12 upstream-parity refresh
+Revalidate on or before `2026-11-11`, or earlier when the public upstream parity
+source, v2 action routing, dispatcher behavior, or mutation safety changes.
+Replace this summary rather than presenting an older pass as current evidence.
 
-| Area             | Action                                    | Result           | Notes                                                                                                                                                       |
-| ---------------- | ----------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Readiness        | `readiness.probe`                         | Verified         | Data 360 core, metadata, query, and delivery surfaces were reachable in a sandbox verification org. One optional observability surface was not provisioned. |
-| Connection       | `connector.list`                          | Verified         | Read endpoint returned HTTP 200.                                                                                                                            |
-| Machine Learning | `ml.model_artifact.list`                  | Verified         | Read endpoint returned HTTP 200.                                                                                                                            |
-| Machine Learning | `ml.predict`                              | Endpoint reached | Safe-post helper reached the service and returned a validation error for the intentionally placeholder model/payload.                                       |
-| Prepare          | `transform.prepare`                       | Endpoint reached | Safe-post helper reached the service and returned a validation error for the intentionally placeholder transform body.                                      |
-| Connect          | `connection.db_schemas.list`              | Dry-run verified | Resolved request path, params, and safety without executing because no disposable connection fixture was selected.                                          |
-| Prepare          | `transform.prepare`                       | Dry-run verified | Resolved request path, body, and `safe_post` classification.                                                                                                |
-| Machine Learning | `ml.prediction_job_def.create_regression` | Dry-run verified | Resolved confirmed mutation request without execution.                                                                                                      |
-| Personalization  | `personalization.org_info.get`            | Permission-gated | Endpoint returned HTTP 403 in the sandbox verification org; keep actions available but document that org permissions/features can gate this family.         |
+## 2026-08-11 v2 live-proof alignment
+
+| Area                | Action chain                                                                                          | Result   | Notes                                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Readiness           | `data360_discover readiness.probe`                                                                    | Verified | Core Data 360, metadata, query, and delivery surfaces were ready in the non-production verification org; one optional tracing surface was absent. |
+| Read-only sweep     | `action.describe` → metadata contract → `dry_run` → `data360_prepare dlo.list`                        | Verified | The v2 harness selected the action through the generated registry and executed it through the shared dispatcher with no failures or skips.        |
+| Confirmed lifecycle | absence preflight → `dlo.create` plan/execute → `dlo.get` → `dlo.delete` plan/execute → absence check | Verified | The fixture-owned DLO was created, read, deleted, and independently confirmed absent.                                                             |
+| Cleanup propagation | bounded delete and absence retries                                                                    | Verified | The platform accepted deletion on the second attempt; read-after-delete absence was visible on the third bounded verification attempt.            |
+
+The final lifecycle artifact contains ten checks with zero failures and zero
+skips. The lifecycle exercised the public v2 tool/action/params envelope, exact
+target resolution, dry-run and confirmation gates, the dispatcher’s retained
+execution adapter, and JSON/Markdown report generation.
 
 ## Verification rules
 
-- Read and `safe_post` actions can be exercised directly against a sandbox
-  verification org when payloads are non-sensitive and bounded.
-- Confirmed actions should be dry-run first and executed only with disposable
-  `SfPiParity_*` resources.
-- Destructive actions should not run during broad parity verification except for
-  cleanup of resources created by the same verification run.
-- Committed summaries must stay public-safe; raw evidence remains local/private.
+- Read and `safe_post` actions can be exercised directly against an explicit
+  non-production verification org when payloads are non-sensitive and bounded.
+- Confirmed actions are dry-run first and use only unique `PiV2Sweep*` fixtures.
+- Destructive cleanup requires the exact authenticated non-production target,
+  both sweep target gates, and an exact resource name derived from the run ID.
+- Production, unresolved, mismatched, pre-existing, and ordinary headless
+  destructive targets remain blocked.
+- Committed summaries stay public-safe; raw evidence remains local and private.

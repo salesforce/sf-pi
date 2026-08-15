@@ -3,8 +3,8 @@
  * Shared agent_type / default_agent_user resolver for the scaffold templates.
  *
  * One source of truth so `agentforce-default.ts` and `minimal.ts` agree on
- * "what does an empty job_spec mean?" — see docs/POSTMORTEM_E2E_DEMO.md
- * Issue 1 for the full rationale.
+ * what an empty job_spec means: Employee Agent by default, Service Agent only
+ * when the caller supplies an agent user.
  *
  * Decision rule (intentionally binary, no third option):
  *   - job_spec.agent_user present → AgentforceServiceAgent + that user

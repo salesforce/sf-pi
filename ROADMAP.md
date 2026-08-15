@@ -10,10 +10,6 @@ accepted ADR.
 - Raise branch coverage enough to sustain a 55% threshold. Current blocking
   floors are 62% lines, 60% statements, 66% functions, and 49% branches; future
   ratchets require another observed full-suite baseline.
-- Promote useful warn-level ESLint rules to errors one at a time after the
-  repository passes the stricter rule without broad suppression.
-- Align the Data 360 live capability sweep with the public `data360_*` v2 family
-  interface; see [`extensions/sf-data360/ROADMAP.md`](./extensions/sf-data360/ROADMAP.md).
 
 ## Non-goals
 

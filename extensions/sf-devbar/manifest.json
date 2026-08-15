@@ -25,13 +25,9 @@
     "primaryFiles": [
       "index.ts",
       "lib/top-bar.ts",
-      "lib/runtime-facts.ts",
       "lib/bottom-bar.ts",
-      "lib/colors.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "lib/git-changes.ts",
-      "lib/settings-reader.ts"
+      "lib/runtime-facts.ts",
+      "lib/config-panel.ts"
     ]
   }
 }

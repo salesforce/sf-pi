@@ -218,7 +218,7 @@ agentscript_lifecycle action='activate'
 ## Validated against
 
 The doc that drove this design:
-[forcedotcom/afv-library — agent-user-setup.md](https://github.com/forcedotcom/afv-library/blob/main/skills/developing-agentforce/references/agent-user-setup.md).
+[forcedotcom/sf-skills — agent-user-setup.md](https://github.com/forcedotcom/sf-skills/blob/main/skills/agentforce-generate/references/agent-user-setup.md).
 The verbs cover the same workflow but skip the `sf` CLI — every step
 runs through `@salesforce/core` `Connection` + `@salesforce/source-deploy-retrieve`
 so the flow works in CI / programmatic contexts that don't have a

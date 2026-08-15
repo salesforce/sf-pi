@@ -2,73 +2,57 @@
 
 ## What It Does
 
-Provides `/sf-feedback`, a guided public GitHub feedback flow for SF Pi. It asks
-for the issue type and user-provided details, collects best-effort local
-diagnostics, sanitizes them for public sharing, previews the final Markdown, and
-then either creates a GitHub issue with the authenticated `gh` CLI or opens a
-prefilled GitHub issue URL.
+SF Feedback provides a guided public GitHub feedback flow. It collects the issue
+type and user-provided details, gathers best-effort local diagnostics, sanitizes
+them, previews the exact Markdown, and then either uses authenticated `gh` or
+opens a prefilled GitHub issue URL.
 
-It also provides `/sf-feedback diagnostics` for copying the sanitized diagnostics
-block without creating an issue.
+Manager-launched actions keep their form, field editing, preview, and submit
+steps inside the Manager. GitHub CLI is optional, and unavailable diagnostics do
+not prevent draft creation.
 
-## Key Architecture Decisions
+## Commands
 
-### 1. Confirmation before any submission
+| Command                    | Purpose                                     |
+| -------------------------- | ------------------------------------------- |
+| `/sf-feedback`             | Open the guided feedback flow               |
+| `/sf-feedback bug`         | Start with the bug issue type               |
+| `/sf-feedback feature`     | Start with the feature issue type           |
+| `/sf-feedback setup`       | Start with the setup issue type             |
+| `/sf-feedback feedback`    | Start with general feedback                 |
+| `/sf-feedback diagnostics` | Show a copyable sanitized diagnostics block |
 
-The extension never creates an issue until the user has reviewed the exact title,
-labels, and Markdown body. Diagnostics are sanitized first, but the preview is
-still the final privacy gate.
+## Configuration
 
-### 2. GitHub CLI is optional
+**SF Pi Manager → SF Feedback → Settings** stores the default issue kind at
+`sfPi.feedback.defaultIssueKind`: `bug`, `feature`, `setup`, or `feedback`.
+An explicit command type wins and the preference never bypasses preview or
+confirmation.
 
-Authenticated `gh` gives the best experience because it can create the issue
-directly. If `gh` is missing or unauthenticated, the extension falls back to a
-prefilled GitHub issue URL so feedback still works.
+## Safety and Data Boundaries
 
-### 3. Public-safe diagnostics by default
+- No issue is submitted until the user reviews the exact title, labels, and
+  Markdown and confirms the write.
+- Diagnostics are sanitized before preview and summarize unavailable data rather
+  than copying raw command output.
+- Headless mode emits a draft and fallback URL only.
+- Help, diagnostics, drafts, and summaries use human-only output channels and do
+  not steer later model turns.
 
-GitHub issues are public, so diagnostics redact Salesforce org aliases/URLs,
-emails, tokens, home-directory paths, and non-GitHub remotes. The extension
-summarizes sensitive state instead of including raw command output.
+## Troubleshooting
 
-### 4. Best-effort collection
+**The flow opens a browser instead of creating an issue:** Install and
+authenticate GitHub CLI with `gh auth login`. The browser path is the supported
+fallback.
 
-Every diagnostic command may fail on some machines. Failures are summarized as
-`unavailable` or `unknown`; one missing tool should not block filing feedback.
+**The account cannot create public issues:** Copy the generated Markdown and use
+an account or support path with access.
 
-### 5. Command registration is resilient
+**Diagnostics contain `unknown` or `unavailable`:** One local probe failed or a
+tool is absent. The draft remains usable and identifies what was unavailable.
 
-The slash command registers before Manager action wiring and before diagnostics
-or GitHub helpers are loaded. This keeps `/sf-feedback` discoverable even if an
-optional feedback-flow dependency has a load-time issue.
-
-### 6. Manager actions drill into form pages
-
-Feedback actions launched from the SF Pi Manager use an in-Manager form overview
-for title, summary, expected behavior, and steps. Pressing Enter on a field opens
-a native Pi input/editor page with a real cursor. Single-line fields save with
-Enter; multiline fields use Enter for new lines and Ctrl+S to save. Preview and
-submit states stay inside the same Manager flow. They do not stack standalone
-input or confirmation prompts above the Manager detail page.
-
-### 7. Display-only reports stay out of model context
-
-Help, diagnostics, drafts, and submission summaries use Pi's human-only output
-channels: the existing TUI panel, RPC notifications, JSON custom-entry events,
-and print-mode console output. Headless reports use state-only custom entries
-rather than custom messages, so newly emitted reports do not steer a later
-model turn.
-
-## Settings
-
-SF Feedback has a Manager Settings page for the default issue kind stored under `sfPi.feedback.defaultIssueKind`:
-
-- `bug`
-- `feature`
-- `setup`
-- `feedback` (default)
-
-The setting is used when no explicit `bug`, `feature`, `setup`, or `feedback` subcommand is provided. It never bypasses preview or final confirmation.
+**A private value appears in preview:** Cancel submission and remove it manually.
+The final preview is authoritative for what would be published.
 
 ## File Structure
 
@@ -84,27 +68,3 @@ extensions/sf-feedback/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Troubleshooting
-
-**`/sf-feedback` opens a browser URL instead of creating the issue:**
-Install and authenticate the GitHub CLI with `gh auth login`. Without an
-authenticated `gh`, SF Feedback intentionally falls back to a prefilled GitHub
-issue URL.
-
-**GitHub says the account cannot create issues:**
-Some GitHub-managed accounts cannot create issues in public repositories. When
-`gh` reports a `createIssue` permission failure, SF Feedback leaves the browser
-closed and shows a copyable Markdown draft plus the prefilled URL so you can
-submit from an account with access or share it through your maintainer/support
-path.
-
-**Diagnostics show `unknown` or `unavailable`:**
-This means one of the local diagnostic commands failed or the tool is not
-installed. The issue can still be submitted; the unavailable field is enough to
-show maintainers what was missing.
-
-**A private value appears in the preview:**
-Cancel the confirmation dialog and file the issue manually after removing that
-value. The sanitizer is conservative, but the final preview is the source of
-truth for what would be submitted.

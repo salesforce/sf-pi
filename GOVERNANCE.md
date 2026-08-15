@@ -26,9 +26,9 @@ Responsibilities:
 - Security advisories and CVE coordination
 - Enforcing the [Code of Conduct](./CODE_OF_CONDUCT.md)
 
-For security reports, use **GitHub Private Vulnerability Reporting** as
-described in [`SECURITY.md`](./SECURITY.md). Do not email maintainers
-directly for security issues.
+For suspected vulnerabilities, follow [`SECURITY.md`](./SECURITY.md). Do not
+open a public issue or contact maintainers directly with sensitive report
+details.
 
 ### Contributor
 

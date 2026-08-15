@@ -27,26 +27,9 @@
     "primaryFiles": [
       "index.ts",
       "lib/agent-browser.ts",
-      "../../lib/common/browser-runtime-status/store.ts",
-      "lib/evidence-report.ts",
       "lib/operations.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "lib/failure-diagnostics.ts",
-      "lib/editor-surfaces.ts",
-      "lib/setup-destinations.ts",
-      "lib/overlay-dismissal.ts",
-      "lib/snapshot-summary.ts",
-      "lib/lightning-wait.ts",
-      "lib/sf_browser_editor-tool.ts",
-      "lib/sf_browser_select-tool.ts",
-      "lib/sf_browser_resolve_path-tool.ts",
       "lib/salesforce-path-resolver.ts",
-      "lib/salesforce-route-verifier.ts",
-      "AGENT_GUIDE.md",
-      "docs/setup-runbooks.md",
-      "docs/setup-destinations.md",
-      "docs/live-smoke.md"
+      "lib/evidence-report.ts"
     ],
     "stateFiles": [
       "<globalAgentDir>/sf-pi/browser-artifacts/sessions/<session-id>/index.json",
@@ -61,6 +44,13 @@
       "Browser Evidence is artifact-first and stored outside the project by default.",
       "Snapshots publish compact ref metadata so SF Guardrail can classify committing click refs from the latest accessible label.",
       "Session-bearing Salesforce org-open URLs are passed to agent-browser but not echoed in tool results."
+    ],
+    "referenceRoots": [
+      {
+        "path": "docs",
+        "index": "docs/README.md",
+        "role": "current"
+      }
     ]
   }
 }

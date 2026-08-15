@@ -106,14 +106,28 @@ export interface SfPiExtension {
 // Manifest schema (matches extensions/*/manifest.json)
 // -------------------------------------------------------------------------------------------------
 
+export type ExtensionReferenceRole = "current" | "generated-current" | "compatibility";
+
+export interface ExtensionReferenceRoot {
+  /** Extension-relative directory containing reference Markdown. */
+  path: string;
+  /** Extension-relative Markdown index that routes readers into this root. */
+  index: string;
+  /** Whether the root is current guidance, generated current guidance, or compatibility evidence. */
+  role: ExtensionReferenceRole;
+  /** Repository-relative generator path. Required for generated-current roots. */
+  generatedBy?: string;
+}
+
 export interface ExtensionManifestDocs {
   /** User outcome used to group this extension in generated discovery surfaces. */
   intentGroup: ExtensionIntentGroup;
   /** Longer factual summary for generated orientation and detail docs. */
   summary: string;
   /**
-   * Extension-relative files agents should usually read first. `..` traversal
-   * is allowed only while the resolved path remains inside the repository root.
+   * Bounded implementation entrypoints agents should read first. The first item
+   * is index.ts, Markdown belongs in role/reference fields, and at most eight
+   * entries are allowed. `..` traversal remains repository-contained.
    */
   primaryFiles: string[];
   /** Extension-local editing rules loaded when code in this extension is changed. */
@@ -122,6 +136,8 @@ export interface ExtensionManifestDocs {
   agentGuide?: string;
   /** Extension-local canonical terminology, when the extension owns a domain glossary. */
   contextGlossary?: string;
+  /** Routed roots covering every Markdown file under extension docs/ or references/. */
+  referenceRoots?: ExtensionReferenceRoot[];
   /** User/global/project state files this extension reads or writes. */
   stateFiles?: string[];
   /** Environment variables this extension recognizes. */
@@ -263,6 +279,8 @@ export interface AnnouncementItem {
   minVersion?: string;
   /** Only show to installs <= this version (e.g. deprecation notices). */
   maxVersion?: string;
+  /** Explicitly long-lived maintainer guidance. Mutually exclusive with expiry/max-version gates. */
+  evergreen?: boolean;
 }
 
 /**

@@ -1,6 +1,7 @@
 ---
 title: "SF LWC"
 description: "Local-native Lightning Web Component lifecycle workflows for pi: project scan, component inspection, focused diagnostics, targeted Jest tests, and artifacts."
+editLink: false
 ---
 
 # SF LWC
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-lwc
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-lwc
+/sf-pi open sf-lwc
 /sf-pi enable sf-lwc
 /sf-pi disable sf-lwc
 ```

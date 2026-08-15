@@ -36,6 +36,7 @@ function buildActions() {
       operation.name,
       Boolean(override.action),
     );
+    const tips = v2OperationTips(operation, override);
     result.push({
       tool,
       action,
@@ -48,7 +49,7 @@ function buildActions() {
       optionalParams: operation.optionalParams ?? [],
       endpoint: { method: operation.method, path: operation.path },
       aliases: unique([operation.name, ...(override.aliases ?? [])]),
-      ...(operation.tips || override.tips ? { tips: override.tips ?? operation.tips } : {}),
+      ...(tips ? { tips } : {}),
     });
   }
 
@@ -82,6 +83,18 @@ function buildActions() {
   assertUniquePrimaryActions(result);
   assertEveryOperationMappedOnce(result);
   return result.sort((a, b) => a.tool.localeCompare(b.tool) || a.action.localeCompare(b.action));
+}
+
+function v2OperationTips(operation, override) {
+  return v2SafetyTips(operation.safety, override.tips ?? operation.tips);
+}
+
+function v2SafetyTips(safety, tips) {
+  if (safety !== "destructive") return tips;
+  const actionSpecific = String(tips ?? "Destructive operation.")
+    .replace(/\s*Actual execution is allowed only with target_org=.*$/s, "")
+    .trim();
+  return `${actionSpecific} Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation.`;
 }
 
 function ruleForOperation(operation) {
@@ -169,18 +182,20 @@ function normalizeVerb(verb) {
 }
 
 function normalizeExtraAction(action) {
+  const safety = required(action.safety, "extra action safety");
+  const tips = v2SafetyTips(safety, action.tips);
   return {
     tool: required(action.tool, "extra action tool"),
     action: required(action.action, "extra action action"),
     phase: required(action.phase, "extra action phase"),
     family: required(action.family, "extra action family"),
     description: required(action.description, "extra action description"),
-    safety: required(action.safety, "extra action safety"),
+    safety,
     requiredParams: action.requiredParams ?? [],
     optionalParams: action.optionalParams ?? [],
     implementation: action.implementation,
     aliases: unique(action.aliases ?? []),
-    ...(action.tips ? { tips: action.tips } : {}),
+    ...(tips ? { tips } : {}),
   };
 }
 

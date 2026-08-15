@@ -12,17 +12,7 @@
     "intentGroup": "Work with Salesforce orgs",
     "editingRules": "AGENTS.md",
     "summary": "Keyboard-first read-only Salesforce data explorer with object/field browsing, editable query text, query execution, result detail view, JSON/CSV export, shortcut help, and explorer switching. Uses sf-pi @salesforce/core connection plumbing; no LLM required.",
-    "primaryFiles": [
-      "index.ts",
-      "lib/transport.ts",
-      "lib/command.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "lib/ui/explorer-spa.ts",
-      "lib/modes/soql.ts",
-      "lib/modes/sosl.ts",
-      "lib/modes/data360-sql.ts"
-    ],
+    "primaryFiles": ["index.ts", "lib/command.ts", "lib/transport.ts", "lib/ui/explorer-spa.ts"],
     "safety": [
       "Read-only v1: only describe, query, search, compact Data 360 metadata GETs, and Data 360 SELECT SQL calls are issued.",
       "Core SOQL execution validates SELECT-only query text before calling /query.",

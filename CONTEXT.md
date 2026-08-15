@@ -148,12 +148,6 @@ A post-agent check that runs only after Pi has no automatic retry, compaction
 retry, or queued follow-up left.
 _Avoid_: per-tool streaming lint, immediate background scan
 
-**Setting Scope Policy**:
-The declared authority model for one user-facing preference. A setting is either
-global-only or project-inheritable; scope belongs to the setting rather than an
-entire extension implicitly.
-_Avoid_: accidental project override, universal extension scope
-
 **Last-Known Usable Status**:
 The newest successful status snapshot still useful for human orientation when a
 current refresh fails, provided it remains inside the owning identity boundary.

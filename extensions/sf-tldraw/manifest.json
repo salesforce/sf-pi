@@ -16,21 +16,11 @@
     "summary": "Provides one Salesforce-focused `tldraw_canvas` family tool for tldraw offline v1.12 runtime status, explicit document creation, document discovery, and deterministic Data Model, System/Solution Architecture, and Interaction/Sequence profiles. Data Model pages use a title-only header with a configurable stacked Relationships key. Render actions use strict Spec v2 with explicit grounding, inspectable provenance, render-privacy checks, pinned SLDS icons, preserve-by-default updates, and readiness-gated screenshot evidence; generic canvas work stays with the upstream tldraw-offline skill.",
     "primaryFiles": [
       "index.ts",
-      "AGENTS.md",
-      "docs/cheatsheet.md",
       "lib/tldraw_canvas-tool.ts",
       "lib/runtime-client.ts",
-      "lib/runtime-surface.ts",
-      "lib/redaction.ts",
-      "lib/spec-schema.ts",
       "lib/spec-validation.ts",
-      "lib/assets.ts",
       "lib/profiles.ts",
-      "lib/canvas-program.ts",
-      "lib/artifacts.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "AGENT_GUIDE.md"
+      "lib/artifacts.ts"
     ],
     "stateFiles": [
       "~/Library/Application Support/tldraw/server.json (read-only runtime discovery on macOS)",
@@ -50,6 +40,13 @@
       "Reads the per-launch bearer token for each request, never prints or persists it, and redacts runtime error details.",
       "Generic canvas search, raw execution, standalone screenshots, and document scripts are not exposed by SF tldraw; the upstream app-managed skill owns those workflows.",
       "Screenshot sources used by Salesforce renders must be regular JPEG/PNG files inside tldraw's dedicated temporary capture directory before private 0600 artifact copies are exposed."
+    ],
+    "referenceRoots": [
+      {
+        "path": "docs",
+        "index": "docs/README.md",
+        "role": "current"
+      }
     ]
   }
 }

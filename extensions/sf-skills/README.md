@@ -2,89 +2,66 @@
 
 ## What It Does
 
-`sf-skills` is the single sf-pi home for skill governance. It presents the
-**Skill Funnel**: the full on-disk catalog of skills narrows through a series
-of gates down to the set Pi actually loads.
+SF Skills is SF Pi's home for skill discovery and scope. Its Skill Funnel shows
+how on-disk skills become the set Pi actually loads:
 
+```text
+Catalog → Sources → Global → Project → Effective
 ```
-Catalog → Sources (Source Gate) → Global → Project (Skill Gate) → Effective (conflicts resolved)
-```
 
-1. **Funnel view** — `/sf-skills` → "Open skill funnel". Five tabs over one
-   resolved **Skill Catalog**:
-   - **Catalog** — every skill found across every source (including gated-off
-     roots and conflict losers), tagged with where it sits in the funnel.
-   - **Sources** — the **Source Gate**: which roots Pi may see
-     (Claude/Codex/Cursor/custom/managed/auto-default). `a` adds a custom path.
-   - **Global / Project** — the **Skill Gate**: toggle individual skills at each
-     scope. `g` toggles global, `p` toggles project. `m` moves a skill (or, on
-     the Sources tab, a whole source) from global to the current project; `M`
-     moves every global skill to this project (local-first **Skill Rescope** —
-     it drops the global wiring, so multi-skill moves confirm first).
-   - **Conflicts** — pick a winner (`w`) for resolvable name collisions.
-2. **Passive HUD** in the top-right showing skills currently _in context_.
-   Unchanged behavior; it is one optional surface, not the extension's identity.
-3. **Source detection + Source Registry** — probes the global and project
-   Claude/Codex/Cursor roots and remembers user-added custom paths + gate state
-   so a seen-but-empty custom source survives reload.
-4. **forcedotcom/afv-library installer** — `/sf-skills defaults install` clones
-   the curated skill collection **once** into the global managed dir (shared,
-   no per-project duplication) and wires it into the **current project** by
-   default (local-first). `defaults install global` is the explicit opt-in to
-   enable it everywhere. Sentinel-gated update/unlink.
-5. **Usage counters** — explicit `/skill:<name>` invocations bump persistent
-   global + project counters shown as the `USED` column and `/sf-skills metrics`.
-6. **Prune** — `/sf-skills prune` reports stale settings entries + orphan
-   managed clones; `--apply` removes them.
+The interactive view inventories every discovered copy, gates source roots,
+controls global/project wiring, identifies additive-scope limits, resolves
+eligible name conflicts, and reports auto-discovered copies it cannot override.
+Pi remains the only skill loader; SF Skills compiles decisions into native
+`settings.skills[]` entries and never renames or edits `SKILL.md` files.
 
-## One Rule — Compiled Skill Resolution
+It also provides an optional active-context HUD, the managed public Salesforce
+skill-library installer, explicit invocation counters, and stale-entry/orphan
+cleanup.
 
-Every enable, disable, source-gate, and conflict-winner decision compiles down
-to native pi `settings.skills[]` entries (global or project). We never rename
-`SKILL.md` files, never edit frontmatter, and never run a shadow loader. Pi
-stays the single skill loader; sf-skills owns only the policy. See
-[ADR-0017](../../docs/adr/0017-skill-funnel-additive-project-scope.md).
+## Commands
 
-Two honest limits fall out of staying native (ADR-0017):
+| Command                                         | Purpose                                         |
+| ----------------------------------------------- | ----------------------------------------------- |
+| `/sf-skills`                                    | Open SF Skills in the Manager                   |
+| `/sf-skills funnel`                             | Open the interactive Skill Funnel               |
+| `/sf-skills summary`                            | Print effective skill/source state              |
+| `/sf-skills defaults install [project\|global]` | Install and wire the managed default library    |
+| `/sf-skills defaults update`                    | Update a sentinel-managed library               |
+| `/sf-skills metrics`                            | Show explicit skill invocation counts           |
+| `/sf-skills prune [--apply]`                    | Report or remove stale wiring and owned orphans |
 
-- **Project scope is additive-only.** The project Skill Gate can add skills on
-  top of global but cannot disable a globally-enabled skill. Such rows render
-  `locked` with a hint.
-- **Conflicts touching an auto-discovered default are report-only.** A copy in
-  `~/.pi/agent/skills`, `.pi/skills`, or `.agents/skills` always wins; we can
-  report it but cannot flip it without moving files.
+Project scope is additive: it can add skills but cannot subtract a globally
+loaded skill. Conflicts involving Pi's auto-discovered default roots are
+report-only because SF Skills does not move user files.
 
-## Architecture
+## Configuration
 
-The funnel is built from three pure, fixture-tested modules plus one I/O bridge:
+**SF Pi Manager → SF Skills → Settings** stores:
 
-| Module              | Responsibility                                                                                                                                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lib/gather.ts`     | **The only impure module.** Calls `loadSkills`, `pi.getCommands()`, reads settings + Source Registry, scans roots, loads usage — assembles a `SkillCatalogInput`. Runs **only** on `/sf-skills` open.   |
-| `lib/catalog.ts`    | Pure `buildSkillCatalog(input)` → the resolved **Skill Catalog**: every copy tagged `seen` / `enabledGlobal` / `enabledProject` / `effective` / `conflictRole`, plus conflicts and source rollups.      |
-| `lib/resolution.ts` | Pure **Resolution Policy**: compiles a funnel decision into `settings.skills[]` add/remove ops (expand-minus-one for disables, exclusion for conflict winners), surfacing the ADR-0017 `blocked` cases. |
-| `lib/funnel-view/`  | The TUI: `model.ts` folds the catalog into per-tab rows + staging (pure, tested); `index.ts` is the Focusable overlay.                                                                                  |
+- `sfPi.skills.hudVisibility`: `auto` or `hidden`;
+- `sfPi.skills.defaultInstallScope`: `project` (default) or `global`.
 
-Shared primitives live in `lib/common/skill-sources/` (consumed by `/sf-pi`
-too): `source-registry.ts` (persisted sources + gate), `skill-sources.ts`
-(detection + `settings.skills[]` writer).
+The full Skill Funnel remains an action surface because applying staged changes
+can update native settings and reload Pi. Catalog loading and disk scans happen
+only when the user opens the funnel; startup uses lightweight in-memory context.
 
-### Boot contract
+## Troubleshooting
 
-`session_start` and every recurring hook do **zero** catalog work — the HUD
-uses only in-memory `pi.getCommands()` + branch state. `loadSkills` and disk
-scans happen only on explicit `/sf-skills` open. This is enforced by
-`tests/boot-path.test.ts`, which spies on the Pi loader and fails if any
-lifecycle hook triggers a catalog build. First paint stays cache-first.
+**Skills appear duplicated:** Use the Conflicts tab to consolidate duplicate
+global/project wiring into one scope.
 
-## Settings
+**A project skill is locked:** Pi merges global and project skills additively.
+Disable it globally, then wire it only where needed.
 
-SF Skills has a Manager Settings page for low-risk preferences stored under `sfPi.skills`:
+**A conflict is report-only:** One copy lives in an auto-discovered default root.
+Move or remove that file manually if the default winner is wrong.
 
-- **HUD visibility** (`hudVisibility`) — `auto` shows the passive HUD when skills are in active context; `hidden` suppresses the floating HUD while keeping `/sf-skills summary` and the Skill Funnel available.
-- **Default install scope** (`defaultInstallScope`) — `project` (default) or `global` for `/sf-skills defaults install/update` when the command omits an explicit scope.
+**A custom source vanished:** Re-add it after the path exists. Empty custom
+sources are remembered only after successful registration.
 
-The full Skill Funnel remains an action page because it edits native `settings.skills[]` and may reload Pi after applying staged changes.
+**The funnel is slow to open:** Opening it intentionally runs skill loading and
+per-root scans; that work stays off the startup path.
 
 ## File Structure
 
@@ -100,34 +77,3 @@ extensions/sf-skills/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Troubleshooting
-
-**My skills look duplicated — a wall of conflicts, and some show "Unknown source":**
-A source (often `afv-library`) is wired in **both** global and project scope, so
-every skill collides with its other-scope copy. On the **Conflicts** tab press
-`c` (_consolidate_) and pick a scope to keep — it removes the other scope's
-wiring for all duplicates in one shot. The "Unknown source" label was a
-mis-attribution of the managed afv-library clone (now labelled `afv-library`);
-disabling those no longer makes them vanish.
-
-**Can I disable a globally-enabled skill for just one project?**
-No — pi merges global + project `settings.skills[]` additively, so the project
-Skill Gate can only add, never subtract a globally-enabled skill. The Project
-tab shows such rows as `locked`. Disable it at global scope, or enable it
-narrowly at project scope instead (ADR-0017).
-
-**A conflict shows REPORT-ONLY and `w` does nothing:**
-One of the colliding copies lives in an auto-discovered default root
-(`~/.pi/agent/skills`, `.pi/skills`, `.agents/skills`), which always wins. The
-only fix is to move or remove that file — sf-skills never moves files.
-
-**I added a custom path but it vanished after reload:**
-Custom paths are remembered in the Source Registry even with zero enabled
-skills. If it vanished, the path didn't resolve to an existing directory when
-it was added — re-add it via the Sources tab (`a`) once the directory exists.
-
-**The funnel feels slow to open:**
-Opening `/sf-skills` runs `loadSkills` + per-root disk scans on purpose — that
-work is deliberately kept off the boot path and only happens on explicit
-intent. It does not affect pi startup time.

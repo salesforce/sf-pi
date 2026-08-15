@@ -1,136 +1,62 @@
-# Data 360 Action Coverage and Recursive Validation
+# Data 360 V2 Action Coverage and Recursive Validation
 
-Operational reference for validating `sf-data360` against the broad Data 360
-Connect REST surface. Read this when planning recursive coverage or before
-shipping plugin/safety changes.
+Operational reference for validating the public `data360_*` family interface against the generated v2 action registry. Use this before changing action ownership, dispatcher behavior, safety classification, or the live capability sweep.
 
-## Source order
+## Sources of truth
 
-1. Local `sf-data360` references in this directory.
-2. Public upstream reference repo: <https://github.com/forcedotcom/d360-mcp-server>
-   — `runtime/FamilyCatalog.java` for action families and
-   `metadata/payload-examples.json` for payload source material.
-3. Official Salesforce docs or web search only after local + upstream
-   don't answer the question.
+1. `registry/v2/actions.json` — generated public tool/action ownership.
+2. `registry/v2/action-overrides.json` and `action-rules.json` — curated v2 names and ownership.
+3. `lib/v2/tools.ts` and `lib/v2/dispatcher.ts` — public schema and execution behavior.
+4. Public upstream reference catalog and payload examples — imported source material, not runtime code.
+5. Official Salesforce documentation for product semantics not established by the local registry.
 
-Do not run or embed upstream server/runtime code from this extension.
+The retained facade registry is compatibility evidence only. See [`compatibility/`](./compatibility/).
 
-## Design target
+## Discovery contract
 
-Data 360 exposes hundreds of REST operations. `sf-data360` keeps the Pi-native
-`data360_*` family tools as the public surface instead of one tool per endpoint.
-Use this discovery flow:
+Data 360 exposes hundreds of operations behind eleven bounded family tools. Do not load the full catalog into the prompt or add one tool per endpoint.
 
-1. `data360_discover` or the matching family tool with `actions.search`.
-2. `action.describe` to inspect required/optional params and safety.
-3. `examples.get` for curated public-safe payloads.
-4. The family action itself, using `dry_run: true` before confirmed or
-   destructive execution.
-5. `data360_api rest.request` only when no family action exists yet.
+1. Use `data360_discover` with `actions.search` when the owning family/action is unclear.
+2. Use `action.describe` to inspect exact parameters, endpoint, safety, and examples.
+3. Invoke the owning family action.
+4. Use `dry_run: true` or the matching `*.plan` action before confirmed execution.
+5. Use `data360_api rest.request` only when no promoted family action exists.
 
 ## Recursive validation recipe
 
-1. Pass the disposable target org explicitly on every `d360_probe`,
-   `d360_metadata`, and `d360_api` call.
-2. Probe readiness; classify as `ready` / `ready_empty` / `partial` / `blocked`.
-3. Build the family checklist from upstream `FamilyCatalog.java` + any local
-   OpenAPI/Swagger file.
+1. Select an isolated non-production target and pass `target_org` explicitly.
+2. Run `data360_discover readiness.probe`; record core, optional, empty, gated, and blocked surfaces separately.
+3. Enumerate `registry/v2/actions.json` by tool and action. Every registry row must have exactly one primary owner.
 4. For each family:
-   - One list/read endpoint with a small limit.
-   - If non-empty, one detail GET.
-   - Safe POST endpoints (query/search/validate/count/preview/test/predict)
-     with small payloads.
-   - `dry_run: true` for every create/update/delete/run/publish/deploy/
-     undeploy/deactivate/cancel/retry/refresh/signing-key action.
-   - Live mutating calls only with isolated test prefixes and a cleanup
-     step that verifies removal.
-5. Record results as `reachable | empty | feature_gated | not_found_optional |
-dry_run_ok | skipped_needs_payload | failed`.
-6. Treat empty collections and optional-feature 404s as coverage signals,
-   not failures.
+   - run `actions.search` and `action.describe` through that family;
+   - exercise one bounded read action;
+   - if a list is populated, exercise one detail read;
+   - exercise bounded safe-post validation, count, query, preview, test, or prediction actions when fixtures exist;
+   - use plan/dry-run for create, update, delete, run, publish, deploy, undeploy, deactivate, cancel, retry, refresh, auth exchange, and signing-key actions.
+5. Execute confirmed actions only with sweep-owned resources, explicit user/operator approval, and deterministic cleanup.
+6. Record `reachable`, `empty`, `feature_gated`, `not_found_optional`, `dry_run_ok`, `skipped_needs_fixture`, or `failed` without treating one org’s optional state as universal support.
+7. Persist the v2 tool, action, target classification, plan/execution chain, cleanup result, and artifact paths.
 
-## Verified sweep summary (Connect REST v66.0, 194 ops)
+## Coverage invariants
 
-| Outcome                           | Count |
-| --------------------------------- | ----: |
-| `passed` (live)                   |    46 |
-| `dry_run_ok`                      |    93 |
-| `feature_or_resource_unavailable` |    25 |
-| `route_checked_payload_required`  |    18 |
-| `transient_internal_error`        |    12 |
-| `failed`                          |     0 |
+A valid sweep proves:
 
-Bar: every Swagger operation resolves to a normalized path, hits the
-intended target org, and is classified live / safe-post / dry-run before
-any network call.
+- every v2 action resolves to one public family;
+- discovery and `action.describe` expose the same contract the dispatcher executes;
+- target-org and API-version resolution use the Salesforce Connection Module;
+- read and safe-post actions remain bounded;
+- confirmed actions require reviewed intent and Guardrail mediation;
+- journey execution records child mutation families and resulting steps;
+- optional features and empty collections are evidence, not automatic failures;
+- cleanup touches only resources created by the same run.
 
-## Verified live-mutation lifecycles
+## Current live-proof boundary
 
-Each of these has been executed end-to-end on a disposable demo org and
-cleaned up. Use as canonical proof patterns when extending the plugin or
-the skill.
-
-- **DMO** — `POST` (Connect REST shape: `category` uppercase, no
-  `objectType`) → `GET` → `PATCH` (additive on `fields[]`) → `DELETE` →
-  `ITEM_NOT_FOUND`.
-- **Calculated insight** — `POST` (apiName ends `__cio`) → `GET` confirms
-  `ACTIVE` → `POST .../actions/run` → `{"success":true}` → `DELETE` →
-  `DELETING` (transient) → `ITEM_NOT_FOUND`.
-- **Data action + target** — webhook target with minimal
-  `config.targetEndpoint` → data action referencing it via
-  `dataActionTargetNames[]` → cleanup data action first, then target →
-  post-delete GET on the target may report
-  `DataActionTarget Id can not be null or empty` (confirm via list).
-- **Segment** — `segmentType: "Dbt"`, `segmentCreationFlow: "Visual"`,
-  double-nested `includeDbt.models.models[]`, DBT SQL projecting
-  unaliased fully-qualified primary key + key qualifier → `GET` returns
-  `segments[0]` → `actions/count|deactivate` only after PROCESSING →
-  `DELETE` → `ITEM_NOT_FOUND`.
-- **Data stream (CRM)** — `datastreamType: "SFDC"` with
-  `connectorInfo`+`dataLakeObjectInfo` → `GET` → `actions/run` rejects
-  CRM in non-interactive mode (expected) → `DELETE` requires
-  `?shouldDeleteDataLakeObject=true|false` → eventually-consistent
-  `DataStream found null` confirmation.
-- **Semantic data model** — shell create →
-  `POST /ssot/semantic/models/{name}/data-objects` auto-discovers
-  semantic dimensions from the source DMO → `validate` is `GET`, not
-  `POST` → `DELETE` → `SEMANTIC_ENTITY_NOT_EXIST`.
-- **DataKit** — create with `dataKitDevName`/`label`/`dataKitType`/
-  `components[]` → response uses `devName` → `PATCH` accepts only
-  `components[]` → `DELETE` → idempotent
-  `PackageKitDefinition does not exist` on second `DELETE`.
-- **Data transform** — `validate` (`POST /ssot/data-transforms-validation`)
-  surfaces precise STL graph issues → pre-create any output DLO → `POST`
-  with `definition.nodes` (load → outputD360) returns
-  `status: "PROCESSING"` → `actions/run|refresh-status|cancel` return
-  `{success:true}` → `PUT /schedule` requires
-  `frequency` + `time` (camelCase `timeZone`) + `interval` →
-  `frequency: "None"` clears the schedule → `DELETE` 204 →
-  `ITEM_NOT_FOUND`.
-- **DLO ↔ DMO mapping** — explicit field pairs are auto-inflated with
-  system mappings (`DataSource__c`, `DataSourceObject__c`,
-  `InternalOrganization__c`, `KQ_<pk>__c`) → `PATCH` on
-  `/field-mappings/{field}` updates by developer name only (not insert)
-  → `DELETE /field-mappings` requires a specific target field; no
-  bulk wipe → `DELETE` of the parent mapping is blocked when its DMO
-  has only one mapped DLO; cleanup by deleting the target DMO instead
-  (cascades the mapping).
-- **Identity resolution** — feature gated: an unmapped target DMO returns
-  `INVALID_INPUT: Objects can only be used in identity resolution after
-required fields are mapped`. Validate IR payload in dry-run + readiness
-  context only when the org has mapped profile DMOs.
-- **Search index** — feature gated: requires
-  `vectorEmbeddingConfiguration.embeddingModel.id` and an embedding
-  model artifact in `GET /ssot/machine-learning/model-artifacts`.
-  Chat-completion-only orgs cannot create search indexes.
-
-## Safety expectations
-
-A clean recursive run must prove these properties before broad live mutation:
-
-- Explicit `target_org` on every call.
-- Versionless resources are routed through the shared Salesforce Connection Module using org-latest or configured-fallback API selection.
-- GET = read-only.
-- POST safe-list narrow; unknown `actions/...` POSTs are confirmed.
-- DELETE always confirmed.
-- Large responses use `output_mode: "summary"` or `"file_only"`.
+[`../../../scripts/e2e/data360-v2-action-sweep.ts`](../../../scripts/e2e/data360-v2-action-sweep.ts)
+is the authoritative action sweep. Its default path is non-mutating; optional
+live reads are bounded with `--max-live-read`. The confirmed DLO lifecycle
+requires `--mutation-lifecycle dlo`, `--mutate`, a stable run ID, a verified
+non-production target, and both exact target environment gates defined by
+[ADR 0106](../../../docs/adr/0106-data-360-live-proof-uses-the-v2-dispatcher.md).
+Facade-only results remain compatibility evidence and do not establish
+public-interface coverage.

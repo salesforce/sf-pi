@@ -1,6 +1,7 @@
 ---
 title: "SF Pi Manager"
 description: "Core manager — provides /sf-pi commands"
+editLink: false
 ---
 
 # SF Pi Manager

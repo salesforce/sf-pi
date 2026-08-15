@@ -366,7 +366,7 @@ describe("inferOrgType", () => {
   });
 
   it("detects sandbox from URL pattern", () => {
-    expect(inferOrgType({ instanceUrl: "https://company--dev.sandbox.my.salesforce.com" })).toBe(
+    expect(inferOrgType({ instanceUrl: "https://example--dev.sandbox.my.salesforce.com" })).toBe(
       "sandbox",
     );
   });

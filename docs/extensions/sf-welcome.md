@@ -1,6 +1,7 @@
 ---
 title: "SF Welcome"
 description: "Salesforce-branded splash screen with environment status, release freshness, and community info"
+editLink: false
 ---
 
 # SF Welcome
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-welcome
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-welcome
+/sf-pi open sf-welcome
 /sf-pi enable sf-welcome
 /sf-pi disable sf-welcome
 ```

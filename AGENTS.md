@@ -26,8 +26,9 @@ Use this path:
 4. For tool operation, use the active tool schema first. Read the declared
    `docs.agentGuide` only when deeper ordering, recovery, or troubleshooting is
    useful.
-5. Use the extension README for human-facing behavior. Read a specific ADR or
-   context glossary only for rationale or terminology.
+5. Use the extension README for human-facing behavior. Follow a declared
+   `docs.referenceRoots` index only for task-specific depth; read a specific ADR
+   or context glossary only for rationale or terminology.
 
 For shared code, start at [`lib/common/README.md`](./lib/common/README.md).
 Contributor workflow lives in [`CONTRIBUTING.md`](./CONTRIBUTING.md); repository
@@ -50,8 +51,9 @@ structure and conventions live in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 `extensions/<id>/manifest.json` is the declarative extension contract.
 `npm run generate-catalog` produces the catalog, generated docs pages, sidebar,
-ADR lifecycle index, README/architecture marker blocks, troubleshooting index,
-extension file maps, and release announcement metadata.
+ADR lifecycle index, architecture/troubleshooting marker blocks, contributor,
+shared-module and E2E inventories, extension file maps, and release announcement
+metadata.
 
 Never hand-edit:
 

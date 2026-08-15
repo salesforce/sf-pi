@@ -1,6 +1,7 @@
 ---
 title: "SF DevBar"
 description: "Bespoke Salesforce developer status bar with org context, model info, git, and context window progress"
+editLink: false
 ---
 
 # SF DevBar
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-devbar
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-devbar
+/sf-pi open sf-devbar
 /sf-pi enable sf-devbar
 /sf-pi disable sf-devbar
 ```

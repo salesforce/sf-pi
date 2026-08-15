@@ -6,18 +6,17 @@ this week?" — that's a Data Cloud question. The Session Trace Data Model
 (STDM) lands every published-agent conversation as a tree of DMO records;
 this section is the field reference + copy-paste SQL.
 
-For dev-loop / authoring questions (`.agent` source, preview, eval,
-publish), the **sf-agentscript** skill owns the answer. STDM is for what
-production users actually did.
+For dev-loop and authoring questions (`.agent` source, preview, eval, or
+publish), the SF Agent Script tools own the answer. STDM is for what production
+users actually did.
 
 ## Pre-flight
 
-- **Probe first.** STDM only writes when _Agentforce Activity_ data
-  streams are turned on in the org. Run `d360_probe` and confirm Data
-  Cloud is provisioned + active before any of the queries below.
-- **Resolve the data space.** `d360_api GET /ssot/data-spaces` →
-  filter `status: "Active"` → use `name` (typically `"default"`). Pass
-  it as the `dataspaceName` query param to `/ssot/query-sql` calls.
+- **Probe first.** STDM only writes when _Agentforce Activity_ data streams are
+  turned on in the org. Run `data360_discover readiness.probe` before any query.
+- **Resolve the data space.** Run `data360_prepare dataspace.list`, select an
+  active data space, and pass its name as `dataspaceName` to
+  `data360_query sql.run`.
 - **Resolve the agent name.** STDM filters on `MasterLabel`
   (display name). It usually matches the `.agent` file's
   `config.label` but not always. When unsure:
@@ -29,10 +28,10 @@ production users actually did.
      OR DeveloperName LIKE '%<user-provided-name>%'
   ```
 
-  (Standard SOQL; use `sf data query` or `d360_api` against the
-  org's Tooling/REST). Note `DeveloperName` carries a `_vN` suffix
-  (e.g. `OrderService_v9`); `--api-name` for `agentscript_lifecycle`
-  drops the suffix (`OrderService`).
+  Use `sf_soql` for this standard CRM query. Note `DeveloperName` carries a
+  `_vN` suffix (for example, `OrderService_v9`); the
+  `agentscript_lifecycle agent_api_name` input drops the suffix
+  (`OrderService`).
 
 ## DMO hierarchy (the 9 STDM DMOs you actually use)
 
@@ -128,9 +127,9 @@ Plus the propagation lag: STDM is eventually consistent. Sessions land
 
 ## Three queries that cover ~80% of agent observability work
 
-Every query goes through `d360_api POST /ssot/query-sql` with body
-`{ "sql": "...", "dataspaceName": "<name>" }`. Quote DMO names with
-double quotes; that's Data Cloud SQL grammar (different from SOQL).
+Run each query with `data360_query` action `sql.run` and params
+`{ "sql": "...", "dataspaceName": "<name>" }`. Quote DMO names with double
+quotes; that is Data 360 SQL grammar, not SOQL.
 
 ### Q1 — Find recent sessions for an agent
 

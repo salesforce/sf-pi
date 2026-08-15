@@ -1,3 +1,9 @@
+---
+title: sf-pi Command Reference
+description: Generated top-level slash-command inventory for bundled SF Pi extensions.
+editLink: false
+---
+
 # sf-pi Command Reference
 
 > **Auto-generated from `extensions/*/manifest.json`.**

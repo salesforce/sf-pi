@@ -1,6 +1,7 @@
 ---
 title: "SF Docs"
 description: "Salesforce documentation lookup for agents and humans, with Pi-owned auth-store credentials, cited results, and a Manager settings surface."
+editLink: false
 ---
 
 # SF Docs
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-docs
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-docs
+/sf-pi open sf-docs
 /sf-pi enable sf-docs
 /sf-pi disable sf-docs
 ```
@@ -57,6 +58,7 @@ Manage its package state with:
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-docs)
 - [Agent editing rules](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-docs/AGENTS.md)
 - [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-docs/AGENT_GUIDE.md)
+- [Reference index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-docs/docs/README.md)
 
 ## Troubleshooting
 

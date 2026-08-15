@@ -11,13 +11,7 @@
     "intentGroup": "Personalize pi",
     "contextGlossary": "CONTEXT.md",
     "summary": "Pi setWorkingIndicator-driven spinner with Ohana and Calm modes. Pi manages start/stop based on streaming activity; this extension owns frame generation and a small mode preference.",
-    "primaryFiles": [
-      "index.ts",
-      "lib/config-panel.ts",
-      "lib/settings.ts",
-      "lib/messages.ts",
-      "lib/rainbow.ts"
-    ],
-    "stateFiles": ["settings.json → sfPi.ohanaSpinner.mode"]
+    "primaryFiles": ["index.ts", "lib/settings.ts", "lib/rainbow.ts", "lib/messages.ts"],
+    "stateFiles": ["settings.json \u2192 sfPi.ohanaSpinner.mode"]
   }
 }

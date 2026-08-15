@@ -94,6 +94,16 @@ describe("Data 360 v2 action registry", () => {
     ).toMatchObject({ capability: "d360_p13n_experience_config_create" });
   });
 
+  it("describes v2 destructive safety without leaking the legacy target restriction", () => {
+    const destructive = getData360Actions().filter((action) => action.safety === "destructive");
+
+    expect(destructive.length).toBeGreaterThan(0);
+    for (const action of destructive) {
+      expect(action.tips, `${action.tool}:${action.action}`).toContain("verified non-production");
+      expect(action.tips).not.toContain("target_org=");
+    }
+  });
+
   it("uses only canonical phase ids in generated v2 actions", () => {
     const phases = JSON.parse(
       readFileSync("extensions/sf-data360/registry/phases.json", "utf8"),

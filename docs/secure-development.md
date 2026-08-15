@@ -50,9 +50,9 @@ bash scripts/check-llm-artifacts.sh
 
 The GitHub workflows provide these security-relevant checks:
 
-- **CI**: generated catalog check, docs health, docs build, SPDX headers,
-  formatting, ESLint, TypeScript, lifecycle script allowlist, tests, npm audit,
-  and LLM artifact checks.
+- **CI**: generated catalog check, docs health, source-architecture policy,
+  docs build, SPDX headers, formatting, ESLint, TypeScript, lifecycle script
+  allowlist, tests, npm audit, and LLM artifact checks.
 - **Prompt-injection impact controls**: Guardrail mediation, Safety Envelopes,
   default HITL, headless fail-closed behavior, and auditability reduce the impact
   of prompt injection against known high-value surfaces.
@@ -103,9 +103,9 @@ sf code-analyzer run --rule-selector Recommended --target extensions/sf-guardrai
 - `.gitleaksignore` may only contain confirmed-fake fixtures with comments.
 - `scripts/check-llm-artifacts.sh` blocks unresolved merge markers, prompt
   tokens, and unresolved LLM TODO markers.
-- `scripts/docs-health.mjs` checks public docs for common private artifacts such
-  as Slack IDs/permalinks, Salesforce sandbox hostnames, customer-specific names,
-  and current LLM Gateway public-surface regressions.
+- `scripts/docs-health.mjs` checks the tracked public-text corpus—including
+  Markdown, JSON, YAML, source, scripts, and fixtures—for common private-shaped
+  org and collaboration identifiers while allowing explicit generic fixtures.
 
 ## High-value mutation review
 

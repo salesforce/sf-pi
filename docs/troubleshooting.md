@@ -93,32 +93,32 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Pi Manager](./extensions/sf-pi-manager.md#troubleshooting)**
 
-- `/sf-pi` says "package not found in settings"
-- `pi --version` is newer than SF Pi's audited runtime range
-- Disabling an extension through the manager doesn't take effect
-- `/sf-pi enable-all` still leaves some extensions disabled
-- Auto Update is on but Herdr was not updated
-- Auto Update says it is waiting for `agent_settled`
-- Project-scoped changes aren't sticking
-- Display profile change doesn't affect any output
-- `/sf-pi recommended` shows no items or the opposite — too many
-- `/sf-pi skills` says "No external skill directories detected"
-- `/sf-pi skills` added a root but pi still doesn't load the skills
+- The Manager cannot find SF Pi in settings
+- A toggle does not take effect
+- A newer stable Pi version is outside the audited window
+- Auto Update skipped a package
+- Auto Update waits for `agent_settled`
+- Project changes do not stick
+- Recommended items or skill roots look stale
 
 **[SF LLM Gateway](./extensions/sf-llm-gateway.md#troubleshooting)**
 
-- A discovered model shows its raw ID or conservative 128K/4K metadata
-- Startup warning `No models match pattern "sf-llm-gateway/*"`
-- Model discovery only returns `no-default-models`
-- Login says the API key was saved but the model catalog could not be refreshed
-- Gateway fails on startup or tool calls error out immediately
-- A discovered model fails during a request
-- Footer shows `⚠` badge after a 429 or 5xx
-- I set `/thinking` to a different level but subsequent model switches reset it
-- Monthly-usage footer is stale or missing
-- Old and new gateway keys are confusing status or tests
-- Doctor reports `WARN: fetch failed` on macOS even though `curl` works
-- `/sf-llm-gateway onboard` says `not configured`
+- No models are available after installation
+- Login saved the credential but refresh failed
+- A discovered model shows conservative metadata
+- Requests fail while `curl` works on macOS
+- Usage or throttle status is stale
+- Thinking changes after a model switch
+- Saved and environment credentials conflict
+
+**[SF Agent Script](./extensions/sf-agentscript.md#troubleshooting)**
+
+- Agent Script SDK is unavailable
+- Server compile rejects locally valid syntax
+- A preview session is missing
+- An eval appears stuck
+- Live trace fetch returns no data
+- Publish or activation fails on the agent user
 
 **[SF Apex](./extensions/sf-apex.md#troubleshooting)**
 
@@ -129,32 +129,32 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF Browser](./extensions/sf-browser.md#troubleshooting)**
 
 - `agent-browser` is missing
-- Chrome/Chromium cannot launch in a container or CI runner
-- Snapshot refs fail
+- Chrome cannot launch in a container
+- A snapshot ref fails
 - Screenshots are too heavy
-- A browser action is outside the hot path
+- The action is outside the hot path
 
 **[SF Code Analyzer](./extensions/sf-code-analyzer.md#troubleshooting)**
 
-- `code_analyzer doctor` says the plugin is missing
+- The doctor says the plugin is missing
 - PMD, CPD, or SFGE rules fail
 - Flow Scanner rules fail
-- A scan wrote files I did not expect
+- A scan wrote unexpected files
 
 **[SF Data 360](./extensions/sf-data360.md#troubleshooting)**
 
-- A simple DMO list returns too much data
-- Metadata search fails but DMO/DLO lists work
-- Connector detail returns `NOT_FOUND`
-- `data360_*` tools are missing
-- A mutating call is blocked in headless mode
+- A DMO list returns too much data
+- Metadata search fails while DMO/DLO lists work
+- A connector detail returns `NOT_FOUND`
+- The family tools are missing
+- A mutation is blocked headlessly
 - A versioned path is rejected
 
 **[SF Docs](./extensions/sf-docs.md#troubleshooting)**
 
-- SF Docs says it is not connected
+- SF Docs is not connected
 - Collections look stale
-- A fetch returned the wrong locale or version
+- Fetch returns the wrong locale or version
 
 **[SF Herdr](./extensions/sf-herdr.md#troubleshooting)**
 
@@ -162,101 +162,108 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - An ephemeral pane stayed open
 - The Herdr package is missing
 
+**[SF LWC](./extensions/sf-lwc.md#troubleshooting)**
+
+- No `sfdx-project.json` is found
+- No components are found
+- The local Jest runner is missing
+- Jest fails without JSON
+- Apex or schema validation is needed
+
 **[SF Slack](./extensions/sf-slack.md#troubleshooting)**
 
-- No Slack footer pill appears and no tools are available
-- Footer shows `✓ Connected · limited`
-- Footer shows `· bot token` or `! Unsupported token`
-- `slack_send action=dm` says `im:write` is missing
-- A Slack user or channel reference resolves to the wrong target
-- `slack_canvas read` says "canvas not found"
-- `slack_canvas read` criteria returns invalid arguments
-- `slack_canvas read` returns section IDs but no metadata
-- Search returns nothing from DMs or multi-party IMs
-- `slack_send` refuses to run in `pi -p` / CI mode
-- I need to see what `slack_send` posted (or attempted to post)
+- No Slack status or tools appear
+- Status says connected but limited
+- Status reports a bot or unsupported token
+- Opening a DM says `im:write` is missing
+- A fuzzy person/channel resolves incorrectly
+- Canvas read cannot find content
+- Scheduled delivery is absent from the Slack client Scheduled tab
+
+**[SF SOQL](./extensions/sf-soql.md#troubleshooting)**
+
+- A run returns a safety review
+- Salesforce reports `INVALID_TYPE`
+- Salesforce reports `INVALID_FIELD`
+- No query plan is available
+- The full result is absent from chat
+- Export rejects a path
 
 **[SF tldraw](./extensions/sf-tldraw.md#troubleshooting)**
 
-- The tool says no tldraw document is open
-- Status reports a stale server configuration
-- Status says the tldraw-offline Pi skill is missing, stale, or unmanaged
-- A render says the document may have reached its page limit
-- A render is blocked by readiness checks
+- No tldraw document is open
+- Runtime configuration is stale
+- The app-owned skill is missing or stale
+- A document reached its page limit
+- Readiness blocks completion
 
 **[SF Guardrail](./extensions/sf-guardrail.md#troubleshooting)**
 
-- All production confirms are firing on my sandbox
-- I cannot write to `destructiveChanges.xml` even though my rule is supposed to be off
-- Headless CI fails with "Blocked by sf-guardrail in headless mode"
-- `/sf-guardrail audit` is empty after /resume
+- Production confirms fire for a sandbox
+- A protected file remains blocked after removing an override
+- Headless CI is blocked
+- Audit is empty after resume
 
 **[SF Brain](./extensions/sf-brain.md#troubleshooting)**
 
 - The constitution never appears in model context
-- My user guidance does not take effect
-- The Instruction Surface baseline is not comparable
+- User guidance does not take effect
+- An Instruction Surface baseline is not comparable
 
 **[SF Feedback](./extensions/sf-feedback.md#troubleshooting)**
 
-- `/sf-feedback` opens a browser URL instead of creating the issue
-- GitHub says the account cannot create issues
-- Diagnostics show `unknown` or `unavailable`
-- A private value appears in the preview
+- The flow opens a browser instead of creating an issue
+- The account cannot create public issues
+- Diagnostics contain `unknown` or `unavailable`
+- A private value appears in preview
 
 **[SF LSP](./extensions/sf-lsp.md#troubleshooting)**
 
-- SF Welcome readiness glyph legend
-- The SF Welcome LSP row stays unknown after startup
-- Transcript rows feel too chatty / too quiet
-- Working indicator keeps saying `LSP Apex…` after the turn ends
-- `LSP setup note:` appears once per file type and then stays silent
-- Apex diagnostics never appear, even on obviously broken code
+- The Welcome row stays unknown
+- Transcript rows are too chatty or quiet
+- Setup guidance appears once and then stops
+- Apex diagnostics never appear
 - LWC diagnostics never appear
-- First-boot install prompt didn't appear
-- SF Welcome checks are green but the install prompt says "not installed"
-- Install appears to hang
-- Diagnostics take >6 seconds to arrive
-- `.agent` files show no feedback or unexpected subprocess output
-- Diagnostics keep firing against files I've closed
+- The first-boot prompt did not appear
+- Installation appears slow
+- `.agent` diagnostics are absent
 
 **[SF Data Explorer](./extensions/sf-data-explorer.md#troubleshooting)**
 
-- `/sf-data-explorer` reports the transport could not be initialized
-- Catalog never finishes loading
-- Query refuses to run
-- Exports are not where I expect
+- The transport cannot be initialized
+- Catalog loading does not finish
+- A query is refused
+- Exports are not where expected
 
 **[SF DevBar](./extensions/sf-devbar.md#troubleshooting)**
 
-- Bars don't appear at all
-- Org segment shows `…` or takes a long time
-- Context bar is hidden or says `unknown`
-- Gateway badge color is wrong when using sf-llm-gateway
-- `img:Nc` pill appears unexpectedly
+- The bars do not appear
+- The org segment stays pending
+- Context says `unknown`
+- The gateway badge color is unexpected
+- An `img:Nc` pill appears
 
 **[SF Ohana Spinner](./extensions/sf-ohana-spinner.md#troubleshooting)**
 
-- Spinner colors look dim, washed-out, or garbled
-- No spinner appears during LLM thinking
+- Colors look dim or garbled
+- No spinner appears
 
 **[SF Skills](./extensions/sf-skills.md#troubleshooting)**
 
-- My skills look duplicated — a wall of conflicts, and some show "Unknown source"
-- Can I disable a globally-enabled skill for just one project
-- A conflict shows REPORT-ONLY and `w` does nothing
-- I added a custom path but it vanished after reload
-- The funnel feels slow to open
+- Skills appear duplicated
+- A project skill is locked
+- A conflict is report-only
+- A custom source vanished
+- The funnel is slow to open
 
 **[SF Welcome](./extensions/sf-welcome.md#troubleshooting)**
 
-- Splash shows `?` boxes (tofu) where glyphs should be
-- The SF LSP row stays unknown after startup
-- Herdr says the upstream package or Pi bridge is missing
-- Splash feels too busy, stuck, or setup warnings are noisy
-- Splash content gets truncated in a narrow terminal
-- `/sf-setup-fonts` says everything is already installed but the splash still shows ASCII
-- I was asked to install the font once and declined — how do I get the prompt back
+- Glyphs render as boxes
+- The LSP row stays unknown
+- Herdr reports missing tools
+- Startup feels noisy
+- Content is clipped
+- Fonts are installed but glyphs remain wrong
 
 <!-- GENERATED:extension-troubleshooting-index:end -->
 

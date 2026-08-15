@@ -147,9 +147,9 @@ decision tree (per-user persisted JSON state). It provides atomic writes
 (tmp file + rename), schema versioning with an optional `migrate` hook,
 tolerant reads with safe defaults, and an optional `mode` for files that
 hold tokens. Documented in [`AGENTS.md`](../../AGENTS.md) and
-[`lib/common/README.md`](../../lib/common/README.md). The lint in
-`docs-health.mjs` refuses any `state-store.ts` outside `lib/common/`
-that does not delegate to the shared helper.
+[`lib/common/README.md`](../../lib/common/README.md). The architecture check
+refuses any `state-store.ts` outside `lib/common/` that does not delegate to the
+shared helper.
 
 Migrations included:
 
@@ -222,11 +222,10 @@ touched for a real change.
 
 ### File-size growth advisory lint
 
-`scripts/docs-health.mjs` now emits informational warnings for
-extension `.ts` files at or above 800 LOC and stronger warnings at or
-above 1500 LOC. The lint never fails CI — it exists purely so growth
-is visible during PR review without forcing today's refactor. Pairs
-with AGENTS.md §3 ("split by responsibility").
+`scripts/check-architecture.mjs` emits informational warnings for extension
+`.ts` files at or above 800 LOC and stronger warnings at or above 1500 LOC. The
+lint never fails CI; it makes growth visible during review without turning a
+line threshold into an automatic refactor requirement.
 
 ## Wave 3 follow-ups landed
 
@@ -275,9 +274,5 @@ by sf-pi.
 
 ## Status
 
-ADR 0006 is complete. The advisory lint flags a handful of files
-between 800 and 1500 LOC for visibility (sf-welcome/index.ts,
-sf-welcome/lib/splash-component.ts, sf-llm-gateway/index.ts,
-sf-slack/lib/{api,types}.ts, sf-lsp/lib/lsp-client.ts) but none
-block CI — they surface during PR review when those files are next
-touched.
+ADR 0006 is complete. Source-size findings remain advisory and surface through
+the architecture check when files are next touched.

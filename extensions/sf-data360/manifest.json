@@ -1,7 +1,7 @@
 {
   "id": "sf-data360",
   "name": "SF Data 360",
-  "description": "Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch",
+  "description": "Data Cloud/Data 360 v2 family tools \u2014 discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch",
   "category": "agent-tool",
   "maturity": "stable",
   "defaultEnabled": true,
@@ -31,20 +31,31 @@
       "lib/v2/tools.ts",
       "lib/v2/dispatcher.ts",
       "lib/v2/action-registry.ts",
-      "lib/facade/registry.ts",
-      "lib/facade-tool.ts",
-      "lib/api-tool.ts",
-      "lib/safety.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "references/README.md",
-      "AGENT_GUIDE.md"
+      "lib/safety.ts"
     ],
     "safety": [
       "No MCP runtime or Java subprocess is used.",
       "The v2 data360_* tools route through the shared Salesforce Connection Module, action registry, and existing safety gates.",
       "Mutating calls are classified by method/path and confirmed when required.",
       "The extension uses plain reference docs instead of contributing Agent Skills."
+    ],
+    "referenceRoots": [
+      {
+        "path": "references",
+        "index": "references/README.md",
+        "role": "current"
+      },
+      {
+        "path": "references/phases",
+        "index": "references/README.md",
+        "role": "generated-current",
+        "generatedBy": "scripts/generate-d360-references.mjs"
+      },
+      {
+        "path": "references/compatibility",
+        "index": "references/compatibility/README.md",
+        "role": "compatibility"
+      }
     ]
   }
 }

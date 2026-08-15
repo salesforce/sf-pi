@@ -2,42 +2,57 @@
 
 ## What It Does
 
-SF Brain injects two compact hidden context messages:
+SF Brain adds two compact hidden context messages:
 
-1. The immutable **Salesforce Engineering Constitution** from [`SF_CONSTITUTION.md`](./SF_CONSTITUTION.md).
-2. A tiny **SF Pi Routing Summary** that prioritizes active SF Pi tools and lists only disabled capability owners with their `/sf-pi enable <id>` recovery path.
+1. The immutable Salesforce Engineering Constitution from
+   [`SF_CONSTITUTION.md`](./SF_CONSTITUTION.md).
+2. A small SF Pi routing summary that prioritizes active SF Pi tools and lists
+   only disabled capability owners with their `/sf-pi enable <id>` recovery path.
 
-The constitution establishes Salesforce-first interpretation, Salesforce Change Authority, Behavior-Proof-First Development, minimal-change/evidence expectations, Guardrail authority, raw CLI fallback rules, context discipline, and direct paths to per-extension `AGENT_GUIDE.md` files. Detailed recipes are not always-on context.
+The constitution establishes Salesforce-first interpretation, source authority,
+Behavior-Proof-First Development, minimal change, Guardrail authority, raw CLI
+fallback rules, and context discipline. Detailed recipes remain progressively
+disclosed through extension operating guides.
 
-User guidance can extend—but never replace—the bundled constitution through `<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md`. Legacy replacement-style `SF_KERNEL.md` overrides are intentionally unsupported.
+User guidance can extend—but never replace—the bundled constitution through
+`<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md`. Empty or unreadable files
+are ignored; legacy replacement-style `SF_KERNEL.md` files are not loaded.
 
-SF Brain also provides a content-safe advisory **Instruction Surface Report** in the SF Pi Manager and through a contributor script. It never registers LLM tools.
+## Instruction Surface diagnostics
 
-## Why Hidden Custom Messages
-
-- Stable bytes benefit provider prompt caching.
-- `/resume`, `/fork`, and `/reload` retain live context through the session log.
-- Active-branch projection prevents superseded mutable context from accumulating.
-- Static principles remain separate from Pi's generic coding prompt and user/project instructions.
-
-## Append-Only User Guidance
-
-Create `<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md` to add user-specific guidance. The content is wrapped in `<sf_user_constitution_addendum>` and follows the bundled constitution. Empty or unreadable files are ignored.
-
-`SF_KERNEL.md` is not read. This is a deliberate clean break: custom replacement kernels must be reviewed and migrated manually so old instructions cannot silently remove the Salesforce-first and behavior-proof baseline.
-
-## Instruction Surface Diagnostics
-
-**SF Pi Manager → SF Brain → Instruction surface** opens a read-only report of model-visible context size. It separates SF Pi-owned tool definitions, prompt guidance, hidden context, bundled extension skills, and the externally owned Salesforce skill surface. Counts are advisory characters plus an explicitly approximate characters-divided-by-four token estimate.
-
-The diagnostic uses Pi's public system-prompt options, active tools, skills, and active-branch session projection. It never renders or persists prompt text, context-file contents, tool schemas, skill descriptions, credentials, org details, session ids, or user-specific paths.
+**SF Pi Manager → SF Brain → Instruction surface** opens a read-only report of
+model-visible context size. It separates SF Pi tool definitions, prompt
+guidance, hidden context, bundled skills, and external Salesforce skills without
+rendering or persisting their content.
 
 ```bash
 npm run instruction-surface:report
 npm run e2e:instruction-behavior -- --model <model> --scenario apex-behavior-fix
 ```
 
-Artifacts default to `.pi/state/sf-brain/`. The opt-in behavior regression allows bounded local context reads and blocks every non-local tool before execution.
+Artifacts default to `.pi/state/sf-brain/`. The opt-in behavior regression
+allows bounded local reads and blocks every non-local tool before execution.
+
+## Safety and Data Boundaries
+
+- SF Brain registers no LLM tools and performs no Salesforce org operation.
+- The bundled constitution is always preserved; user guidance is append-only.
+- Instruction Surface reports expose counts and public-safe contributor ids,
+  never prompt text, context files, skill descriptions, tool schemas,
+  credentials, org details, session ids, or user-specific paths.
+
+## Troubleshooting
+
+**The constitution never appears in model context:** Confirm `sf-brain` is
+enabled and start a new session if the current session contains a retired
+`sf-brain-kernel` entry.
+
+**User guidance does not take effect:** Use exactly
+`<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md`, then start a new session.
+A live constitution entry remains stable for the current session by design.
+
+**An Instruction Surface baseline is not comparable:** Compare only reports
+with the same measurement schema and audited Pi Runtime version.
 
 ## File Structure
 
@@ -55,22 +70,3 @@ extensions/sf-brain/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Troubleshooting
-
-**The constitution never appears in model context:**
-
-- Confirm `sf-brain` is enabled in `/sf-pi`.
-- Start a new session if an older session contains the retired `sf-brain-kernel` entry.
-- Inspect the session JSONL for `customType: sf-brain-constitution`; the message uses `display: false`.
-
-**My user guidance does not take effect:**
-
-- Use exactly `<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md`.
-- Legacy `<globalAgentDir>/sf-brain/SF_KERNEL.md` is intentionally ignored.
-- Start a new session after changing the addendum; an existing live constitution entry remains stable by design.
-
-**The Instruction Surface baseline is not comparable:**
-
-- Baseline comparison requires the same measurement schema and audited Pi Runtime version.
-- Regenerate/review the advisory baseline after intentional runtime or measurement changes.

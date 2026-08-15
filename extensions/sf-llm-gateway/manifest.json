@@ -24,12 +24,8 @@
       "lib/provider.ts",
       "lib/transport.ts",
       "lib/models.ts",
-      "lib/model-resolution.ts",
-      "lib/stale-usage-refresh.ts",
       "lib/config.ts",
-      "lib/config-panel.ts",
-      "lib/monthly-usage.ts",
-      "lib/doctor.ts"
+      "lib/command-surface.ts"
     ],
     "stateFiles": [
       "~/.pi/agent/auth.json (Pi-owned API-key credential + default non-secret URL)",

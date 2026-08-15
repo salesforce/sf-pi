@@ -77,9 +77,9 @@ export function loadAnnouncementsManifest(packageRoot: string): AnnouncementsMan
 }
 
 /**
- * Shape guard used both at load time and when merging a remote feed. Any
- * field that is not a string is stripped so a malformed remote entry can
- * never crash the filter pipeline.
+ * Shape guard used both at load time and when merging a remote feed. Invalid
+ * required, enum, severity, or evergreen fields reject the entry before it can
+ * reach the filter pipeline.
  */
 export function isValidAnnouncement(value: unknown): value is AnnouncementItem {
   if (!value || typeof value !== "object") return false;
@@ -97,5 +97,6 @@ export function isValidAnnouncement(value: unknown): value is AnnouncementItem {
   if (v.severity !== undefined && !["info", "warn", "critical"].includes(v.severity as string)) {
     return false;
   }
+  if (v.evergreen !== undefined && typeof v.evergreen !== "boolean") return false;
   return true;
 }

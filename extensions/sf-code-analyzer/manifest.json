@@ -18,19 +18,7 @@
       "lib/code_analyzer-tool.ts",
       "lib/auto-scan.ts",
       "lib/cli.ts",
-      "lib/apexguru.ts",
-      "lib/apexguru-guidance.ts",
-      "lib/apexguru-readiness.ts",
-      "lib/display.ts",
-      "lib/artifacts.ts",
-      "lib/readiness.ts",
-      "lib/recipes.ts",
-      "lib/report-filter.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "lib/types.ts",
-      "lib/extension-doctor.ts",
-      "AGENT_GUIDE.md"
+      "lib/apexguru.ts"
     ],
     "stateFiles": ["<globalAgentDir>/sf-pi/code-analyzer/sessions/<workspace-session-id>/*"],
     "safety": [

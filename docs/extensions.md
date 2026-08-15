@@ -1,6 +1,7 @@
 ---
 title: Browse SF Pi Extensions
 description: Pick the SF Pi extension that matches what you want to do next.
+editLink: false
 ---
 
 # Browse SF Pi extensions

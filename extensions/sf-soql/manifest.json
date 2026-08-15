@@ -16,22 +16,9 @@
       "index.ts",
       "lib/sf-soql-tool.ts",
       "lib/operations.ts",
-      "lib/api.ts",
-      "lib/parser.ts",
       "lib/schema.ts",
-      "lib/search.ts",
-      "lib/draft.ts",
-      "lib/file.ts",
-      "lib/export.ts",
-      "lib/sosl.ts",
-      "lib/lsp.ts",
-      "lib/validator.ts",
       "lib/runner.ts",
-      "lib/flattener.ts",
-      "lib/artifacts.ts",
-      "lib/render.ts",
-      "../../docs/adr/0070-sf-soql-api-native-query-lifecycle-extension.md",
-      "AGENT_GUIDE.md"
+      "lib/export.ts"
     ],
     "stateFiles": [
       "<globalAgentDir>/sf-pi/sf-soql/runs/*",

@@ -2,198 +2,92 @@
 
 ## What It Does
 
-SF Code Analyzer gives pi a Salesforce Code Analyzer workflow surface. It wraps
-the supported `sf code-analyzer` CLI commands with:
+SF Code Analyzer provides a focused wrapper around the supported
+`sf code-analyzer` CLI plugin:
 
-- `/sf-code-analyzer` shortcut into the SF Pi Manager detail page, with status, doctor, setup, automation, ApexGuru, recipes, and help actions
-- one `code_analyzer` LLM tool with `doctor`, `run`, `rules`, `config`,
-  `apexguru`, and `last_report` actions
-- session-scoped report artifacts outside the project tree by default
-- `/sf-pi doctor` contribution for setup readiness
-- deferred post-agent local quality scans on supported file edits
-- explicit ApexGuru analysis for one Apex file when the target org supports it
-- ApexGuru automatic insights that are default-on when cached org readiness is enabled
-- automatic ApexGuru setup suggestions that offer SF Browser guidance only after user approval
-- scoped automation preferences with project > global > default precedence
-- `summary`, `inline`, and `file_only` output modes for explicit report actions
-- scan recipes that explain default automatic profiles, broader explicit scans, and Herdr handoff guidance
+- explicit scans, rule discovery, config generation, recipes, and prior-report
+  summaries through one `code_analyzer` family tool;
+- readiness diagnostics through `/sf-code-analyzer` and `/sf-pi doctor`;
+- narrow deferred scans after successful Pi `write` or `edit` results;
+- explicit org-backed ApexGuru analysis when the target supports it;
+- session-scoped report artifacts and bounded result cards.
 
-## Key Architecture Decisions
+Automatic scans are quality feedback for files the agent just touched, not a
+replacement for full-project, AppExchange, or CI scans.
 
-- **CLI-first boundary** — SF Pi shells out to `sf code-analyzer` and parses
-  output files instead of importing Code Analyzer core or engine packages. See
-  ADR 0020.
-- **Quality-biased feedback** — LLM feedback includes enough violation detail to
-  act, while full reports stay as artifacts. See ADR 0022.
-- **No shadow rule config** — `code-analyzer.yml` remains the upstream source of
-  truth for rule and engine configuration. See ADR 0025.
-- **Default-enabled, readiness-gated** — setup recommendations are cache-first;
-  scans run only when prerequisites are ready. See ADR 0024.
-- **Deferred quality pass** — automatic local scans wait until Pi reports the
-  agent has settled after any automatic retry, compaction retry, or queued
-  follow-up. See ADR 0021.
-- **ApexGuru boundary** — explicit ApexGuru is available now; automatic ApexGuru
-  is cache-first and default-on when cached availability is enabled. When ApexGuru
-  is unavailable, SF Pi suggests checking Setup with SF Browser but does not
-  open or mutate Setup without user approval. See ADR 0026.
+## Automatic and explicit scans
 
-## User Guide
+| Changed file                        | Deferred selector    |
+| ----------------------------------- | -------------------- |
+| Apex classes, triggers, and `.apex` | `pmd:Recommended`    |
+| JavaScript and TypeScript           | `eslint:Recommended` |
+| Flow metadata                       | `flow:Recommended`   |
 
-### What runs automatically?
+The default explicit run uses `Recommended`, not `all`. Use broader selectors
+only when intentionally requested. `code_analyzer action="recipes"` describes
+security, AppExchange, duplication, dependency, exhaustive, and SFGE profiles;
+recipes never execute by themselves.
 
-`sf-code-analyzer` watches successful pi `write` and `edit` tool results for
-supported files. It does **not** watch arbitrary editor saves or shell-created
-files. After Pi reports the agent has settled, the extension runs a
-readiness-gated deferred scan for changed files:
-
-| Changed file type                     | Automatic selector   |
-| ------------------------------------- | -------------------- |
-| Apex classes, triggers, `.apex` files | `pmd:Recommended`    |
-| JavaScript / TypeScript               | `eslint:Recommended` |
-| Flow metadata (`*.flow-meta.xml`)     | `flow:Recommended`   |
-
-Automatic scans are intentionally narrow. They are fast quality checks for the
-files the agent just touched, not replacements for full-project, AppExchange, or
-CI scans.
-
-### `Recommended` is not `all`
-
-The default explicit run uses Code Analyzer's `Recommended` selector:
-
-```json
-{ "action": "run", "rule_selector": ["Recommended"], "workspace": ["."] }
-```
-
-That is different from an exhaustive scan:
-
-```json
-{ "action": "run", "rule_selector": ["all"], "workspace": ["."] }
-```
-
-Use `all` only when you explicitly want broad/noisy coverage, usually in a
-Herdr lane or CI-style validation.
-
-### Recipes and broader suggestions
-
-`code_analyzer action='recipes'` lists named scan recipes. Recipes are metadata
-only: they explain the selector and workflow, but never execute a scan by
-themselves.
-
-Common explicit recipes:
-
-| Recipe        | Selector                | When to use                                                                             |
-| ------------- | ----------------------- | --------------------------------------------------------------------------------------- |
-| `security`    | `Recommended:Security`  | Auth, CRUD/FLS, sharing, dynamic SOQL, callouts, secrets, crypto, guest/Experience work |
-| `appexchange` | `AppExchange`           | Managed package, ISV, AppExchange security review preparation                           |
-| `all-rules`   | `all`                   | Exhaustive pre-release or CI hardening                                                  |
-| `retire-js`   | `retire-js:Recommended` | Dependency manifest or lockfile changes                                                 |
-| `cpd`         | `cpd:Recommended`       | Broad refactors or duplicate-code checks                                                |
-| `sfge`        | `sfge:Recommended`      | Apex data-flow or security-sensitive SOQL/DML paths                                     |
-
-When changed files look security-sensitive or broad, the automatic scan can emit
-a compact suggestion such as:
-
-```text
-💡 Broader scan suggestions (not run automatically):
-- security: Security-focused scan — rule_selector Recommended:Security (Herdr recommended)
-```
-
-These suggestions are educational. The extension does not run broader recipes
-automatically.
-
-### Herdr handoff
-
-Long-running recipes include plan-focused Herdr Workflow Handoff metadata and
-text guidance. If a recipe says Herdr is recommended and `sf_herdr_plan` is
-available, the agent should call `sf_herdr_plan` visibly before running the
-broad scan. The handoff carries plan intent and workflow context, not shell
-commands. The Code Analyzer extension does not invoke Herdr internally and does
-not create panes on its own.
-
-### ApexGuru
-
-ApexGuru is org-backed, not a local Code Analyzer engine. It requires a target org whose ApexGuru service is enabled for the current org/user. Its target, latest/configured-fallback API version, authentication, and bounded requests come from the shared Salesforce Connection Module. When unavailable, SF Pi can suggest an SF Browser setup check, but it will not open Setup or click Enable/Accept/Save without user approval.
-
-Use:
-
-```json
-{ "action": "apexguru", "target": ["force-app/main/default/classes/MyClass.cls"] }
-```
-
-To see the HIL-gated browser setup runbook:
-
-```json
-{ "action": "apexguru_setup_help" }
-```
-
-### Result cards, facts, and artifacts
-
-`code_analyzer` renders its own foreground-color result cards instead of using
-Pi's default success/error tool background shell. The card is presentation only:
-execution still flows through `CodeAnalyzerReportSummary`, and full evidence stays
-in report artifacts. Report-shaped actions also expose a compact
-`details.sfCodeAnalyzer.facts` object with severity counts, top findings, top
-rules, top files, and fixable count so agents can audit and iterate without
-parsing prose. The sibling `details.sfCodeAnalyzer.report` summary carries the
-command and report path.
-
-For `run`, `rules`, `config`, and `last_report`, use:
-
-| Output mode | Behavior                                            |
-| ----------- | --------------------------------------------------- |
-| `summary`   | Bounded default detail plus artifact path           |
-| `inline`    | Richer truncated detail plus artifact path          |
-| `file_only` | Minimal prompt output with counts and artifact path |
-
-Full JSON/YAML/HTML/SARIF outputs are preserved as report artifacts. By default,
-SF Pi writes its own artifacts under the global agent directory rather than the
-project tree. User-supplied `output_files` are passed directly to Code Analyzer.
-
-### Automation settings
-
-`/sf-code-analyzer` exposes project and global controls for:
-
-- deferred auto-scan;
-- ApexGuru auto insights.
-
-Project settings override global settings, which override extension defaults.
-Use project overrides when a repository needs stricter or quieter automation
-than your global default. These two low-friction settings are editable from
-**SF Pi Manager → SF Code Analyzer → Settings**:
-
-- **Deferred auto-scan** (`sfPi.codeAnalyzer.autoScan`) — runs readiness-gated local scans after agent edits.
-- **ApexGuru auto insights** (`sfPi.codeAnalyzer.apexGuruAuto`) — suggests ApexGuru insights automatically when cached org readiness allows it.
-
-The same preferences remain available as quick Manager detail actions. In the
-SF Pi Manager detail page, press `S` to switch the active Manager scope; scoped
-automation actions render once and apply to the selected global or project
-scope.
+Long-running recipes can recommend a visible `sf_herdr_plan` handoff. SF Code
+Analyzer does not create Herdr panes internally. ApexGuru is a separate org
+service rather than a local engine; setup guidance opens Salesforce UI only
+after user approval.
 
 ## Commands
 
-| Command                    | Description                                                                 |
-| -------------------------- | --------------------------------------------------------------------------- |
-| `/sf-code-analyzer`        | Open SF Code Analyzer in the SF Pi Manager.                                 |
-| `/sf-code-analyzer status` | Print extension and tool status.                                            |
-| `/sf-code-analyzer doctor` | Check Salesforce CLI, Code Analyzer plugin, Java, and Python prerequisites. |
-| `/sf-code-analyzer help`   | Print command and tool usage.                                               |
+| Command                    | Purpose                                       |
+| -------------------------- | --------------------------------------------- |
+| `/sf-code-analyzer`        | Open SF Code Analyzer in the SF Pi Manager    |
+| `/sf-code-analyzer status` | Print extension and tool status               |
+| `/sf-code-analyzer doctor` | Check CLI, plugin, Java, and Python readiness |
+| `/sf-code-analyzer help`   | Print command and tool usage                  |
 
-## LLM Tool
+## Tool actions
 
-`code_analyzer` actions:
+`code_analyzer` supports `doctor`, `run`, `rules`, `config`, `recipes`,
+`apexguru`, `apexguru_setup_help`, and `last_report`. Report-shaped actions
+accept `summary`, `inline`, or `file_only` output while preserving full evidence
+in artifacts. The active tool schema is the exact parameter reference.
 
-| Action                | Description                                                              |
-| --------------------- | ------------------------------------------------------------------------ |
-| `doctor`              | Check setup prerequisites.                                               |
-| `recipes`             | Show scan recipes and Herdr handoff guidance.                            |
-| `run`                 | Run `sf code-analyzer run` and parse JSON output.                        |
-| `rules`               | Run `sf code-analyzer rules` and parse JSON output.                      |
-| `config`              | Run `sf code-analyzer config` and write YAML config output.              |
-| `apexguru`            | Run explicit ApexGuru analysis for one Apex file.                        |
-| `apexguru_setup_help` | Show the HIL-gated SF Browser setup-check runbook.                       |
-| `last_report`         | Summarize the latest Code Analyzer report on the current session branch. |
+## Configuration
 
-For `run`, `rules`, `config`, and `last_report`, set `output_mode` to `summary` (default), `inline`, or `file_only` to control prompt-visible detail while keeping the full artifact on disk.
+Project and global settings control:
+
+- deferred local auto-scan (`sfPi.codeAnalyzer.autoScan`);
+- automatic ApexGuru suggestions when cached readiness permits
+  (`sfPi.codeAnalyzer.apexGuruAuto`).
+
+Project settings override global settings, then extension defaults. These
+preferences are available through **SF Pi Manager → SF Code Analyzer →
+Settings**; explicit tool arguments and broader scan requests remain deliberate
+one-run choices.
+
+## Safety and Data Boundaries
+
+- Startup performs no Code Analyzer subprocess or live org call.
+- The extension invokes the supported CLI plugin rather than importing engine
+  internals.
+- Default reports are written outside the project. Caller-supplied
+  `output_files` may intentionally target project paths.
+- Deferred scans are readiness-gated and limited to successful Pi edits of
+  supported files.
+- Findings, fixes, and suggestions are reported but never applied automatically.
+- ApexGuru UI setup is never opened or changed without approval.
+
+## Troubleshooting
+
+**The doctor says the plugin is missing:** Install it with
+`sf plugins install code-analyzer`, then rerun `/sf-code-analyzer doctor`.
+
+**PMD, CPD, or SFGE rules fail:** Install Java 11 or later. The doctor reports
+Java readiness.
+
+**Flow Scanner rules fail:** Install Python 3.10 or later and check the doctor's
+`python3`/`python` result.
+
+**A scan wrote unexpected files:** SF Pi's default artifact path is outside the
+project. Review caller-supplied `output_files`, which are passed to Code Analyzer
+as explicit output destinations.
 
 ## File Structure
 
@@ -210,19 +104,3 @@ extensions/sf-code-analyzer/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Troubleshooting
-
-**`code_analyzer doctor` says the plugin is missing:**
-Run `sf plugins install code-analyzer`, then rerun `/sf-code-analyzer doctor`.
-
-**PMD, CPD, or SFGE rules fail:**
-Install Java 11 or later. The doctor output shows Java readiness.
-
-**Flow Scanner rules fail:**
-Install Python 3.10 or later. The doctor output checks `python3` and `python`.
-
-**A scan wrote files I did not expect:**
-By default SF Pi writes its own JSON report under the global SF Pi artifact
-directory. User-supplied `output_files` are passed directly to Code Analyzer and
-can write into the project if requested.

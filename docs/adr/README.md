@@ -14,7 +14,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0006: Extension Consistency Baseline](./0006-extension-consistency-baseline.md) — 2026-05-09
 - [0008: Context-injection boundary tags use lowercase snake_case XML](./0008-context-injection-boundaries.md) — 2026-05-17
 - [0009: Data 360 parity stays pi-native, generated, and phase-guided](./0009-data-360-parity-pi-native-generated-phase-guided.md) — 2026-05-18
-- [0010: Data 360 capability sweeps are facade-first and fixture-owned](./0010-d360-capability-sweep.md) — 2026-05-19
 - [0011: SF Browser uses agent-browser as a lazy hot-path runtime](./0011-sf-browser-agent-browser-lazy-hot-path-runtime.md) — 2026-05-20
 - [0012: VitePress Documentation Site](./0012-vitepress-documentation-site.md) — 2026-05-21
 - [0013: Agent Script Uses Branch-Durable Tool State for Workflow Pointers](./0013-agentscript-branch-durable-tool-state.md) — 2026-05-23
@@ -99,6 +98,8 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0102: SF Herdr Is Forward-Only on the Current Split Tools](./0102-forward-only-current-herdr-tools.md) — 2026-08-07
 - [0103: Salesforce Org Connections Use One Shared Module](./0103-shared-salesforce-connection-module.md) — 2026-08-09
 - [0104: Manifests Are Attested Against Real Runtime Registration](./0104-manifest-runtime-surface-attestation.md) — 2026-08-10
+- [0105: Extension References Are Role-Routed](./0105-extension-references-are-role-routed.md) — 2026-08-11
+- [0106: Data 360 live proof uses the v2 registry and dispatcher](./0106-data-360-live-proof-uses-the-v2-dispatcher.md) — 2026-08-11
 
 ## Proposed
 
@@ -109,6 +110,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 ### Superseded
 
 - [0007: Single-place credential entry per integration](./0007-single-place-credentials.md) — 2026-05-09 — superseded by [ADR 0078](./0078-pi-native-credential-ownership.md)
+- [0010: Data 360 capability sweeps are facade-first and fixture-owned](./0010-d360-capability-sweep.md) — 2026-05-19 — superseded by [ADR 0106](./0106-data-360-live-proof-uses-the-v2-dispatcher.md)
 - [0015: SF Brain provides conditional Herdr Workflow Mode](./0015-sf-brain-herdr-workflow-mode.md) — 2026-05-24 — superseded by [ADR 0093](./0093-salesforce-instruction-surface-and-progressive-docs.md)
 - [0019: Pi 0.77/0.78 compatibility-preserving adoption](./0019-pi-077-078-compatibility-preserving-adoption.md) — 2026-05-29 — superseded by [ADR 0031](./0031-pi-079-agent-workflow-alignment.md)
 - [0044: SF Guardrail defaults to confirmable Power Tool mode](./0044-sf-guardrail-defaults-to-confirmable-power-tool-mode.md) — 2026-06-13 — superseded by [ADR 0052](./0052-sf-guardrail-is-rule-behavior-only.md)

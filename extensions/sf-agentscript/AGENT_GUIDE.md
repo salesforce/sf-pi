@@ -162,6 +162,12 @@ Use `agent_user_status`, `diagnose_agent_user`, and `provision_agent_user` for S
 
 Do not infer activation/deactivation targets from branch state. Pass `agent_api_name` explicitly for `activate`, `deactivate`, and `list_versions`. If a connected helper cannot deactivate because it is in use, deactivate dependent parent agents first, confirm their versions are Inactive, then retry after status propagation.
 
+## Focused references
+
+Use [`docs/README.md`](./docs/README.md) to select the Service Agent user,
+transition, or diagnostic-parity reference. Do not load all references for an
+ordinary authoring turn.
+
 ## Production observability handoff
 
 When the user asks why a production agent behaved incorrectly, start with `sf-data360` observability data, then reproduce locally with `agentscript_preview`, fix via `agentscript_authoring`, verify with `agentscript_eval`, and ship with `agentscript_lifecycle`.

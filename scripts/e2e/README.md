@@ -1,68 +1,59 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# scripts/e2e
+# E2E and live-proof harnesses
 
-Live, read-only end-to-end smokes that hit a Salesforce org via the
-patched source modules — bypassing the pi extension runtime so they
-reflect what's on disk, not what the running pi process bundled at
-startup.
+These opt-in harnesses exercise public extension seams outside the normal Pi
+host. They are not part of default CI. Every live target must be explicit, and
+all Salesforce mutations belong only in isolated non-production fixtures.
 
-These are not part of `npm test` / CI. Most require a real `sf` auth
-context and run against a connected org; the Instruction Behavior Eval is a
-model-only routing probe and blocks tools before execution.
+## Harness inventory
 
-## d360-stdm-e2e.ts
+<!-- GENERATED:e2e-harnesses:start -->
 
-Full surface check for `sf-data360`: target-org resolution, the body
-serialization contract, path normalization, safety classification,
-the readiness probe, `list_dmos`, `describe_dmo`, `/ssot/query-sql`
-with both body shapes, a joined aggregation, and 404 error-path
-classification.
+This inventory is generated from `scripts/e2e/harnesses.json` and checked against `package.json` plus the runnable harness files.
 
-```bash
-node --experimental-strip-types scripts/e2e/d360-stdm-e2e.ts <orgAlias>
-# or
-D360_E2E_ORG=<orgAlias> node --experimental-strip-types scripts/e2e/d360-stdm-e2e.ts
-```
+| Harness                                                                                                                                                                             | Run                                                                                                                                | Target                                                    | Posture            | Artifacts                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------ |
+| [Data 360 v2 action sweep](./data360-v2-action-sweep.ts)<br>Exercises every current data360_* family and the sweep-owned DLO lifecycle through the real v2 registry and dispatcher. | `npm run e2e:data360-v2 -- --target-org <alias> [--live-read --max-live-read 5] [--mutation-lifecycle dlo --mutate --run-id <id>]` | Explicit non-production org                               | `bounded-mutation` | JSON and Markdown reports in a temporary or caller-selected directory    |
+| [Data 360 STDM compatibility smoke](./d360-stdm-e2e.ts)<br>Exercises retained low-level metadata, readiness, safety, and bounded SQL modules.                                       | `npm run e2e:d360-stdm -- <alias>`                                                                                                 | Explicit non-production org                               | `read-only`        | Console proof only                                                       |
+| [Agent Platform tracing smoke](./d360-agent-platform-tracing-e2e.ts)<br>Reads tracing metadata and bounded spans, then reconstructs a trace tree locally.                           | `npm run e2e:d360-tracing -- <alias> [--require-data]`                                                                             | Explicit non-production org                               | `read-only`        | Console proof only                                                       |
+| [SF Apex lifecycle harness](./sf-apex-harness-e2e.ts)<br>Exercises native discovery, traces, logs, Anonymous Apex, tests, and coverage against a deployed fixture.                  | `npm run e2e:sf-apex-harness -- --org <alias> --harness-cwd <project> [--flow <FlowApiName>]`                                      | Explicit dedicated non-production org and harness project | `bounded-mutation` | Session-scoped Apex source, log, test, and coverage artifacts            |
+| [SF Browser navigation hardening](./sf-browser-pack-harden.ts)<br>Verifies curated destinations and structured routes through a live headless browser.                              | `npm run e2e:sf-browser-harden -- --org <alias> [--surface all] [--mutate]`                                                        | Explicit non-production org                               | `bounded-mutation` | Browser Evidence screenshots plus Markdown and HTML reports              |
+| [SF Herdr disposable-pane smoke](./sf-herdr-live-smoke.ts)<br>Splits a fresh pane, runs a harmless marker, verifies output, and closes only after success.                          | `npm run e2e:sf-herdr`                                                                                                             | Disposable Herdr session with SF_HERDR_LIVE_SMOKE=1       | `bounded-mutation` | Console proof; failed panes remain open for inspection                   |
+| [SF LWC local lifecycle harness](./sf-lwc-e2e.ts)<br>Builds a temporary SFDX fixture and exercises scan, inspect, diagnostics, planning, and Jest execution.                        | `npm run e2e:sf-lwc`                                                                                                               | Generated local workspace; no org                         | `read-only`        | Temporary project plus LWC diagnostic and Jest artifacts                 |
+| [SF SOQL lifecycle harness](./sf-soql-e2e.ts)<br>Exercises schema, validation, bounded query, SOSL, file, history, and export behavior.                                             | `npm run e2e:sf-soql -- --org <alias> [--harness-data]`                                                                            | Explicit non-production org                               | `bounded-mutation` | Temporary query files plus session-scoped query and export artifacts     |
+| [Instruction behavior regression](./instruction-behavior/run.ts)<br>Runs opt-in model-routing scenarios while blocking every non-local tool before execution.                       | `npm run e2e:instruction-behavior -- --model <model> [--scenario <id> --limit 1]`                                                  | Explicit model or configured default                      | `model-only`       | JSON and Markdown reports under .pi/state/sf-brain/instruction-behavior/ |
 
-The script is read-only — every call is a GET, a SQL `SELECT`, or an
-in-process classification. Useful when validating a Data Cloud /
-Data 360 org on a different API release than the active sf-pi default.
+<!-- GENERATED:e2e-harnesses:end -->
 
-## d360-agent-platform-tracing-e2e.ts
+## Safety classifications
 
-Read-only Agent Platform Tracing smoke. It avoids the `sf` CLI subprocess
-path and uses the same `@salesforce/core` Connection transport as the
-`d360_*` tools. The script verifies that `ObservabilitySpans__dll`
-metadata is visible, runs small bounded `/ssot/query-sql` SELECTs against
-`ssot__TelemetryTraceSpan__dlm`, and reconstructs one trace tree locally
-when sample spans exist.
+- **`read-only`** — reads an org or generated local fixture without intentionally
+  creating durable target-system state.
+- **`plan-only`** — resolves or validates intended operations without executing
+  them.
+- **`bounded-mutation`** — can create temporary records, flags, panes, browser
+  drafts, or other explicitly owned state and documents its cleanup behavior.
+- **`model-only`** — calls a selected model while the probe blocks every
+  non-local tool before execution.
 
-```bash
-node --experimental-strip-types scripts/e2e/d360-agent-platform-tracing-e2e.ts <orgAlias>
-# or
-D360_E2E_ORG=<orgAlias> node --experimental-strip-types scripts/e2e/d360-agent-platform-tracing-e2e.ts
-```
+A harness with optional mutation is classified by its most permissive path, not
+its default invocation. Review the source header and `--help`/usage output before
+running it. Keep generated reports, screenshots, org identifiers, and local
+paths out of public commits.
 
-By default, an org without Agent Platform Tracing is reported as a clean
-skip. Add `--require-data` or `D360_E2E_REQUIRE_APT=1` when missing
-metadata or empty trace data should fail the smoke.
+The Data 360 v2 DLO lifecycle additionally requires both
+`SF_PI_D360_V2_SWEEP_MUTATION_TARGET_ORG=<alias>` and
+`D360_V2_SWEEP_ALLOW_DESTRUCTIVE=<alias>` to exactly match `--target-org`.
 
-## instruction-behavior/run.ts
+## Adding or changing a harness
 
-Opt-in live-model regression for SF Brain's instruction architecture. The
-runner loads public-safe scenarios, records selected tools and actions, and
-reports expected or forbidden routing facts without producing a quality score.
-A probe extension allows bounded local `read`/`grep`/`find`/`ls` context and
-blocks every other tool in `tool_call` before execution, so the harness performs
-no Salesforce org call, shell command, file edit, browser commit, or
-collaboration write.
+1. Add one `e2e:*` script in `package.json` for the runnable entrypoint.
+2. Add the matching target, posture, arguments, and artifact record to
+   `scripts/e2e/harnesses.json`.
+3. Run `npm run generate-catalog` and review this generated inventory.
+4. Add a focused Behavior Proof when argument parsing, planning, or cleanup
+   behavior changes.
 
-```bash
-npm run e2e:instruction-behavior -- --model <model>
-npm run e2e:instruction-behavior -- --scenario agentscript-release --limit 1
-```
-
-Reports are written under
-`.pi/state/sf-brain/instruction-behavior/<timestamp>/` unless `--output` is
-provided. Model and provider variance make the report advisory and non-blocking.
+Catalog generation fails when a runnable top-level harness, nested `run.ts`, or
+`e2e:*` package script is missing from the manifest.

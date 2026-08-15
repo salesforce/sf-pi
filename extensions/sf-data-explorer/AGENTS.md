@@ -4,12 +4,11 @@ Repo-level SF Pi rules apply when this package is merged into `salesforce/sf-pi`
 
 ## Read first
 
-1. `extensions/sf-data-explorer/README.md` — behavior and safety model
-2. `extensions/sf-data-explorer/index.ts` — extension wiring
-3. `extensions/sf-data-explorer/lib/transport.ts` — sf-pi dynamic transport adapter
-4. `extensions/sf-data-explorer/lib/ui/explorer-spa.ts` — TUI component
-5. `extensions/sf-data-explorer/lib/modes/*.ts` — SOQL, SOSL, and Data 360 strategies
-6. `extensions/sf-data-explorer/tests/*.test.ts` — regression coverage
+1. `extensions/sf-data-explorer/index.ts` — extension wiring
+2. `extensions/sf-data-explorer/lib/transport.ts` — SF Pi dynamic transport adapter
+3. `extensions/sf-data-explorer/lib/ui/explorer-spa.ts` — TUI component
+4. `extensions/sf-data-explorer/lib/modes/*.ts` — SOQL, SOSL, and Data 360 strategies
+5. `extensions/sf-data-explorer/tests/*.test.ts` — Behavior Proofs
 
 ## Conventions
 

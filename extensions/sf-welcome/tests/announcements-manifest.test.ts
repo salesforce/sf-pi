@@ -75,10 +75,15 @@ describe("announcements-manifest", () => {
     expect(manifest.announcements.map((a) => a.id)).toEqual(["good"]);
   });
 
-  it("isValidAnnouncement rejects objects with bad severity", () => {
+  it("isValidAnnouncement rejects bad severity and evergreen values", () => {
     expect(isValidAnnouncement({ id: "a", kind: "note", title: "t", severity: "panic" })).toBe(
       false,
     );
-    expect(isValidAnnouncement({ id: "a", kind: "note", title: "t", severity: "warn" })).toBe(true);
+    expect(isValidAnnouncement({ id: "a", kind: "note", title: "t", evergreen: "yes" })).toBe(
+      false,
+    );
+    expect(
+      isValidAnnouncement({ id: "a", kind: "note", title: "t", severity: "warn", evergreen: true }),
+    ).toBe(true);
   });
 });

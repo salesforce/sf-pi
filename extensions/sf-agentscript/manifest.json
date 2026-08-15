@@ -21,49 +21,11 @@
     "summary": "Owns the entire Agent Script lifecycle: compile and quality hardening, structural review, preview, local-first Eval Studio, exact-version release eval contracts, inactive publication, and Guardrail-mediated activation.",
     "primaryFiles": [
       "index.ts",
-      "lib/diagnostics.ts",
-      "lib/feedback.ts",
-      "lib/sdk.ts",
-      "lib/inspect.ts",
-      "lib/mutate.ts",
-      "lib/tool-types.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts",
-      "lib/quality/catalog.ts",
-      "lib/quality/settings.ts",
-      "lib/quality/engine.ts",
-      "lib/quality/auto-scan.ts",
-      "lib/llm-response-sequence.ts",
-      "lib/render/response-sequence.ts",
-      "lib/render/conversation.ts",
-      "lib/eval/response-integrity.ts",
-      "lib/eval/conversation-summary.ts",
       "lib/authoring-tool.ts",
-      "lib/branch-state.ts",
-      "lib/authoring/params.ts",
-      "lib/authoring/actions/compile.ts",
-      "lib/authoring/actions/create.ts",
-      "lib/authoring/actions/inspect.ts",
-      "lib/authoring/actions/mutate.ts",
-      "lib/eval/sfap.ts",
-      "lib/eval/normalize.ts",
-      "lib/eval/active-ids.ts",
-      "lib/eval/orchestrator.ts",
-      "lib/eval/eval-client.ts",
-      "lib/eval/trace-client.ts",
-      "lib/eval/render.ts",
-      "lib/eval/persist.ts",
-      "lib/eval/verdict.ts",
-      "lib/eval-studio/discovery.ts",
-      "lib/eval-studio/component.ts",
-      "lib/eval-studio/run-coordinator.ts",
-      "lib/preview/client.ts",
-      "lib/preview/session-store.ts",
       "lib/preview-tool.ts",
       "lib/eval-tool.ts",
       "lib/lifecycle-tool.ts",
-      "lib/release-contract.ts",
-      "AGENT_GUIDE.md"
+      "lib/release-contract.ts"
     ],
     "safety": [
       "Compile-on-save stays silent on unsupported files and on failed write/edit results; only enabled edit-time High hardening rules join that feedback.",
@@ -81,6 +43,13 @@
       "Untested activation is a distinct Guardrail Safety Envelope; acknowledge_untested_activation is intent, never approval.",
       "5xx-only retry on POST avoids amplifying server-side overload (no Retry-After contract on the Eval API); client-side Eval API batch timeouts are terminal and configurable through batch_timeout_ms.",
       "Preview sessions land under .sfdx/agents/** (sf-guardrail carve-out); rest of .sfdx/** stays blocked."
+    ],
+    "referenceRoots": [
+      {
+        "path": "docs",
+        "index": "docs/README.md",
+        "role": "current"
+      }
     ]
   }
 }

@@ -22,20 +22,18 @@ ssot__AiAgentInteraction__dlm.ssot__TelemetryTraceId__c
 
 ## Pre-flight
 
-1. **Probe Data 360 first.** Run `d360_probe`. The optional
-   `agent_platform_tracing_dlo` probe checks whether the raw span DLO is
-   visible at `/ssot/data-lake-objects/ObservabilitySpans__dll`.
-2. **Describe the raw DLO before querying.** Run
-   `d360_metadata action="describe_dlo" api_name="ObservabilitySpans__dll"`
+1. **Probe Data 360 first.** Run `data360_discover` with
+   `action: "readiness.probe"` and inspect the optional tracing surface.
+2. **Describe the raw DLO before querying.** Run `data360_query` with
+   `action: "dlo_describe"` and `params: { "dloName": "ObservabilitySpans__dll" }`
    in a new org. The harmonized DMO `ssot__TelemetryTraceSpan__dlm` is the
    normal SQL surface, but it may not appear in the compact DMO catalog and
    some orgs can return a server error from the normal DMO describe endpoint.
    If DLO describe works, use a bounded DMO `COUNT(*)` smoke before sampling
    rows.
-3. **Resolve the data space.** `d360_api GET /ssot/data-spaces` and pick the
-   active data space name, commonly `default`. Pass it as the
-   `dataspaceName` query parameter on `/ssot/query-sql` when the org
-   requires it.
+3. **Resolve the data space.** Run `data360_prepare dataspace.list` and pick
+   the active data space name. Pass it as `dataspaceName` to
+   `data360_query sql.run` when the org requires it.
 4. **Keep windows bounded.** Span tables can grow quickly. Prefer `LIMIT`, a
    trace id filter, or a time window.
 
@@ -229,12 +227,13 @@ the interaction happened and whether Data Cloud ingestion has caught up.
 
 Agent Platform Tracing is an observe surface. The fix still belongs in source:
 
-1. Use `d360_api` to find the failing trace and summarize the span tree.
+1. Use `data360_observe trace.error_traces` to find failures and
+   `trace.trace_tree` for one known trace id.
 2. If conversational context matters, use STDM to recover the user utterance,
    topic, and step I/O.
 3. Reproduce the utterance locally with `agentscript_preview` and deterministic
    `context_variables` when needed.
-4. Fix the `.agent` file with `agentscript_mutate` or a targeted edit.
+4. Fix the `.agent` file with `agentscript_authoring` mutate or a targeted edit.
 5. Run `agentscript_eval` to verify regressions.
 6. Ship with `agentscript_lifecycle` when the fix is approved.
 

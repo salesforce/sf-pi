@@ -1,6 +1,7 @@
 ---
 title: "SF Guardrail"
 description: "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, org-aware confirmation, and native high-value mutation mediation"
+editLink: false
 ---
 
 # SF Guardrail
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-guardrail
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-guardrail
+/sf-pi open sf-guardrail
 /sf-pi enable sf-guardrail
 /sf-pi disable sf-guardrail
 ```

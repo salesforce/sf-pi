@@ -14,12 +14,7 @@
       "index.ts",
       "lib/constitution.ts",
       "lib/routing-summary.ts",
-      "lib/instruction-surface-report.ts",
-      "lib/instruction-surface-runtime.ts",
-      "lib/instruction-surface-panel.ts",
-      "instruction-surface-baseline.json",
-      "SF_CONSTITUTION.md",
-      "AGENT_GUIDE.md"
+      "lib/instruction-surface-report.ts"
     ],
     "stateFiles": [
       "<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md",

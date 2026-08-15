@@ -3,8 +3,8 @@
  * Regression tests for the "resolve user by fuzzy name on enterprise grid"
  * flow. This is the user-side mirror of channel-cache-from-search.test.ts.
  *
- * Repro scenario that motivated this change (enterprise grid):
- *   1. Human asks the agent for "Mike McCula" (misspelling of "Mike Mikula").
+ * Generic regression scenario (enterprise grid):
+ *   1. Human asks the agent for "Alex Morgon" (misspelling of "Alex Morgan").
  *   2. `slack_resolve type=user` runs `users.list`, which fails with
  *      `team_access_not_granted` because the target user's home workspace
  *      is another workspace in the grid.
@@ -13,10 +13,8 @@
  *   4. The tool returns zero candidates with a red error banner, three
  *      times in a row as the agent retries. Human is stuck.
  *
- * What Slackbot does instead: when its directory lookup comes back empty,
- * it searches messages/files, mines author names from the hits, and
- * returns spelling suggestions ("did you mean Mike McGeehan, Mike Sobrero,
- * Mike Cliffe?").
+ * A resilient resolver instead searches messages/files, mines author names
+ * from the hits, and returns generic spelling suggestions.
  *
  * The fix:
  *   - Harvest `{author_user_id → author_name}` from every search response
@@ -24,8 +22,8 @@
  *   - Add an `assistant.search.context` fallback to resolveUser when
  *     users.list fails or returns zero useful candidates.
  *
- * Net effect: "Mike McCula" still doesn't match, but the returned
- * candidates include "Mike Mikula" (confidence capped below the 0.85
+ * Net effect: "Alex Morgon" still doesn't match, but the returned
+ * candidates include "Alex Morgan" (confidence capped below the 0.85
  * auto-select threshold so the HITL dialog opens with real options).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -110,8 +108,8 @@ describe("resolveUser — grid-safe search fallback", () => {
               results: {
                 messages: [
                   {
-                    author_user_id: "U0MIKULA01",
-                    author_name: "Mike Mikula",
+                    author_user_id: "U01ABCEXAMPLE",
+                    author_name: "Alex Morgan",
                     channel_id: "C0AAA00001",
                     channel_name: "alpha-dev",
                     text: "Fuzzy match content",
@@ -129,14 +127,14 @@ describe("resolveUser — grid-safe search fallback", () => {
       }),
     );
 
-    // "Mike McCula" is a realistic misspelling. The search hit is
-    // "Mike Mikula" — should be close enough to surface as a candidate.
-    const result = await resolveUser("xoxp-test", "Mike McCula");
+    // "Alex Morgon" is a realistic misspelling. The search hit is
+    // "Alex Morgan" — close enough to surface as a candidate.
+    const result = await resolveUser("xoxp-test", "Alex Morgon");
 
     expect(result.candidates.length).toBeGreaterThan(0);
     expect(result.best).toBeDefined();
-    expect(result.best!.id).toBe("U0MIKULA01");
-    expect(result.best!.displayName).toBe("Mike Mikula");
+    expect(result.best!.id).toBe("U01ABCEXAMPLE");
+    expect(result.best!.displayName).toBe("Alex Morgan");
     expect(result.strategy).toContain("assistant.search.context");
     // Confidence stays below auto-select — HITL dialog should still open.
     expect(result.best!.confidence).toBeLessThan(0.85);

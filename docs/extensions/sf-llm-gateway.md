@@ -1,6 +1,7 @@
 ---
 title: "SF LLM Gateway"
 description: "Salesforce LLM Gateway provider with model discovery"
+editLink: false
 ---
 
 # SF LLM Gateway
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-llm-gateway
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-llm-gateway
+/sf-pi open sf-llm-gateway
 /sf-pi enable sf-llm-gateway
 /sf-pi disable sf-llm-gateway
 ```

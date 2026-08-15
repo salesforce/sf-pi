@@ -5,11 +5,15 @@
  * This script intentionally checks factual, easy-to-drift documentation
  * contracts instead of trying to judge prose quality. It is a guardrail for
  * agents and humans: generated blocks stay generated, extension READMEs retain
- * a purpose statement, and public-facing docs avoid obvious private artifacts.
+ * their conditional human-facing sections, and tracked public text avoids
+ * obvious private artifacts.
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scanTrackedManualEvidence } from "./lib/manual-evidence.mjs";
+import { scanTrackedPublicArtifacts } from "./lib/public-artifact-safety.mjs";
+import { validateExtensionReadmeContract } from "./lib/readme-contract.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,8 +21,6 @@ const ROOT = path.resolve(__dirname, "..");
 const EXTENSIONS_DIR = path.join(ROOT, "extensions");
 const CHECK_ONLY = process.argv.includes("--check");
 const JSON_MODE = process.argv.includes("--json");
-
-const REQUIRED_README_SECTIONS = ["What It Does"];
 
 const GENERATED_FILES = [
   "catalog/index.json",
@@ -29,52 +31,7 @@ const GENERATED_FILES = [
   "docs/agent-orientation.md",
 ];
 
-const PUBLIC_SAFETY_PATTERNS = [
-  {
-    id: "salesforce-sandbox-host",
-    regex: /[a-z0-9-]+--[a-z0-9-]+\.sandbox\.my\.salesforce\.com/i,
-    message: "Salesforce sandbox hostnames must not appear in public docs.",
-  },
-  {
-    id: "slack-permalink",
-    regex: /https:\/\/[^\s)]+\.slack\.com\/archives\//i,
-    message: "Slack permalinks must not appear in public docs.",
-  },
-  {
-    id: "slack-team-id",
-    regex: /\bT(?!0{2}|01XYZ)[0-9][A-Z0-9]{7,}\b/,
-    message: "Slack team IDs must not appear in public docs.",
-  },
-  {
-    id: "slack-user-id",
-    regex: /\bU(?!0{2}|01ABC)[0-9][A-Z0-9]{7,}\b/,
-    message: "Slack user IDs must not appear in public docs; use generic examples.",
-  },
-  {
-    id: "slack-channel-id",
-    regex: /\bC(?!0{2}|01ABC|09Z)[0-9][A-Z0-9]{7,}\b/,
-    message: "Slack channel IDs must not appear in public docs; use generic examples.",
-  },
-  {
-    id: "specific-customer-name",
-    regex: /\bVivint\b/i,
-    message: "Customer-specific names must not appear in public docs.",
-  },
-];
-
-const ALLOWED_PUBLIC_SAFETY_MATCHES = new Set([
-  // Generic Slack examples in docs/changelog, not real workspace IDs.
-  "CHANGELOG.md:183:slack-user-id",
-  "CHANGELOG.md:227:slack-user-id",
-  "CHANGELOG.md:957:slack-user-id",
-  "extensions/sf-slack/README.md:372:slack-user-id",
-]);
-
 const findings = [];
-
-function rel(filePath) {
-  return path.relative(ROOT, filePath).replaceAll(path.sep, "/");
-}
 
 function readJson(relativePath) {
   return JSON.parse(readFileSync(path.join(ROOT, relativePath), "utf8"));
@@ -103,25 +60,6 @@ function extensionDirs() {
     .sort((left, right) => left.localeCompare(right));
 }
 
-function listFiles(dir, predicate) {
-  const root = path.join(ROOT, dir);
-  const files = [];
-  function walk(current) {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const full = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === "node_modules" || entry.name === "vendor") continue;
-        walk(full);
-      } else if (entry.isFile()) {
-        const relative = rel(full);
-        if (predicate(relative)) files.push(relative);
-      }
-    }
-  }
-  if (existsSync(root)) walk(root);
-  return files.sort((left, right) => left.localeCompare(right));
-}
-
 function checkReadmePiVersion() {
   const pkg = readJson("package.json");
   const floor = pkg.peerDependencies?.["@earendil-works/pi-coding-agent"];
@@ -131,41 +69,6 @@ function checkReadmePiVersion() {
   if (!readme.includes(`currently\n\`${floor}\``) && !readme.includes(`currently ${floor}`)) {
     fail("README.md", `Supported-platforms pi floor must match package.json (${floor}).`);
   }
-}
-
-function checkRecommendationTable() {
-  const recommendations = readJson("catalog/recommendations.json");
-  const defaultBundle = recommendations.bundles.find((bundle) => bundle.id === "default");
-  if (!defaultBundle) return fail("catalog/recommendations.json", "Missing default bundle.");
-  const readme = readText("README.md");
-  const word = numberWord(defaultBundle.items.length);
-  if (!readme.includes(`All ${word} packages`)) {
-    fail("README.md", `Default bundle prose should say "All ${word} packages".`);
-  }
-  for (const itemId of defaultBundle.items) {
-    if (!readme.includes(`\`${itemId}\``) && !readme.includes(`**[\`${itemId}\``)) {
-      fail("README.md", `Recommended bundle item ${itemId} is missing from the table.`);
-    }
-  }
-}
-
-function numberWord(value) {
-  const words = [
-    "zero",
-    "one",
-    "two",
-    "three",
-    "four",
-    "five",
-    "six",
-    "seven",
-    "eight",
-    "nine",
-    "ten",
-    "eleven",
-    "twelve",
-  ];
-  return words[value] ?? String(value);
 }
 
 function checkGeneratedFilesExist() {
@@ -183,10 +86,9 @@ function checkExtensionReadmes() {
       continue;
     }
     const readme = readText(readmePath);
-    for (const section of REQUIRED_README_SECTIONS) {
-      if (!new RegExp(`^##\\s+${escapeRegex(section)}\\s*$`, "m").test(readme)) {
-        fail(readmePath, `Missing required section: ## ${section}`);
-      }
+    const manifest = readJson(`${base}/manifest.json`);
+    for (const message of validateExtensionReadmeContract(readme, manifest)) {
+      fail(readmePath, message);
     }
     if (!readme.includes("<!-- GENERATED:file-structure:start -->")) {
       fail(readmePath, "Missing generated file-structure start marker.");
@@ -195,7 +97,6 @@ function checkExtensionReadmes() {
       fail(readmePath, "Missing generated file-structure end marker.");
     }
 
-    const manifest = readJson(`${base}/manifest.json`);
     if (!new RegExp(`^#\\s+${escapeRegex(manifest.name)}\\s*$`, "m").test(readme)) {
       fail(readmePath, `H1 must match manifest name: # ${manifest.name}`);
     }
@@ -212,75 +113,6 @@ function checkExtensionReadmes() {
   }
 }
 
-// Per-file LOC advisory thresholds. AGENTS.md §3 calls out "if 200 lines
-// could be 50, rewrite it." In practice we use a softer informational
-// threshold so growth is visible during PR review without forcing today's
-// refactor. Output is `warn`-level only — it never fails CI.
-const FILE_LOC_ADVISORY = 800;
-const FILE_LOC_HARD_ADVISORY = 1500;
-
-function checkExtensionFileSize() {
-  for (const dir of extensionDirs()) {
-    const baseAbs = path.join(ROOT, "extensions", dir);
-    if (!existsSync(baseAbs)) continue;
-    const candidates = [];
-    const indexAbs = path.join(baseAbs, "index.ts");
-    if (existsSync(indexAbs)) candidates.push(indexAbs);
-    const libAbs = path.join(baseAbs, "lib");
-    if (existsSync(libAbs)) {
-      try {
-        for (const entry of readdirSync(libAbs, { withFileTypes: true })) {
-          if (!entry.isFile()) continue;
-          if (!entry.name.endsWith(".ts")) continue;
-          candidates.push(path.join(libAbs, entry.name));
-        }
-      } catch {
-        // ignore unreadable lib/ directories
-      }
-    }
-
-    for (const file of candidates) {
-      const text = readFileSync(file, "utf8");
-      const loc = text.split("\n").length;
-      const rel = path.relative(ROOT, file).replaceAll(path.sep, "/");
-      if (loc >= FILE_LOC_HARD_ADVISORY) {
-        warn(
-          rel,
-          `File is ${loc} LOC (≥ ${FILE_LOC_HARD_ADVISORY}). Strongly consider splitting on next touch.`,
-          "AGENTS.md \u00a73: split by responsibility. Advisory only \u2014 does not fail CI.",
-        );
-      } else if (loc >= FILE_LOC_ADVISORY) {
-        warn(
-          rel,
-          `File is ${loc} LOC (≥ ${FILE_LOC_ADVISORY}). Consider splitting if you're already touching this file.`,
-          "Advisory only \u2014 does not fail CI.",
-        );
-      }
-    }
-  }
-}
-
-function checkStateStoreLocation() {
-  // Q4 of the AGENTS.md state-persistence decision tree (per-user JSON state)
-  // must use the shared lib/common/state-store.ts helper. We enforce that by
-  // forbidding `state-store.ts` from existing inside any extension's lib/.
-  // Documented in docs/adr/0006-extension-consistency-baseline.md.
-  for (const dir of extensionDirs()) {
-    const candidate = path.join(ROOT, "extensions", dir, "lib", "state-store.ts");
-    if (!existsSync(candidate)) continue;
-    const text = readText(`extensions/${dir}/lib/state-store.ts`);
-    // Allowed when the file is a thin delegator that imports the shared
-    // helper from lib/common/state-store.ts. Other shapes — bespoke fs I/O,
-    // hand-rolled JSON read/write — fail the lint.
-    if (!/from\s+"\.\.\/\.\.\/\.\.\/lib\/common\/state-store\.ts"/.test(text)) {
-      fail(
-        `extensions/${dir}/lib/state-store.ts`,
-        "Per-user JSON state must delegate to lib/common/state-store.ts. See AGENTS.md \u2192 'state-persistence decision tree'.",
-      );
-    }
-  }
-}
-
 function checkChangelog() {
   const changelog = readText("CHANGELOG.md");
   const unreleasedMatch = changelog.match(/^## Unreleased\s*\n([\s\S]*?)(?=^## \[|$)/m);
@@ -288,27 +120,21 @@ function checkChangelog() {
   const featureCount = (unreleased.match(/^###\s+Features\s*$/gm) ?? []).length;
   if (featureCount > 1) warn("CHANGELOG.md", "Unreleased section has duplicate Features headings.");
   for (const stale of ["stays at pi 0.70.3", "All seven packages", ">=0.70.3"]) {
-    if (changelog.includes(stale)) fail("CHANGELOG.md", `Stale docs phrase found: ${stale}`);
+    if (unreleased.includes(stale)) {
+      fail("CHANGELOG.md", `Stale Unreleased phrase found: ${stale}`);
+    }
+  }
+}
+
+function checkManualEvidence() {
+  for (const finding of scanTrackedManualEvidence(ROOT)) {
+    fail(finding.file, finding.message);
   }
 }
 
 function checkPublicSafety() {
-  const docs = listFiles(".", (file) => {
-    if (!file.endsWith(".md")) return false;
-    if (file.startsWith("node_modules/")) return false;
-    return true;
-  });
-
-  for (const file of docs) {
-    const lines = readText(file).split("\n");
-    lines.forEach((line, index) => {
-      for (const pattern of PUBLIC_SAFETY_PATTERNS) {
-        if (!pattern.regex.test(line)) continue;
-        const key = `${file}:${index + 1}:${pattern.id}`;
-        if (ALLOWED_PUBLIC_SAFETY_MATCHES.has(key)) continue;
-        fail(file, pattern.message, `line ${index + 1}: ${line.trim()}`);
-      }
-    });
+  for (const finding of scanTrackedPublicArtifacts(ROOT)) {
+    fail(finding.file, finding.message, finding.detail);
   }
 }
 
@@ -318,12 +144,10 @@ function escapeRegex(value) {
 
 function run() {
   checkReadmePiVersion();
-  checkRecommendationTable();
   checkGeneratedFilesExist();
   checkExtensionReadmes();
-  checkExtensionFileSize();
-  checkStateStoreLocation();
   checkChangelog();
+  checkManualEvidence();
   checkPublicSafety();
 
   const errors = findings.filter((finding) => finding.level === "error");

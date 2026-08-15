@@ -31,7 +31,7 @@ describe("render helpers", () => {
 
   describe("shortPermalinkLabel", () => {
     it("extracts pNNNNNNNNNN from a standard Slack permalink", () => {
-      const url = "https://foo.slack.com/archives/C123/p1776882337856569";
+      const url = "https://example.slack.com/archives/C123/p1776882337856569";
       expect(shortPermalinkLabel(url)).toBe("p1776882337");
     });
 
@@ -71,7 +71,7 @@ describe("render helpers", () => {
 
   describe("formatPermalink", () => {
     it("emits an OSC 8 wrapper when compactPermalinks is on (default)", () => {
-      const url = "https://foo.slack.com/archives/C123/p1776882337856569";
+      const url = "https://example.slack.com/archives/C123/p1776882337856569";
       const out = formatPermalink(url, stubTheme);
       expect(out).toContain("\x1b]8;;" + url);
       expect(out).toContain("p1776882337");
@@ -79,7 +79,7 @@ describe("render helpers", () => {
 
     it("emits the raw URL when compactPermalinks is off", () => {
       setPreferences({ compactPermalinks: "off" });
-      const url = "https://foo.slack.com/archives/C123/p1776882337856569";
+      const url = "https://example.slack.com/archives/C123/p1776882337856569";
       const out = formatPermalink(url, stubTheme);
       expect(out).toBe(url);
     });

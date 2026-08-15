@@ -32,14 +32,16 @@ const reportJson = await format(JSON.stringify(report), { ...prettierOptions, pa
 const markdown = await format(buildMarkdown(report), { ...prettierOptions, parser: "markdown" });
 
 const jsonPath = path.join(REGISTRY_DIR, "upstream-parity.json");
-const markdownPath = path.join(REFERENCES_DIR, "upstream-parity.md");
+const markdownPath = path.join(REFERENCES_DIR, "compatibility", "upstream-parity.md");
 
 if (CHECK) {
   const currentJson = readJson(jsonPath);
   const currentMarkdown = readText(markdownPath);
   const errors = [];
   if (!isDeepStrictEqual(currentJson, report)) errors.push("upstream-parity.json");
-  if (currentMarkdown !== markdown) errors.push("references/upstream-parity.md");
+  if (currentMarkdown !== markdown) {
+    errors.push("references/compatibility/upstream-parity.md");
+  }
   if (errors.length) {
     console.error(
       `❌ Data 360 parity artifacts out of date: ${errors.join(", ")}. Run: npm run generate-d360-parity`,

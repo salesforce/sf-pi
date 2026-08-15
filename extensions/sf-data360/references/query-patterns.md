@@ -5,11 +5,11 @@ calculated insight SQL, profile reads, or semantic queries.
 
 ## Discovery before query
 
-1. `d360_probe` if readiness is uncertain.
-2. `d360_metadata list_dmos` / `list_dlos` to find candidate objects.
-3. `d360_metadata describe_dmo` / `describe_dlo` to verify field names.
-4. Start with `COUNT(*)` and a small `rowLimit`.
-5. Paginate via query-status/rows endpoints only after the shape works.
+1. Run `data360_discover` with `action: "readiness.probe"` if readiness is uncertain.
+2. Use `data360_harmonize dmo.list` and `data360_prepare dlo.list` to find candidate objects.
+3. Use `data360_query dmo_describe` or `dlo_describe` to verify field names.
+4. Start with `data360_query sql.run`, `COUNT(*)`, and a small bound.
+5. Use `sql.status` and `sql.rows` only after the query shape works.
 
 ## Query endpoint shapes
 
@@ -36,10 +36,11 @@ field. Do not use `query`; the parser rejects it.
 
 ## DMO record query loop
 
-1. Select the DMO from `d360_metadata list_dmos`.
-2. Describe with `d360_metadata describe_dmo`; pick a few non-sensitive
+1. Select the DMO with `data360_harmonize dmo.list`.
+2. Describe it with `data360_query dmo_describe`; pick a few non-sensitive
    verified fields (ids, statuses, timestamps).
-3. `SELECT COUNT(*) record_count FROM SomeObject__dlm` first.
+3. Run `SELECT COUNT(*) record_count FROM SomeObject__dlm` through
+   `data360_query sql.run` first.
 4. `SELECT FieldA__c, FieldB__c FROM SomeObject__dlm LIMIT 5` second.
 5. Keep both SQL `LIMIT` and request `rowLimit` small.
 

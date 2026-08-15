@@ -22,14 +22,22 @@ Do not commit or publish:
   identifiers, or customer-specific aliases
 - Slack workspace, channel, user, file, canvas, or permalink identifiers from a
   real workspace
-- customer names, employee names, account names, project codenames, or other
-  identifying details
+- customer names, incidental/private employee identities, account names, project
+  codenames, or other identifying details
 - private/internal hostnames, unpublished service details, private repository
   URLs, internal ticket/case IDs, or internal documentation links
 - screenshots or browser evidence that contains customer, employee, org, Slack,
   or internal service data
 - internal-only examples copied from Slack, customer engagements, support cases,
   or private docs
+
+## Deliberate public attribution
+
+Consented, already-public maintainer attribution, repository governance contacts,
+CODEOWNERS entries, and third-party credits are allowed when they serve a clear
+project purpose. Do not infer consent from a private source or reuse names from
+customer/internal material. Keep incidental identities out of examples,
+diagnostics, screenshots, test data, and copied discussion text.
 
 ## Prefer generic examples
 
@@ -82,9 +90,14 @@ body.
 The repository has automated checks for common public-safety mistakes:
 
 - Gitleaks and TruffleHog secret scanning
-- docs-health public-safety patterns
+- docs-health scanning of tracked Markdown, JSON, YAML, source, scripts, and fixtures for private-shaped org and collaboration identifiers
 - LLM artifact checks
 - dependency and license checks
+
+The tracked-file boundary is deliberate: ignored local notes, reports, and
+session artifacts are private working state rather than public repository
+content. Clearly generic fixture shapes remain allowed so behavior tests can
+exercise identifier parsing without preserving real values.
 
 These checks are a backstop, not a substitute for review. If a public/private
 classification is unclear, omit, generalize, or ask before publishing.

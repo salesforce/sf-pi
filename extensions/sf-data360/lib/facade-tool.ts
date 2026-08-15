@@ -40,7 +40,19 @@ import {
   type D360Operation,
 } from "./facade/registry.ts";
 import { runAgentObservabilityRunbook } from "./facade/agent-observability.ts";
+import {
+  enforceOperationSafety,
+  evaluateDestructiveExecutionGuard,
+  shouldBlockConfirmedOperation,
+  type OwnedV2SweepCleanup,
+} from "./facade/destructive-guard.ts";
 import { isLocalD360Helper, runLocalD360Helper } from "./facade/local-helpers.ts";
+
+export {
+  evaluateDestructiveExecutionGuard,
+  isAgentforceStdmTarget,
+  shouldBlockConfirmedOperation,
+} from "./facade/destructive-guard.ts";
 
 export const D360_FACADE_TOOL_NAME = "d360";
 
@@ -97,6 +109,10 @@ export interface D360FacadeInput {
   allow_confirmed?: boolean;
   timeout_ms?: number;
   output_mode?: D360OutputMode;
+  /** Internal authority marker supplied only by the v2 dispatcher. */
+  execution_surface?: "v2";
+  /** Internal exact-ownership gate supplied only by the v2 E2E harness. */
+  owned_sweep_cleanup?: OwnedV2SweepCleanup;
 }
 
 export function registerD360FacadeTool(pi: ExtensionAPI): void {
@@ -314,8 +330,16 @@ async function runExecute(
     operation,
     targetOrg,
     env,
-    targetOrgInfo: { alias: session.target.alias },
+    targetOrgInfo: {
+      alias: session.target.alias,
+      username: session.target.username,
+      orgType: session.target.orgType,
+    },
+    targetResolved: true,
     hasUI: ctx.hasUI,
+    executionSurface: input.execution_surface,
+    params,
+    ownedSweepCleanup: input.owned_sweep_cleanup,
   });
   if (destructiveBlock.blocked) {
     return {
@@ -699,91 +723,6 @@ function optionalQuery(params: Record<string, unknown>, keys: string[]): QueryPa
     }
   }
   return Object.keys(query).length ? query : undefined;
-}
-
-export function shouldBlockConfirmedOperation(
-  input: Pick<D360FacadeInput, "dry_run" | "allow_confirmed">,
-  operation: Pick<D360Operation, "safety">,
-): boolean {
-  if (operation.safety === "read" || operation.safety === "safe_post") return false;
-  if (input.dry_run) return false;
-  return input.allow_confirmed !== true;
-}
-
-const DESTRUCTIVE_ALLOWED_TARGET_ORG = "AgentforceSTDM";
-
-interface DestructiveExecutionGuardInput {
-  operation: Pick<D360Operation, "name" | "safety">;
-  targetOrg: string;
-  env: SfEnvironment;
-  targetOrgInfo?: Partial<SfEnvironment["org"]>;
-  hasUI: boolean;
-}
-
-export function evaluateDestructiveExecutionGuard(input: DestructiveExecutionGuardInput): {
-  blocked: boolean;
-  summary?: string;
-  error?: string;
-} {
-  if (input.operation.safety !== "destructive") return { blocked: false };
-
-  if (!isAgentforceStdmTarget(input.targetOrg, input.env, input.targetOrgInfo)) {
-    return {
-      blocked: true,
-      summary: `${input.operation.name} requires target_org=${DESTRUCTIVE_ALLOWED_TARGET_ORG}`,
-      error:
-        "Destructive Data 360 operations are only allowed against the AgentforceSTDM org. Re-run the dry-run and execution with target_org='AgentforceSTDM'.",
-    };
-  }
-
-  if (!input.hasUI) {
-    return {
-      blocked: true,
-      summary: `${input.operation.name} requires interactive confirmation`,
-      error:
-        "Destructive Data 360 operations require Pi UI human-in-the-loop confirmation and are blocked in headless execution.",
-    };
-  }
-
-  return { blocked: false };
-}
-
-export function isAgentforceStdmTarget(
-  targetOrg: string,
-  env: SfEnvironment,
-  targetOrgInfo?: Partial<SfEnvironment["org"]>,
-): boolean {
-  return (
-    targetOrg === DESTRUCTIVE_ALLOWED_TARGET_ORG ||
-    targetOrgInfo?.alias === DESTRUCTIVE_ALLOWED_TARGET_ORG ||
-    (targetMatchesEnvironmentForGuard(targetOrg, env) &&
-      (env.config.targetOrg === DESTRUCTIVE_ALLOWED_TARGET_ORG ||
-        env.org.alias === DESTRUCTIVE_ALLOWED_TARGET_ORG))
-  );
-}
-
-function targetMatchesEnvironmentForGuard(targetOrg: string, env: SfEnvironment): boolean {
-  return (
-    targetOrg === env.config.targetOrg ||
-    targetOrg === env.org.alias ||
-    targetOrg === env.org.username
-  );
-}
-
-async function enforceOperationSafety(
-  ctx: ExtensionContext,
-  operation: D360Operation,
-): Promise<void> {
-  if (operation.safety === "read" || operation.safety === "safe_post") return;
-  // The explicit allow_confirmed gate above protects headless / tool-only
-  // execution. If a UI is present, ask for an additional human confirmation.
-  if (!ctx.hasUI) return;
-  const choice = await ctx.ui.select(
-    `Confirm Data 360 ${operation.safety} operation\n\n${operation.name}`,
-    ["Allow once", "Block"],
-    { timeout: 30_000, signal: ctx.signal },
-  );
-  if (choice !== "Allow once") throw new Error("Blocked by user via d360 facade confirmation.");
 }
 
 async function resolveEnvironment(

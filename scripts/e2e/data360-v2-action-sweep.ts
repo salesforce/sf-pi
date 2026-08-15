@@ -7,6 +7,10 @@
  * - required params and safety metadata are present;
  * - dry-run request resolution executes where possible;
  * - required-param omissions produce a useful error/recovery signal.
+ *
+ * The optional DLO lifecycle uses the same v2 dispatcher with an explicit
+ * non-production target, two exact target environment gates, a unique run ID,
+ * fixture-ownership preflight, and bounded cleanup/propagation retries.
  */
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -15,6 +19,7 @@ import path from "node:path";
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
+import { connectSalesforce } from "../../lib/common/sf-conn/index.ts";
 import { detectEnvironment } from "../../lib/common/sf-environment/detect.ts";
 import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import { getData360Actions } from "../../extensions/sf-data360/lib/v2/action-registry.ts";
@@ -23,8 +28,18 @@ import type {
   Data360V2Input,
 } from "../../extensions/sf-data360/lib/v2/action-types.ts";
 import { runData360V2Action } from "../../extensions/sf-data360/lib/v2/dispatcher.ts";
+import { presentData360Result } from "../../extensions/sf-data360/lib/v2/result-presenter.ts";
+import {
+  buildDloV2LifecyclePlan,
+  canRunV2MutationLifecycle,
+  runV2LifecyclePlan,
+  type V2LifecycleOutcome,
+  type V2LifecycleStage,
+  type V2MutationLifecycleName,
+} from "./data360-v2/lifecycle.ts";
 
-export type V2SweepStage = "describe" | "metadata" | "dry_run" | "missing_params" | "live_read";
+export type V2SweepStage =
+  "describe" | "metadata" | "dry_run" | "missing_params" | "live_read" | V2LifecycleStage;
 export type V2SweepOutcome =
   | "ok"
   | "skipped"
@@ -33,7 +48,8 @@ export type V2SweepOutcome =
   | "empty"
   | "feature_gated"
   | "not_found_optional"
-  | "dependency_missing";
+  | "dependency_missing"
+  | V2LifecycleOutcome;
 
 export interface V2SweepRecord {
   stage: V2SweepStage;
@@ -46,6 +62,8 @@ export interface V2SweepRecord {
   summary: string;
   params?: Record<string, unknown>;
   error?: string;
+  presentation?: string;
+  artifacts?: Array<{ label: string; path: string; kind: string }>;
 }
 
 export interface V2SweepOptions {
@@ -56,6 +74,9 @@ export interface V2SweepOptions {
   includeMissingParams?: boolean;
   liveRead?: boolean;
   maxLiveRead?: number;
+  mutationLifecycle?: V2MutationLifecycleName;
+  mutate?: boolean;
+  runId?: string;
 }
 
 const SKIP_DRY_RUN_IMPLEMENTATION_KINDS = new Set(["journey"]);
@@ -186,10 +207,56 @@ export async function runV2Sweep(
   options: V2SweepOptions,
 ): Promise<V2SweepRecord[]> {
   const ctx = { hasUI: false } as ExtensionContext;
-  const plan = buildV2SweepPlan(actions, options);
   const results: V2SweepRecord[] = [];
+  if (options.mutationLifecycle) {
+    const session = await connectSalesforce({
+      cwd: process.cwd(),
+      targetOrg: options.targetOrg,
+      timeoutMs: 30_000,
+    });
+    const gate = canRunV2MutationLifecycle({
+      mutate: options.mutate,
+      targetOrg: options.targetOrg,
+      authenticatedTargets: [
+        session.target.targetOrg,
+        session.target.alias,
+        session.target.username,
+      ].filter((value): value is string => Boolean(value)),
+      orgType: session.target.orgType,
+      runId: options.runId,
+      mutationTargetOrg: process.env.SF_PI_D360_V2_SWEEP_MUTATION_TARGET_ORG,
+      destructiveTargetOrg: process.env.D360_V2_SWEEP_ALLOW_DESTRUCTIVE,
+    });
+    if (gate.ok !== true) throw new Error(gate.reason);
+  }
+
+  const plan = buildV2SweepPlan(actions, options);
   for (const record of plan) {
     results.push(await runV2SweepRecord(record, env, ctx, options.targetOrg));
+  }
+  if (options.mutationLifecycle === "dlo") {
+    if (!options.runId) throw new Error("The DLO lifecycle requires --run-id.");
+    const lifecycle = buildDloV2LifecyclePlan(actions, options.runId);
+    results.push(
+      ...(await runV2LifecyclePlan(lifecycle, async (input) => {
+        const targetInput = { ...input, target_org: options.targetOrg };
+        const result = await runData360V2Action(targetInput, env, ctx, undefined, undefined, {
+          ownedSweepCleanup: {
+            runId: lifecycle.runId,
+            mutationTargetOrg: process.env.SF_PI_D360_V2_SWEEP_MUTATION_TARGET_ORG,
+            destructiveTargetOrg: process.env.D360_V2_SWEEP_ALLOW_DESTRUCTIVE,
+          },
+        });
+        const presented = await presentData360Result(targetInput, result, "summary");
+        return {
+          ...result,
+          sweepPresentation: {
+            text: presented.content[0]?.text,
+            artifacts: presented.details.artifacts,
+          },
+        };
+      })),
+    );
   }
   return results;
 }
@@ -239,19 +306,22 @@ async function runV2SweepRecord(
         : pass(record, "dry-run ok");
     }
     if (record.stage === "live_read") {
-      const result = await runData360V2Action(
-        {
-          tool: record.tool as Data360V2Input["tool"],
-          action: record.action,
-          target_org: targetOrg,
-          params: record.params,
-          output_mode: "summary",
+      const input: Data360V2Input = {
+        tool: record.tool as Data360V2Input["tool"],
+        action: record.action,
+        target_org: targetOrg,
+        params: record.params,
+        output_mode: "summary",
+      };
+      const result = await runData360V2Action(input, env, ctx, undefined);
+      const presented = await presentData360Result(input, result, "summary");
+      return attachPresentationEvidence(classifyLiveReadResult(record, result), {
+        ...result,
+        sweepPresentation: {
+          text: presented.content[0]?.text,
+          artifacts: presented.details.artifacts,
         },
-        env,
-        ctx,
-        undefined,
-      );
-      return classifyLiveReadResult(record, result);
+      });
     }
     if (record.stage === "missing_params") {
       try {
@@ -287,6 +357,14 @@ export function classifyLiveReadResult(record: V2SweepRecord, result: unknown): 
   if (!data) return fail(record, "Live read returned a non-object result.");
   const blob = JSON.stringify(data).toLowerCase();
   if (data.ok === false) {
+    if (data.status === 404) {
+      return {
+        ...record,
+        outcome: "not_found_optional",
+        fail: false,
+        summary: String(data.summary ?? "Optional surface not found"),
+      };
+    }
     if (blob.includes("functionality_not_enabled") || blob.includes("not currently enabled")) {
       return {
         ...record,
@@ -425,6 +503,31 @@ function toPascalName(value: string): string {
     .join("");
 }
 
+function attachPresentationEvidence(
+  record: V2SweepRecord,
+  result: Record<string, unknown>,
+): V2SweepRecord {
+  const presentation = asRecord(result.sweepPresentation);
+  if (!presentation) return record;
+  const artifacts = Array.isArray(presentation.artifacts)
+    ? presentation.artifacts.filter(
+        (artifact): artifact is { label: string; path: string; kind: string } => {
+          const candidate = asRecord(artifact);
+          return (
+            typeof candidate?.label === "string" &&
+            typeof candidate.path === "string" &&
+            typeof candidate.kind === "string"
+          );
+        },
+      )
+    : undefined;
+  return {
+    ...record,
+    ...(typeof presentation.text === "string" ? { presentation: presentation.text } : {}),
+    ...(artifacts?.length ? { artifacts } : {}),
+  };
+}
+
 function pass(record: V2SweepRecord, summary: string): V2SweepRecord {
   return { ...record, outcome: "ok", fail: false, summary };
 }
@@ -448,15 +551,13 @@ function resolveOutputDir(outputDir?: string): string {
 }
 
 function writeReports(records: V2SweepRecord[], outputDir: string): void {
+  const stages = [...new Set(records.map((record) => record.stage))];
   const summary = {
     total: records.length,
     failed: records.filter((record) => record.fail).length,
     skipped: records.filter((record) => record.outcome === "skipped").length,
     byStage: Object.fromEntries(
-      ["describe", "metadata", "dry_run", "missing_params", "live_read"].map((stage) => [
-        stage,
-        records.filter((record) => record.stage === stage).length,
-      ]),
+      stages.map((stage) => [stage, records.filter((record) => record.stage === stage).length]),
     ),
   };
   writeFileSync(
@@ -469,6 +570,26 @@ function writeReports(records: V2SweepRecord[], outputDir: string): void {
     `- Total checks: ${summary.total}`,
     `- Failed checks: ${summary.failed}`,
     `- Skipped checks: ${summary.skipped}`,
+    "",
+    "## Lifecycle",
+    "",
+    ...records
+      .filter(
+        (record) => record.stage.startsWith("lifecycle_") || record.stage.startsWith("cleanup_"),
+      )
+      .map(
+        (record) =>
+          `- ${record.stage} ${record.tool} ${record.action}: ${record.outcome} — ${record.summary}`,
+      ),
+    "",
+    "## Normal tool artifacts",
+    "",
+    ...records.flatMap((record) =>
+      (record.artifacts ?? []).map(
+        (artifact) =>
+          `- ${record.stage} ${record.tool} ${record.action}: ${artifact.label} — ${artifact.path}`,
+      ),
+    ),
     "",
     "## Failures",
     "",
@@ -506,8 +627,8 @@ async function execForSweep(
   });
 }
 
-function parseArgs(argv: string[]): V2SweepOptions {
-  const options: V2SweepOptions = { targetOrg: "AgentforceSTDM" };
+export function parseV2SweepArgs(argv: string[]): V2SweepOptions {
+  const options: V2SweepOptions = { targetOrg: "" };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--target-org") options.targetOrg = argv[++i] ?? options.targetOrg;
@@ -517,12 +638,24 @@ function parseArgs(argv: string[]): V2SweepOptions {
     else if (arg === "--no-missing-params") options.includeMissingParams = false;
     else if (arg === "--live-read") options.liveRead = true;
     else if (arg === "--max-live-read") options.maxLiveRead = Number(argv[++i]);
+    else if (arg === "--mutation-lifecycle") {
+      const lifecycle = argv[++i];
+      if (lifecycle !== "dlo") throw new Error(`Unsupported mutation lifecycle: ${lifecycle}`);
+      options.mutationLifecycle = lifecycle;
+    } else if (arg === "--mutate") options.mutate = true;
+    else if (arg === "--run-id") options.runId = argv[++i];
   }
   return options;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const options = parseArgs(process.argv.slice(2));
+  const options = parseV2SweepArgs(process.argv.slice(2));
+  if (!options.targetOrg) {
+    console.error(
+      "Usage: node --experimental-strip-types scripts/e2e/data360-v2-action-sweep.ts --target-org <alias> [--live-read] [--mutation-lifecycle dlo --mutate --run-id <id>]",
+    );
+    process.exit(2);
+  }
   const env = await detectEnvironment(execForSweep, process.cwd());
   const records = await runV2Sweep(getData360Actions(), env, options);
   const outputDir = resolveOutputDir(options.outputDir);

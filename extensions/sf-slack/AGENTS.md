@@ -5,10 +5,10 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## Read first
 
-1. `extensions/sf-slack/README.md` — tool list, scope probing, formatting
-2. `extensions/sf-slack/index.ts` — tool registration + event wiring
-3. `extensions/sf-slack/lib/types.ts` — Slack payload shapes (the boundary)
-4. The specific tool file you're editing (see map below)
+1. `extensions/sf-slack/index.ts` — tool registration + event wiring
+2. `extensions/sf-slack/lib/types.ts` — Slack payload shapes (the boundary)
+3. The specific tool file you're editing (see map below)
+4. The matching focused Behavior Proof
 
 ## File map (what lives where)
 

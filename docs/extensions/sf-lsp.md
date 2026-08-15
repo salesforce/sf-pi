@@ -1,6 +1,7 @@
 ---
 title: "SF LSP"
 description: "Real-time Salesforce LSP diagnostics on write/edit with a working indicator, transcript rows, and one-line startup readiness in SF Welcome"
+editLink: false
 ---
 
 # SF LSP
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-lsp
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-lsp
+/sf-pi open sf-lsp
 /sf-pi enable sf-lsp
 /sf-pi disable sf-lsp
 ```

@@ -1,6 +1,7 @@
 ---
 title: "SF Skills"
 description: "Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Plus a passive live-context HUD, forcedotcom/afv-library install, per-skill usage counters, and prune."
+editLink: false
 ---
 
 # SF Skills
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-skills
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-skills
+/sf-pi open sf-skills
 /sf-pi enable sf-skills
 /sf-pi disable sf-skills
 ```

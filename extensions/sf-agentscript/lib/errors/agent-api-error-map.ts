@@ -221,9 +221,8 @@ export function mapAgentApiError(
   // -- 8. Service Agent activation without default_agent_user -----------------
   // This is the exact text returned by the activation API for
   // `agent_type=AgentforceServiceAgent` + missing/invalid `default_agent_user`.
-  // Catch it first because the broader "Activation request did not succeed"
-  // catch-all (#9 below) would otherwise swallow the diagnosis. See
-  // docs/POSTMORTEM_E2E_DEMO.md Issue 4.
+  // Catch this before the broader "Activation request did not succeed"
+  // fallback so the response preserves the actionable missing-user diagnosis.
   if (/should have a user assigned/i.test(text) || /Agent Type should have/i.test(text)) {
     const apiName = context.agentApiName ?? "<agent>";
     const recover: { tool: string; params: Record<string, unknown> } | undefined = context.agentFile

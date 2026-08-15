@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { parseCommandArgs } from "../../extensions/sf-pi-manager/index.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const EXTENSIONS_DIR = path.join(ROOT, "extensions");
@@ -26,32 +27,6 @@ const VALID_INTENT_GROUPS = new Set([
   "Collaborate and improve",
   "Personalize pi",
 ]);
-
-// Deliberately limited to living user/operator surfaces. Historical ADRs,
-// changelogs, completed plans/audits, and compatibility source stay out of this
-// current-copy contract.
-const CURRENT_COPY_SURFACES = [
-  "README.md",
-  "AGENTS.md",
-  "ARCHITECTURE.md",
-  "CONTRIBUTING.md",
-  "catalog/index.json",
-  "docs/agent-orientation.md",
-  "docs/commands.md",
-  "docs/extensions.md",
-  "docs/extensions/sf-brain.md",
-  "docs/extensions/sf-docs.md",
-  "docs/extensions/sf-herdr.md",
-  "docs/contributing.md",
-  "extensions/sf-brain/manifest.json",
-  "extensions/sf-brain/README.md",
-  "extensions/sf-docs/manifest.json",
-  "extensions/sf-docs/README.md",
-  "extensions/sf-herdr/manifest.json",
-  "extensions/sf-herdr/README.md",
-  "extensions/sf-data360/README.md",
-  "scripts/scaffold.mjs",
-] as const;
 
 const RETIRED_CURRENT_COPY = [
   /operator kernel/i,
@@ -84,6 +59,12 @@ type Manifest = {
     editingRules?: string;
     agentGuide?: string;
     contextGlossary?: string;
+    referenceRoots?: Array<{
+      path: string;
+      index: string;
+      role: "current" | "generated-current" | "compatibility";
+      generatedBy?: string;
+    }>;
   };
 };
 
@@ -93,6 +74,77 @@ function readManifests(): Manifest[] {
     .map((entry) =>
       JSON.parse(readFileSync(path.join(EXTENSIONS_DIR, entry.name, "manifest.json"), "utf8")),
     );
+}
+
+function currentCopySurfaces(): string[] {
+  const surfaces = new Set([
+    "README.md",
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "GOVERNANCE.md",
+    "SECURITY.md",
+    "ROADMAP.md",
+    "CONTEXT.md",
+    "catalog/index.json",
+    "lib/common/README.md",
+    "scripts/e2e/README.md",
+    "scripts/scaffold.mjs",
+  ]);
+
+  const docsRoot = path.join(ROOT, "docs");
+  const walkDocs = (directory: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name === "adr") continue;
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) walkDocs(absolute);
+      else if (entry.isFile() && entry.name.endsWith(".md")) {
+        surfaces.add(path.relative(ROOT, absolute).replaceAll(path.sep, "/"));
+      }
+    }
+  };
+  walkDocs(docsRoot);
+
+  for (const manifest of readManifests()) {
+    const base = `extensions/${manifest.id}`;
+    surfaces.add(`${base}/manifest.json`);
+    surfaces.add(`${base}/README.md`);
+    for (const role of ["editingRules", "agentGuide", "contextGlossary"] as const) {
+      const relativePath = manifest.docs[role];
+      if (relativePath) surfaces.add(`${base}/${relativePath}`);
+    }
+
+    const roots = [...(manifest.docs.referenceRoots ?? [])].sort(
+      (left, right) => right.path.length - left.path.length,
+    );
+    const referenceFiles = new Set<string>();
+    for (const root of roots) {
+      const absoluteRoot = path.join(EXTENSIONS_DIR, manifest.id, root.path);
+      if (!existsSync(absoluteRoot)) continue;
+      const walk = (directory: string): void => {
+        for (const entry of readdirSync(directory, { withFileTypes: true })) {
+          const absolute = path.join(directory, entry.name);
+          if (entry.isDirectory()) walk(absolute);
+          else if (entry.isFile() && entry.name.endsWith(".md")) {
+            referenceFiles.add(
+              path
+                .relative(path.join(EXTENSIONS_DIR, manifest.id), absolute)
+                .replaceAll(path.sep, "/"),
+            );
+          }
+        }
+      };
+      walk(absoluteRoot);
+    }
+    for (const referenceFile of referenceFiles) {
+      const owner = roots.find(
+        (root) => referenceFile === root.path || referenceFile.startsWith(`${root.path}/`),
+      );
+      if (owner?.role !== "compatibility") surfaces.add(`${base}/${referenceFile}`);
+    }
+  }
+
+  return [...surfaces].sort((left, right) => left.localeCompare(right));
 }
 
 describe("generated extension documentation contract", () => {
@@ -146,13 +198,53 @@ describe("generated extension documentation contract", () => {
     }
   });
 
-  it("resolves unique extension-relative primaryFiles within the repository root", () => {
+  it("routes package-state inspection through the supported Manager deep link", () => {
+    for (const manifest of readManifests().filter(
+      (candidate) => candidate.id !== "sf-pi-manager",
+    )) {
+      const detail = readFileSync(path.join(EXTENSION_DETAIL_DIR, `${manifest.id}.md`), "utf8");
+      const command = `open ${manifest.id}`;
+      expect(detail, `${manifest.id}: Manager deep link`).toContain(`/sf-pi ${command}`);
+      expect(detail, `${manifest.id}: unsupported scoped status`).not.toContain(
+        `/sf-pi status ${manifest.id}`,
+      );
+      expect(parseCommandArgs(command).route).toEqual({
+        extensionId: manifest.id,
+        view: "detail",
+      });
+    }
+  });
+
+  it("disables direct edit links on generated site pages", () => {
+    const generatedPages = [
+      EXTENSIONS_DOC_PATH,
+      path.join(ROOT, "docs", "commands.md"),
+      path.join(ROOT, "docs", "agent-orientation.md"),
+      ...readdirSync(EXTENSION_DETAIL_DIR)
+        .filter((file) => file.endsWith(".md"))
+        .map((file) => path.join(EXTENSION_DETAIL_DIR, file)),
+    ];
+
+    for (const generatedPage of generatedPages) {
+      expect(readFileSync(generatedPage, "utf8"), path.relative(ROOT, generatedPage)).toMatch(
+        /^---\n[\s\S]*?^editLink: false$/m,
+      );
+    }
+  });
+
+  it("keeps primaryFiles as a bounded read-first route", () => {
     for (const manifest of readManifests()) {
       const extensionRoot = path.join(EXTENSIONS_DIR, manifest.id);
       const resolvedPaths = new Set<string>();
       const primaryFiles = manifest.docs?.primaryFiles;
       expect(Array.isArray(primaryFiles), `${manifest.id}: docs.primaryFiles`).toBe(true);
       expect(primaryFiles?.length ?? 0, `${manifest.id}: docs.primaryFiles`).toBeGreaterThan(0);
+      expect(primaryFiles?.length ?? 0, `${manifest.id}: docs.primaryFiles`).toBeLessThanOrEqual(8);
+      expect(primaryFiles?.[0], `${manifest.id}: first entrypoint`).toBe("index.ts");
+      expect(
+        primaryFiles?.every((primaryFile) => !primaryFile.endsWith(".md")),
+        `${manifest.id}: role/reference docs stay outside primaryFiles`,
+      ).toBe(true);
 
       for (const primaryFile of primaryFiles ?? []) {
         expect(path.isAbsolute(primaryFile), `${manifest.id}: ${primaryFile}`).toBe(false);
@@ -167,6 +259,69 @@ describe("generated extension documentation contract", () => {
         expect(existsSync(resolved), `${manifest.id}: ${primaryFile}`).toBe(true);
         expect(resolvedPaths.has(resolved), `${manifest.id}: duplicate ${primaryFile}`).toBe(false);
         resolvedPaths.add(resolved);
+      }
+    }
+  });
+
+  it("declares every extension reference directory through a routed root", () => {
+    for (const manifest of readManifests()) {
+      const extensionRoot = path.join(EXTENSIONS_DIR, manifest.id);
+      const referenceFiles: string[] = [];
+      for (const directory of ["docs", "references"]) {
+        const root = path.join(extensionRoot, directory);
+        if (!existsSync(root)) continue;
+        const walk = (current: string): void => {
+          for (const entry of readdirSync(current, { withFileTypes: true })) {
+            const absolute = path.join(current, entry.name);
+            if (entry.isDirectory()) walk(absolute);
+            else if (entry.isFile() && entry.name.endsWith(".md")) {
+              referenceFiles.push(path.relative(extensionRoot, absolute).replaceAll(path.sep, "/"));
+            }
+          }
+        };
+        walk(root);
+      }
+
+      const roots = manifest.docs.referenceRoots ?? [];
+      for (const referenceFile of referenceFiles) {
+        expect(
+          roots.some(
+            (root) => referenceFile === root.path || referenceFile.startsWith(`${root.path}/`),
+          ),
+          `${manifest.id}: undeclared reference ${referenceFile}`,
+        ).toBe(true);
+      }
+      const detail = readFileSync(path.join(EXTENSION_DETAIL_DIR, `${manifest.id}.md`), "utf8");
+      for (const root of roots) {
+        expect(
+          existsSync(path.join(extensionRoot, root.index)),
+          `${manifest.id}: ${root.index}`,
+        ).toBe(true);
+        expect(detail, `${manifest.id}: routed reference index ${root.index}`).toContain(
+          `/extensions/${manifest.id}/${root.index}`,
+        );
+
+        const indexSource = readFileSync(path.join(extensionRoot, root.index), "utf8");
+        if (root.role === "generated-current") {
+          expect(indexSource, `${manifest.id}: generated root ${root.path}`).toContain(
+            `${path.basename(root.path)}/`,
+          );
+          continue;
+        }
+        const directReferences = readdirSync(path.join(extensionRoot, root.path), {
+          withFileTypes: true,
+        })
+          .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+          .map((entry) => path.posix.join(root.path, entry.name))
+          .filter((relativePath) => relativePath !== root.index);
+        for (const directReference of directReferences) {
+          const relativeLink = path
+            .relative(path.dirname(root.index), directReference)
+            .replaceAll(path.sep, "/");
+          expect(indexSource, `${manifest.id}: orphan reference ${directReference}`).toContain(
+            relativeLink,
+          );
+        }
       }
     }
   });
@@ -195,7 +350,7 @@ describe("generated extension documentation contract", () => {
   });
 
   it("rejects retired descriptions on current user and operator surfaces", () => {
-    for (const relativePath of CURRENT_COPY_SURFACES) {
+    for (const relativePath of currentCopySurfaces()) {
       const source = readFileSync(path.join(ROOT, relativePath), "utf8");
       for (const retiredPhrase of RETIRED_CURRENT_COPY) {
         expect(retiredPhrase.test(source), `${relativePath}: ${retiredPhrase}`).toBe(false);

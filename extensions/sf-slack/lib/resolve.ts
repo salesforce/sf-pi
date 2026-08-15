@@ -200,8 +200,8 @@ export async function resolveUser(
   // is the same pattern Slackbot uses when a human asks for someone it
   // can't find in its directory, and it's the mirror of the channel
   // `assistant.search.context` fallback above. Without this, enterprise
-  // grid users hit a dead end on every misspelled name (e.g. "McCula" for
-  // "Mikula").
+  // grid users hit a dead end on every misspelled name (for example,
+  // "Morgon" for "Morgan").
   if (candidates.size === 0 || bestConfidence(candidates) < AUTO_SELECT_THRESHOLD) {
     strategy.push("assistant.search.context");
     const searched = await searchUserCandidates(token, input, signal);
@@ -634,8 +634,8 @@ export function buildChannelDiscoveryQueries(ref: string): string[] {
  *  Unlike the channel variant, we don't use `in:#` here — we want messages
  *  matching the person's name/handle anywhere. We do send individual
  *  tokens because enterprise grid users frequently have name misspellings
- *  (e.g. "McCula" vs "Mikula") where the full string doesn't hit but a
- *  last-name token does. */
+ *  (for example, "Morgon" vs "Morgan") where the full string doesn't hit but
+ *  a last-name token does. */
 export function buildUserDiscoveryQueries(ref: string): string[] {
   const raw = ref.trim().replace(/^@/, "");
   if (!raw) return [];

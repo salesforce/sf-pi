@@ -1,6 +1,7 @@
 ---
 title: "SF tldraw"
 description: "Deterministic, editable Salesforce diagrams rendered through the local tldraw offline Canvas API."
+editLink: false
 ---
 
 # SF tldraw
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-tldraw
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-tldraw
+/sf-pi open sf-tldraw
 /sf-pi enable sf-tldraw
 /sf-pi disable sf-tldraw
 ```
@@ -62,6 +63,7 @@ Manage its package state with:
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-tldraw)
 - [Agent editing rules](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-tldraw/AGENTS.md)
 - [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-tldraw/AGENT_GUIDE.md)
+- [Reference index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-tldraw/docs/README.md)
 
 ## Troubleshooting
 

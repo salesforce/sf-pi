@@ -74,10 +74,12 @@ ones agents and maintainers most often need:
 
 | Script                                    | Purpose                                                                                                              |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `scripts/generate-catalog.mjs`            | Regenerates catalog files, generated docs, and generated README marker blocks.                                       |
+| `scripts/generate-catalog.mjs`            | Regenerates catalog/docs pages, routed indexes, contributor inventories, and declared marker blocks.                 |
 | `scripts/check-staged-catalog.mjs`        | Exports the Git index to a temporary root and checks its generated catalog without mutating local state.             |
 | `scripts/check-command-contracts.mjs`     | Checks safe slash-command wrapping and reserved command-panel filenames.                                             |
-| `scripts/docs-health.mjs`                 | Checks factual doc drift contracts and public-safe examples.                                                         |
+| `scripts/docs-health.mjs`                 | Checks factual doc drift, manual-evidence freshness, and the tracked public-text corpus.                             |
+| `scripts/check-external-links.mjs`        | Generates the scheduled report-only external-link artifact; never runs in normal PR validation.                      |
+| `scripts/check-architecture.mjs`          | Checks source-size advisories and shared state-store placement separately from docs health.                          |
 | `scripts/instruction-surface-report.mjs`  | Writes sanitized SF Pi instruction-size JSON and Markdown through the exact Pi runtime.                              |
 | `scripts/e2e/instruction-behavior/run.ts` | Runs the opt-in model routing regression with local reads allowed and every non-local tool blocked before execution. |
 | `scripts/add-spdx-headers.mjs`            | Adds or checks SPDX headers for source scripts. Pre-commit auto-adds missing headers; CI uses the check path.        |
@@ -88,7 +90,7 @@ ones agents and maintainers most often need:
 | `scripts/preview-sf-logo.mjs`             | Local visual preview for the compact Salesforce wordmark.                                                            |
 | `scripts/render-splash-header.mjs`        | Renders splash-header frames for review / screenshots.                                                               |
 
-`npm run lint` covers formatting, generated-data/catalog drift, docs/SPDX and shared-policy checks, plus ESLint. `npm run validate` already covers generated checks, docs health and the VitePress build, formatting/types, structural checks, and tests without rewriting generated artifacts. `npm run validate:ci` adds the remaining CI-facing lint/artifact guard and reasserts docs health.
+`npm run lint` covers formatting, generated-data/catalog drift, docs, source-architecture, SPDX, and shared-policy checks, plus ESLint. `npm run validate` covers generated checks, docs and source-architecture health, the VitePress build, formatting/types, structural checks, and tests without rewriting generated artifacts. `npm run validate:ci` adds the remaining CI-facing lint/artifact guard and reasserts docs health.
 
 ## Where does X live? (agent quick-reference)
 
@@ -106,6 +108,7 @@ When an agent (or human) needs to change something, start here:
 | Extension-specific agent rules                  | Manifest `docs.editingRules` → `extensions/<id>/AGENTS.md`                      |
 | Extension agent operating guide                 | Manifest `docs.agentGuide` → `extensions/<id>/AGENT_GUIDE.md`                   |
 | Extension domain glossary                       | Manifest `docs.contextGlossary` → `extensions/<id>/CONTEXT.md`                  |
+| Extension reference index                       | Manifest `docs.referenceRoots[].index` for `docs/` or `references/`             |
 | Extension-specific roadmap                      | `extensions/<id>/ROADMAP.md` (optional, see below)                              |
 | Slash command handlers                          | `extensions/<id>/index.ts` — most handle their own commands                     |
 | Shared Pi-runtime shims                         | `lib/common/pi-compat.ts`, `lib/common/pi-paths.ts`                             |
@@ -122,9 +125,10 @@ When an agent (or human) needs to change something, start here:
 | Generated ADR lifecycle index                   | `docs/adr/README.md` — **generated, do not edit**                               |
 | VitePress documentation site                    | `docs/.vitepress/`, `docs/index.md`, and curated docs pages                     |
 | Contributor site entry point                    | `docs/contributing.md`                                                          |
-| Generated bundled-extension table               | Inside `README.md` between `GENERATED:bundled-extensions` markers               |
-| Generated command-reference block               | Inside `README.md` between `GENERATED:command-reference` markers                |
 | Generated folder layout                         | Inside `ARCHITECTURE.md` between `GENERATED:folder-layout` markers              |
+| Generated contributor script inventory          | Inside `CONTRIBUTING.md` from `package.json`                                    |
+| Generated shared-module inventory               | Inside `lib/common/README.md` from `lib/common/`                                |
+| Generated E2E harness inventory                 | Inside `scripts/e2e/README.md` from package scripts and its harness manifest    |
 | Generated troubleshooting index                 | Inside `docs/troubleshooting.md` generated marker block                         |
 | Generated extension file maps                   | Inside `extensions/*/README.md` between `GENERATED:file-structure` markers      |
 | Hand-maintained registry types                  | `catalog/types.ts`                                                              |
@@ -146,7 +150,7 @@ Each extension lives in `extensions/<id>/` with everything co-located:
 
 - `index.ts` — Pi entry point (exports `default function(pi: ExtensionAPI)`)
 - `manifest.json` — Metadata that drives the catalog generator
-- `README.md` — Architecture and usage documentation
+- `README.md` — current human behavior and usage documentation
 - `lib/` — Implementation modules (imported by index.ts)
 - `tests/` — Co-located tests (vitest)
 
@@ -186,26 +190,30 @@ Each extension declares its identity in `manifest.json`:
 The catalog generator reads these files and produces:
 
 - `catalog/registry.ts` — TypeScript registry used at runtime
-- `catalog/index.json` — Machine-readable index for agents and search
-- the bundled-extension table in `README.md`
+- `catalog/index.json` — machine-readable index for agents and search
+- generated extension browse/detail pages, command and agent-orientation pages,
+  sidebars, routed indexes, and contributor-facing structural inventories
 
 **Never edit generated files manually.** Run `npm run generate-catalog`.
 
-### Manifest schema
+### Manifest contract
 
-| Field            | Type                                                                                   | Required | Description                                                                       |
-| ---------------- | -------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------- |
-| `id`             | string                                                                                 | ✅       | Unique slug, must match directory name                                            |
-| `name`           | string                                                                                 | ✅       | Human-readable display name                                                       |
-| `description`    | string                                                                                 | ✅       | One-line description                                                              |
-| `category`       | `"manager"` \| `"provider"` \| `"agent-tool"` \| `"safety"` \| `"assistive"` \| `"ui"` | ✅       | Category for grouping                                                             |
-| `defaultEnabled` | boolean                                                                                | ✅       | Enabled on first install?                                                         |
-| `alwaysActive`   | boolean                                                                                |          | Cannot be disabled                                                                |
-| `configurable`   | boolean                                                                                |          | Has a config panel (requires `lib/config-panel.ts` exporting `createConfigPanel`) |
-| `commands`       | string[]                                                                               |          | Slash commands shown in the manager detail page                                   |
-| `providers`      | string[]                                                                               |          | Providers/auth integrations shown in manager details                              |
-| `tools`          | string[]                                                                               |          | Tool names shown in the manager detail page                                       |
-| `events`         | string[]                                                                               |          | Pi runtime hooks shown in the manager detail page                                 |
+The hand-maintained `ExtensionManifest` type in [`catalog/types.ts`](./catalog/types.ts)
+defines the complete schema. The catalog generator validates every discovered
+manifest before writing output, including:
+
+- identity, display name, description, category, maturity, and default state;
+- declared commands, providers, tools, events, and configurability;
+- required `docs.intentGroup`, `docs.summary`, and a maximum of eight
+  `docs.primaryFiles` read-first entrypoints;
+- explicit editing-rules, operating-guide, and context-glossary roles when the
+  corresponding files exist;
+- routed `docs.referenceRoots` coverage for Markdown under extension `docs/` or
+  `references/`, including generator provenance for generated-current roots;
+- an operating guide for every tool-owning extension.
+
+Do not maintain a second field-by-field schema table in prose. Update the type,
+generator validation, fixtures, and affected manifests together.
 
 ### Enable/disable mechanism
 
@@ -268,12 +276,12 @@ agents and humans can follow the behavior without reading every file.
 - [ ] `manifest.json` has all required fields
 - [ ] `manifest.json` `id` matches the directory name
 - [ ] `index.ts` exports a default function accepting `ExtensionAPI`
-- [ ] `README.md` exists with behavior matrix and file structure
+- [ ] `README.md` explains current human behavior and contains the generated file structure
 - [ ] `tests/` has at least a smoke test (module export check)
 - [ ] `npm run generate-catalog` succeeds
 - [ ] `npm run check` passes
 - [ ] `npm test` passes
-- [ ] `README.md` generated bundled-extension section still looks correct after `npm run generate-catalog`
+- [ ] generated extension detail page looks correct after `npm run generate-catalog`
 - [ ] `AGENTS.md` / `CONTRIBUTING.md` guidance still matches the repo if structure or workflow changed
 
 ## Conventions
@@ -286,11 +294,11 @@ agents and humans can follow the behavior without reading every file.
 
 ### Behavior contracts
 
-Every `index.ts` starts with a block comment documenting:
-
-- What the extension does
-- When it activates / stays silent
-- A behavior matrix (event → result table)
+Keep public registration and lifecycle behavior easy to locate from `index.ts`.
+Document non-obvious activation, silence, ordering, and recovery contracts in
+focused comments, role-specific docs, and Behavior Proofs. Do not require a
+repeated event-by-event matrix when the public seam and tests already make the
+behavior clear.
 
 ### Split by responsibility
 
@@ -358,7 +366,7 @@ agent-facing tools.
 
 - Every extension has at least a smoke test in `tests/`
 - Pure helpers should have thorough unit tests
-- Event handlers and TUI components are tested via manual QA
+- Event handlers and TUI paths use public-seam Behavior Proofs where feasible; manual visual QA is final evidence only for visible behavior
 - Tests co-locate with their extension (`extensions/<id>/tests/`)
 - Run all tests: `npm test`
 - Run specific tests: `npx vitest run extensions/sf-ohana-spinner/tests/`

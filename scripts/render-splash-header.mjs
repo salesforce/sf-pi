@@ -69,7 +69,7 @@ const data = {
   sfEnvironment: {
     cliInstalled: true,
     cliVersion: "2.132.14",
-    defaultOrg: "Vivint-DevInt",
+    defaultOrg: "Example-Dev",
     orgType: "sandbox",
     connected: true,
     apiVersion: "66.0",

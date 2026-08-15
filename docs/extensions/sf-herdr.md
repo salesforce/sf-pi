@@ -1,6 +1,7 @@
 ---
 title: "SF Herdr"
 description: "Non-mutating Salesforce workflow plans for the current split Herdr tools."
+editLink: false
 ---
 
 # SF Herdr
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-herdr
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-herdr
+/sf-pi open sf-herdr
 /sf-pi enable sf-herdr
 /sf-pi disable sf-herdr
 ```

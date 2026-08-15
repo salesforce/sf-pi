@@ -25,7 +25,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/activation-targets/{activationTargetId}" },
     "aliases": ["d360_activation_target_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -93,7 +93,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/activations/{activationId}" },
     "aliases": ["d360_activation_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -174,7 +174,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-action-targets/{dataActionTargetId}" },
     "aliases": ["d360_dataaction_target_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -242,7 +242,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-actions/{dataActionId}" },
     "aliases": ["d360_dataaction_delete"],
-    "tips": "Delete the data action before deleting its data action target. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Delete the data action before deleting its data action target. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -336,7 +336,7 @@
       "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}"
     },
     "aliases": ["d360_p13n_experience_config_delete", "p13n.experience_config.delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -454,7 +454,7 @@
       "path": "/personalization/personalization-points/{idOrName}"
     },
     "aliases": ["d360_p13n_point_delete", "p13n.point.delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -512,7 +512,7 @@
       "path": "/personalization/personalization-schemas/{idOrName}"
     },
     "aliases": ["d360_p13n_schema_delete", "p13n.schema.delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -570,7 +570,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/personalization/external-apps/transformer" },
     "aliases": ["d360_p13n_transformer_delete", "p13n.transformer.delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_activate",
@@ -784,7 +784,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/connections/{connectionId}" },
     "aliases": ["d360_connection_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_connect",
@@ -1012,7 +1012,7 @@
       "path": "/ssot/data-model-object-mappings/{mappingName}/field-mappings/{fieldMappingName}"
     },
     "aliases": ["d360_dmo_field_mapping_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_harmonize",
@@ -1040,7 +1040,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-model-object-mappings/{mappingName}" },
     "aliases": ["d360_dmo_mapping_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_harmonize",
@@ -1108,7 +1108,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-model-objects/{dmoName}" },
     "aliases": ["d360_dmo_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_harmonize",
@@ -1217,7 +1217,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/identity-resolutions/{identityResolutionId}" },
     "aliases": ["d360_ir_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_harmonize",
@@ -1554,7 +1554,8 @@
     "requiredParams": [],
     "optionalParams": ["dataStreamIds", "shouldDeleteDataLakeObject"],
     "implementation": { "kind": "journey", "name": "cleanup.run" },
-    "aliases": ["journey.cleanup.run"]
+    "aliases": ["journey.cleanup.run"],
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_orchestrate",
@@ -1861,7 +1862,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "POST", "path": "/ssot/data-kits/{dataKitId}/undeploy" },
     "aliases": ["d360_datakit_undeploy"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_prepare",
@@ -1915,7 +1916,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-spaces/{dataSpaceName}/members" },
     "aliases": ["d360_dataspace_member_remove"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_prepare",
@@ -1943,7 +1944,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-spaces/{dataSpaceName}" },
     "aliases": ["d360_dataspace_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_prepare",
@@ -2053,7 +2054,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-lake-objects/{dloName}" },
     "aliases": ["d360_dlo_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_prepare",
@@ -2200,7 +2201,7 @@
     "optionalParams": ["shouldDeleteDataLakeObject", "dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-streams/{dataStreamId}" },
     "aliases": ["d360_datastream_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_prepare",
@@ -2322,7 +2323,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/data-transforms/{transformId}" },
     "aliases": ["d360_transform_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_prepare",
@@ -2642,7 +2643,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/query-sql/{queryId}" },
     "aliases": ["d360_query_sql_cancel"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_query",
@@ -2722,7 +2723,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/calculated-insights/{ciName}" },
     "aliases": ["d360_ci_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_segment",
@@ -2890,7 +2891,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/segments/{segmentApiName}" },
     "aliases": ["d360_segment_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_segment",
@@ -3033,7 +3034,7 @@
       "path": "/ssot/machine-learning/configured-models/{idOrName}"
     },
     "aliases": ["d360_ml_configured_model_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -3122,7 +3123,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/machine-learning/model-artifacts/{idOrName}" },
     "aliases": ["d360_ml_model_artifact_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -3190,7 +3191,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/machine-learning/model-setups/{idOrName}" },
     "aliases": ["d360_ml_model_setup_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -3393,7 +3394,7 @@
       "path": "/ssot/machine-learning/prediction-job-definitions/{idOrName}"
     },
     "aliases": ["d360_prediction_job_def_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -3639,7 +3640,7 @@
       "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}/configurations/{configurationIdOrName}"
     },
     "aliases": ["d360_retriever_config_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -3719,7 +3720,7 @@
       "path": "/ssot/machine-learning/retrievers/{retrieverIdOrName}"
     },
     "aliases": ["d360_retriever_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -3839,7 +3840,7 @@
     "optionalParams": [],
     "endpoint": { "method": "DELETE", "path": "/ssot/search-index/{searchIndexApiNameOrId}" },
     "aliases": ["d360_search_index_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -3944,7 +3945,7 @@
       "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-dimensions/{calculatedDimensionId}"
     },
     "aliases": ["d360_sdm_calc_dim_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -4027,7 +4028,7 @@
       "path": "/ssot/semantic/models/{modelApiNameOrId}/calculated-measurements/{calculatedMeasureId}"
     },
     "aliases": ["d360_sdm_calc_measure_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -4138,7 +4139,7 @@
       "path": "/ssot/semantic/models/{modelApiNameOrId}/data-objects/{dataObjectNameOrId}"
     },
     "aliases": ["d360_sdm_data_object_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -4201,7 +4202,7 @@
     "optionalParams": ["dataspace"],
     "endpoint": { "method": "DELETE", "path": "/ssot/semantic/models/{modelApiNameOrId}" },
     "aliases": ["d360_sdm_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -4345,7 +4346,7 @@
       "path": "/ssot/semantic/models/{modelApiNameOrId}/metrics/{metricNameOrId}"
     },
     "aliases": ["d360_sdm_metric_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",
@@ -4466,7 +4467,7 @@
       "path": "/ssot/semantic/models/{modelApiNameOrId}/relationships/{relationshipId}"
     },
     "aliases": ["d360_sdm_relationship_delete"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Actual v2 execution requires a verified non-production target, dry_run review, allow_confirmed=true, and interactive Pi confirmation."
   },
   {
     "tool": "data360_semantic",

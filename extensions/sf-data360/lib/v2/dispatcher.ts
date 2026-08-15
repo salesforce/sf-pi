@@ -59,12 +59,21 @@ export interface Data360ProgressEvent {
 
 export type Data360ProgressSink = (event: Data360ProgressEvent) => void;
 
+export interface Data360V2ExecutionContext {
+  ownedSweepCleanup?: {
+    runId: string;
+    mutationTargetOrg?: string;
+    destructiveTargetOrg?: string;
+  };
+}
+
 export async function runData360V2Action(
   input: Data360V2Input,
   env: SfEnvironment,
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
   progress?: Data360ProgressSink,
+  executionContext?: Data360V2ExecutionContext,
 ): Promise<Record<string, unknown>> {
   if (input.tool === "data360_discover") {
     const discovery = await runDiscoveryAction(input, env, ctx, signal, progress);
@@ -87,7 +96,7 @@ export async function runData360V2Action(
     case "examples.get":
       return runExamplesGet(input, env, ctx, signal);
     default:
-      return runMappedAction(input, env, ctx, signal, progress);
+      return runMappedAction(input, env, ctx, signal, progress, executionContext);
   }
 }
 
@@ -516,6 +525,7 @@ async function runMappedAction(
   ctx: ExtensionContext,
   signal: AbortSignal | undefined,
   progress?: Data360ProgressSink,
+  executionContext?: Data360V2ExecutionContext,
 ): Promise<Record<string, unknown>> {
   const match = findData360Action(input.tool, input.action);
   if (!match) return unknownAction(input, input.action);
@@ -565,6 +575,8 @@ async function runMappedAction(
       allow_confirmed: input.allow_confirmed,
       timeout_ms: input.timeout_ms,
       output_mode: input.output_mode,
+      execution_surface: "v2",
+      owned_sweep_cleanup: executionContext?.ownedSweepCleanup,
     },
     env,
     ctx,

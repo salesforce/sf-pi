@@ -13,11 +13,9 @@
     "primaryFiles": [
       "index.ts",
       "lib/diagnostics.ts",
-      "lib/github.ts",
       "lib/sanitize.ts",
-      "lib/issue-template.ts",
-      "lib/settings.ts",
-      "lib/config-panel.ts"
+      "lib/github.ts",
+      "lib/issue-template.ts"
     ],
     "safety": [
       "Never submits a GitHub issue without user confirmation.",

@@ -41,6 +41,9 @@ node scripts/add-spdx-headers.mjs --check
 banner "Docs health check"
 node scripts/docs-health.mjs --check
 
+banner "Source architecture check"
+node scripts/check-architecture.mjs --check
+
 banner "Docs site build"
 npm run docs:build
 

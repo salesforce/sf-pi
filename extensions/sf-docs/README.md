@@ -2,57 +2,78 @@
 
 ## What It Does
 
-SF Docs gives agents and humans a first-class Salesforce documentation lookup surface inside SF Pi. It exposes one `sf_docs` family tool for collection discovery, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet.
+SF Docs gives agents and humans a first-class Salesforce documentation lookup
+surface inside SF Pi. The `sf_docs` family supports status, collection
+discovery, search, fetch, cited answers, single-document explanations, and a
+lazy cheatsheet.
 
-SF Docs calls the Salesforce Docs service through direct HTTP JSON-RPC/SSE. It does not run a local MCP server and does not install MCP packages.
+It calls the Salesforce Docs service through direct HTTP JSON-RPC/SSE. It does
+not run a local MCP server, scrape Salesforce sites, build a local document
+index, or cache fetched document bodies.
 
-## Key Architecture Decisions
+## Collection coverage
 
-- **Credential storage:** `/login sf-docs` uses SF Pi's shared fixed-mask component and returns an API-key or OAuth-compatible credential to Pi. Pi alone persists/removes it under provider id `sf-docs`; `SF_DOCS_MCP_TOKEN` remains the automation fallback.
-- **Transport:** `lib/client.ts` and `lib/sse.ts` implement the narrow HTTP JSON-RPC/SSE protocol directly.
-- **Tool shape:** `sf_docs` is one family tool instead of one public tool per remote action.
-- **Cache boundary:** `lib/catalog-cache.ts` stores only the collection catalog. Search results, answers, and document bodies are never cached.
-- **Evidence workflow:** For implementation-sensitive answers, agents should search, fetch source documents, and then answer from inspected evidence. The `answer` action remains available for quick cited synthesis.
-- **Docs Query Distillation:** Salesforce-owned docs URLs, article-like locators, and seasonal release-note requests are turned into compact MCP-native search variants before `search`; failed URL `fetch` calls can recover by fetching the strongest indexed result ID.
-- **Docs Collection Profiles:** Static, public-safe collection profiles explain collection ownership, URL traits, coverage boundaries, and routing guidance alongside the live service catalog.
-- **MCP-native retrieval:** The wrapper uses documented service retrieval language such as `+release:<n>` and bare `guides:<slug>` boosts instead of maintaining a local docs index or release-note resolver.
-- **Evidence gates:** Release-specific answer paths must find matching official evidence before synthesis; if the docs service has no matching release slice, SF Docs reports the coverage gap instead of silently broadening to unrelated docs.
-- **Human output:** The tool separates compact Docs Result Cards from bounded Docs Evidence Packets, and compiled lookups include a visible query plan so humans can catch retrieval drift. Fetch packets include safe source metadata such as filename, source path, product, guide, locale, and release while keeping opaque content hashes in structured details / expanded human render only.
+Collection versions such as `current` are service slices, not Salesforce
+seasonal releases. Seasonal release-note filters belong in the query, for
+example `+release:260`.
 
-## Collection Coverage
+- `admin` covers Salesforce Help/Admin docs and a bounded release-note window.
+- `developer` covers current non-Atlas developer guides.
+- `legacydeveloper` covers Atlas-backed reference material such as Apex,
+  Metadata API, Tooling API, Object Reference, and Visualforce.
+- `architect`, `tableau`, and `mulesoft` cover their corresponding sites.
 
-SF Docs exposes the backing docs service through collection slices. Collection versions such as `current` are service slices, not Salesforce seasonal releases. Put seasonal release-note filters in the query, for example `+release:260`, rather than in the `version` parameter.
+Implementation-sensitive work should search, inspect the selected source, then
+answer from that evidence. Release-specific answers fail closed when matching
+official evidence is unavailable.
 
-Key routing guidance:
+## Commands
 
-- `admin` covers Salesforce Help/Admin docs, including latest product documentation and a bounded window of the latest three Salesforce release-note releases.
-- `developer` covers current developer guides on `developer.salesforce.com` that are not Atlas/reference pages.
-- `legacydeveloper` covers Atlas-backed developer reference and legacy developer documentation, including Apex Reference, Metadata API, Tooling API, Object Reference, Visualforce, and similar references.
-- `architect`, `tableau`, and `mulesoft` cover their respective documentation sites and have collection-specific versioning and guide semantics.
+| Command            | Purpose                                       |
+| ------------------ | --------------------------------------------- |
+| `/sf-docs`         | Open SF Docs in the SF Pi Manager             |
+| `/sf-docs connect` | Prepare the native `/login sf-docs` flow      |
+| `/sf-docs refresh` | Refresh identity and collection catalog state |
+| `/sf-docs status`  | Print credential and service readiness        |
+| `/sf-docs help`    | Print usage guidance                          |
 
-SF Docs uses the Salesforce Docs service as its retrieval surface. It does not scrape Salesforce websites, download documentation bundles, build a local search index, or cache fetched document bodies.
+## Configuration
 
-## Settings
+The Manager stores non-secret defaults for collection, version, locale, fetch
+format, page size, citations, display density, and collection-catalog caching.
+Project values override global values, then extension defaults.
 
-The Manager settings page stores only non-secret preferences:
+Use `/login sf-docs` for masked interactive credential entry. Pi owns credential
+persistence and logout. `SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT` remain
+non-persisted automation overrides.
 
-- default collection
-- default version
-- default locale
-- default fetch format
-- default search page size
-- include citations
-- cache catalog
+## Safety and Data Boundaries
 
-Preferences are scoped as project > global > extension default. The token is not a setting. Use `/login sf-docs` for interactive fixed-mask setup; `SF_DOCS_MCP_TOKEN` remains the non-persisted automation fallback. Existing Pi API-key and OAuth-compatible credentials remain readable.
+- Only the collection catalog can be cached; search results, answers, citations,
+  prompts, and document bodies are not cached.
+- Token-bearing values are redacted from errors and UI surfaces.
+- URLs and citations remain visible so evidence can be reviewed.
+- The extension uses native fetch and a small SSE parser, with no extra MCP
+  runtime or server process.
 
-## Result Mocks
+## References
 
-See [`docs/result-mocks.md`](./docs/result-mocks.md) for lightweight examples of what humans see in the TUI versus what the LLM receives for each `sf_docs` action.
+Use [`docs/README.md`](./docs/README.md) to choose collection/query guidance,
+result-card examples, or the lazy cheatsheet. Agent search/fetch ordering and
+release-note recovery live in [`AGENT_GUIDE.md`](./AGENT_GUIDE.md).
 
-## Cheatsheet
+## Troubleshooting
 
-See [`docs/cheatsheet.md`](./docs/cheatsheet.md). It is an extension-owned reference, not a Pi skill, and is loaded only when requested.
+**SF Docs is not connected:** Run `/sf-docs connect`, submit the prefilled native
+login command, and enter the token in the fixed-mask component. For automation,
+set `SF_DOCS_MCP_TOKEN` before starting Pi.
+
+**Collections look stale:** Run `/sf-docs refresh` or request `collections` with
+`refresh=true`.
+
+**Fetch returns the wrong locale or version:** Reuse the collection, version,
+and locale returned by search; collection document IDs are not always portable
+across slices.
 
 ## File Structure
 
@@ -71,14 +92,3 @@ extensions/sf-docs/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Troubleshooting
-
-**SF Docs says it is not connected:**
-Run `/sf-docs connect`, submit the prefilled `/login sf-docs`, and enter the token through SF Pi's fixed-mask component. For automation, set `SF_DOCS_MCP_TOKEN` before starting Pi.
-
-**Collections look stale:**
-Run `/sf-docs refresh` or call `sf_docs` with `action="collections"` and `refresh=true`.
-
-**A fetch returned the wrong locale or version:**
-Fetch IDs using the same collection, version, and locale returned by search. Some collections do not share IDs across locales.

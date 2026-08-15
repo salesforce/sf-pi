@@ -18,9 +18,8 @@ describe("agentscript_authoring create scaffolds emit explicit agent_type (Issue
   // requires `default_agent_user`); the local SDK lint that should catch
   // this is gated on `agent_type` being explicitly present, so the gap
   // is silent until the activation API rejects the publish. The scaffold
-  // fix: always emit agent_type, pick Employee by default, switch to
-  // Service when the caller supplies `agent_user`.
-  // See docs/POSTMORTEM_E2E_DEMO.md.
+  // Always emit agent_type: Employee is the activation-safe default, while an
+  // explicit agent_user selects the Service Agent shape that requires a user.
 
   test("default scaffold (no job_spec) emits AgentforceEmployeeAgent and no default_agent_user", () => {
     const src = generateAgentforceDefault("Default_Bot");

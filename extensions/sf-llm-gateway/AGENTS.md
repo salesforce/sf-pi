@@ -8,10 +8,10 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## Read first
 
-1. `extensions/sf-llm-gateway/README.md` — unified-provider architecture + three provider-neutral protocol adapters
-2. `extensions/sf-llm-gateway/index.ts` header comment — configuration + behavior matrix
-3. `extensions/sf-llm-gateway/lib/config.ts` — env vars, constants, saved-config schema
-4. `extensions/sf-llm-gateway/lib/models.ts` — discovery metadata and family inference
+1. `extensions/sf-llm-gateway/index.ts` — registration, lifecycle, and command dispatch
+2. `extensions/sf-llm-gateway/lib/config.ts` — env vars, constants, saved-config schema
+3. `extensions/sf-llm-gateway/lib/models.ts` — discovery metadata and family inference
+4. The specific implementation module and matching focused Behavior Proof
 
 ## File map (what lives where)
 

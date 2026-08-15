@@ -17,13 +17,7 @@
       "lib/sf-lwc-tool.ts",
       "lib/operations.ts",
       "lib/project.ts",
-      "lib/component.ts",
-      "lib/diagnostics.ts",
-      "lib/tests.ts",
-      "lib/artifacts.ts",
-      "lib/render.ts",
-      "../../docs/adr/0071-sf-lwc-local-native-lifecycle-extension.md",
-      "AGENT_GUIDE.md"
+      "lib/tests.ts"
     ],
     "stateFiles": [
       "<globalAgentDir>/sf-pi/sf-lwc/scans/*",

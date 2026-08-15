@@ -49,6 +49,9 @@ jobs:
       - name: Check docs health
         run: npm run docs:health:check
 
+      - name: Check source architecture
+        run: npm run check:architecture
+
       - name: Build documentation site
         run: npm run docs:build
 

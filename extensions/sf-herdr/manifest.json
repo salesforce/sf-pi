@@ -13,19 +13,8 @@
     "intentGroup": "Work safely",
     "agentGuide": "AGENT_GUIDE.md",
     "summary": "Provides command/status/settings surfaces everywhere it loads and conditionally registers a minimal non-mutating planner for the current herdr_layout, herdr_pane, and herdr_agent tool set.",
-    "primaryFiles": [
-      "index.ts",
-      "lib/sf_herdr_plan-tool.ts",
-      "lib/settings.ts",
-      "lib/status.ts",
-      "lib/tool-result-normalizer.ts",
-      "lib/config-panel.ts",
-      "../../lib/common/herdr.ts",
-      "../../lib/common/herdr-runtime.ts",
-      "../../docs/adr/0102-forward-only-current-herdr-tools.md",
-      "AGENT_GUIDE.md"
-    ],
-    "stateFiles": ["<globalAgentDir>/settings.json → sfPi.herdr"],
+    "primaryFiles": ["index.ts", "lib/sf_herdr_plan-tool.ts", "lib/settings.ts", "lib/status.ts"],
+    "stateFiles": ["<globalAgentDir>/settings.json \u2192 sfPi.herdr"],
     "env": ["HERDR_ENV", "HERDR_PANE_ID"],
     "safety": [
       "sf_herdr_plan is non-mutating and never generates shell commands.",

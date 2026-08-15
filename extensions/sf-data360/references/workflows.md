@@ -1,96 +1,82 @@
-# SF Data 360 Workflows
+# SF Data 360 V2 Workflows
 
-## Read-only smoke test matrix
+## Read-only smoke matrix
 
-Use this when validating whether Data 360 surfaces are reachable without creating, editing, deleting, publishing, deploying, or running ingestion.
+Use this matrix to verify reachability without creating, editing, deleting, publishing, deploying, or running ingestion.
 
-1. Run `d360_probe` and classify each sampled surface as populated, empty, gated, not found, or failed.
-2. For populated list endpoints, select one returned identifier and run the matching single-resource `GET`.
-3. For DMOs/DLOs, use `d360_metadata` list/describe first, then run `COUNT(*)` before any row sampling.
-4. For semantic models, follow the URLs returned by the model detail response for read-only subresources such as data objects, relationships, calculated measurements, and parameters.
-5. Record empty endpoints as reachable-empty, not failed. Record `NOT_FOUND` on optional surfaces such as search indexes or retrievers as feature/path unavailable unless a core dependency also fails.
+1. Run `data360_discover readiness.probe`.
+2. Use `actions.search` and `action.describe` when an action contract is unclear.
+3. Run one bounded list/read action through the owning family.
+4. When populated, select one returned identifier and run the matching detail action.
+5. Record empty and optional-feature results separately from failures.
 
-Suggested read-only coverage:
+| Phase     | Bounded list/read                                                                             | Optional detail                                                  |
+| --------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Prepare   | `data360_prepare dataspace.list`, `dlo.list`, `stream.list`, `transform.list`, `datakit.list` | matching `*.get` action                                          |
+| Harmonize | `data360_harmonize dmo.list`, `dmo_mapping.list`, `ir.list`                                   | matching `*.get` action                                          |
+| Segment   | `data360_segment ci.list`, `segment.list`                                                     | matching `*.get` action                                          |
+| Activate  | `data360_activate activation.list`, `activation_target.list`, `data_action.list`              | matching `*.get` action                                          |
+| Query     | `data360_query metadata.entities` or bounded `sql.run` with `COUNT(*)`                        | `metadata.get`, `sql.status`, `sql.rows`                         |
+| Semantic  | `data360_semantic semantic_model.list`, `search_index.list`, `retriever.list`                 | matching `*.get` action                                          |
+| Observe   | bounded `stdm.find_sessions` or latency/error summary with an explicit time/session filter    | `stdm.session_timeline`, `stdm.session_otel`, `trace.trace_tree` |
 
-| Family                       | List/read probe                                                      | Optional detail probe                                                   |
-| ---------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Data spaces                  | `GET /ssot/data-spaces`                                              | `GET /ssot/data-spaces/{name}`                                          |
-| DMO/DLO catalog              | `d360_metadata list_dmos/list_dlos`                                  | `d360_metadata describe_dmo/describe_dlo`                               |
-| Query plane                  | `POST /ssot/query-sql` with `COUNT(*)`                               | `GET /ssot/query-sql/{queryId}` and `/rows` only when async             |
-| Mappings                     | `GET /ssot/data-model-object-mappings?dmoDeveloperName={dmo}`        | `GET /ssot/data-model-object-mappings/{mappingName}` when returned      |
-| Streams                      | `GET /ssot/data-streams?limit=1`                                     | `GET /ssot/data-streams/{name}`                                         |
-| Connectors/connections       | `GET /ssot/connectors`, `GET /ssot/connections?connectorType={type}` | `GET /ssot/connectors/{catalogName}`, `GET /ssot/connections/{id}`      |
-| Calculated insights          | `GET /ssot/calculated-insights`                                      | `GET /ssot/calculated-insights/{apiName}`                               |
-| Segments/activations/actions | List endpoints with small limits                                     | Detail reads only when list returns IDs                                 |
-| Transforms                   | `GET /ssot/data-transforms?limit=1`                                  | `GET /ssot/data-transforms/{id}`                                        |
-| Semantic models              | `GET /ssot/semantic/models?limit=1`                                  | `GET /ssot/semantic/models/{idOrApiName}` and returned subresource URLs |
-| DataKits                     | `GET /ssot/data-kits`                                                | Manifest reads only after verifying the accepted identifier/path        |
-| Search indexes/retrievers    | List endpoints                                                       | Treat `NOT_FOUND` as optional-surface unavailable                       |
+Treat a not-found optional search index, retriever, model, or trace surface as feature/path evidence unless a core dependency also fails.
 
 ## Recursive family validation
 
-Use this when validating the broad 180+ operation surface.
-
-1. Read `action-coverage.md` and build a checklist from the public upstream
-   `FamilyCatalog.java` plus any local OpenAPI/Swagger file.
-2. Pass the intended target org explicitly on every `d360_api`, `d360_metadata`,
-   and `d360_probe` call. Do not rely on the default org during recursive tests.
-3. Start every family with read-only list/detail coverage and safe POSTs such as
-   query, search, validate, count, preview, prediction, and connection test.
-4. For every create/update/delete/run/publish/deploy/undeploy/deactivate/cancel/retry/signing-key
-   action, first call `d360_api` with `dry_run: true` and verify the resolved
-   target org, API version, path, and safety level.
-5. Execute mutating calls only in disposable orgs with isolated test resources and cleanup steps.
-6. Record results as `reachable`, `empty`, `feature_gated`, `not_found_optional`, `dry_run_ok`, `skipped_needs_payload`, or `failed`.
+1. Read [`action-coverage.md`](./action-coverage.md).
+2. Build the checklist from `registry/v2/actions.json`, grouped by owning `data360_*` family.
+3. Pass the intended non-production `target_org` explicitly.
+4. Start each family with discovery, one bounded read, and safe-post validation where fixtures exist.
+5. For every confirmed or destructive action, run `dry_run: true` or the matching plan first and verify target, API version, endpoint/action, safety, and cleanup ownership.
+6. Execute only against sweep-owned resources with Guardrail approval and deterministic cleanup.
+7. Persist action coverage and artifacts without treating optional org features as universal failures.
 
 ## Explore before querying
 
-1. Search metadata with `/connect/search/metadata/results`.
-2. Fetch one entity's metadata with `/ssot/metadata` using `entityName`.
-3. Run a small `/ssot/query-sql` query with `rowLimit`.
-4. Use query status and rows endpoints for pagination when needed.
+1. Use `data360_query metadata.search` or `metadata.entities`.
+2. Inspect one entity with `metadata.get`, `dmo_describe`, or `dlo_describe`.
+3. Run `data360_query sql.run` with `COUNT(*)` or a small `LIMIT`.
+4. Use `sql.status` and `sql.rows` only when the initial action returns an asynchronous query id.
 
 ## Create or update a mapping
 
-1. Get source DLO schema: `GET /ssot/data-lake-objects/{dloName}`.
-2. Get target DMO schema: `GET /ssot/data-model-objects/{dmoName}`.
-3. Preview or inspect examples for mapping payload shape.
-4. Use `dry_run: true` for the create/update call.
-5. Create or update mapping only after field API names are verified.
+1. Inspect the source with `data360_prepare dlo.get` or `data360_query dlo_describe`.
+2. Inspect the target with `data360_harmonize dmo.get` or `data360_query dmo_describe`.
+3. Use `data360_harmonize standard_mapping.preview`, `preview_field_matches`, or `smart_mapping.suggest` when applicable.
+4. Review `dmo_mapping.create` or `dmo_mapping.update` with `dry_run: true`.
+5. Execute only after exact field names and compatible types are verified.
 
-## Create a calculated insight
+## Create a calculated insight and segment
 
-1. Discover referenced DMO/CI fields.
-2. Draft SQL with fully qualified field names.
-3. Validate with `POST /ssot/calculated-insights/actions/validate`.
-4. Create or update the CI.
-5. Run or enable only after validation succeeds.
-6. Check run/status before using the CI in segments.
+1. Verify referenced DMO fields.
+2. Draft fully qualified calculated-insight SQL.
+3. Run `data360_segment ci.validate` before `ci.create` or `ci.update`.
+4. Check CI run/status before using it in `segment.create`.
+5. Use `data360_orchestrate build_segment.plan` before a multi-step build.
+6. Publish only after counts and status are verified.
 
 ## Create a data stream
 
-1. List connectors and connector metadata.
-2. List or test the connection.
-3. Inspect target DMO and mapping requirements.
-4. Prefer connector-specific create shapes when available.
-5. Dry-run the create request.
-6. Trigger ingestion only after create succeeds and dependencies are verified.
+1. Use `data360_connect connector.list`, `connector.metadata`, and `connection_test` as applicable.
+2. Inspect source fields and target DMO/mapping requirements.
+3. Use a connector-specific `data360_prepare stream.create*` action.
+4. Review with `dry_run: true`.
+5. Run ingestion only after the stream and dependencies exist.
 
-## Work with semantic data models
+## Work with semantic models
 
 1. Create or locate the semantic model shell.
-2. Add data objects.
-3. List dimensions/measurements to get semantic field names.
-4. Add relationships using semantic field names, not raw DMO field names.
-5. Add calculated dimensions/measures and metrics.
-6. Validate the model before semantic queries.
+2. Add data objects through `semantic_model.data_object.create`.
+3. List dimensions and measurements before relationships or metrics.
+4. Use semantic field names, not guessed raw DMO fields.
+5. Run `semantic_model.validate` before `semantic_model.query` or downstream retrieval.
+6. Use `data360_orchestrate semantic_retrieval.plan` for a multi-step search-index/retriever workflow.
 
 ## Recovery loop
 
-When a REST call fails:
-
-1. Read the error body carefully.
-2. Re-read the relevant reference/example file.
-3. Fetch current resource state with a GET call.
-4. Retry with the smallest corrected payload.
-5. If the response is too large, request fewer rows or use pagination.
+1. Read the bounded error and artifact pointers.
+2. Re-run `action.describe` for the failed action.
+3. Fetch current resource state through the owning family.
+4. Retry with the smallest corrected payload or narrower query.
+5. Use `data360_api rest.request` only when no family action covers the verified endpoint.

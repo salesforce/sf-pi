@@ -15,10 +15,7 @@
       "index.ts",
       "lib/lsp-client.ts",
       "lib/feedback.ts",
-      "lib/file-classify.ts",
       "lib/activity.ts",
-      "lib/working-indicator.ts",
-      "lib/command-panel.ts",
       "lib/config-panel.ts"
     ],
     "safety": [

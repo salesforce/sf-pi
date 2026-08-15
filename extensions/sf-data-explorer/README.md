@@ -1,28 +1,68 @@
 # SF Data Explorer
 
-Read-only interactive Salesforce data explorer for Pi and SF Pi.
+## What It Does
 
-## Command
+SF Data Explorer is a deterministic, keyboard-first TUI for read-only Salesforce
+data exploration. Its three panes cover objects, fields, and query/results in
+three modes:
+
+- **`soql`** — browse queryable Salesforce objects and run visible SOQL.
+- **`sosl`** — browse searchable objects and run visible SOSL.
+- **`sql`** — browse Data 360 DMO/DLO catalogs and run visible SELECT SQL.
+
+It is a human explorer, not an agent query author, write surface, or replacement
+for the `sf_soql` and `data360_*` lifecycle tools.
+
+## Commands
 
 ```text
 /sf-data-explorer
-/sf-data-explorer soql my-org
-/sf-data-explorer sosl my-org
-/sf-data-explorer sql my-org
-/sf-data-explorer soql Account my-org
-/sf-data-explorer sosl Contact my-org
-/sf-data-explorer sql ssot__Individual__dlm my-org
+/sf-data-explorer soql <alias>
+/sf-data-explorer sosl <alias>
+/sf-data-explorer sql <alias>
+/sf-data-explorer soql Account <alias>
+/sf-data-explorer sosl Contact <alias>
+/sf-data-explorer sql ssot__Individual__dlm <alias>
 ```
 
-## What It Does
+Press `?` for the complete shortcut list. Primary keys are `t` switch mode, `w`
+set WHERE/search, `l` set limit, `e` edit, `r` run, `c` copy, `s` save, `f`
+refresh, and `q` close.
 
-SF Data Explorer is a deterministic, keyboard-first TUI for Salesforce data exploration. It opens a three-pane explorer (objects, fields, query/result) across three read-only modes:
+## Configuration
 
-- **`soql`** — browse queryable core Salesforce sObjects, select fields, edit and run SOQL.
-- **`sosl`** — browse searchable sObjects, build and run SOSL searches.
-- **`sql`** — browse Data 360 DMO/DLO catalogs, select fields, edit and run Data 360 SELECT SQL.
+The Manager Settings page stores direct-command defaults:
 
-It is not a query author for the agent, a write surface, or a replacement for `/sf-data360`. It is a single explorer for picking data and running read-only queries from inside Pi.
+- `sfPi.dataExplorer.defaultMode`: `soql`, `sosl`, or `sql`;
+- `sfPi.dataExplorer.defaultOrg`: target alias used when a command omits one.
+
+Explicit arguments always win.
+
+## Safety and Data Boundaries
+
+- Core org execution accepts only validated `SELECT` SOQL or `FIND` SOSL and
+  uses describe, query, and search endpoints.
+- Data 360 execution uses compact metadata reads and visible `SELECT` SQL only.
+- No DML, Apex execution, Metadata API write, or Data 360 mutation endpoint is
+  available.
+- Target and API-version selection comes from shared SF Pi connection logic;
+  no API version or access token is exposed in UI, exports, or logs.
+- Saved JSON/CSV files land under `.sf-data-explorer/exports/` in the current
+  workspace.
+
+## Troubleshooting
+
+**The transport cannot be initialized:** Confirm SF Pi is installed and the
+explicit or default org is authenticated.
+
+**Catalog loading does not finish:** Press `f` or rerun with the `refresh`
+argument. Large catalogs can take several seconds before their cache is warm.
+
+**A query is refused:** Edit it until the visible text starts with the allowed
+read-only form: `SELECT` for SOQL/Data 360 SQL or `FIND` for SOSL.
+
+**Exports are not where expected:** Look under `.sf-data-explorer/exports/` in
+the current workspace, or use `c` to copy query text.
 
 ## File Structure
 
@@ -39,50 +79,3 @@ extensions/sf-data-explorer/
 ```
 
 <!-- GENERATED:file-structure:end -->
-
-## Settings
-
-The Manager Settings page exposes low-risk defaults for direct command usage:
-
-- **Default mode** (`sfPi.dataExplorer.defaultMode`) — `soql`, `sosl`, or `sql`.
-- **Default org** (`sfPi.dataExplorer.defaultOrg`) — target org alias used when a command omits one.
-
-Explicit command arguments still win. For example, `/sf-data-explorer sql my-org` uses `sql` and `my-org` regardless of saved defaults.
-
-## Safety
-
-V1 is read-only by construction:
-
-- Core Salesforce calls: `/sobjects`, `/sobjects/{name}/describe`, `/query`, `/search`.
-- Data 360 calls: `/ssot/metadata-entities`, `/ssot/metadata`, `/ssot/query-sql` with SELECT SQL.
-- No DML, Apex execution, Metadata API writes, or Data 360 mutation endpoints.
-
-## Shortcuts
-
-Press `?` in the TUI for the complete shortcut list. Primary bindings are lowercase:
-
-```text
-t switch explorer
-w WHERE/search term
-l LIMIT
-e edit query
-r run
-c copy
-s save
-f refresh
-q close
-```
-
-## Troubleshooting
-
-**`/sf-data-explorer` reports the transport could not be initialized:**
-The extension lazy-loads sf-pi Salesforce connection internals. Confirm `sf-pi` itself is installed and the target org is authenticated via `sf org login` / `sf org login web`. Pass `--target-org <alias>` (or the third positional argument) to override the default org.
-
-**Catalog never finishes loading:**
-Press `f` to force-refresh past the cache, or rerun with `/sf-data-explorer <mode> refresh`. Large orgs and large Data 360 catalogs can take several seconds the first time; subsequent loads are cache-served.
-
-**Query refuses to run:**
-The validator only permits `SELECT` (SOQL / Data 360 SQL) or `FIND` (SOSL). V1 is read-only by construction. Edit the query text (`e`) until the validator accepts it before pressing `r`.
-
-**Exports are not where I expect:**
-Saved JSON/CSV files land under `.sf-data-explorer/exports/` in the current working directory, not in the org or sf-pi state directory. Use `c` to copy the query text into the host editor instead.

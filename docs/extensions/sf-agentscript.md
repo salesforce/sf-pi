@@ -1,6 +1,7 @@
 ---
 title: "SF Agent Script"
 description: "Single-plugin lifecycle for `.agent` files: compile diagnostics, native quality, preview, local-first Eval Studio, exact-version release eval, inactive publication, and gated activation."
+editLink: false
 ---
 
 # SF Agent Script
@@ -19,10 +20,10 @@ Open the extension from its primary command:
 /sf-agentscript
 ```
 
-Manage its package state with:
+Open its Manager detail or change its package state with:
 
 ```text
-/sf-pi status sf-agentscript
+/sf-pi open sf-agentscript
 /sf-pi enable sf-agentscript
 /sf-pi disable sf-agentscript
 ```
@@ -68,6 +69,7 @@ Manage its package state with:
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-agentscript)
 - [Agent editing rules](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-agentscript/AGENTS.md)
 - [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-agentscript/AGENT_GUIDE.md)
+- [Reference index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-agentscript/docs/README.md)
 
 ## Troubleshooting
 

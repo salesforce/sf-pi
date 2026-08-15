@@ -1,7 +1,7 @@
 {
   "id": "sf-slack",
   "name": "SF Slack",
-  "description": "Slack integration — search messages, read threads, browse channel history",
+  "description": "Slack integration \u2014 search messages, read threads, browse channel history",
   "category": "agent-tool",
   "maturity": "stable",
   "defaultEnabled": true,
@@ -28,16 +28,11 @@
     "summary": "Full Slack integration. Read-only search/thread/history/channel/user/file/canvas plus confirmed send and scheduled-message management. Tools register only after a token resolves (Pi auth store -> SLACK_USER_TOKEN), keeping the system prompt cache stable when Slack is not configured.",
     "primaryFiles": [
       "index.ts",
-      "lib/auth.ts",
-      "lib/api.ts",
       "lib/tools.ts",
       "lib/research-tool.ts",
       "lib/send-tool.ts",
       "lib/schedule-tool.ts",
-      "lib/recipient-confirm.ts",
-      "lib/config-panel.ts",
-      "lib/preferences-panel.ts",
-      "AGENT_GUIDE.md"
+      "lib/auth.ts"
     ],
     "stateFiles": [
       "Pi auth store via /login sf-slack",

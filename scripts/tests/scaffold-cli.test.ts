@@ -21,11 +21,21 @@ function writeJson(relativePath: string, value: unknown): void {
 }
 
 function createFixture(): void {
-  writeJson("package.json", { pi: { extensions: [] } });
+  writeJson("package.json", { scripts: {}, pi: { extensions: [] } });
+  writeText("README.md", "# Fixture\n");
   writeText(
-    "README.md",
-    "# Fixture\n\n<!-- GENERATED:bundled-extensions:start -->\nstale\n<!-- GENERATED:bundled-extensions:end -->\n\n<!-- GENERATED:command-reference:start -->\nstale\n<!-- GENERATED:command-reference:end -->\n",
+    "CONTRIBUTING.md",
+    "# Contributing\n\n<!-- GENERATED:contributor-scripts:start -->\nstale\n<!-- GENERATED:contributor-scripts:end -->\n",
   );
+  writeText(
+    "lib/common/README.md",
+    "# Common\n\n<!-- GENERATED:common-modules:start -->\nstale\n<!-- GENERATED:common-modules:end -->\n",
+  );
+  writeText(
+    "scripts/e2e/README.md",
+    "# E2E\n\n<!-- GENERATED:e2e-harnesses:start -->\nstale\n<!-- GENERATED:e2e-harnesses:end -->\n",
+  );
+  writeJson("scripts/e2e/harnesses.json", { schemaVersion: 1, harnesses: [] });
   writeText(
     "ARCHITECTURE.md",
     "# Architecture\n\n<!-- GENERATED:folder-layout:start -->\nstale\n<!-- GENERATED:folder-layout:end -->\n",
@@ -101,9 +111,10 @@ describe("extension scaffold CLI", () => {
     expect(source).not.toContain("openCommandPanel");
     expect(manifest.docs.intentGroup).toBe("Build apps");
     expect(pkg.pi.extensions).toContain("./extensions/sf-example/index.ts");
-    expect(readFileSync(path.join(extensionRoot, "README.md"), "utf8")).not.toContain(
-      "## Runtime Flow",
-    );
+    const readme = readFileSync(path.join(extensionRoot, "README.md"), "utf8");
+    expect(readme).toContain("## Commands");
+    expect(readme).not.toContain("## Runtime Flow");
+    expect(readme).not.toContain("## Settings and Safety");
     expect(readFileSync(path.join(fixtureRoot, "catalog/index.json"), "utf8")).toContain(
       '"id": "sf-example"',
     );

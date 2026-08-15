@@ -9,9 +9,9 @@
 import { describe, expect, it } from "vitest";
 import { listResolvers, registeredSchemes } from "../../lib/preflight/registry.ts";
 
-// Every scheme we observed in the salesforce/agentscript corpus +
-// trailheadapps/agent-script-recipes — counted with grep, sorted by
-// occurrence. See docs/PREFLIGHT_DESIGN.md for the survey.
+// Every scheme observed in the public salesforce/agentscript and
+// trailheadapps/agent-script-recipes corpora. Keep this explicit list so a new
+// upstream scheme requires a resolver or a deliberate unverifiable decision.
 const KNOWN_SCHEMES_FROM_CORPUS = [
   "flow",
   "apex",

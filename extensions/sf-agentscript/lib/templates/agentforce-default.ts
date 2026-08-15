@@ -11,7 +11,7 @@
  * Output is always parse-clean against the official SDK package (we validate after
  * generation; if validation fails, that's a template bug).
  *
- * agent_type policy (Issue 1 — see docs/POSTMORTEM_E2E_DEMO.md):
+ * agent_type policy:
  *   - When the caller supplies `job_spec.agent_user`, scaffold a Service
  *     Agent (the user is required for activation; the SDK lints will
  *     enforce that going forward).

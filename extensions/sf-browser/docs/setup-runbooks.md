@@ -260,10 +260,10 @@ Check whether Data Cloud/Data 360 is present, ready, or requires UI-only enablem
 **Primary path**
 Use SF Data 360 tools first:
 
-- `d360_probe`
-- `d360_metadata`
-- `d360` capabilities
-- `d360_api` for direct REST calls when a capability is not available
+- `data360_discover readiness.probe`
+- `actions.search` and `action.describe` on the owning `data360_*` family
+- `data360_query` for metadata and bounded query checks
+- `data360_api rest.request` only when no promoted family action exists
 
 **Evidence path**
 Use SF Browser only for UI-only setup screens, enablement toggles, or human-facing screenshots after API readiness checks.
@@ -275,14 +275,14 @@ If a Data Cloud feature requires Setup UI enablement and no stable API is availa
 2. Snapshot the current state.
 3. Follow visible setup steps only when explicitly requested.
 4. Capture Browser Evidence.
-5. Re-run `d360_probe` or the relevant API check after the UI change.
+5. Re-run `data360_discover readiness.probe` or the relevant family action after the UI change.
 
 **Known edge cases**
 
 - Data Cloud features are often license-, permission-, and data-space-dependent.
 - Empty orgs can look like failures when they are simply unconfigured.
 - Some setup screens launch multi-step assistants.
-- Prefer `d360_probe` to distinguish readiness from feature gating.
+- Prefer `data360_discover readiness.probe` to distinguish readiness from feature gating.
 
 **Setup destinations**
 
