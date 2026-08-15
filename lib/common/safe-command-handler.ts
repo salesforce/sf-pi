@@ -117,14 +117,18 @@ export async function withSafeCommandHandler<T>(
         try {
           ctx.ui.notify(`/${commandName} failed: ${message}`, "error");
         } catch {
-          // A stale ctx has no valid UI surface left to notify.
+          // Preserve the original handler failure for pi's extension error
+          // listener when no UI reporting surface remains available.
+          throw err;
         }
       }
     } else {
       try {
         ctx.ui.notify(`/${commandName} failed: ${message}`, "error");
       } catch {
-        // A stale ctx has no valid UI surface left to notify.
+        // Preserve the original handler failure for pi's extension error
+        // listener when no UI reporting surface remains available.
+        throw err;
       }
     }
     return undefined;
@@ -158,11 +162,12 @@ export async function setSafeStatus<T>(
   message: string,
   fn: () => Promise<T> | T,
 ): Promise<T> {
-  if (ctx.hasUI) ctx.ui.setStatus(key, message);
+  const hasUI = ctx.hasUI;
+  if (hasUI) ctx.ui.setStatus(key, message);
   try {
     return await fn();
   } finally {
-    if (ctx.hasUI) {
+    if (hasUI) {
       try {
         ctx.ui.setStatus(key, undefined);
       } catch {
