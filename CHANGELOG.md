@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.266.3](https://github.com/salesforce/sf-pi/compare/v0.266.2...v0.266.3) (2026-08-16)
+
+
+### Bug Fixes
+
+* **devbar:** repaint context after compaction ([#613](https://github.com/salesforce/sf-pi/issues/613)) ([e99dff4](https://github.com/salesforce/sf-pi/commit/e99dff43b210634dfd948f00e7932470db0475e6))
+
 ## [0.266.2](https://github.com/salesforce/sf-pi/compare/v0.266.1...v0.266.2) (2026-08-15)
 
 
