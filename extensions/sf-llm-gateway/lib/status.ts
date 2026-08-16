@@ -6,6 +6,7 @@
  * runtime event handlers makes the main index easier to scan and easier to test.
  */
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { readEffectiveCompactionSettings } from "./compaction-settings.ts";
 import {
   API_KEY_ENV,
   PROVIDER_NAME,
@@ -83,6 +84,7 @@ export function buildStatusReport(
   const config = getGatewayConfig(ctx.cwd);
   const savedConfig = getMergedSavedGatewayConfig(ctx.cwd);
   const savedScope = getSavedExclusiveScopeStatus(ctx.cwd);
+  const compaction = readEffectiveCompactionSettings(ctx.cwd);
   const activeModel = getActiveModelDefinition(ctx.model?.id, state.discovery?.modelIds);
   const contextUsage = ctx.getContextUsage();
   const discovery = state.discovery;
@@ -108,6 +110,7 @@ export function buildStatusReport(
     `Effective scoped model mode: ${config.exclusiveScope ? "exclusive (gateway-only scoped models)" : "additive (preserve existing scoped models)"}`,
     `Active model: ${ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "none"}`,
     `Active SF model: ${activeModel ? activeModel.name : "no"}`,
+    `Compaction model: ${compaction.model} (${compaction.source})`,
     "Thinking selection: managed by Pi/user settings",
     `Context usage: ${contextUsage ? `${formatTokens(contextUsage.tokens)} / ${formatTokens(contextUsage.contextWindow)}` : "unknown"}`,
     `Monthly usage: ${formatMonthlyUsageReportLine(state.monthlyUsage, state.monthlyUsageError)}`,

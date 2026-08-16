@@ -70,6 +70,39 @@ All gateway model costs are reported as zero because provider billing is handled
 outside Pi. Usage status uses the available user/key information endpoints and
 does not claim a lifetime counter when the service cannot prove one.
 
+## Compaction Model Preference
+
+Pi's native `compaction.enabled` setting remains the only switch for automatic
+threshold and overflow compaction. Manual `/compact` remains available whether
+automatic compaction is enabled or disabled.
+
+SF Pi can optionally use a dedicated authenticated Gateway model for manual,
+threshold, and overflow summaries without changing the active conversation
+model. The shipped default is `active`, which leaves compaction entirely with
+Pi's active model. Configure the preference from the Gateway Manager setup panel
+or in global/project Pi settings:
+
+```json
+{
+  "compaction": { "enabled": true },
+  "sfPi": {
+    "compaction": {
+      "model": "sf-llm-gateway/claude-sonnet-5"
+    }
+  }
+}
+```
+
+Set the model to `active` to restore Pi's built-in behavior. The Manager picker
+uses the currently authenticated Gateway catalog rather than a hardcoded list;
+for example, a user may choose a quality-oriented Sonnet model or a
+latency-oriented Flash model when those entries are available to their
+credential. If the configured model is unavailable, too small for the summary
+request, returns an incomplete response, or fails, SF Pi warns once and falls
+back to Pi's active-model compaction. Conversation data never leaves the
+configured Gateway because this preference accepts only `sf-llm-gateway/*`
+models.
+
 ## Diagnostics
 
 `/sf-llm-gateway doctor` checks URL shape, credential readiness, model discovery,
@@ -126,6 +159,11 @@ level. Review Pi's `/thinking` choice and `defaultThinkingLevel` setting.
 
 **Saved and environment credentials conflict:** Pi's saved credential wins. Use
 native login to replace it or remove the stale environment fallback.
+
+**The dedicated compaction model falls back to the active model:** Refresh the
+Gateway catalog and reopen the setup panel. Confirm that the saved model is
+still available to the current credential and has enough context capacity for
+the session being compacted.
 
 ## File Structure
 

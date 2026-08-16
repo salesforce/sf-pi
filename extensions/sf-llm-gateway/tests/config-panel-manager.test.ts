@@ -4,9 +4,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Theme } from "@earendil-works/pi-coding-agent";
-import { GatewayConfigPanelComponent } from "../lib/config-panel.ts";
+import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
+import { createConfigPanel, GatewayConfigPanelComponent } from "../lib/config-panel.ts";
 import { BASE_URL_ENV, projectGatewayConfigPath, readGatewaySavedConfig } from "../lib/config.ts";
+import { readEffectiveCompactionSettings } from "../lib/compaction-settings.ts";
 
 const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
 const originalAgentDir = process.env[PI_AGENT_ENV];
@@ -53,13 +54,67 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     expect(text).not.toContain("Saved API key");
   });
 
+  it("offers available Gateway models as scoped compaction preferences", () => {
+    const getAvailable = vi.fn(() => [
+      {
+        provider: "sf-llm-gateway",
+        id: "claude-sonnet-5",
+        name: "[SF LLM Gateway] Claude Sonnet 5",
+        contextWindow: 1_000_000,
+        maxTokens: 128_000,
+      },
+    ]);
+    const panel = createConfigPanel(theme, tempProjectDir, "project", vi.fn(), undefined, {
+      modelRegistry: { getAvailable },
+    } as unknown as ExtensionCommandContext) as GatewayConfigPanelComponent;
+
+    panel.handleInput("\x1b[B"); // base URL -> scoped model mode
+    panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
+    panel.handleInput("\x1b[C"); // inherit -> active
+    panel.handleInput("\x1b[C"); // active -> Claude Sonnet 5
+    const text = panel.renderContent(100).join("\n");
+
+    expect(text).toContain("Compaction model");
+    expect(text).toContain("Claude Sonnet 5");
+    expect(text).toContain("1M context · 128K output");
+  });
+
+  it("saves a project compaction model without changing the active chat model", () => {
+    const done = vi.fn();
+    const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, done, {
+      compactionModels: [
+        {
+          value: "sf-llm-gateway/claude-sonnet-5",
+          label: "Claude Sonnet 5",
+          description: "1M context · 128K output",
+        },
+      ],
+    });
+
+    panel.handleInput("\x1b[B"); // base URL -> scoped model mode
+    panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
+    panel.handleInput("\x1b[C"); // inherit -> active
+    panel.handleInput("\x1b[C"); // active -> Claude Sonnet 5
+    panel.handleInput("\x1b[B"); // compaction model -> Save
+    panel.handleInput("\r");
+
+    expect(readEffectiveCompactionSettings(tempProjectDir)).toMatchObject({
+      model: "sf-llm-gateway/claude-sonnet-5",
+      source: "project",
+    });
+    expect(panel.renderContent(100).join("\n")).not.toContain("Reload required");
+    panel.handleInput("\x1b");
+    expect(done).toHaveBeenCalledWith(undefined);
+  });
+
   it("saves non-secret settings", () => {
     const done = vi.fn();
     const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, done);
 
     panel.handleInput("https://gateway.example.com/v1");
     panel.handleInput("\r"); // base URL -> scoped model mode
-    panel.handleInput("\x1b[B"); // scoped model mode -> Save
+    panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
+    panel.handleInput("\x1b[B"); // compaction model -> Save
     panel.handleInput("\r"); // Save in place
 
     expect(done).not.toHaveBeenCalled();
@@ -82,7 +137,8 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     });
 
     panel.handleInput("\x1b[B"); // base URL -> scoped model mode
-    panel.handleInput("\x1b[B"); // scoped model mode -> Open token page
+    panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
+    panel.handleInput("\x1b[B"); // compaction model -> Open token page
     panel.handleInput("\r");
 
     expect(done).toHaveBeenCalledWith({
@@ -96,7 +152,8 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, done);
 
     panel.handleInput("\x1b[B"); // base URL -> scoped model mode
-    panel.handleInput("\x1b[B"); // scoped model mode -> Save
+    panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
+    panel.handleInput("\x1b[B"); // compaction model -> Save
     panel.handleInput("\r"); // Save in place
     panel.handleInput("\x1b");
 

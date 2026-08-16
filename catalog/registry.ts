@@ -205,7 +205,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     defaultEnabled: true,
     commands: ["/sf-llm-gateway"],
     providers: ["sf-llm-gateway"],
-    events: ["session_start","turn_end","model_select","after_provider_response","session_shutdown"],
+    events: ["session_start","session_before_compact","turn_end","model_select","after_provider_response","session_shutdown"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-llm-gateway/lib/config-panel.ts");

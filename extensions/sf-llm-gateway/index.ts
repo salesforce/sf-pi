@@ -28,6 +28,9 @@
  *                                       pasted values.
  * - SF_LLM_GATEWAY_API_KEY             optional automation fallback. Normal users
  *                                       should authenticate through /login.
+ * - sfPi.compaction.model               optional global/project Pi preference.
+ *                                       `active` keeps Pi's built-in behavior;
+ *                                       sf-llm-gateway/<id> uses a dedicated model.
  *
  * Commands:
  * - /sf-llm-gateway                     open Manager detail page (UI) or text status (headless)
@@ -54,6 +57,7 @@
  *   after_provider_response     | model is gateway model + 2xx       | Clear any live throttle/upstream warning
  *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
  *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
+ *   session_before_compact      | dedicated model configured          | Summarize through that model or fall back to Pi
  *   session_shutdown            | —                                  | Cancel credential UI; clear cwd/auth/footer/provider state
  *   /command (no args)          | interactive UI                     | Open Manager detail page
  *   /command (no args)          | no UI                              | Print text status report
@@ -69,6 +73,7 @@
  * - Start at the extension entry point to see the runtime spine
  * - Then read provider registration/discovery in lib/provider.ts
  * - Provider auth + session context live in lib/provider-auth.ts
+ * - Dedicated-model compaction lives in lib/compaction.ts and lib/compaction-settings.ts
  * - Monthly usage caching lives in lib/monthly-usage.ts
  * - Pi settings mutations live in lib/pi-settings.ts
  * - Footer/status formatting lives in lib/status.ts
@@ -133,6 +138,8 @@ import {
   writeSettings,
 } from "./lib/pi-settings.ts";
 import { gatewayProviderRuntime } from "./lib/provider.ts";
+import { handleGatewayCompaction } from "./lib/compaction.ts";
+import { buildGatewayCompactionModelOptions } from "./lib/compaction-settings.ts";
 import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
 import { countTokens, estimateSpend, formatTokenReport } from "./lib/token-counter.ts";
 import { buildOnboardingUrl } from "./lib/onboarding.ts";
@@ -295,6 +302,8 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // Register one complete Pi Provider. Pi owns auth application, provider-scoped
   // model persistence, refresh coordination, and API dispatch from this point on.
   pi.registerProvider(gatewayProviderRuntime.provider);
+
+  pi.on("session_before_compact", handleGatewayCompaction);
 
   // Contribute to the aggregated `/sf-pi doctor` view. The standalone
   // `/sf-llm-gateway doctor` command keeps using
@@ -467,8 +476,13 @@ function gatewayManagerAction(
       ? {
           // Setup owns local non-secret persistence only. Enable, disable, and
           // network refresh remain explicit Manager actions.
-          createPanel: (theme, cwd, scope, done) =>
-            new GatewayConfigPanelComponent(theme, scope, cwd, done, { closeOnSave: true }),
+          createPanel: (theme, cwd, scope, done, ctx) =>
+            new GatewayConfigPanelComponent(theme, scope, cwd, done, {
+              closeOnSave: true,
+              compactionModels: buildGatewayCompactionModelOptions(
+                ctx.modelRegistry.getAvailable(),
+              ),
+            }),
         }
       : {}),
   };

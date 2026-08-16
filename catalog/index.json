@@ -653,6 +653,7 @@
     "tools": [],
     "events": [
       "session_start",
+      "session_before_compact",
       "turn_end",
       "model_select",
       "after_provider_response",
@@ -661,10 +662,12 @@
     "docs": {
       "intentGroup": "Personalize pi",
       "editingRules": "AGENTS.md",
-      "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with offline cache restore, provider-neutral mixed-API dispatch, explicit refresh, diagnostics, and usage status.",
+      "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with offline cache restore, provider-neutral mixed-API dispatch, optional dedicated-model compaction, explicit refresh, diagnostics, and usage status.",
       "primaryFiles": [
         "index.ts",
         "lib/provider.ts",
+        "lib/compaction.ts",
+        "lib/compaction-settings.ts",
         "lib/transport.ts",
         "lib/models.ts",
         "lib/config.ts",
@@ -673,19 +676,21 @@
       "stateFiles": [
         "~/.pi/agent/auth.json (Pi-owned API-key credential + default non-secret URL)",
         "<globalAgentDir>/sf-llm-gateway.json (non-secret settings)",
-        "<globalAgentDir>/sf-llm-gateway/* (monthly usage and diagnostic state)"
+        "<globalAgentDir>/sf-llm-gateway/* (monthly usage and diagnostic state)",
+        "Pi settings.json sfPi.compaction.model (global/project compaction model preference)"
       ],
       "safety": [
         "API-key input uses SF Pi's shared fixed-mask component and never enters Pi's visible stock prompt.",
         "Pi alone persists/removes active credentials; setup and import paths write no secrets.",
         "Extension config stores only non-secret settings; credentials remain Pi-owned.",
+        "Dedicated compaction accepts only authenticated sf-llm-gateway models, never changes the chat model, and falls back to Pi.",
         "Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads."
       ]
     },
     "entry": "extensions/sf-llm-gateway/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 8928
+    "srcLoc": 9376
   },
   {
     "id": "sf-lsp",
@@ -859,7 +864,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4614
+    "srcLoc": 4615
   },
   {
     "id": "sf-skills",

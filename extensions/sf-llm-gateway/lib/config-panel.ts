@@ -28,12 +28,25 @@ import {
   projectGatewayConfigPath,
 } from "./config.ts";
 import { getTextViewport, type SetupOverlayState, getSetupOverlayState } from "./setup-overlay.ts";
+import {
+  buildGatewayCompactionModelOptions,
+  settingsPathForScope,
+  type GatewayCompactionModelOption,
+} from "./compaction-settings.ts";
+import { GatewayCompactionModelPicker } from "./compaction-model-picker.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Types
 // -------------------------------------------------------------------------------------------------
 
-type PanelField = "baseUrl" | "exclusiveScope" | "open-token" | "import-claude" | "save" | "cancel";
+type PanelField =
+  | "baseUrl"
+  | "exclusiveScope"
+  | "compactionModel"
+  | "open-token"
+  | "import-claude"
+  | "save"
+  | "cancel";
 
 type GatewayConfigPanelResult = ConfigPanelResult & {
   gatewayAction?: "open-token" | "import-claude" | "save";
@@ -47,6 +60,8 @@ type ConfigPanelOptions = {
   externalActions?: boolean;
   /** Close after save and return a gatewayAction to the host. Manager-hosted settings save in place. */
   closeOnSave?: boolean;
+  /** Authenticated Gateway catalog projected by the Manager-hosted settings action. */
+  compactionModels?: readonly GatewayCompactionModelOption[];
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -141,6 +156,7 @@ export class GatewayConfigPanelComponent implements Focusable {
   private savedExclusiveScopeMode: ExclusiveScopeMode;
   private persistedBaseUrl: string;
   private persistedExclusiveScopeMode: ExclusiveScopeMode;
+  private readonly compactionModelPicker: GatewayCompactionModelPicker;
   private baseUrlCursor: number;
   private errorMessage: string | null = null;
   private savedMessage: string | null = null;
@@ -159,6 +175,7 @@ export class GatewayConfigPanelComponent implements Focusable {
     this.focusOrder = [
       "baseUrl",
       "exclusiveScope",
+      "compactionModel",
       ...(options.externalActions ? (["open-token", "import-claude"] as const) : []),
       "save",
       "cancel",
@@ -170,6 +187,11 @@ export class GatewayConfigPanelComponent implements Focusable {
     );
     this.persistedBaseUrl = this.savedBaseUrl;
     this.persistedExclusiveScopeMode = this.savedExclusiveScopeMode;
+    this.compactionModelPicker = new GatewayCompactionModelPicker(
+      cwd,
+      scope,
+      options.compactionModels ?? [],
+    );
     this.baseUrlCursor = this.savedBaseUrl.length;
   }
 
@@ -189,6 +211,12 @@ export class GatewayConfigPanelComponent implements Focusable {
 
     if (focus === "exclusiveScope") {
       if (this.handleExclusiveScopeInput(data)) {
+        return;
+      }
+    }
+
+    if (focus === "compactionModel") {
+      if (this.handleCompactionModelInput(data)) {
         return;
       }
     }
@@ -301,7 +329,6 @@ export class GatewayConfigPanelComponent implements Focusable {
     );
     lines.push(pad(""));
 
-    // Scoped model mode field
     lines.push(pad(` ${this.renderFieldLabel("exclusiveScope", "Scoped model scope fallback")}`));
     lines.push(pad(`   ${this.renderExclusiveScopeField()}`));
     lines.push(
@@ -346,7 +373,13 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
     lines.push(pad(""));
 
-    // Action buttons
+    const compactionRows = this.compactionModelPicker.renderRows(
+      theme,
+      this.currentFocus() === "compactionModel",
+    );
+    for (const row of compactionRows) lines.push(pad(` ${row}`));
+    lines.push(pad(""));
+
     lines.push(pad(` ${theme.fg("muted", "Actions")}`));
     if (this.options.externalActions) {
       lines.push(
@@ -360,7 +393,6 @@ export class GatewayConfigPanelComponent implements Focusable {
     );
     lines.push(pad(""));
 
-    // Status / error line
     if (this.errorMessage) {
       lines.push(pad(` ${theme.fg("error", `⚠ ${this.errorMessage}`)}`));
     } else if (this.savedMessage) {
@@ -375,7 +407,12 @@ export class GatewayConfigPanelComponent implements Focusable {
         ),
       );
     }
-    lines.push(pad(` ${theme.fg("dim", `Save target: ${saveTarget}`)}`));
+    lines.push(pad(` ${theme.fg("dim", `Gateway save target: ${saveTarget}`)}`));
+    lines.push(
+      pad(
+        ` ${theme.fg("dim", `Compaction preference: ${settingsPathForScope(this.cwd, this.scope)}`)}`,
+      ),
+    );
 
     return lines;
   }
@@ -386,8 +423,6 @@ export class GatewayConfigPanelComponent implements Focusable {
   }
 
   invalidate(): void {}
-
-  // --- Private helpers ---
 
   private currentFocus(): PanelField {
     // focusIndex is kept in range by the moveFocus helpers, so focusOrder
@@ -495,6 +530,21 @@ export class GatewayConfigPanelComponent implements Focusable {
     return false;
   }
 
+  private handleCompactionModelInput(data: string): boolean {
+    const direction = isLeftKey(data)
+      ? -1
+      : isRightKey(data) ||
+          matchesKey(data, "space") ||
+          matchesKey(data, "enter") ||
+          matchesKey(data, "return")
+        ? 1
+        : 0;
+    if (direction === 0) return false;
+    this.compactionModelPicker.cycle(direction);
+    this.errorMessage = null;
+    return true;
+  }
+
   private cycleExclusiveScopeMode(direction: -1 | 1): void {
     const modes: ExclusiveScopeMode[] = ["inherit", "exclusive", "additive"];
     const currentIndex = modes.indexOf(this.savedExclusiveScopeMode);
@@ -576,6 +626,10 @@ export class GatewayConfigPanelComponent implements Focusable {
       this.cycleExclusiveScopeMode(1);
       return;
     }
+    if (focus === "compactionModel") {
+      this.compactionModelPicker.cycle(1);
+      return;
+    }
     if (focus === "cancel") {
       this.closePanel();
       return;
@@ -609,7 +663,6 @@ export class GatewayConfigPanelComponent implements Focusable {
       return;
     }
 
-    // Save the config
     const configPath =
       this.scope === "project" ? projectGatewayConfigPath(this.cwd) : globalGatewayConfigPath();
     const saved = readGatewaySavedConfig(configPath);
@@ -627,7 +680,9 @@ export class GatewayConfigPanelComponent implements Focusable {
       saved.exclusiveScope = savedExclusiveScope;
     }
 
-    const changed = this.isDirty(normalizedSavedBaseUrl);
+    const gatewayChanged = this.isGatewayDirty(normalizedSavedBaseUrl);
+    const compactionChanged = this.compactionModelPicker.isDirty();
+    const changed = gatewayChanged || compactionChanged;
 
     if (!changed && !this.options.closeOnSave) {
       this.savedMessage = "No changes to save.";
@@ -635,7 +690,12 @@ export class GatewayConfigPanelComponent implements Focusable {
       return;
     }
 
-    writeGatewaySavedConfig(configPath, saved);
+    if (gatewayChanged) {
+      writeGatewaySavedConfig(configPath, saved);
+    }
+    if (compactionChanged) {
+      this.compactionModelPicker.persist();
+    }
     this.markSaved(normalizedSavedBaseUrl, savedExclusiveScope);
 
     if (this.options.closeOnSave) {
@@ -643,8 +703,12 @@ export class GatewayConfigPanelComponent implements Focusable {
       return;
     }
 
-    this.reloadRequired = true;
-    this.savedMessage = "Saved gateway settings.";
+    this.reloadRequired = this.reloadRequired || gatewayChanged;
+    this.savedMessage = gatewayChanged
+      ? compactionChanged
+        ? "Saved gateway and compaction settings."
+        : "Saved gateway settings."
+      : "Saved compaction preference.";
     this.errorMessage = null;
   }
 
@@ -666,6 +730,10 @@ export class GatewayConfigPanelComponent implements Focusable {
   }
 
   private isDirty(normalizedSavedBaseUrl: string | undefined): boolean {
+    return this.isGatewayDirty(normalizedSavedBaseUrl) || this.compactionModelPicker.isDirty();
+  }
+
+  private isGatewayDirty(normalizedSavedBaseUrl: string | undefined): boolean {
     const draftBaseUrl = normalizedSavedBaseUrl ?? "";
     return (
       draftBaseUrl !== (normalizeBaseUrl(this.persistedBaseUrl) ?? "") ||
@@ -723,6 +791,8 @@ export class GatewayConfigPanelComponent implements Focusable {
 // -------------------------------------------------------------------------------------------------
 
 /** Convention export name used by the catalog generator. */
-export const createConfigPanel: ConfigPanelFactory = (theme, cwd, scope, done) => {
-  return new GatewayConfigPanelComponent(theme, scope, cwd, done);
+export const createConfigPanel: ConfigPanelFactory = (theme, cwd, scope, done, _tui, ctx) => {
+  return new GatewayConfigPanelComponent(theme, scope, cwd, done, {
+    compactionModels: buildGatewayCompactionModelOptions(ctx?.modelRegistry.getAvailable() ?? []),
+  });
 };

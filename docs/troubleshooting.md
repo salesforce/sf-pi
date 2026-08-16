@@ -110,6 +110,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Usage or throttle status is stale
 - Thinking changes after a model switch
 - Saved and environment credentials conflict
+- The dedicated compaction model falls back to the active model
 
 **[SF Agent Script](./extensions/sf-agentscript.md#troubleshooting)**
 

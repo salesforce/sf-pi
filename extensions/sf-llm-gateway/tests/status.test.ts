@@ -8,6 +8,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { API_KEY_ENV, BASE_URL_ENV } from "../lib/config.ts";
+import { writeScopedCompactionModel } from "../lib/compaction-settings.ts";
 
 const originalHomeEnv = process.env.HOME;
 const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
@@ -180,9 +181,12 @@ describe("buildFooterStatus", () => {
 describe("buildStatusReport", () => {
   it("shows discovery details", () => {
     process.env.HOME = makeTempDir("gateway-home-");
+    process.env.PI_CODING_AGENT_DIR = makeTempDir("gateway-agent-");
+    const cwd = makeTempDir("gateway-status-");
+    writeScopedCompactionModel(cwd, "project", "sf-llm-gateway/claude-sonnet-5");
 
     const ctx = {
-      cwd: makeTempDir("gateway-status-"),
+      cwd,
       model: { provider: "sf-llm-gateway", id: "example-native-message-model" },
       modelRegistry: {
         getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
@@ -211,6 +215,7 @@ describe("buildStatusReport", () => {
     expect(report).toContain(
       "Effective scoped model mode: additive (preserve existing scoped models)",
     );
+    expect(report).toContain("Compaction model: sf-llm-gateway/claude-sonnet-5 (project)");
     expect(report).toContain("Model discovery: gateway");
     expect(report).toContain("Discovered models: 2");
   });

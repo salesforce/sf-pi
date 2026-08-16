@@ -8,6 +8,7 @@ import {
   createAgentSession,
   DefaultResourceLoader,
   ModelRuntime,
+  type ExtensionAPI,
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
@@ -22,6 +23,8 @@ import {
   type Model,
 } from "@earendil-works/pi-ai";
 import { PROVIDER_NAME } from "../lib/config.ts";
+import { handleGatewayCompaction } from "../lib/compaction.ts";
+import { writeScopedCompactionModel } from "../lib/compaction-settings.ts";
 import {
   GATEWAY_RESOLVED_ROOT_ENV,
   type GatewayProviderAuthController,
@@ -116,11 +119,15 @@ async function createCompactionSession(
     }>;
     authenticated?: boolean;
     throwingCompactionHook?: boolean;
+    dedicatedCompactionModel?: boolean;
   } = {},
 ) {
   const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-compaction-"));
   tempDirs.push(cwd);
   const summarization = vi.fn((model: Model<Api>) => summaryStream(model));
+  const dedicatedSummarization = vi.fn((model: Model<Api>) =>
+    summaryStream(model, "[dedicated summary]"),
+  );
   let agentCall = 0;
   const agent = vi.fn((model: Model<Api>) => {
     const reply = options.agentReplies?.[agentCall++] ?? {
@@ -134,8 +141,12 @@ async function createCompactionSession(
       output: reply.output ?? 20,
     });
   });
-  const dispatch = (model: Model<Api>, context: Context) =>
-    context.systemPrompt?.includes("test agent prompt") ? agent(model) : summarization(model);
+  const dispatch = (model: Model<Api>, context: Context) => {
+    if (model.id === "claude-sonnet-5") return dedicatedSummarization(model);
+    return context.systemPrompt?.includes("test agent prompt")
+      ? agent(model)
+      : summarization(model);
+  };
   const simple = vi.fn(dispatch);
   const full = vi.fn(dispatch);
   const streams: GatewayStreamImplementations = {
@@ -147,7 +158,10 @@ async function createCompactionSession(
     responsesSimple: simple as GatewayStreamImplementations["responsesSimple"],
   };
   const fetchers: GatewayFetchers = {
-    modelIds: vi.fn(async () => ({ ids: ["example-chat-model"], filteredIds: [] })),
+    modelIds: vi.fn(async () => ({
+      ids: ["example-chat-model", ...(options.dedicatedCompactionModel ? ["claude-sonnet-5"] : [])],
+      filteredIds: [],
+    })),
     modelInfo: vi.fn(async () => ({})),
   };
   const runtime = createGatewayProviderRuntime({
@@ -174,6 +188,9 @@ async function createCompactionSession(
   if (!model) throw new Error("Expected refreshed Gateway model");
   if (options.authenticated === false) {
     await credentials.delete(PROVIDER_NAME);
+  }
+  if (options.dedicatedCompactionModel) {
+    writeScopedCompactionModel(cwd, "project", "sf-llm-gateway/claude-sonnet-5");
   }
 
   const sessionManager = SessionManager.inMemory(cwd);
@@ -209,6 +226,20 @@ async function createCompactionSession(
     compaction: { enabled: true, reserveTokens: 1_024, keepRecentTokens: 1 },
     retry: { enabled: false, maxRetries: 0, baseDelayMs: 0 },
   });
+  const extensionFactories: Array<(pi: ExtensionAPI) => void> = [];
+  if (options.throwingCompactionHook) {
+    extensionFactories.push((pi) => {
+      pi.on("session_before_compact", () => {
+        throw new Error("custom compaction hook failed");
+      });
+    });
+  }
+  if (options.dedicatedCompactionModel) {
+    extensionFactories.push((pi) => {
+      pi.on("session_before_compact", handleGatewayCompaction);
+    });
+  }
+
   const resourceLoader = new DefaultResourceLoader({
     cwd,
     agentDir: cwd,
@@ -219,18 +250,7 @@ async function createCompactionSession(
     noThemes: true,
     noContextFiles: true,
     systemPromptOverride: () => "test agent prompt",
-    extensionFactories: options.throwingCompactionHook
-      ? [
-          {
-            name: "throwing-compaction-hook",
-            factory: (pi) => {
-              pi.on("session_before_compact", () => {
-                throw new Error("custom compaction hook failed");
-              });
-            },
-          },
-        ]
-      : [],
+    extensionFactories,
   });
   await resourceLoader.reload();
   const { session } = await createAgentSession({
@@ -246,6 +266,7 @@ async function createCompactionSession(
   return {
     session,
     summarization,
+    dedicatedSummarization,
     agent,
     restoreCredential: () =>
       credentials.modify(PROVIDER_NAME, async () => ({ type: "api_key", key: "test-key" })),
@@ -265,6 +286,26 @@ describe("Pi compaction → complete Gateway Provider", () => {
         type: "compaction",
         summary: expect.stringContaining("[gateway summary]"),
       });
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("uses a configured dedicated Gateway model without changing the active chat model", async () => {
+    const { session, summarization, dedicatedSummarization } = await createCompactionSession({
+      dedicatedCompactionModel: true,
+    });
+
+    try {
+      const activeModel = session.model;
+      await expect(session.compact()).resolves.toMatchObject({
+        summary: expect.stringContaining("[dedicated summary]"),
+      });
+
+      expect(dedicatedSummarization).toHaveBeenCalledOnce();
+      expect(summarization).not.toHaveBeenCalled();
+      expect(session.model).toBe(activeModel);
+      expect(session.model?.id).toBe("example-chat-model");
     } finally {
       session.dispose();
     }

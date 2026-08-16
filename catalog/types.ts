@@ -5,7 +5,7 @@
  * Hand-maintained. The generated registry.ts re-exports these types.
  */
 import type { Focusable, TUI } from "@earendil-works/pi-tui";
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 
 // -------------------------------------------------------------------------------------------------
 // Config panel protocol
@@ -19,7 +19,8 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
  * It receives input when focused and calls `done()` when the user is finished.
  *
  * Panels that need to signal a reload (e.g. after enabling/disabling a provider)
- * return `{ needsReload: true }` via the done callback.
+ * return `{ needsReload: true }` via the done callback. The optional command
+ * context lets dynamic panels inspect current runtime state without capturing it.
  */
 export type ConfigPanelResult = {
   needsReload?: boolean;
@@ -31,6 +32,7 @@ export type ConfigPanelFactory = (
   scope: "global" | "project",
   done: (result: ConfigPanelResult | undefined) => void,
   tui?: TUI,
+  ctx?: ExtensionCommandContext,
 ) => Focusable;
 
 // -------------------------------------------------------------------------------------------------

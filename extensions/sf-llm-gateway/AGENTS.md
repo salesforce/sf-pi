@@ -23,6 +23,9 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Discovery metadata + family inference          | `lib/models.ts`                    |
 | Complete Provider + model discovery            | `lib/provider.ts`                  |
 | Provider auth + session context                | `lib/provider-auth.ts`             |
+| Dedicated compaction policy                    | `lib/compaction.ts`                |
+| Scoped compaction preference                   | `lib/compaction-settings.ts`       |
+| Manager compaction model picker                | `lib/compaction-model-picker.ts`   |
 | Masked API-key input                           | `common secure credential prompt`  |
 | HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`                 |
 | Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`             |
@@ -80,9 +83,12 @@ copy.
    the non-secret saved/env configuration view; request, status, usage, token,
    and readiness paths use `authController.resolveRuntimeAuth()` for the
    effective endpoint and credential. Never require both views to contain a URL.
-7. **Setup is persistence-only.** Saving endpoint or scope overrides performs no
-   discovery, usage probe, enable, disable, or model selection. Keep network and
+7. **Setup is persistence-only.** Saving endpoint, scope, or compaction preferences performs no
+   discovery, usage probe, enable, disable, or chat-model selection. Keep network and
    lifecycle intent on the existing explicit actions.
+8. **Dedicated compaction is opt-in and bounded.** `active` leaves Pi's compaction untouched.
+   Explicit selections must come from the authenticated Gateway catalog, never change the chat
+   model, preserve summary usage/file context, and fall back to Pi without exposing provider errors.
 
 ## Command handler pattern
 

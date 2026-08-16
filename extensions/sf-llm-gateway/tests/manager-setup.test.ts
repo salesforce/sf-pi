@@ -141,6 +141,48 @@ describe("Manager Gateway setup", () => {
     expect(readGatewaySavedConfig(configPath).enabled).toBe(false);
   });
 
+  it("projects the authenticated Gateway catalog into the compaction model picker", () => {
+    const cwd = tempDir("sf-pi-gateway-manager-compaction-");
+    const getAvailable = vi.fn(() => [
+      {
+        provider: PROVIDER_NAME,
+        id: "claude-sonnet-5",
+        name: "[SF LLM Gateway] Claude Sonnet 5",
+        contextWindow: 1_000_000,
+        maxTokens: 128_000,
+      },
+      {
+        provider: "openai",
+        id: "gpt-5-mini",
+        name: "GPT-5 Mini",
+        contextWindow: 400_000,
+        maxTokens: 128_000,
+      },
+    ]);
+    const ctx = {
+      cwd,
+      mode: "tui",
+      hasUI: true,
+      modelRegistry: { getAvailable },
+      ui: { notify: vi.fn(), setStatus: vi.fn() },
+    } as unknown as ExtensionCommandContext;
+    const setup = buildGatewayManagerActions({} as never).find((action) => action.id === "setup");
+    const panel = setup?.createPanel?.(theme, cwd, "project", vi.fn(), ctx, {
+      requestRender: vi.fn(),
+    } as unknown as TUI);
+    expect(panel).toBeDefined();
+    if (!panel) return;
+
+    panel.handleInput?.("\x1b[B"); // base URL -> scoped model mode
+    panel.handleInput?.("\x1b[B"); // scoped model mode -> compaction model
+    panel.handleInput?.("\x1b[C"); // inherit -> active
+    panel.handleInput?.("\x1b[C"); // active -> Claude Sonnet 5
+
+    expect(getAvailable).toHaveBeenCalledOnce();
+    expect(panel.renderContent?.(100).join("\n")).toContain("Claude Sonnet 5");
+    expect(panel.renderContent?.(100).join("\n")).not.toContain("GPT-5 Mini");
+  });
+
   it("persists settings without starting model or usage refresh work", async () => {
     const cwd = tempDir("sf-pi-gateway-manager-project-");
     const refresh = vi.fn(async () => undefined);
@@ -153,6 +195,7 @@ describe("Manager Gateway setup", () => {
         source: "Pi saved credential",
       })),
       getAll: () => [],
+      getAvailable: () => [],
       find: () => undefined,
     } as unknown as ModelRegistry;
     const ui = {
@@ -183,7 +226,8 @@ describe("Manager Gateway setup", () => {
     panel.focused = true;
     panel.handleInput?.("https://gateway.example.test/v1");
     panel.handleInput?.("\r"); // base URL -> scoped model mode
-    panel.handleInput?.("\x1b[B"); // scoped model mode -> primary Save action
+    panel.handleInput?.("\x1b[B"); // scoped model mode -> compaction model
+    panel.handleInput?.("\x1b[B"); // compaction model -> primary Save action
     panel.handleInput?.("\r");
     await Promise.resolve();
     await Promise.resolve();

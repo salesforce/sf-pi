@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import path from "node:path";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
@@ -279,6 +279,14 @@ describe("extension detail helpers", () => {
   });
 
   it("scrolls long settings pages with PageDown", async () => {
+    const commandCtx = {} as never;
+    const configFactory = vi.fn(() => ({
+      focused: false,
+      handleInput: () => undefined,
+      invalidate: () => undefined,
+      render: () => [],
+      renderContent: () => Array.from({ length: 24 }, (_, i) => ` row ${i + 1}`),
+    }));
     const custom = {
       id: "sf-test",
       name: "SF Test",
@@ -288,14 +296,7 @@ describe("extension detail helpers", () => {
       defaultEnabled: true,
       enabled: true,
       configurable: true,
-      getConfigPanel: async () =>
-        (() => ({
-          focused: false,
-          handleInput: () => undefined,
-          invalidate: () => undefined,
-          render: () => [],
-          renderContent: () => Array.from({ length: 24 }, (_, i) => ` row ${i + 1}`),
-        })) as never,
+      getConfigPanel: async () => configFactory as never,
     } as never;
     const overlay = new SfPiOverlayComponent(
       stubTheme,
@@ -307,7 +308,7 @@ describe("extension detail helpers", () => {
       "global",
       () => 12,
       () => undefined,
-      {} as never,
+      commandCtx,
       {} as never,
       () => [],
       () => undefined,
@@ -316,6 +317,7 @@ describe("extension detail helpers", () => {
 
     await Promise.resolve();
     const first = overlay.render(100).join("\n");
+    expect((configFactory.mock.calls[0] as unknown[] | undefined)?.[5]).toBe(commandCtx);
     expect(first).toContain("row 1");
     expect(first).toContain("PageUp/PageDown scroll");
     expect(first).not.toContain("row 20");
