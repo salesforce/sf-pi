@@ -41,7 +41,7 @@ Open its Manager detail or change its package state with:
 - **Commands:** `/sf-devbar`, `/sf-org`
 - **LLM tools:** _none_
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`, `model_select`, `session_info_changed`, `thinking_level_select`, `turn_start`, `turn_end`, `agent_end`, `before_agent_start`, `context`
+- **Events/hooks:** `session_start`, `session_shutdown`, `model_select`, `session_compact`, `session_info_changed`, `thinking_level_select`, `turn_start`, `turn_end`, `agent_end`, `before_agent_start`, `context`
 
 </details>
 

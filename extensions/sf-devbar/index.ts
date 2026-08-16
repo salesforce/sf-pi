@@ -16,6 +16,7 @@
  *   session_start         | Activate both bars, load cached org, start async checks
  *   session_shutdown      | Clear custom footer + widget
  *   model_select          | Update model name, detect SF LLM Gateway, refresh bars
+ *   session_compact       | Repaint context usage from Pi's post-compaction state
  *   session_info_changed  | Repaint the optional Pi session-name segment
  *   thinking_level_select | Repaint top bar immediately on thinking-level change
  *   turn_start            | Set thinking indicator on top bar
@@ -28,7 +29,7 @@
  *
  * Pi SDK features used:
  *   setWidget, setFooter, setTitle
- *   session_start, session_shutdown, model_select, session_info_changed
+ *   session_start, session_shutdown, model_select, session_compact, session_info_changed
  *   turn_start, turn_end, agent_end
  *   before_agent_start (with systemPromptOptions)
  *   registerCommand, registerShortcut, registerFlag
@@ -468,6 +469,12 @@ export default function sfDevBar(pi: ExtensionAPI) {
     if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
     updateTopBar(ctx);
     requestFooterRender?.();
+  });
+
+  // --- Successful compaction: replace stale pre-compaction usage immediately ---
+  pi.on("session_compact", async (_event, ctx) => {
+    if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
+    updateTopBar(ctx);
   });
 
   // --- Session name change: repaint from Pi's public getter ---
