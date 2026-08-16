@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.267.0](https://github.com/salesforce/sf-pi/compare/v0.266.3...v0.267.0) (2026-08-16)
+
+
+### Features
+
+* **gateway:** add configurable compaction model ([#615](https://github.com/salesforce/sf-pi/issues/615)) ([f754f52](https://github.com/salesforce/sf-pi/commit/f754f523bcd86555174640e97b497e34b425459a))
+
 ## [0.266.3](https://github.com/salesforce/sf-pi/compare/v0.266.2...v0.266.3) (2026-08-16)
 
 
