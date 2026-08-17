@@ -10,7 +10,9 @@ import {
 } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
+import { isNoDefaultModelsOnlyDiscoveryPayload } from "./models-internal/discovery-sentinels.ts";
 import { gatewayProviderRuntime } from "./provider.ts";
+import { isGatewayModelAccessDeniedError } from "./request-diagnostics.ts";
 import { type GatewayCaProbeFailureClass, writeCaProbeState } from "./ca-probe-state.ts";
 import {
   collectUsableCaBundlePaths,
@@ -101,6 +103,9 @@ export function classifyHttpResult(
   status: number,
   bodyPreview: string,
 ): GatewayCaProbeFailureClass {
+  if (status >= 200 && status < 300 && isNoDefaultModelsOnlyDiscoveryPayload(bodyPreview)) {
+    return "other";
+  }
   if (status >= 200 && status < 300) return null;
   if (status === 401) return "auth";
   if (
@@ -131,6 +136,12 @@ export function aggregateFailureClass(
 }
 
 export function interpretGatewayHttpResult(status: number, bodyPreview: string): string {
+  if (status >= 200 && status < 300 && isNoDefaultModelsOnlyDiscoveryPayload(bodyPreview)) {
+    return `Authenticated, but the Gateway reported no default models for this credential. Request model access, then run /${FRIENDLY_COMMAND_NAME} refresh.`;
+  }
+  if (isGatewayModelAccessDeniedError(bodyPreview)) {
+    return `Gateway model access was denied. Run /${FRIENDLY_COMMAND_NAME} refresh; if no models are returned, request model access from your Gateway administrator.`;
+  }
   if (status >= 200 && status < 300) {
     if (/server_root_path|proxy_base_url/.test(bodyPreview)) {
       return "OK (LiteLLM proxy signature)";
@@ -355,15 +366,17 @@ async function runGatewayCheck(
       },
       DOCTOR_TIMEOUT_MS,
     );
-    const bodyPreview = (await response.text()).slice(0, BODY_PREVIEW_LIMIT);
+    const body = await response.text();
+    const bodyPreview = body.slice(0, BODY_PREVIEW_LIMIT);
+    const failureClass = classifyHttpResult(response.status, body);
     return {
       name,
       url,
       status: response.status,
-      ok: response.ok,
-      interpretation: interpretGatewayHttpResult(response.status, bodyPreview),
+      ok: response.ok && failureClass === null,
+      interpretation: interpretGatewayHttpResult(response.status, body),
       bodyPreview: bodyPreview || undefined,
-      failureClass: response.ok ? null : classifyHttpResult(response.status, bodyPreview),
+      failureClass,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

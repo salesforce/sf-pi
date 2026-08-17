@@ -23,6 +23,7 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Discovery metadata + family inference          | `lib/models.ts`                    |
 | Complete Provider + model discovery            | `lib/provider.ts`                  |
 | Provider auth + session context                | `lib/provider-auth.ts`             |
+| Protocol-neutral request diagnostics           | `lib/request-diagnostics.ts`       |
 | Dedicated compaction policy                    | `lib/compaction.ts`                |
 | Scoped compaction preference                   | `lib/compaction-settings.ts`       |
 | Manager compaction model picker                | `lib/compaction-model-picker.ts`   |
@@ -89,6 +90,10 @@ copy.
 8. **Dedicated compaction is opt-in and bounded.** `active` leaves Pi's compaction untouched.
    Explicit selections must come from the authenticated Gateway catalog, never change the chat
    model, preserve summary usage/file context, and fall back to Pi without exposing provider errors.
+9. **Access state beats stale availability.** A sentinel-only `no-default-models` discovery result
+   publishes an empty catalog so revoked models cannot remain selectable; mixed callable results
+   keep their peers, while ambiguous empty/network failures retain the last-known catalog. Normalize
+   recognized request failures through `message_end` without changing models, credentials, or settings.
 
 ## Command handler pattern
 

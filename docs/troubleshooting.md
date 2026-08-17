@@ -105,6 +105,9 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 - No models are available after installation
 - Login saved the credential but refresh failed
+- Refresh reports no assigned models
+- A request reports `team_model_access_denied`
+- A request says the provider is not configured
 - A discovered model shows conservative metadata
 - Requests fail while `curl` works on macOS
 - Usage or throttle status is stale

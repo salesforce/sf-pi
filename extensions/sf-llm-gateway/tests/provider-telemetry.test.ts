@@ -151,6 +151,11 @@ describe("recordProviderResponse", () => {
     expect(signal!.modelId).toBe("example-native-message-model");
   });
 
+  it("classifies 401 and 403 as access warnings", () => {
+    expect(recordProviderResponse(401, {}, "example-model")?.kind).toBe("access");
+    expect(recordProviderResponse(403, {}, "example-model")?.kind).toBe("access");
+  });
+
   it("classifies 5xx as upstream even without retry-after", () => {
     const signal = recordProviderResponse(503, { "content-type": "application/json" }, undefined);
     expect(signal!.kind).toBe("upstream");
@@ -204,6 +209,16 @@ describe("formatProviderSignalBadge", () => {
         at: Date.now(),
       }),
     ).toBe("⚠ 429");
+  });
+
+  it("formats access signals", () => {
+    expect(
+      formatProviderSignalBadge({
+        kind: "access",
+        status: 403,
+        at: Date.now(),
+      }),
+    ).toBe("⚠ access 403");
   });
 
   it("formats upstream signals", () => {

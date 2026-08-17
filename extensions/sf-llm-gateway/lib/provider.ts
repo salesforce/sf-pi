@@ -22,7 +22,10 @@ import {
   type GatewayModelInfoMap,
   type TaggedGatewayModel,
 } from "./models.ts";
-import { filterCallableDiscoveredModelIds } from "./models-internal/discovery-sentinels.ts";
+import {
+  filterCallableDiscoveredModelIds,
+  isNoDefaultModelsAccessState,
+} from "./models-internal/discovery-sentinels.ts";
 import {
   GatewayModelDiscoveryError,
   type GatewayModelIdDiscovery,
@@ -51,6 +54,8 @@ export interface GatewayNativeDiscoveryState {
   discoveredAt?: string;
   error?: string;
   filteredModelIds?: string[];
+  /** Gateway-confirmed empty access; stale cached models were intentionally cleared. */
+  accessState?: "no-default-models";
 }
 
 export interface GatewayFetchers {
@@ -223,6 +228,19 @@ export function createGatewayProviderRuntime(
           ...modelIdDiscovery.ids.filter((id) => !callableIds.includes(id)),
         ]),
       ];
+      if (isNoDefaultModelsAccessState(callableIds, filteredIds)) {
+        lastDiscovery = {
+          modelIds: [],
+          source: "gateway",
+          discoveredAt: now().toISOString(),
+          filteredModelIds: filteredIds,
+          accessState: "no-default-models",
+        };
+        // createProvider publishes this successful empty result to both its
+        // in-memory catalog and Pi's provider-scoped ModelsStore. Network,
+        // protocol, and ambiguous empty failures still throw and retain cache.
+        return [];
+      }
       if (callableIds.length === 0) {
         throw new Error("Gateway returned zero callable models.");
       }

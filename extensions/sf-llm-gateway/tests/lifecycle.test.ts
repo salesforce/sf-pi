@@ -156,13 +156,14 @@ describe("gateway extension lifecycle", () => {
     vi.restoreAllMocks();
   });
 
-  it("registers the dedicated-model compaction policy hook", async () => {
+  it("registers compaction and protocol-neutral request-diagnostic hooks", async () => {
     const { default: extension } = await import("../index.ts");
     const pi = makeFakePi();
 
     extension(pi as never);
 
     expect(pi.handlers.session_before_compact).toHaveLength(1);
+    expect(pi.handlers.message_end).toHaveLength(1);
   });
 
   it("registers one complete native Provider", async () => {

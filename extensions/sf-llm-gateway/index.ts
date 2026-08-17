@@ -11,6 +11,7 @@
  * - Registers with an empty static model list, then lets Pi restore the previous
  *   provider-scoped dynamic catalog without network.
  * - Authenticated model discovery via `/v1/models` supplies all callable model IDs
+ * - Sentinel-only empty access clears stale selectable models; ambiguous failures retain cache
  * - Gateway metadata plus generic family-aware inference defines discovered models
  * - Keeps `models.json` overrides above the registered Provider through Pi composition
  * - Shows an explicit SF LLM Gateway footer status when one of these models is active
@@ -56,7 +57,9 @@
  *   model_select                | model changes                       | Refresh footer without mutating thinking
  *   after_provider_response     | model is gateway model + 2xx       | Clear any live throttle/upstream warning
  *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
+ *   after_provider_response     | model is gateway model + 401/403   | Record access signal, footer shows ⚠ badge for 60s
  *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
+ *   message_end                 | recognized gateway request error    | Replace raw error with bounded recovery guidance
  *   session_before_compact      | dedicated model configured          | Summarize through that model or fall back to Pi
  *   session_shutdown            | —                                  | Cancel credential UI; clear cwd/auth/footer/provider state
  *   /command (no args)          | interactive UI                     | Open Manager detail page
@@ -73,6 +76,7 @@
  * - Start at the extension entry point to see the runtime spine
  * - Then read provider registration/discovery in lib/provider.ts
  * - Provider auth + session context live in lib/provider-auth.ts
+ * - Protocol-neutral request error guidance lives in lib/request-diagnostics.ts
  * - Dedicated-model compaction lives in lib/compaction.ts and lib/compaction-settings.ts
  * - Monthly usage caching lives in lib/monthly-usage.ts
  * - Pi settings mutations live in lib/pi-settings.ts
@@ -139,6 +143,7 @@ import {
 } from "./lib/pi-settings.ts";
 import { gatewayProviderRuntime } from "./lib/provider.ts";
 import { handleGatewayCompaction } from "./lib/compaction.ts";
+import { handleGatewayRequestDiagnostics } from "./lib/request-diagnostics.ts";
 import { buildGatewayCompactionModelOptions } from "./lib/compaction-settings.ts";
 import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
 import { countTokens, estimateSpend, formatTokenReport } from "./lib/token-counter.ts";
@@ -303,6 +308,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // model persistence, refresh coordination, and API dispatch from this point on.
   pi.registerProvider(gatewayProviderRuntime.provider);
 
+  pi.on("message_end", handleGatewayRequestDiagnostics);
   pi.on("session_before_compact", handleGatewayCompaction);
 
   // Contribute to the aggregated `/sf-pi doctor` view. The standalone
@@ -664,12 +670,15 @@ async function handleRefreshCommand(pi: ExtensionAPI, ctx: ExtensionCommandConte
     { ...getRuntimeStatusState(), discovery: state },
     { effectiveBaseUrl: runtimeAuth?.baseUrl },
   );
+  const accessEmpty = state.accessState === "no-default-models";
   await emitCommandOutput(
     pi,
     ctx,
-    `SF LLM Gateway refreshed (${state.modelIds.length} models, source: ${state.source}).`,
+    accessEmpty
+      ? "SF LLM Gateway refresh completed with no assigned models."
+      : `SF LLM Gateway refreshed (${state.modelIds.length} models, source: ${state.source}).`,
     report,
-    state.error ? "warning" : "info",
+    state.error || accessEmpty ? "warning" : "info",
   );
 }
 
@@ -685,7 +694,12 @@ async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
           const inferred = inferModelDefinition(id);
           return `- ${id}  ::  family=${getModelFamily(id)}  ::  ${inferred.name}`;
         })
-      : ["- none (authenticate and refresh to discover models)"]),
+      : state.accessState === "no-default-models"
+        ? [
+            "- none — the Gateway reported no default models for this credential",
+            `- request access, then run /${FRIENDLY_COMMAND_NAME} refresh`,
+          ]
+        : ["- none (authenticate and refresh to discover models)"]),
   ];
   await emitCommandOutput(pi, ctx, "SF LLM Gateway models.", lines.join("\n"), "info");
 }
@@ -1428,7 +1442,7 @@ async function applyGatewayDefault(
 ): Promise<string[]> {
   const settingsPath = scope === "project" ? projectSettingsPath(ctx.cwd) : globalSettingsPath();
 
-  await refreshGatewayProvider(ctx);
+  const state = await refreshGatewayProvider(ctx);
 
   const configuredDefault = getEffectiveDefaultModelSetting(ctx.cwd);
   const resolvedDefault = resolveGatewayDefaultModel(ctx, [
@@ -1436,11 +1450,17 @@ async function applyGatewayDefault(
     isGatewayProvider(configuredDefault.provider) ? configuredDefault.modelId : undefined,
   ]);
   if (!resolvedDefault) {
-    return [
-      `Default unchanged in ${scope} settings.`,
-      "- No callable gateway models were discovered.",
-      `- Authenticate with /login ${PROVIDER_NAME}, then refresh and try again.`,
-    ];
+    return state.accessState === "no-default-models"
+      ? [
+          `Default unchanged in ${scope} settings.`,
+          "- The Gateway reported no default models for this credential.",
+          `- Request model access, then run /${FRIENDLY_COMMAND_NAME} refresh and try again.`,
+        ]
+      : [
+          `Default unchanged in ${scope} settings.`,
+          "- No callable gateway models were discovered.",
+          `- Authenticate with /login ${PROVIDER_NAME}, then refresh and try again.`,
+        ];
   }
   const effectiveModelId = resolvedDefault.modelId;
   const effectiveModel = inferModelDefinition(effectiveModelId);
@@ -1802,11 +1822,16 @@ async function enableGatewayOperation(
     existingGatewayDefault,
   ]);
   if (!resolvedDefault) {
+    const accessEmpty = state.accessState === "no-default-models";
     return {
-      summary: "SF LLM Gateway has no discovered models.",
+      summary: accessEmpty
+        ? "SF LLM Gateway has no assigned models."
+        : "SF LLM Gateway has no discovered models.",
       details: [
         `Discovery source: ${state.source}${state.error ? ` (${state.error})` : ""}`,
-        `Authenticate with /login ${PROVIDER_NAME}, then refresh and try again.`,
+        accessEmpty
+          ? `Request model access, then run /${FRIENDLY_COMMAND_NAME} refresh and try again.`
+          : `Authenticate with /login ${PROVIDER_NAME}, then refresh and try again.`,
       ].join("\n"),
       level: "warning",
     };

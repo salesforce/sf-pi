@@ -14,7 +14,10 @@ bounded terminal error guidance.
 
 Startup performs no model-discovery request. Pi restores the last successful
 provider catalog; a fresh uncached installation exposes no models until login or
-an explicit refresh succeeds.
+an explicit refresh succeeds. Network failures and ambiguous empty discovery
+responses retain that catalog. A sentinel-only `no-default-models` result is an
+explicit access-empty state instead: SF Pi clears stale Gateway entries from the
+selector until a later refresh returns callable models.
 
 ## Connecting
 
@@ -131,6 +134,8 @@ response material; treat it as private diagnostic evidence and never commit it.
   policy, or secret ships in source.
 - Provider setup performs no hidden model selection, enable/disable, discovery,
   usage probe, or update beyond the explicitly chosen action.
+- Recognized access and configuration failures are replaced with bounded,
+  protocol-neutral guidance; raw provider response bodies are not repeated.
 - CA installation/download steps are explicit and human-confirmed.
 
 ## Troubleshooting
@@ -142,6 +147,21 @@ catalog.
 **Login saved the credential but refresh failed:** Run the doctor to distinguish
 wrong root, authentication, redirect, TLS, timeout, or service failure. A failed
 refresh does not replace the last successful cache.
+
+**Refresh reports no assigned models:** The Gateway returned the explicit
+`no-default-models` access state, so SF Pi removed stale Gateway models from the
+selector. Request model access, then rerun `/sf-llm-gateway refresh`. SF Pi does
+not silently switch the active conversation model or rewrite default settings.
+
+**A request reports `team_model_access_denied`:** Run
+`/sf-llm-gateway refresh`, then choose one of the returned models with `/model`.
+If refresh returns no models, request model access from your Gateway
+administrator.
+
+**A request says the provider is not configured:** Run
+`/sf-llm-gateway status`. Depending on the reported state, enable the provider,
+run setup for the endpoint, or authenticate with `/login sf-llm-gateway`; then
+refresh the catalog.
 
 **A discovered model shows conservative metadata:** Refresh the catalog. Exact
 public Pi catalog matches can contribute portable metadata, but provider

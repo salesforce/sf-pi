@@ -488,8 +488,78 @@ describe("complete native Gateway Provider", () => {
     expect(runtime.getLastDiscovery().filteredModelIds).toEqual(["no-default-models"]);
   });
 
-  it("rejects missing refresh inputs and leaves a fresh catalog empty when discovery has no callable models", async () => {
-    const zero = fetchers({ ids: [], filteredIds: ["no-default-models"] });
+  it("publishes sentinel-only access as an empty catalog and later restores granted models", async () => {
+    const network = fetchers({ ids: [], filteredIds: ["no-default-models"] });
+    const runtime = createGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: network,
+      now: () => new Date("2026-07-23T04:05:06.000Z"),
+    });
+    const { models, modelsStore } = await configuredModels(runtime);
+    await modelsStore.write(PROVIDER_NAME, {
+      models: [cachedModel("stale-forbidden-model")],
+      checkedAt: 1,
+    });
+    await models.refresh({ allowNetwork: false });
+    expect(models.getModel(PROVIDER_NAME, "stale-forbidden-model")).toBeDefined();
+
+    const denied = await models.refresh({ allowNetwork: true });
+
+    expect(denied.errors.size).toBe(0);
+    expect(models.getModels(PROVIDER_NAME)).toEqual([]);
+    expect((await modelsStore.read(PROVIDER_NAME))?.models).toEqual([]);
+    expect(runtime.getLastDiscovery()).toEqual({
+      source: "gateway",
+      modelIds: [],
+      accessState: "no-default-models",
+      discoveredAt: "2026-07-23T04:05:06.000Z",
+      filteredModelIds: ["no-default-models"],
+    });
+
+    vi.mocked(network.modelIds).mockRejectedValueOnce(new Error("temporary discovery failure"));
+    const failed = await models.refresh({ allowNetwork: true });
+    expect(failed.errors.get(PROVIDER_NAME)?.message).toContain("Gateway model refresh failed");
+    expect(models.getModels(PROVIDER_NAME)).toEqual([]);
+    expect((await modelsStore.read(PROVIDER_NAME))?.models).toEqual([]);
+
+    vi.mocked(network.modelIds).mockResolvedValueOnce({ ids: ["restored-model"], filteredIds: [] });
+    vi.mocked(network.modelInfo).mockResolvedValueOnce({});
+    const restored = await models.refresh({ allowNetwork: true });
+
+    expect(restored.errors.size).toBe(0);
+    expect(models.getModel(PROVIDER_NAME, "restored-model")).toBeDefined();
+    expect(runtime.getLastDiscovery()).not.toHaveProperty("accessState");
+    expect((await modelsStore.read(PROVIDER_NAME))?.models.map((model) => model.id)).toEqual([
+      "restored-model",
+    ]);
+  });
+
+  it("retains a cached catalog for an ambiguous empty discovery without the access sentinel", async () => {
+    const network = fetchers({ ids: [], filteredIds: [] });
+    const runtime = createGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: network,
+    });
+    const { models, modelsStore } = await configuredModels(runtime);
+    await modelsStore.write(PROVIDER_NAME, {
+      models: [cachedModel("last-known")],
+      checkedAt: 1,
+    });
+    await models.refresh({ allowNetwork: false });
+
+    const result = await models.refresh({ allowNetwork: true });
+
+    expect(result.errors.get(PROVIDER_NAME)?.message).toBe(
+      "Gateway returned zero callable models.",
+    );
+    expect(models.getModel(PROVIDER_NAME, "last-known")).toBeDefined();
+    expect((await modelsStore.read(PROVIDER_NAME))?.models.map((model) => model.id)).toEqual([
+      "last-known",
+    ]);
+  });
+
+  it("rejects missing refresh inputs and an ambiguous fresh empty catalog", async () => {
+    const zero = fetchers({ ids: [], filteredIds: [] });
     const runtime = createGatewayProviderRuntime({
       authController: authController(),
       fetchers: zero,

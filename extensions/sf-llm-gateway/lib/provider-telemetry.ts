@@ -9,14 +9,14 @@
  * Rules:
  * - Pure functions + a single in-memory slot; no I/O.
  * - Healthy (2xx) responses clear any active warning immediately.
- * - Warnings (>=429) expire after `SIGNAL_TTL_MS` so stale badges don't linger.
+ * - Access, throttle, and upstream warnings expire after `SIGNAL_TTL_MS` so stale badges don't linger.
  * - Header availability is best-effort per Pi docs; all parsers are null-safe
  *   and degrade gracefully when a header is missing.
  */
 
 export const SIGNAL_TTL_MS = 60_000;
 
-export type ProviderSignalKind = "healthy" | "throttled" | "upstream";
+export type ProviderSignalKind = "healthy" | "access" | "throttled" | "upstream";
 
 /** Snapshot of the last provider response relevant to the gateway footer. */
 export interface ProviderSignal {
@@ -64,7 +64,8 @@ export function recordProviderResponse(
   }
 
   const normalizedHeaders = normalizeHeaders(headers);
-  const kind: ProviderSignalKind = status === 429 ? "throttled" : "upstream";
+  const kind: ProviderSignalKind =
+    status === 401 || status === 403 ? "access" : status === 429 ? "throttled" : "upstream";
   const retryAfterSec = parseRetryAfter(normalizedHeaders["retry-after"], now);
   const remainingRequests = parseInteger(normalizedHeaders["x-ratelimit-remaining-requests"]);
   const remainingTokens = parseInteger(normalizedHeaders["x-ratelimit-remaining-tokens"]);
@@ -117,6 +118,10 @@ export function formatProviderSignalBadge(signal: ProviderSignal | null): string
     const retryPart =
       typeof signal.retryAfterSec === "number" ? ` · retry ${signal.retryAfterSec}s` : "";
     return `⚠ ${signal.status}${retryPart}`;
+  }
+
+  if (signal.kind === "access") {
+    return `⚠ access ${signal.status}`;
   }
 
   if (signal.kind === "upstream") {

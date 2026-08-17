@@ -35,7 +35,32 @@ describe("interpretGatewayHttpResult", () => {
     );
   });
 
-  it("treats 2xx as ok", () => {
+  it("reports sentinel-only discovery as an access warning despite HTTP success", () => {
+    expect(interpretGatewayHttpResult(200, '{"data":[{"id":"no-default-models"}]}')).toContain(
+      "no default models",
+    );
+  });
+
+  it("does not treat a sentinel alongside callable peers as access-empty", () => {
+    expect(
+      interpretGatewayHttpResult(
+        200,
+        '{"data":[{"id":"no-default-models"},{"id":"callable-peer"}]}',
+      ),
+    ).toBe("OK");
+  });
+
+  it("normalizes explicit model-access denial into refresh and access guidance", () => {
+    const text = interpretGatewayHttpResult(
+      403,
+      '{"error":{"code":"team_model_access_denied","message":"denied"}}',
+    );
+    expect(text).toContain("/sf-llm-gateway refresh");
+    expect(text).toContain("request model access");
+    expect(text).not.toContain('{"error"');
+  });
+
+  it("treats ordinary 2xx as ok", () => {
     expect(interpretGatewayHttpResult(200, "{}")).toBe("OK");
   });
 });
@@ -111,7 +136,14 @@ describe("classifyHttpResult", () => {
     expect(classifyHttpResult(405, "")).toBe("other");
   });
 
-  it("maps 2xx to null", () => {
+  it("maps sentinel-only 2xx to warning while allowing mixed callable peers", () => {
+    expect(classifyHttpResult(200, '{"data":[{"id":"no-default-models"}]}')).toBe("other");
+    expect(
+      classifyHttpResult(200, '{"data":[{"id":"no-default-models"},{"id":"callable-peer"}]}'),
+    ).toBe(null);
+  });
+
+  it("maps ordinary 2xx to null", () => {
     expect(classifyHttpResult(200, "{}")).toBe(null);
     expect(classifyHttpResult(204, "")).toBe(null);
   });

@@ -121,6 +121,13 @@ export function buildStatusReport(
     `Keys on account: ${formatKeyListReportLine(state.keyList, state.keyListError, state.keyInfo?.keyName)}`,
     ...formatApiKeyGuidanceReportLines(ctx.cwd, state),
     "",
+    ...(discovery?.accessState === "no-default-models"
+      ? [
+          "Model access: no default models assigned",
+          "Catalog action: stale Gateway models removed from the selector",
+          `Recovery: request access, then run /${PROVIDER_NAME} refresh`,
+        ]
+      : []),
     `Model discovery: ${discovery?.source ?? "not run"}${discovery?.error ? ` ⚠ ${discovery.error}` : ""}`,
     `Discovered models: ${discovery?.modelIds.length ?? 0}`,
     ...(discovery?.error

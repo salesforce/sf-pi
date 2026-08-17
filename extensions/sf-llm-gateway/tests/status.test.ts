@@ -220,6 +220,37 @@ describe("buildStatusReport", () => {
     expect(report).toContain("Discovered models: 2");
   });
 
+  it("shows an authoritative no-default-models access state without cache-fallback wording", () => {
+    process.env.HOME = makeTempDir("gateway-home-");
+    const ctx = {
+      cwd: makeTempDir("gateway-status-no-default-models-"),
+      model: { provider: "sf-llm-gateway", id: "stale-model" },
+      modelRegistry: {
+        getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
+      },
+      getContextUsage: () => null,
+    } as unknown as ExtensionContext;
+
+    const report = buildStatusReport(
+      ctx,
+      true,
+      withDefaults({
+        discovery: {
+          source: "gateway",
+          modelIds: [],
+          accessState: "no-default-models",
+          filteredModelIds: ["no-default-models"],
+          discoveredAt: "2026-07-23T04:05:06.000Z",
+        },
+      }),
+    );
+
+    expect(report).toContain("Model access: no default models assigned");
+    expect(report).toContain("Catalog action: stale Gateway models removed from the selector");
+    expect(report).toContain("Recovery: request access, then run /sf-llm-gateway refresh");
+    expect(report).not.toContain("Catalog fallback:");
+  });
+
   it("distinguishes a failed empty catalog from retained last-known models", () => {
     process.env.HOME = makeTempDir("gateway-home-");
     const ctx = {

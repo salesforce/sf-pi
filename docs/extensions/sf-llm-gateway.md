@@ -34,6 +34,8 @@ Open its Manager detail or change its package state with:
 - Pi alone persists/removes active credentials; setup and import paths write no secrets.
 - Extension config stores only non-secret settings; credentials remain Pi-owned.
 - Dedicated compaction accepts only authenticated sf-llm-gateway models, never changes the chat model, and falls back to Pi.
+- Sentinel-only empty access clears stale selectable models; ambiguous discovery failures retain the last-known catalog.
+- Recognized request failures are replaced with bounded guidance without echoing raw provider bodies.
 - Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads.
 
 ## Exact reference
@@ -49,7 +51,7 @@ Open its Manager detail or change its package state with:
 - **Commands:** `/sf-llm-gateway`
 - **LLM tools:** _none_
 - **Providers:** `sf-llm-gateway`
-- **Events/hooks:** `session_start`, `session_before_compact`, `turn_end`, `model_select`, `after_provider_response`, `session_shutdown`
+- **Events/hooks:** `session_start`, `message_end`, `session_before_compact`, `turn_end`, `model_select`, `after_provider_response`, `session_shutdown`
 
 </details>
 
