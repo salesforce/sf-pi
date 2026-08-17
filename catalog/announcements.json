@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.267.0-2026-08-16",
-  "latestVersion": "0.267.0",
+  "revision": "release-0.267.1-2026-08-17",
+  "latestVersion": "0.267.1",
   "announcements": [
     {
-      "id": "release-0.267.0",
+      "id": "release-0.267.1",
       "kind": "update",
-      "title": "sf-pi v0.267.0 — gateway: add configurable compaction model",
-      "publishedAt": "2026-08-16T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.267.0",
+      "title": "sf-pi v0.267.1 — gateway: reconcile inaccessible model state",
+      "publishedAt": "2026-08-17T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.267.1",
       "severity": "info",
-      "body": "gateway: add configurable compaction model"
+      "body": "gateway: reconcile inaccessible model state"
     }
   ]
 }
