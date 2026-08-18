@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.267.2-2026-08-18",
-  "latestVersion": "0.267.2",
+  "revision": "release-0.267.3-2026-08-18",
+  "latestVersion": "0.267.3",
   "announcements": [
     {
-      "id": "release-0.267.2",
+      "id": "release-0.267.3",
       "kind": "update",
-      "title": "sf-pi v0.267.2 — runtime: ship the Pi 0.84.2 audit edge",
+      "title": "sf-pi v0.267.3 — security: resolve CodeQL sanitization and missing-await alerts",
       "publishedAt": "2026-08-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.267.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.267.3",
       "severity": "info",
-      "body": "runtime: ship the Pi 0.84.2 audit edge"
+      "body": "security: resolve CodeQL sanitization and missing-await alerts"
     }
   ]
 }
