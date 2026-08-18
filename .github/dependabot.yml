@@ -32,11 +32,11 @@ updates:
         update-types:
           - minor
           - patch
-    # Ignore peer-dependency major bumps; those need manual review.
+    # Pi packages are the exact audited development SDK (Pi Runtime Audit
+    # Edge), not routine grouped bumps. Advance them only with a dedicated
+    # audit-edge change. Ignore every update type, not just majors.
     ignore:
       - dependency-name: "@earendil-works/*"
-        update-types:
-          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: "/"
