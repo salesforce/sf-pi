@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.267.3](https://github.com/salesforce/sf-pi/compare/v0.267.2...v0.267.3) (2026-08-18)
+
+
+### Bug Fixes
+
+* **security:** resolve CodeQL sanitization and missing-await alerts ([0e3265d](https://github.com/salesforce/sf-pi/commit/0e3265d0db8564baef7d7f0708be73cfe98f81e7))
+
 ## [0.267.2](https://github.com/salesforce/sf-pi/compare/v0.267.1...v0.267.2) (2026-08-18)
 
 
