@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.268.1](https://github.com/salesforce/sf-pi/compare/v0.268.0...v0.268.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **sf-skills:** give an exact unlink command for retired afv-library ([#628](https://github.com/salesforce/sf-pi/issues/628)) ([faf6a59](https://github.com/salesforce/sf-pi/commit/faf6a599b5e4ff328724d972e0f68a64ef481b76))
+
 ## [0.268.0](https://github.com/salesforce/sf-pi/compare/v0.267.3...v0.268.0) (2026-08-19)
 
 
