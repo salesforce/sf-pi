@@ -221,7 +221,7 @@ export const SequenceSpecSchema = Type.Object(
   { additionalProperties: false },
 );
 
-/** Provider input advertises only the three supported Salesforce Diagram Spec v2 families. */
+/** Execute-time union of the three supported Salesforce Diagram Spec v2 families. */
 export const SalesforceDiagramSpecSchema = Type.Union([
   DataModelSpecSchema,
   ArchitectureSpecSchema,

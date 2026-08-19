@@ -26,7 +26,7 @@ Start from `index.ts`, the relevant implementation module below, and its focused
 - Require the tldraw offline v1.12 contract. Until upstream exposes machine-readable capabilities, prove it only from required markers in the app-owned `/readme`.
 - Treat the app as the sole owner of the `tldraw-offline` Pi skill. Read its managed marker/manifest for status, but never package, copy, extract, or rewrite the skill.
 - `create_document` accepts only a plain name, uses tldraw's default Documents directory, and never runs implicitly from a render action.
-- Advertise and accept only strict Salesforce Diagram Spec v2 through the three family schemas.
+- Advertise the three Salesforce render actions. Validate Spec v2 at execute through the three family schemas; do not embed the Spec v2 union in the public `tldraw_canvas` parameters.
 - Reject unknown fields, product marks, source positions, endpoint anchors, and layout mode.
 - Never guess Salesforce facts. Every semantic element cites a declared source id; artifact evidence is provenance, not an independent fact-verification claim.
 - Enforce render privacy on every user-visible string and never persist execution-only `target_org`.

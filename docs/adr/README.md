@@ -100,6 +100,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0104: Manifests Are Attested Against Real Runtime Registration](./0104-manifest-runtime-surface-attestation.md) — 2026-08-10
 - [0105: Extension References Are Role-Routed](./0105-extension-references-are-role-routed.md) — 2026-08-11
 - [0106: Data 360 live proof uses the v2 registry and dispatcher](./0106-data-360-live-proof-uses-the-v2-dispatcher.md) — 2026-08-11
+- [0107: SF tldraw validates Spec v2 at execute instead of advertising the union](./0107-tldraw-validates-spec-v2-at-execute.md) — 2026-08-19
 
 ## Proposed
 

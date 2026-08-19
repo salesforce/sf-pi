@@ -23,26 +23,50 @@ describe("tldraw_canvas family tool", () => {
     const tool = registeredTool();
     expect(tool.name).toBe("tldraw_canvas");
     expect(tool.promptGuidelines.join("\n")).toMatch(/Never infer or fabricate Salesforce facts/i);
+    expect(tool.promptGuidelines.join("\n")).toMatch(/action='cheatsheet'/);
     expect(tool.promptGuidelines.join("\n")).toMatch(/readiness/i);
     expect(tool.promptGuidelines.join("\n")).toMatch(/OS automation/i);
   });
 
-  it("exposes explicit document creation, strict Spec v2, and presentation overrides", () => {
+  it("advertises render actions without embedding Spec v2 in the public schema", () => {
     const tool = registeredTool();
     const schema = JSON.stringify(tool.parameters);
     expect(schema).toContain('"create_document"');
+    expect(schema).toContain('"cheatsheet"');
+    expect(schema).toContain('"render_salesforce_data_model"');
     expect(schema).not.toContain('"execute"');
     expect(schema).not.toContain('"script_workspace"');
     expect(schema).not.toContain('"screenshot"');
-    expect(schema).toContain('"2.0"');
+    expect(schema).not.toContain('"spec_version"');
+    expect(schema).not.toContain('"participants"');
+    expect(schema).not.toContain('"interactions"');
+    expect(schema).not.toContain('"objects"');
     expect(schema).toContain('"additionalProperties":false');
     expect(schema).toContain('"name"');
     expect(schema).toContain('"card_fill"');
     expect(schema).toContain('"transparent"');
-    expect(schema).toContain('"family"');
     expect(schema).toContain('"legend_relationships"');
     expect(schema).toContain('"show"');
     expect(schema).toContain('"hide"');
+    expect(schema).toContain('"spec"');
+  });
+
+  it("points invalid specs at the lazy cheatsheet", async () => {
+    const tool = registeredTool();
+    const result = await tool.execute(
+      "id",
+      { action: "render_salesforce_data_model", spec: { family: "data_model" } },
+      undefined,
+      undefined,
+      { cwd: process.cwd() },
+    );
+    expect(result.content[0].text).toMatch(/Salesforce Diagram Spec is invalid/);
+    expect(result.content[0].text).toContain('action: "cheatsheet"');
+    expect(result.details.sfTldraw).toMatchObject({
+      ok: false,
+      reason: "invalid_spec",
+      recover_via: { action: "cheatsheet" },
+    });
   });
 
   it("uses the shared runtime observation and formatter for status", async () => {

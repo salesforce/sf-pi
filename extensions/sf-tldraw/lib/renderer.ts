@@ -57,11 +57,15 @@ export async function renderSalesforceDiagram(
     return {
       ok: false,
       reason: "invalid_spec",
-      message: formatValidationErrors(validation.errors),
+      message: [
+        formatValidationErrors(validation.errors),
+        'Call tldraw_canvas { action: "cheatsheet" }, fix the reported spec paths, then retry the render.',
+      ].join("\n"),
       validation: { errors: validation.errors, warnings: validation.warnings },
       recoverVia: {
-        action: actionForFamily(request.family),
-        fix: "Correct the reported spec paths and retry.",
+        action: "cheatsheet",
+        instruction:
+          'Call tldraw_canvas { action: "cheatsheet" }, fix the reported spec paths, then retry the render.',
       },
     };
   }
