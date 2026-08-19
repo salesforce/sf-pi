@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.267.3-2026-08-18",
-  "latestVersion": "0.267.3",
+  "revision": "release-0.268.0-2026-08-19",
+  "latestVersion": "0.268.0",
   "announcements": [
     {
-      "id": "release-0.267.3",
+      "id": "release-0.268.0",
       "kind": "update",
-      "title": "sf-pi v0.267.3 — security: resolve CodeQL sanitization and missing-await alerts",
-      "publishedAt": "2026-08-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.267.3",
+      "title": "sf-pi v0.268.0 — treat Salesforce skills as supplemental playbooks",
+      "publishedAt": "2026-08-19T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.268.0",
       "severity": "info",
-      "body": "security: resolve CodeQL sanitization and missing-await alerts"
+      "body": "treat Salesforce skills as supplemental playbooks"
     }
   ]
 }
