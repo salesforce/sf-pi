@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.270.0](https://github.com/salesforce/sf-pi/compare/v0.269.0...v0.270.0) (2026-08-19)
+
+
+### Features
+
+* **sf-agentscript:** turn AGENT_GUIDE.md into a Pi-style index ([#632](https://github.com/salesforce/sf-pi/issues/632)) ([32112f3](https://github.com/salesforce/sf-pi/commit/32112f3be65350961f64fbee25f3148c53da295b))
+
 ## [0.269.0](https://github.com/salesforce/sf-pi/compare/v0.268.1...v0.269.0) (2026-08-19)
 
 
