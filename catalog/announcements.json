@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.268.1-2026-08-19",
-  "latestVersion": "0.268.1",
+  "revision": "release-0.269.0-2026-08-19",
+  "latestVersion": "0.269.0",
   "announcements": [
     {
-      "id": "release-0.268.1",
+      "id": "release-0.269.0",
       "kind": "update",
-      "title": "sf-pi v0.268.1 — sf-skills: give an exact unlink command for retired afv-library",
+      "title": "sf-pi v0.269.0 — sf-tldraw: validate Spec v2 at execute instead of advertising the union",
       "publishedAt": "2026-08-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.268.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.269.0",
       "severity": "info",
-      "body": "sf-skills: give an exact unlink command for retired afv-library"
+      "body": "sf-tldraw: validate Spec v2 at execute instead of advertising the union"
     }
   ]
 }
