@@ -337,7 +337,9 @@ export default function sfSkills(pi: ExtensionAPI) {
     dismissOverlay();
     hudState = EMPTY_STATE;
     if (ctx.mode === "tui") {
-      const warning = formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(ctx.cwd));
+      const warning = formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(ctx.cwd), {
+        sessionStart: true,
+      });
       if (warning) ctx.ui.notify(warning, "warning");
       rebuildAndRender(ctx);
     }

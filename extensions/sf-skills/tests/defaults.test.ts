@@ -271,7 +271,10 @@ describe("legacy afv-library detection", () => {
     const detection = detectLegacyDefaultLibrary();
     expect(detection.present).toBe(true);
     expect(detection.wired).toBe(true);
-    expect(formatLegacyDefaultLibraryWarning(detection)).toMatch(/forcedotcom\/afv-library/);
+    expect(formatLegacyDefaultLibraryWarning(detection)).toMatch(/still wired/);
+    expect(formatLegacyDefaultLibraryWarning(detection)).toMatch(
+      /\/sf-skills defaults unlink ~\/\.pi\/agent\/sf-skills\/afv-library --delete/,
+    );
   });
 
   it("unwires the retired library when installing the new default", async () => {
@@ -296,5 +299,24 @@ describe("legacy afv-library detection", () => {
     );
     expect(settings.skills).toContain("~/.pi/agent/sf-skills/forcedotcom/skills");
     expect(settings.skills).not.toContain("~/.pi/agent/sf-skills/afv-library/skills");
+    expect(result.message).toMatch(
+      /\/sf-skills defaults unlink ~\/\.pi\/agent\/sf-skills\/afv-library --delete/,
+    );
+  });
+
+  it("does not session-warn when the retired clone is only leftover on disk", () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    mkdirSync(path.join(home, ".pi", "agent", "sf-skills", "afv-library", "skills"), {
+      recursive: true,
+    });
+
+    const detection = detectLegacyDefaultLibrary();
+    expect(detection.present).toBe(true);
+    expect(detection.wired).toBe(false);
+    expect(formatLegacyDefaultLibraryWarning(detection, { sessionStart: true })).toBeUndefined();
+    expect(formatLegacyDefaultLibraryWarning(detection)).toMatch(
+      /\/sf-skills defaults unlink ~\/\.pi\/agent\/sf-skills\/afv-library --delete/,
+    );
   });
 });

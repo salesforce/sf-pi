@@ -179,13 +179,40 @@ export function detectLegacyDefaultLibrary(cwd?: string): LegacyDefaultLibraryDe
 
 export function formatLegacyDefaultLibraryWarning(
   detection: LegacyDefaultLibraryDetection = detectLegacyDefaultLibrary(),
+  options: { sessionStart?: boolean } = {},
 ): string | undefined {
-  if (!detection.present) return undefined;
+  const leftovers = detection.clones.filter((clone) => clone.exists || clone.wired);
+  if (leftovers.length === 0) return undefined;
+  if (options.sessionStart && !detection.wired) return undefined;
+
+  const unlinkCommands = leftovers
+    .filter((clone) => clone.exists || clone.wired)
+    .map((clone) => `/sf-skills defaults unlink ${legacyUnlinkTarget(clone.rootPath)} --delete`)
+    .join(" then ");
+
+  if (detection.wired) {
+    return [
+      "Retired forcedotcom/afv-library is still wired.",
+      "SF Pi now uses forcedotcom/sf-skills.",
+      "Run /sf-skills defaults install to switch, then remove the old clone with",
+      `${unlinkCommands}.`,
+    ].join(" ");
+  }
+
   return [
-    "Retired Salesforce skill library detected (forcedotcom/afv-library).",
-    "SF Pi now installs forcedotcom/sf-skills (platform-apex-generate, not generating-apex).",
-    "Run /sf-skills defaults install to switch. The old clone stays on disk until you unlink --delete.",
+    "A retired forcedotcom/afv-library clone is still on disk but not wired.",
+    "Remove it with",
+    `${unlinkCommands}.`,
   ].join(" ");
+}
+
+function legacyUnlinkTarget(rootPath: string): string {
+  const home = process.env.HOME ?? "";
+  const managed = path.join(home, ".pi", "agent", "sf-skills", LEGACY_LIBRARY_DIR_NAME);
+  if (home && path.normalize(rootPath) === path.normalize(managed)) {
+    return `~/.pi/agent/sf-skills/${LEGACY_LIBRARY_DIR_NAME}`;
+  }
+  return rootPath;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -263,13 +290,16 @@ export async function installDefaults(options: InstallOptions): Promise<InstallR
   const installed = content.exists
     ? `Already cloned at ${next.rootPath}; ${wiredVerb} in ${wireScope} settings.`
     : `Cloned forcedotcom/sf-skills into ${next.rootPath} and wired it in ${wireScope} settings.`;
-  const legacyNote = legacyRemoved
-    ? " Removed retired forcedotcom/afv-library wiring from this scope."
-    : formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(options.cwd));
+  const leftover = formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(options.cwd));
+  const parts = [
+    installed,
+    legacyRemoved ? "Removed retired forcedotcom/afv-library wiring from this scope." : undefined,
+    leftover,
+  ].filter((part): part is string => Boolean(part));
   return {
     ok: true,
     clone,
-    message: legacyNote ? `${installed} ${legacyNote}` : installed,
+    message: parts.join(" "),
   };
 }
 
