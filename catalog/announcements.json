@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.268.0-2026-08-19",
-  "latestVersion": "0.268.0",
+  "revision": "release-0.268.1-2026-08-19",
+  "latestVersion": "0.268.1",
   "announcements": [
     {
-      "id": "release-0.268.0",
+      "id": "release-0.268.1",
       "kind": "update",
-      "title": "sf-pi v0.268.0 — treat Salesforce skills as supplemental playbooks",
+      "title": "sf-pi v0.268.1 — sf-skills: give an exact unlink command for retired afv-library",
       "publishedAt": "2026-08-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.268.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.268.1",
       "severity": "info",
-      "body": "treat Salesforce skills as supplemental playbooks"
+      "body": "sf-skills: give an exact unlink command for retired afv-library"
     }
   ]
 }
