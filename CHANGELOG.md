@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.268.0](https://github.com/salesforce/sf-pi/compare/v0.267.3...v0.268.0) (2026-08-19)
+
+
+### Features
+
+* treat Salesforce skills as supplemental playbooks ([#626](https://github.com/salesforce/sf-pi/issues/626)) ([4a9719f](https://github.com/salesforce/sf-pi/commit/4a9719fbad432e4c1a4e3ae644576a3281d7b197))
+
 ## [0.267.3](https://github.com/salesforce/sf-pi/compare/v0.267.2...v0.267.3) (2026-08-18)
 
 
