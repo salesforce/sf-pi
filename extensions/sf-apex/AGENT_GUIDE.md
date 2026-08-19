@@ -30,4 +30,5 @@ Use this guide for multi-step Apex authoring, diagnostics, logs, probes, and tes
 
 ## Related domain skills
 
-External Salesforce skills such as `generating-apex`, `generating-apex-test`, `running-apex-tests`, and `debugging-apex-logs` provide domain implementation guidance. They do not replace the `sf_apex` lifecycle surface.
+Prefer `sf_apex` when it can do the action. If it cannot, read one of these Salesforce skills:
+`platform-apex-generate` · `platform-apex-test-generate` · `platform-apex-test-run` · `platform-apex-logs-debug`

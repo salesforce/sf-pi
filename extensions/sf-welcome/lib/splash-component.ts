@@ -436,7 +436,7 @@ function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
   // buildLeftColumn) so the row text itself stays inside the 72-col
   // left-column cap that the SALESFORCE wordmark drives.
   if (skills.installKind === "not-installed") {
-    return `${SF_ORANGE("↑")} ${SF_ORANGE("Install official skills")} ${MUTED("· afv-library · this project")}`;
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("Install official skills")} ${MUTED("· sf-skills · this project")}`;
   }
 
   const skillCountSuffix =
@@ -446,7 +446,7 @@ function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
 
   if (skills.installKind === "linked") {
     // User-owned checkout: green ✓, never nag for updates.
-    return `${SF_GREEN("✓")} ${SF_GREEN("afv-library linked")}${skillCountSuffix}`;
+    return `${SF_GREEN("✓")} ${SF_GREEN("sf-skills linked")}${skillCountSuffix}`;
   }
 
   // installKind === "managed"
@@ -455,10 +455,10 @@ function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
       typeof skills.commitsBehind === "number" && skills.commitsBehind > 0
         ? `${skills.commitsBehind} commit${skills.commitsBehind === 1 ? "" : "s"} behind`
         : "update available";
-    return `${SF_ORANGE("↑")} ${SF_ORANGE("afv-library")} ${MUTED(`· ${behind}`)}`;
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("sf-skills")} ${MUTED(`· ${behind}`)}`;
   }
 
-  const managedLabel = skills.wired === false ? "afv-library available" : "afv-library installed";
+  const managedLabel = skills.wired === false ? "sf-skills available" : "sf-skills installed";
 
   if (skills.freshness === "latest") {
     return `${SF_GREEN("✓")} ${SF_GREEN(managedLabel)} ${MUTED("· latest")}${skillCountSuffix}`;
@@ -1063,7 +1063,7 @@ function buildLeftColumn(
     lines.push(`   ${MUTED(`→ ${truncated}`)}`);
   }
 
-  // SF Skills (forcedotcom/afv-library) install + freshness. Always
+  // SF Skills (forcedotcom/sf-skills) install + freshness. Always
   // rendered — the not-installed state is the loud orange nudge that
   // pushes users toward the official skills library. Cache-first paint
   // (see sf-skills-status.ts) keeps this row free at startup.

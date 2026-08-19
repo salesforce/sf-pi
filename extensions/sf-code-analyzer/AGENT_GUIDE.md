@@ -19,3 +19,8 @@ Use `code_analyzer` for explicit Salesforce static-analysis, rule discovery, con
 - `apexguru_setup_help` returns setup guidance. Do not start browser setup without user approval.
 - Code Analyzer never applies fixes automatically; use normal file tools after reviewing evidence.
 - Use `sf_apex`, `sf_lwc`, and `sf_soql` for lifecycle-specific runtime/test/schema proof.
+
+## Related domain skills
+
+Prefer `code_analyzer` when it can do the action. If it cannot, read one of these Salesforce skills:
+`dx-code-analyzer-run` · `dx-code-analyzer-configure` · `dx-code-analyzer-custom-rule-create` · `dx-apexguru-scan`

@@ -18,3 +18,8 @@ Use `sf_docs` for official Salesforce-owned documentation and product/reference 
 - Release-note requests require actual release-note evidence, not merely current-release metadata.
 - Fall back to broader web research only when official docs are missing, weak, or the user explicitly requests external sources.
 - Do not use SF Docs as a generic web search or as a substitute for current-org schema/runtime evidence.
+
+## Related domain skills
+
+Prefer `sf_docs` when it can do the action. If it cannot, read this Salesforce skill:
+`platform-docs-get`

@@ -18,3 +18,7 @@ Use `tldraw_canvas` for deterministic, editable Salesforce data-model, architect
 - Use `cheatsheet` only when the spec contract is needed.
 - Do not use OS automation or direct `.tldraw` archive generation as a fallback.
 - Explicit Mermaid/text requests take priority over Canvas rendering.
+
+## Related domain skills
+
+Prefer `tldraw_canvas` for Salesforce canvas diagrams. If it cannot cover the work, read the vendor tldraw skill `tldraw-offline`. For text Mermaid instead of a canvas, read `external-diagram-mermaid-generate`.

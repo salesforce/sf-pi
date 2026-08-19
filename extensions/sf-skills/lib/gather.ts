@@ -185,24 +185,39 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
     add(defaultRoot(path.join(args.cwd, ".agents", "skills"), ".agents (project)"));
   }
 
-  // 1b. The curated afv-library managed clone lives at a well-known location at
-  // each scope. Recognize it explicitly so installs that predate the Source
-  // Registry (and per-file wirings under it) are labelled "afv-library" instead
-  // of "Unknown source", and stay visible even when fully disabled.
+  // 1b. Managed default-library clones live at well-known locations. Recognize
+  // the current forcedotcom/sf-skills clone and the retired afv-library path so
+  // neither is labelled "Unknown source", and both stay visible when unwired.
   add({
-    id: "afv-library (global)",
+    id: "sf-skills (global)",
+    rootPath: path.join(args.agentDir, "sf-skills", "forcedotcom", "skills"),
+    kind: "managed",
+    label: "sf-skills (global)",
+    gate: "seen",
+    autoDefault: false,
+  });
+  add({
+    id: "afv-library (legacy, global)",
     rootPath: path.join(args.agentDir, "sf-skills", "afv-library", "skills"),
     kind: "managed",
-    label: "afv-library (global)",
+    label: "afv-library (legacy, global)",
     gate: "seen",
     autoDefault: false,
   });
   if (args.projectTrusted) {
     add({
-      id: "afv-library (project)",
+      id: "sf-skills (project)",
+      rootPath: path.join(args.cwd, ".pi", "sf-skills", "forcedotcom", "skills"),
+      kind: "managed",
+      label: "sf-skills (project)",
+      gate: "seen",
+      autoDefault: false,
+    });
+    add({
+      id: "afv-library (legacy, project)",
       rootPath: path.join(args.cwd, ".pi", "sf-skills", "afv-library", "skills"),
       kind: "managed",
-      label: "afv-library (project)",
+      label: "afv-library (legacy, project)",
       gate: "seen",
       autoDefault: false,
     });

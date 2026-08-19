@@ -37,8 +37,8 @@ export function formatSfPiRoutingSummary(cwd: string): string {
   );
   const lines = [
     SF_PI_ROUTING_OPEN_TAG,
-    "Use active SF Pi tools before external Salesforce skills or raw sf CLI.",
-    "Active tool definitions are authoritative for enabled capabilities.",
+    "Family tools perform the action. Skills are supplemental playbooks; they do not own the turn.",
+    "Active tool definitions are authoritative. Mix families when the task needs it. Raw sf CLI is a fallback only.",
   ];
   if (disabled.length === 0) {
     lines.push("Disabled capability owners: none.");

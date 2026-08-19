@@ -19,4 +19,7 @@ Use this guide for the local Lightning Web Component lifecycle. `sf_lwc` owns pr
 - Use Code Analyzer for broader static analysis and SLDS-specific guidance for SLDS 2 migrations.
 - Use SF Browser only when last-mile visual or Salesforce UI evidence is required.
 
-External `generating-lwc-components` guidance owns LWC implementation patterns; `sf_lwc` remains the evidence lifecycle.
+## Related domain skills
+
+Prefer `sf_lwc` when it can do the action. If it cannot, read one of these Salesforce skills:
+`experience-lwc-generate` · `experience-lwc-design-generate` · `experience-lwc-accessibility-validate` · `experience-lwc-security-validate` · `experience-lwc-rtl-validate` · `experience-lwc-typescript-migrate` · `experience-lwc-runtime-observe` · `experience-lwc-base-components-integrate` · `experience-aura-lwc-migrate`

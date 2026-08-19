@@ -69,12 +69,12 @@ export interface ReleaseStatusInfo {
 }
 
 /**
- * How the official forcedotcom/afv-library skills repo is available to the
+ * How the official forcedotcom/sf-skills repo is available to the
  * current pi install.
  *
  *   managed       — cloned + sentinel-marked by `/sf-skills defaults install`
  *   linked        — user-owned checkout wired via `/sf-skills defaults link`
- *   not-installed — no afv-library entry found in either scope
+ *   not-installed — no official skills library entry found in either scope
  */
 export type SfSkillsInstallKind = "managed" | "linked" | "not-installed";
 
@@ -341,7 +341,7 @@ export interface SplashData {
   autoUpdate?: AutoUpdateStatusInfo;
   /** External agent-browser runtime install/freshness status used by SF Browser. */
   browserRuntime?: BrowserRuntimeStatusInfo;
-  /** Lightweight forcedotcom/afv-library install + freshness status
+  /** Lightweight forcedotcom/sf-skills install + freshness status
    *  populated asynchronously after initial render. Mirrors the sfCli
    *  cache-first → deferred-refresh pattern; never blocks startup. */
   sfSkills?: SfSkillsStatusInfo;

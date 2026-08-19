@@ -20,6 +20,8 @@ import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { openInfoPanel } from "../../../lib/common/info-panel.ts";
 import type { SkillSourceScope } from "../../../lib/common/skill-sources/skill-sources.ts";
 import {
+  detectLegacyDefaultLibrary,
+  formatLegacyDefaultLibraryWarning,
   inspectManagedClone,
   installDefaults,
   linkExistingCheckout,
@@ -123,7 +125,7 @@ export async function handleDefaults(
       return;
 
     case "install": {
-      ctx.ui.notify(`Installing afv-library (${args.scope})…`, "info");
+      ctx.ui.notify(`Installing forcedotcom/sf-skills (${args.scope})…`, "info");
       const result = await installDefaults({ scope: args.scope, cwd: ctx.cwd });
       if (!result.ok) {
         await emit("Install failed", result.message, "warning");
@@ -135,7 +137,7 @@ export async function handleDefaults(
     }
 
     case "update": {
-      ctx.ui.notify(`Updating afv-library (${args.scope})…`, "info");
+      ctx.ui.notify(`Updating forcedotcom/sf-skills (${args.scope})…`, "info");
       const result = await updateDefaults({ scope: args.scope, cwd: ctx.cwd });
       if (!result.ok) {
         await emit("Update failed", result.message, "warning");
@@ -153,7 +155,7 @@ export async function handleDefaults(
       if (!args.target) {
         await emit(
           "Usage",
-          "/sf-skills defaults link <path> [project|global]\nExample: /sf-skills defaults link ~/work/afv-library",
+          "/sf-skills defaults link <path> [project|global]\nExample: /sf-skills defaults link ~/work/sf-skills",
           "warning",
         );
         return;
@@ -176,7 +178,7 @@ export async function handleDefaults(
       if (!args.target) {
         await emit(
           "Usage",
-          "/sf-skills defaults unlink <path> [project|global] [--delete]\nExample: /sf-skills defaults unlink ~/work/afv-library --delete",
+          "/sf-skills defaults unlink <path> [project|global] [--delete]\nExample: /sf-skills defaults unlink ~/work/sf-skills --delete",
           "warning",
         );
         return;
@@ -203,7 +205,11 @@ export async function handleDefaults(
 // -------------------------------------------------------------------------------------------------
 
 function renderStatus(cwd: string, opts: { includeProject: boolean }): string {
-  const lines: string[] = ["forcedotcom/afv-library managed checkouts:", ""];
+  const lines: string[] = ["forcedotcom/sf-skills managed checkouts:", ""];
+  const legacyWarning = formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(cwd));
+  if (legacyWarning) {
+    lines.push(`WARNING: ${legacyWarning}`, "");
+  }
   for (const scope of ["global", "project"] as const) {
     if (scope === "project" && !opts.includeProject) {
       lines.push("PROJECT");

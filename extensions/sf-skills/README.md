@@ -16,8 +16,10 @@ Pi remains the only skill loader; SF Skills compiles decisions into native
 `settings.skills[]` entries and never renames or edits `SKILL.md` files.
 
 It also provides an optional active-context HUD, the managed public Salesforce
-skill-library installer, explicit invocation counters, and stale-entry/orphan
-cleanup.
+skill-library installer (`forcedotcom/sf-skills`), explicit invocation counters,
+and stale-entry/orphan cleanup. A retired `forcedotcom/afv-library` checkout is
+detected and warned; `/sf-skills defaults install` switches wiring to the new
+library without deleting the old clone.
 
 ## Commands
 

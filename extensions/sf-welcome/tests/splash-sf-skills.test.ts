@@ -83,7 +83,7 @@ describe("SF Skills splash row render states", () => {
     expect(row).toContain("SF Skills");
     expect(row).toContain("↑");
     expect(row).toContain("Install official skills");
-    expect(row).toContain("afv-library");
+    expect(row).toContain("sf-skills");
     // The actionable command lives on the muted sub-line so the row stays
     // inside the column-width cap.
     expect(hint).not.toBeNull();
@@ -101,7 +101,7 @@ describe("SF Skills splash row render states", () => {
       loading: false,
     });
     expect(row).toContain("✓");
-    expect(row).toContain("afv-library available");
+    expect(row).toContain("sf-skills available");
     expect(row).not.toContain("Install official skills");
     expect(hint).not.toBeNull();
     expect(hint).toContain("/sf-skills defaults install");
@@ -141,7 +141,7 @@ describe("SF Skills splash row render states", () => {
       loading: false,
     });
     expect(row).toContain("✓");
-    expect(row).toContain("afv-library installed");
+    expect(row).toContain("sf-skills installed");
     expect(row).toContain("latest");
     expect(row).toContain("53 skills");
     // Nothing actionable on this state — no sub-line.
@@ -162,7 +162,7 @@ describe("SF Skills splash row render states", () => {
       loading: false,
     });
     expect(row).toContain("↑");
-    expect(row).toContain("afv-library");
+    expect(row).toContain("sf-skills");
     expect(row).toContain("12 commits behind");
     expect(hint).not.toBeNull();
     expect(hint).toContain("/sf-skills defaults update");
@@ -197,7 +197,7 @@ describe("SF Skills splash row render states", () => {
       loading: false,
     });
     expect(row).toContain("✓");
-    expect(row).toContain("afv-library linked");
+    expect(row).toContain("sf-skills linked");
     expect(row).toContain("7 skills");
     // Linked rows never carry the orange ↑ — they're user-owned working trees.
     expect(row).not.toContain("↑");
@@ -218,7 +218,7 @@ describe("SF Skills splash row render states", () => {
       loading: false,
     });
     expect(row).toContain("✓");
-    expect(row).toContain("afv-library installed");
+    expect(row).toContain("sf-skills installed");
     expect(row).not.toContain("↑");
     expect(row).not.toContain("Update");
     expect(hint).toBeNull();

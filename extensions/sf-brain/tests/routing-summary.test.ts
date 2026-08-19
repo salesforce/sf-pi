@@ -54,7 +54,7 @@ describe("SF Pi Routing Summary", () => {
     expect(summary.startsWith(SF_PI_ROUTING_OPEN_TAG)).toBe(true);
     expect(summary.endsWith(SF_PI_ROUTING_CLOSE_TAG)).toBe(true);
     expect(summary).toContain(
-      "Use active SF Pi tools before external Salesforce skills or raw sf CLI.",
+      "Family tools perform the action. Skills are supplemental playbooks; they do not own the turn.",
     );
     expect(summary).toContain("Disabled capability owners: none.");
     expect(summary).not.toContain("Extension map:");

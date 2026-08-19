@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Tests for the afv-library defaults installer (no real git, no real network).
+ * Tests for the forcedotcom/sf-skills defaults installer (no real git, no real network).
  *
  * We inject a fake spawn impl so install/update can simulate clone/pull
  * outcomes deterministically. Only the ManagedClone state machine and
@@ -11,6 +11,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
+  detectLegacyDefaultLibrary,
+  formatLegacyDefaultLibraryWarning,
   inspectManagedClone,
   installDefaults,
   managedClonePath,
@@ -132,7 +134,7 @@ describe("inspectManagedClone", () => {
     process.env.HOME = home;
     const cwd = makeCwd();
     expect(managedClonePath("project", cwd)).toBe(
-      path.join(cwd, ".pi", "sf-skills", "afv-library"),
+      path.join(cwd, ".pi", "sf-skills", "forcedotcom"),
     );
   });
 });
@@ -152,7 +154,7 @@ describe("installDefaults (with fake git)", () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       require("node:fs").readFileSync(path.join(home, ".pi", "agent", "settings.json"), "utf8"),
     );
-    expect(settings.skills).toContain("~/.pi/agent/sf-skills/afv-library/skills");
+    expect(settings.skills).toContain("~/.pi/agent/sf-skills/forcedotcom/skills");
   });
 
   it("is idempotent on second invocation", async () => {
@@ -171,7 +173,7 @@ describe("installDefaults (with fake git)", () => {
     const result = await installDefaults({ scope: "project", cwd, spawn: fakeGit });
     expect(result.ok).toBe(true);
     // Content is the single global clone — never a per-project clone.
-    expect(result.clone.rootPath).toBe(path.join(home, ".pi", "agent", "sf-skills", "afv-library"));
+    expect(result.clone.rootPath).toBe(path.join(home, ".pi", "agent", "sf-skills", "forcedotcom"));
     expect(result.clone.scope).toBe("project");
     expect(result.clone.wired).toBe(true);
 
@@ -179,9 +181,9 @@ describe("installDefaults (with fake git)", () => {
     const fs = require("node:fs");
     // Project settings reference the GLOBAL clone path (local-first enablement).
     const settings = JSON.parse(fs.readFileSync(path.join(cwd, ".pi", "settings.json"), "utf8"));
-    expect(settings.skills).toContain("~/.pi/agent/sf-skills/afv-library/skills");
+    expect(settings.skills).toContain("~/.pi/agent/sf-skills/forcedotcom/skills");
     // No per-project clone was created.
-    expect(fs.existsSync(path.join(cwd, ".pi", "sf-skills", "afv-library"))).toBe(false);
+    expect(fs.existsSync(path.join(cwd, ".pi", "sf-skills", "forcedotcom"))).toBe(false);
     // Global settings were not written (only project scope was wired).
     expect(fs.existsSync(path.join(home, ".pi", "agent", "settings.json"))).toBe(false);
   });
@@ -193,13 +195,13 @@ describe("updateDefaults", () => {
     process.env.HOME = home;
     const result = await updateDefaults({ scope: "global", spawn: fakeGit });
     expect(result.ok).toBe(false);
-    expect(result.message).toMatch(/No managed afv-library/);
+    expect(result.message).toMatch(/No managed forcedotcom\/sf-skills/);
   });
 
   it("refuses to pull a checkout missing the sentinel", async () => {
     const home = makeHome();
     process.env.HOME = home;
-    const root = path.join(home, ".pi", "agent", "sf-skills", "afv-library");
+    const root = path.join(home, ".pi", "agent", "sf-skills", "forcedotcom");
     mkdirSync(path.join(root, "skills"), { recursive: true });
     // No sentinel file.
     const result = await updateDefaults({ scope: "global", spawn: fakeGit });
@@ -223,7 +225,7 @@ describe("unlinkCheckout", () => {
     await installDefaults({ scope: "global", spawn: fakeGit });
 
     const result = unlinkCheckout({
-      target: "~/.pi/agent/sf-skills/afv-library/skills",
+      target: "~/.pi/agent/sf-skills/forcedotcom/skills",
       scope: "global",
     });
     expect(result.ok).toBe(true);
@@ -233,7 +235,7 @@ describe("unlinkCheckout", () => {
     const settings = JSON.parse(
       fs.readFileSync(path.join(home, ".pi", "agent", "settings.json"), "utf8"),
     );
-    expect(settings.skills).not.toContain("~/.pi/agent/sf-skills/afv-library/skills");
+    expect(settings.skills).not.toContain("~/.pi/agent/sf-skills/forcedotcom/skills");
   });
 
   it("refuses to delete a path missing the sentinel", () => {
@@ -251,5 +253,48 @@ describe("unlinkCheckout", () => {
     // the literal word “sentinel” — match on the filename so the test stays
     // honest about what the user actually sees.
     expect(result.message).toMatch(/\.sf-skills-managed/);
+  });
+});
+
+describe("legacy afv-library detection", () => {
+  it("warns when a retired clone exists or is wired", () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    const root = path.join(home, ".pi", "agent", "sf-skills", "afv-library");
+    mkdirSync(path.join(root, "skills"), { recursive: true });
+    mkdirSync(path.join(home, ".pi", "agent"), { recursive: true });
+    writeFileSync(
+      path.join(home, ".pi", "agent", "settings.json"),
+      `${JSON.stringify({ skills: ["~/.pi/agent/sf-skills/afv-library/skills"] })}\n`,
+    );
+
+    const detection = detectLegacyDefaultLibrary();
+    expect(detection.present).toBe(true);
+    expect(detection.wired).toBe(true);
+    expect(formatLegacyDefaultLibraryWarning(detection)).toMatch(/forcedotcom\/afv-library/);
+  });
+
+  it("unwires the retired library when installing the new default", async () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    mkdirSync(path.join(home, ".pi", "agent", "sf-skills", "afv-library", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(path.join(home, ".pi", "agent"), { recursive: true });
+    writeFileSync(
+      path.join(home, ".pi", "agent", "settings.json"),
+      `${JSON.stringify({ skills: ["~/.pi/agent/sf-skills/afv-library/skills"] })}\n`,
+    );
+
+    const result = await installDefaults({ scope: "global", spawn: fakeGit });
+    expect(result.ok).toBe(true);
+    expect(result.message).toMatch(/Removed retired forcedotcom\/afv-library/);
+
+    const settings = JSON.parse(
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("node:fs").readFileSync(path.join(home, ".pi", "agent", "settings.json"), "utf8"),
+    );
+    expect(settings.skills).toContain("~/.pi/agent/sf-skills/forcedotcom/skills");
+    expect(settings.skills).not.toContain("~/.pi/agent/sf-skills/afv-library/skills");
   });
 });

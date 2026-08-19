@@ -190,7 +190,7 @@ describe("detectLinkedAfvCheckout", () => {
 
 describe("detectInstallStateLocal", () => {
   function createManagedGlobal(): { rootPath: string; skillsPath: string } {
-    const rootPath = path.join(tmpDir, "sf-skills", "afv-library");
+    const rootPath = path.join(tmpDir, "sf-skills", "forcedotcom");
     const skillsPath = path.join(rootPath, "skills");
     mkdirSync(skillsPath, { recursive: true });
     mkdirSync(path.join(rootPath, ".git", "refs", "heads"), { recursive: true });
@@ -323,7 +323,7 @@ describe("detectInstallStateLocal", () => {
 
 describe("detectSfSkillsStatus", () => {
   function setupManagedGlobal(localSha: string): void {
-    const rootPath = path.join(tmpDir, "sf-skills", "afv-library");
+    const rootPath = path.join(tmpDir, "sf-skills", "forcedotcom");
     const skillsPath = path.join(rootPath, "skills");
     mkdirSync(skillsPath, { recursive: true });
     mkdirSync(path.join(rootPath, ".git", "refs", "heads"), { recursive: true });

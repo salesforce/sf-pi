@@ -24,3 +24,8 @@ Use this guide for schema-aware CRM SOQL/SOSL work. `sf_soql` owns discovery, va
 ## Evidence
 
 Validation, query-plan signals, samples, counts, and artifact paths are the Behavior Proof. Never infer query correctness from syntax alone when current org schema is available.
+
+## Related domain skills
+
+Prefer `sf_soql` when it can do the action. If it cannot, read one of these Salesforce skills:
+`platform-soql-query` · `platform-data-manage`

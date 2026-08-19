@@ -35,3 +35,8 @@ evidence and must not drive public tool selection.
 ## Boundaries
 
 Use standard `sf_soql` for CRM SOQL. Use `data360_observe` for production Agentforce telemetry and Agent Script tools for local authoring/preview/eval. Do not hand-roll REST calls when a family action exists.
+
+## Related domain skills
+
+Prefer the `data360_*` family tool when it can do the action. If it cannot, read one of these Salesforce skills:
+`data360-connect` · `data360-prepare` · `data360-harmonize` · `data360-segment` · `data360-activate` · `data360-query` · `data360-orchestrate` · `data360-schema-get` · `data360-code-extension-generate` · `agentforce-d360-analyze` · `agentforce-observe`

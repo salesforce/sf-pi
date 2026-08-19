@@ -183,7 +183,7 @@ describe("gatherCatalogInput", () => {
     const afv = input.sources.find((s) => s.rootPath === path.normalize(afvRoot));
     expect(afv).toBeDefined();
     expect(afv!.kind).toBe("managed");
-    expect(afv!.label).toBe("afv-library (global)");
+    expect(afv!.label).toBe("afv-library (legacy, global)");
     expect(afv!.gate).toBe("seen");
     expect(afv!.skills.map((s) => s.name).sort()).toEqual([
       "deploying-metadata",

@@ -66,6 +66,7 @@ import {
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
 import { handleDefaults, parseDefaultsArgs } from "./lib/skills-command.ts";
+import { detectLegacyDefaultLibrary, formatLegacyDefaultLibraryWarning } from "./lib/defaults.ts";
 import { readEffectiveSfSkillsSettings } from "./lib/settings.ts";
 import { updateSkillSources } from "../../lib/common/skill-sources/skill-sources.ts";
 import { setSourceGate, upsertSource } from "../../lib/common/skill-sources/source-registry.ts";
@@ -233,7 +234,7 @@ function renderSkillsHelp(): string {
     "  • Conflicts — pick a winner (w) for resolvable name collisions",
     "  • enter applies staged changes, esc cancels",
     "",
-    "Defaults (forcedotcom/afv-library):",
+    "Defaults (forcedotcom/sf-skills):",
     "  • /sf-skills defaults install  [project|global]   (default: project; clones once, shared)",
     "  • /sf-skills defaults update   [project|global]",
     "  • /sf-skills defaults link <path> [project|global]",
@@ -243,7 +244,7 @@ function renderSkillsHelp(): string {
     "  /sf-skills           Open SF Skills in the SF Pi Manager",
     "  /sf-skills summary   HUD summary text",
     "  /sf-skills funnel    Open the skill funnel",
-    "  /sf-skills defaults  Manage afv-library installs (see above)",
+    "  /sf-skills defaults  Manage forcedotcom/sf-skills installs (see above)",
     "  /sf-skills help      Show this help",
   ].join("\n");
 }
@@ -335,10 +336,11 @@ export default function sfSkills(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     dismissOverlay();
     hudState = EMPTY_STATE;
-    if (ctx.mode !== "tui") {
-      return;
+    if (ctx.mode === "tui") {
+      const warning = formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(ctx.cwd));
+      if (warning) ctx.ui.notify(warning, "warning");
+      rebuildAndRender(ctx);
     }
-    rebuildAndRender(ctx);
   });
 
   pi.on("message_end", async (_event, ctx) => {

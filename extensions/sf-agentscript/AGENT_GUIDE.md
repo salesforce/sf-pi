@@ -171,3 +171,8 @@ ordinary authoring turn.
 ## Production observability handoff
 
 When the user asks why a production agent behaved incorrectly, start with `sf-data360` observability data, then reproduce locally with `agentscript_preview`, fix via `agentscript_authoring`, verify with `agentscript_eval`, and ship with `agentscript_lifecycle`.
+
+## Related domain skills
+
+Prefer the Agent Script family tools when they can do the action. If they cannot, read one of these Salesforce skills:
+`agentforce-generate` · `agentforce-test` · `agentforce-observe` · `agentforce-architecture-analyze` · `agentforce-bot-upgrade`

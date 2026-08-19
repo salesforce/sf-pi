@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * forcedotcom/afv-library install + freshness status for the welcome splash.
+ * forcedotcom/sf-skills install + freshness status for the welcome splash.
  *
  * The companion `sf-skills` extension owns the install / update / link
  * lifecycle. This module is a strictly read-only sibling that surfaces a
  * single splash row:
  *
- *     📚 SF Skills    ✓ afv-library installed · latest
- *     📚 SF Skills    ✓ afv-library available
- *     📚 SF Skills    ↑ afv-library · 12 commits behind
- *     📚 SF Skills    ✓ afv-library linked · ~/work/afv-library
+ *     📚 SF Skills    ✓ sf-skills installed · latest
+ *     📚 SF Skills    ✓ sf-skills available
+ *     📚 SF Skills    ↑ sf-skills · 12 commits behind
+ *     📚 SF Skills    ✓ sf-skills linked · ~/work/sf-skills
  *     📚 SF Skills    ↑ Install official skills (·  /sf-skills defaults install)
  *
  * Design rules (must hold so startup time stays flat):
@@ -35,7 +35,7 @@ import path from "node:path";
 import { homedir } from "node:os";
 import { createStateStore } from "../../../lib/common/state-store.ts";
 import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
-import { managedClonePath } from "../../sf-skills/lib/defaults.ts";
+import { legacyManagedClonePath, managedClonePath } from "../../sf-skills/lib/defaults.ts";
 import type { SfSkillsStatusInfo } from "./types.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ import type { SfSkillsStatusInfo } from "./types.ts";
 // -------------------------------------------------------------------------------------------------
 
 const REPO_OWNER = "forcedotcom";
-const REPO_NAME = "afv-library";
+const REPO_NAME = "sf-skills";
 const REPO_DEFAULT_BRANCH = "main";
 const GITHUB_COMPARE_TIMEOUT_MS = 5_000;
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -326,9 +326,16 @@ function detectManagedWiring(
 function managedCloneAvailability(
   scope: "global" | "project",
   cwd: string,
+  kind: "current" | "legacy" = "current",
 ): { rootPath: string; skillsPath: string; scope: "global" | "project"; wired: boolean } | null {
   const rootPath =
-    scope === "project" ? managedClonePath("project", cwd) : managedClonePath("global");
+    kind === "legacy"
+      ? scope === "project"
+        ? legacyManagedClonePath("project", cwd)
+        : legacyManagedClonePath("global")
+      : scope === "project"
+        ? managedClonePath("project", cwd)
+        : managedClonePath("global");
   if (!isDirectory(rootPath)) return null;
   if (!existsSync(path.join(rootPath, MANAGED_SENTINEL_FILE))) return null;
   const skillsPath = path.join(rootPath, SKILLS_SUBDIR);
@@ -344,7 +351,12 @@ function managedCloneAvailability(
 function findManagedSourceAvailability(
   cwd: string,
 ): { rootPath: string; skillsPath: string; scope: "global" | "project"; wired: boolean } | null {
-  return managedCloneAvailability("global", cwd) ?? managedCloneAvailability("project", cwd);
+  return (
+    managedCloneAvailability("global", cwd, "current") ??
+    managedCloneAvailability("project", cwd, "current") ??
+    managedCloneAvailability("global", cwd, "legacy") ??
+    managedCloneAvailability("project", cwd, "legacy")
+  );
 }
 
 /**

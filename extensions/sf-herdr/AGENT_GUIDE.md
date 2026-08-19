@@ -21,3 +21,7 @@ workflow is already running inside a ready Herdr pane.
 - Do not close panes that the current workflow did not create.
 - Sticky and manual lifecycles require explicit cleanup.
 - The official Herdr skill is separate and out of scope for SF Herdr.
+
+## Related domain skills
+
+Prefer `sf_herdr_plan` plus the vendor `herdr_layout` / `herdr_pane` / `herdr_agent` tools. If they cannot cover the work, read the vendor Herdr skill `herdr`.

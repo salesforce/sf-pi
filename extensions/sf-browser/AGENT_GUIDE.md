@@ -50,3 +50,7 @@ For scroll, hover, drag, upload, tabs, state, console, network, eval, trace, vid
 ```bash
 agent-browser skills get core
 ```
+
+## Related domain skills
+
+Prefer `sf_browser_*` for Salesforce UI last-mile work. If it cannot cover the work, read the vendor skill `agent-browser` from vercel-labs/agent-browser.

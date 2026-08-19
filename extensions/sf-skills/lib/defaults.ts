@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * forcedotcom/afv-library install / update / link / unlink.
+ * forcedotcom/sf-skills install / update / link / unlink.
  *
  * Why this module exists
  * ----------------------
  * The Salesforce community publishes a curated skill library at
- * `forcedotcom/afv-library`. Users who want those skills should not have
+ * `forcedotcom/sf-skills`. Users who want those skills should not have
  * to clone manually and edit `settings.json` by hand. This module owns
  * that lifecycle:
  *
  *   install : git clone the repo into a managed dir + wire it into settings
  *   update  : git pull --ff-only on managed dirs only (sentinel-gated)
- *   link    : wire a user-owned checkout (e.g. ~/work/afv-library) into settings
+ *   link    : wire a user-owned checkout (e.g. ~/work/sf-skills) into settings
  *   unlink  : remove a wired entry; --delete only valid on managed dirs
  *   status  : report every known managed/linked checkout
  *
@@ -40,8 +40,11 @@ import {
 // Constants
 // -------------------------------------------------------------------------------------------------
 
-const REPO_URL = "https://github.com/forcedotcom/afv-library";
-const REPO_DIR_NAME = "afv-library";
+export const DEFAULT_LIBRARY_REPO_URL = "https://github.com/forcedotcom/sf-skills";
+export const DEFAULT_LIBRARY_DIR_NAME = "forcedotcom";
+export const LEGACY_LIBRARY_DIR_NAME = "afv-library";
+const REPO_URL = DEFAULT_LIBRARY_REPO_URL;
+const REPO_DIR_NAME = DEFAULT_LIBRARY_DIR_NAME;
 const SKILLS_SUBDIR = "skills";
 const SENTINEL_FILE = ".sf-skills-managed";
 
@@ -87,8 +90,8 @@ export interface UpdateResult {
 /**
  * Resolve the managed clone path for a scope.
  *
- * Global: `~/.pi/agent/sf-skills/afv-library/`
- * Project: `<cwd>/.pi/sf-skills/afv-library/`
+ * Global: `~/.pi/agent/sf-skills/forcedotcom/`
+ * Project: `<cwd>/.pi/sf-skills/forcedotcom/`
  *
  * Both live OUTSIDE pi's auto-discovery roots so wiring stays the
  * single source of truth.
@@ -138,6 +141,53 @@ export function inspectManagedClone(scope: SkillSourceScope, cwd?: string): Mana
   return { rootPath, skillsPath, settingsValue, scope, exists, managed, wired };
 }
 
+export function legacyManagedClonePath(scope: SkillSourceScope, cwd?: string): string {
+  if (scope === "project") {
+    if (!cwd) throw new Error("legacyManagedClonePath: cwd is required for scope='project'");
+    return projectConfigPath(cwd, "sf-skills", LEGACY_LIBRARY_DIR_NAME);
+  }
+  return globalAgentPath("sf-skills", LEGACY_LIBRARY_DIR_NAME);
+}
+
+export function legacyManagedSettingsValue(): string {
+  return `~/.pi/agent/sf-skills/${LEGACY_LIBRARY_DIR_NAME}/${SKILLS_SUBDIR}`;
+}
+
+export interface LegacyDefaultLibraryDetection {
+  clones: Array<{ scope: SkillSourceScope; rootPath: string; exists: boolean; wired: boolean }>;
+  present: boolean;
+  wired: boolean;
+}
+
+/** Detect retired forcedotcom/afv-library clones or wiring. Cheap path/settings checks only. */
+export function detectLegacyDefaultLibrary(cwd?: string): LegacyDefaultLibraryDetection {
+  const clones: LegacyDefaultLibraryDetection["clones"] = [];
+  for (const scope of ["global", "project"] as const) {
+    if (scope === "project" && !cwd) continue;
+    const rootPath = legacyManagedClonePath(scope, cwd);
+    const skillsPath = path.join(rootPath, SKILLS_SUBDIR);
+    const exists = isDirectory(rootPath);
+    const wired = settingsMentionLegacy(scope, cwd, skillsPath);
+    clones.push({ scope, rootPath, exists, wired });
+  }
+  return {
+    clones,
+    present: clones.some((clone) => clone.exists || clone.wired),
+    wired: clones.some((clone) => clone.wired),
+  };
+}
+
+export function formatLegacyDefaultLibraryWarning(
+  detection: LegacyDefaultLibraryDetection = detectLegacyDefaultLibrary(),
+): string | undefined {
+  if (!detection.present) return undefined;
+  return [
+    "Retired Salesforce skill library detected (forcedotcom/afv-library).",
+    "SF Pi now installs forcedotcom/sf-skills (platform-apex-generate, not generating-apex).",
+    "Run /sf-skills defaults install to switch. The old clone stays on disk until you unlink --delete.",
+  ].join(" ");
+}
+
 // -------------------------------------------------------------------------------------------------
 // Install
 // -------------------------------------------------------------------------------------------------
@@ -158,7 +208,7 @@ export interface InstallOptions {
 }
 
 /**
- * Ensure the afv-library clone exists (once, globally) and wire it into the
+ * Ensure the forcedotcom/sf-skills clone exists (once, globally) and wire it into the
  * chosen scope's `settings.skills[]`. Content lives global + shared; wiring is
  * the scoping lever (local-first by default). Idempotent.
  */
@@ -191,6 +241,7 @@ export async function installDefaults(options: InstallOptions): Promise<InstallR
   }
 
   const alreadyWired = isManagedWired(wireScope, options.cwd, content.skillsPath);
+  const legacyRemoved = unwireLegacyDefaultLibrary(wireScope, options.cwd);
   if (!alreadyWired) {
     updateSkillSources({
       add: [settingsValue],
@@ -209,12 +260,16 @@ export async function installDefaults(options: InstallOptions): Promise<InstallR
     wired: isManagedWired(wireScope, options.cwd, content.skillsPath),
   };
   const wiredVerb = alreadyWired ? "still wired" : "now wired";
+  const installed = content.exists
+    ? `Already cloned at ${next.rootPath}; ${wiredVerb} in ${wireScope} settings.`
+    : `Cloned forcedotcom/sf-skills into ${next.rootPath} and wired it in ${wireScope} settings.`;
+  const legacyNote = legacyRemoved
+    ? " Removed retired forcedotcom/afv-library wiring from this scope."
+    : formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(options.cwd));
   return {
     ok: true,
     clone,
-    message: content.exists
-      ? `Already cloned at ${next.rootPath}; ${wiredVerb} in ${wireScope} settings.`
-      : `Cloned afv-library into ${next.rootPath} and wired it in ${wireScope} settings.`,
+    message: legacyNote ? `${installed} ${legacyNote}` : installed,
   };
 }
 
@@ -228,6 +283,39 @@ function isManagedWired(
   const settingsPath = scope === "project" ? detection.projectSettingsPath : detection.settingsPath;
   if (!settingsPath) return false;
   return readSkillsArray(settingsPath).some((value) => resolvesToSamePath(value, skillsPath, cwd));
+}
+
+function settingsMentionLegacy(
+  scope: SkillSourceScope,
+  cwd: string | undefined,
+  skillsPath: string,
+): boolean {
+  const detection = detectSkillSources({ cwd, includeProject: scope === "project" });
+  const settingsPath = scope === "project" ? detection.projectSettingsPath : detection.settingsPath;
+  if (!settingsPath) return false;
+  return readSkillsArray(settingsPath).some(
+    (value) =>
+      value.includes(LEGACY_LIBRARY_DIR_NAME) || resolvesToSamePath(value, skillsPath, cwd),
+  );
+}
+
+function unwireLegacyDefaultLibrary(scope: SkillSourceScope, cwd?: string): boolean {
+  const detection = detectSkillSources({ cwd, includeProject: scope === "project" });
+  const settingsPath = scope === "project" ? detection.projectSettingsPath : detection.settingsPath;
+  if (!settingsPath) return false;
+  const toRemove = readSkillsArray(settingsPath).filter((value) =>
+    value.includes(LEGACY_LIBRARY_DIR_NAME),
+  );
+  if (toRemove.length === 0) return false;
+  updateSkillSources({ add: [], remove: toRemove, scope, cwd });
+  return true;
+}
+
+function legacyUpdateMissingMessage(cwd?: string): string {
+  const warning = formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(cwd));
+  return warning
+    ? `${warning}`
+    : "No managed forcedotcom/sf-skills clone found. Run /sf-skills defaults install first.";
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -250,7 +338,7 @@ export async function updateDefaults(options: UpdateOptions): Promise<UpdateResu
     return {
       ok: false,
       clone,
-      message: "No managed afv-library clone found. Run install first.",
+      message: legacyUpdateMissingMessage(options.cwd),
       output: "",
     };
   }
@@ -270,7 +358,7 @@ export async function updateDefaults(options: UpdateOptions): Promise<UpdateResu
     ok: result.success,
     clone,
     message: result.success
-      ? "Pulled latest afv-library."
+      ? "Pulled latest forcedotcom/sf-skills."
       : `git pull failed: ${result.stderr || result.stdout || "unknown error"}`,
     output: `${result.stdout}${result.stderr ? `\n${result.stderr}` : ""}`,
   };
@@ -281,7 +369,7 @@ export async function updateDefaults(options: UpdateOptions): Promise<UpdateResu
 // -------------------------------------------------------------------------------------------------
 
 export interface LinkOptions {
-  /** Absolute or `~`-prefixed path to a user-owned afv-library checkout. */
+  /** Absolute or `~`-prefixed path to a user-owned sf-skills checkout. */
   checkoutPath: string;
   scope: SkillSourceScope;
   cwd?: string;
@@ -302,7 +390,7 @@ export function linkExistingCheckout(options: LinkOptions): { ok: boolean; messa
   if (!isDirectory(skillsDir)) {
     return {
       ok: false,
-      message: `Expected a 'skills/' subdir inside ${expanded}; this does not look like an afv-library checkout.`,
+      message: `Expected a 'skills/' subdir inside ${expanded}; this does not look like a Salesforce skills checkout.`,
     };
   }
   const settingsValue = portableLinkValue(options.checkoutPath, options.scope, options.cwd);
