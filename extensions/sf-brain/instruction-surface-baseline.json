@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "pi_runtime_version": "0.82.1",
-  "sf_pi_version": "0.250.2",
+  "pi_runtime_version": "0.84.2",
+  "sf_pi_version": "0.271.0",
   "measurement": {
-    "sf_pi_owned_chars": 101553,
-    "sf_pi_tool_definition_chars": 83605,
-    "sf_pi_tool_guidance_chars": 13172,
-    "sf_pi_hidden_context_chars": 4776,
+    "sf_pi_owned_chars": 90749,
+    "sf_pi_tool_definition_chars": 72186,
+    "sf_pi_tool_guidance_chars": 13356,
+    "sf_pi_hidden_context_chars": 5207,
     "bundled_extension_skill_chars": 0
   }
 }
