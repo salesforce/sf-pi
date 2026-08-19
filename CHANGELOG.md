@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.269.0](https://github.com/salesforce/sf-pi/compare/v0.268.1...v0.269.0) (2026-08-19)
+
+
+### Features
+
+* **sf-tldraw:** validate Spec v2 at execute instead of advertising the union ([#630](https://github.com/salesforce/sf-pi/issues/630)) ([38cf2d5](https://github.com/salesforce/sf-pi/commit/38cf2d53edbbf128815449506c25459c431512cc))
+
 ## [0.268.1](https://github.com/salesforce/sf-pi/compare/v0.268.0...v0.268.1) (2026-08-19)
 
 
