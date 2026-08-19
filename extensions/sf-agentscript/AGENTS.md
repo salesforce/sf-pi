@@ -49,5 +49,5 @@ When shipped behavior changes, update:
 
 - `manifest.json`
 - `README.md`
-- `AGENT_GUIDE.md`
+- `AGENT_GUIDE.md` (index) and the one matching child under `docs/`
 - generated catalog/docs via `npm run generate-catalog`
