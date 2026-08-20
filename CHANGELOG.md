@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.271.1](https://github.com/salesforce/sf-pi/compare/v0.271.0...v0.271.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** route xAI models through chat completions ([a16b449](https://github.com/salesforce/sf-pi/commit/a16b449c23c8d5a0a77cc5a39c68d126e25469b6))
+
 ## [0.271.0](https://github.com/salesforce/sf-pi/compare/v0.270.0...v0.271.0) (2026-08-19)
 
 
