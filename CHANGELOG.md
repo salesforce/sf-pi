@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.272.0](https://github.com/salesforce/sf-pi/compare/v0.271.1...v0.272.0) (2026-08-22)
+
+
+### Features
+
+* **sf-skills:** add invocation toggle with stamped effective tree ([fae2adb](https://github.com/salesforce/sf-pi/commit/fae2adb36cd32688eda63968ea23a604ca681031))
+
 ## [0.271.1](https://github.com/salesforce/sf-pi/compare/v0.271.0...v0.271.1) (2026-08-20)
 
 
