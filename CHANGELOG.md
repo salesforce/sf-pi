@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.273.0](https://github.com/salesforce/sf-pi/compare/v0.272.0...v0.273.0) (2026-08-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** bundled extensions now require Pi 0.84.0 or newer.
+
+### Features
+
+* **runtime:** require Pi 0.84.0 and drop unused gateway wire-trace ([ad24974](https://github.com/salesforce/sf-pi/commit/ad249742b0665d5f9794871d95e4da2f5ec4da87))
+
 ## [0.272.0](https://github.com/salesforce/sf-pi/compare/v0.271.1...v0.272.0) (2026-08-22)
 
 
