@@ -330,17 +330,19 @@ describe("inspectFile", () => {
         "    after_response:",
         "        set @variables.done = True",
         "",
+        "skill_definitions:",
+        "    greet:",
+        '        description: "Greet"',
+        '        instructions: "# Greet"',
+        "    summarize:",
+        '        description: "Summarize"',
+        '        target: "skill://Helper_v1"',
+        "",
         "subagent worker:",
         '    description: "Worker"',
-        "    skills:",
-        "        summarize:",
-        '            description: "Summarize"',
         "",
         "start_agent main:",
         '    description: "Entry"',
-        "    skills:",
-        "        greet:",
-        '            description: "Greet"',
         "    reasoning:",
         "        instructions: ->",
         "            transition to @connected_subagent.helper",
@@ -359,9 +361,12 @@ describe("inspectFile", () => {
       welcome_screen: false,
       starter_prompts: ["Track order"],
     });
-    expect(result.components?.start_agents?.[0].skills).toEqual(["greet"]);
+    expect(result.components?.skill_definitions?.map((skill) => skill.name).sort()).toEqual([
+      "greet",
+      "summarize",
+    ]);
     expect(result.components?.start_agents?.[0].connected_subagent_refs).toEqual(["helper"]);
-    expect(result.components?.subagents[0].skills).toEqual(["summarize"]);
+    expect(result.stats?.skill_definitions).toBe(2);
     expect(result.components?.connected_subagents).toEqual([
       expect.objectContaining({
         name: "helper",
@@ -435,8 +440,8 @@ describe("inspectFile", () => {
       '    description: "Gather"',
       "    reasoning:",
       "        instructions: ->",
-      "            collect @variables.email",
-      '                message: "Email?"',
+      "            ask for @variables.email",
+      '                instructions: "Email?"',
       "start_agent main:",
       '    description: "Entry"',
       "    before_reasoning:",

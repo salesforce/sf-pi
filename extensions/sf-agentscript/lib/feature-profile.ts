@@ -195,13 +195,15 @@ function buildPublishRisks(input: {
         .map((key) => `config.${key}`),
     });
   }
-  if (input.source && /^\s*collect\s+@/m.test(input.source)) {
+  if (input.source && /^\s*(?:collect\s+@|ask for\s+@)/m.test(input.source)) {
+    const usesAskFor = /^\s*ask for\s+@/m.test(input.source);
     risks.push({
       code: "collect_org_compiler_compatibility",
       severity: "warn",
-      message:
-        "collect is locally compile-valid but experimental, and target-org server compiler support can lag the installed Agent Script packages. Validate with a live preview before publish.",
-      evidence: ["collect statement"],
+      message: usesAskFor
+        ? "`ask for` is locally compile-valid as a beta/pilot statement, and target-org server compiler support can lag the installed Agent Script packages. Validate with a live preview before publish."
+        : "Legacy `collect` is no longer current Agent Script syntax (`ask for` replaced it). Target-org server compiler support can lag the installed packages; validate with a live preview before publish.",
+      evidence: [usesAskFor ? "ask for statement" : "collect statement"],
     });
   }
   return risks;

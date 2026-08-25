@@ -341,7 +341,7 @@ subagent next:
     description: "Main"
     reasoning:
         instructions: |
-            Use current_step to decide what to do next.`,
+            Use @variables.current_step to decide what to do next.`,
       `    current_step: mutable string = "start"
         description: "Current step"`,
     );

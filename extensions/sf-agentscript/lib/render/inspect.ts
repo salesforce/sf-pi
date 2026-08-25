@@ -75,6 +75,7 @@ export interface InspectStructureDetails {
     topics: ComponentSummary[];
     subagents: ComponentSummary[];
     connected_subagents?: ConnectedSubagentSummary[];
+    skill_definitions?: ComponentSummary[];
     variables: VariableSummary[];
     actions: ComponentSummary[];
     connections?: ConnectionSummary[];
@@ -88,6 +89,7 @@ export interface InspectStructureDetails {
     topics?: number;
     subagents?: number;
     connected_subagents?: number;
+    skill_definitions?: number;
     variables?: number;
     actions?: number;
     connections?: number;
@@ -248,6 +250,17 @@ function formatStructureBody(
     }
   }
 
+  if (components.skill_definitions && components.skill_definitions.length > 0) {
+    lines.push(
+      `  ${heading("📚")} ${bold(`skill_definitions (${components.skill_definitions.length})`)}`,
+    );
+    for (const s of components.skill_definitions) {
+      const ln = s.line !== undefined ? dim(padRightVisible(`L${s.line}`, 5)) : dim("     ");
+      const target = s.target ? dim(` → ${s.target}`) : "";
+      lines.push(`     ${ln} ${code(s.name)}${target}`);
+    }
+  }
+
   if (components.connected_subagents && components.connected_subagents.length > 0) {
     lines.push(
       `  ${heading("🔗")} ${bold(`connected_subagents (${components.connected_subagents.length})`)}`,
@@ -319,6 +332,7 @@ function formatStructureBody(
     `${stats.topics ?? 0} topics`,
     `${stats.subagents ?? 0} subagents`,
     `${stats.connected_subagents ?? components.connected_subagents?.length ?? 0} connected`,
+    `${stats.skill_definitions ?? components.skill_definitions?.length ?? 0} skills`,
     `${stats.actions ?? 0} actions`,
     `${stats.variables ?? 0} variables`,
     `${stats.connections ?? components.connections?.length ?? 0} connections`,

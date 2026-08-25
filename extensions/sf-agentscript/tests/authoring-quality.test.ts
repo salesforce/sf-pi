@@ -111,7 +111,7 @@ start_agent main:
     description: "Main"
     reasoning:
         instructions: |
-            Use conversation_step to decide what to do next.
+            Use @variables.conversation_step to decide what to do next.
 `,
     );
 

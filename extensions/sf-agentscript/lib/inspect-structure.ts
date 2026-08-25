@@ -42,6 +42,7 @@ export interface InspectResult {
     topics: ComponentSummary[];
     subagents: ComponentSummary[];
     connected_subagents?: ConnectedSubagentSummary[];
+    skill_definitions?: ComponentSummary[];
     variables: VariableSummary[];
     actions: ComponentSummary[];
     connections?: ConnectionSummary[];
@@ -55,6 +56,7 @@ export interface InspectResult {
     topics: number;
     subagents: number;
     connected_subagents?: number;
+    skill_definitions?: number;
     variables: number;
     actions: number;
     connections?: number;
@@ -88,7 +90,11 @@ export interface ComponentSummary {
   response_format_refs?: string[];
   /** `@utils.X` references such as `@utils.end_session`. */
   utility_refs?: string[];
-  /** Stable names declared under this component's optional `skills:` block. */
+  /**
+   * Nested `skills:` names, if a component still carries that block.
+   * Current Agentforce schema moved skill declarations to top-level
+   * `skill_definitions:` — prefer `components.skill_definitions`.
+   */
   skills?: string[];
   /**
    * For action declarations only: the raw `target:` URI (e.g. `flow://X`,
@@ -586,6 +592,9 @@ export function projectInspectStructure(input: {
   const connectedSubagents = namedMapEntries(ast.connected_subagent).map(([n, e]) =>
     summarizeConnectedSubagent(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
   );
+  const skillDefinitions = namedMapEntries(ast.skill_definitions).map(([n, e]) =>
+    summarizeWithRefs(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
+  );
   // Top-level `actions:` block.
   const topLevelActions = namedMapEntries(ast.actions).map(([n, e]) =>
     summarizeWithRefs(n, e, input.walkAstExpressions, input.decomposeAtMemberExpression),
@@ -655,6 +664,7 @@ export function projectInspectStructure(input: {
     topics,
     subagents,
     ...(connectedSubagents.length > 0 ? { connected_subagents: connectedSubagents } : {}),
+    ...(skillDefinitions.length > 0 ? { skill_definitions: skillDefinitions } : {}),
     variables,
     actions,
     ...(connections.length > 0 ? { connections } : {}),
@@ -673,6 +683,7 @@ export function projectInspectStructure(input: {
       topics: topics.length,
       subagents: subagents.length,
       ...(connectedSubagents.length > 0 ? { connected_subagents: connectedSubagents.length } : {}),
+      ...(skillDefinitions.length > 0 ? { skill_definitions: skillDefinitions.length } : {}),
       variables: variables.length,
       actions: actions.length,
       connections: connections.length,

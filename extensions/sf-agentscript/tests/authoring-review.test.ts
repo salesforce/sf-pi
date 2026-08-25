@@ -104,7 +104,7 @@ describe("agentscript_authoring inspect/review", () => {
         '    description: "Main"',
         "    reasoning:",
         "        instructions: |",
-        "            Use current_step to decide what to do next.",
+        "            Use @variables.current_step to decide what to do next.",
         "",
       ].join("\n"),
     );

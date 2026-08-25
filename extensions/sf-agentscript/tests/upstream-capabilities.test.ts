@@ -229,7 +229,28 @@ start_agent main:
     );
   });
 
-  test("preserves the collect experimental information diagnostic", async () => {
+  test("preserves the ask-for beta-services diagnostic", async () => {
+    const result = await checkAgentScriptSource(`${HEAD}variables:
+  email: mutable string = None
+start_agent main:
+  description: "Entry"
+  transition to @subagent.gather
+subagent gather:
+  description: "Gather"
+  reasoning:
+    instructions: ->
+      ask for @variables.email
+        instructions: "What is your email?"
+`);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "ask-for-beta-services", severity: 3 }),
+      ]),
+    );
+    expect(result.diagnostics.some((diagnostic) => diagnostic.severity === 1)).toBe(false);
+  });
+
+  test("treats legacy collect syntax as a compile error", async () => {
     const result = await checkAgentScriptSource(`${HEAD}variables:
   email: mutable string = None
 start_agent main:
@@ -242,12 +263,10 @@ subagent gather:
       collect @variables.email
         message: "What is your email?"
 `);
-    expect(result.diagnostics).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: "collect-experimental", severity: 3 }),
-      ]),
+    expect(result.diagnostics.some((diagnostic) => diagnostic.severity === 1)).toBe(true);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain(
+      "collect-experimental",
     );
-    expect(result.diagnostics.some((diagnostic) => diagnostic.severity === 1)).toBe(false);
   });
 
   test("accepts else-if syntax through sf-pi's lazy package adapter", async () => {

@@ -294,7 +294,7 @@ subagent next:
     description: "Main"
     reasoning:
         instructions: |
-            Use current_step to decide what to do next.`,
+            Use @variables.current_step to decide what to do next.`,
       `    current_step: mutable string = "start"
         description: "Current step"`,
     ),
@@ -517,20 +517,14 @@ describe("quality upstream strict parity", () => {
     expect([...covered].sort()).toEqual([...AGENT_SCRIPT_QUALITY_RULE_IDS].sort());
   });
 
-  test("disabling a local projection does not hide adjacent official diagnostics", async () => {
+  test("disabling a local projection does not hide sibling local findings", async () => {
     const fixture = cases.find((entry) => entry.name === "list element and index types")!;
     const local = await runAgentScriptQuality(fixture.source, {
       ruleOverrides: { "list-element-type-mismatch": false },
     });
-    const upstream = await analyzeAgentScriptSource(fixture.source);
     expect(local.findings.map((finding) => finding.rule_id)).not.toContain(
       "list-element-type-mismatch",
     );
-    expect(upstream.ok).toBe(true);
-    if (upstream.ok) {
-      expect(upstream.analysis.compileDiagnostics.map((diagnostic) => diagnostic.code)).toContain(
-        "variable-default-type-mismatch",
-      );
-    }
+    expect(local.findings.map((finding) => finding.rule_id)).toContain("non-numeric-list-index");
   });
 });

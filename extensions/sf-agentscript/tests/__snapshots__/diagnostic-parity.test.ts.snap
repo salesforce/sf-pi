@@ -294,15 +294,15 @@ exports[`local hardening diagnostic parity > 'procedural statements inside liter
     {
       "code": "instruction-template-syntax",
       "data": undefined,
-      "message": "'verified' looks like a variable name — did you mean {!@variables.verified}? Variable references require template syntax to be interpolated.",
+      "message": "'@variables.verified' should be wrapped in template syntax — did you mean {!@variables.verified}? Variable references require {! ... } for interpolation.",
       "range": {
         "end": {
-          "character": 45,
-          "line": 15,
+          "character": 34,
+          "line": 16,
         },
         "start": {
-          "character": 37,
-          "line": 15,
+          "character": 15,
+          "line": 16,
         },
       },
       "severity": 3,

@@ -65,7 +65,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 37015
+    "srcLoc": 37041
   },
   {
     "id": "sf-apex",
