@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.272.0-2026-08-22",
-  "latestVersion": "0.272.0",
+  "revision": "release-0.273.0-2026-08-25",
+  "latestVersion": "0.273.0",
   "announcements": [
     {
-      "id": "release-0.272.0",
+      "id": "release-0.273.0",
       "kind": "update",
-      "title": "sf-pi v0.272.0 — sf-skills: add invocation toggle with stamped effective tree",
-      "publishedAt": "2026-08-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.272.0",
+      "title": "sf-pi v0.273.0 — runtime: bundled extensions now require Pi 0.84.0 or newer.",
+      "publishedAt": "2026-08-25T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.273.0",
       "severity": "info",
-      "body": "sf-skills: add invocation toggle with stamped effective tree"
+      "body": "runtime: bundled extensions now require Pi 0.84.0 or newer. — runtime: require Pi 0.84.0 and drop unused gateway wire-trace"
     }
   ]
 }
