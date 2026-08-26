@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.0-2026-08-26",
-  "latestVersion": "0.275.0",
+  "revision": "release-0.275.1-2026-08-26",
+  "latestVersion": "0.275.1",
   "announcements": [
     {
-      "id": "release-0.275.0",
+      "id": "release-0.275.1",
       "kind": "update",
-      "title": "sf-pi v0.275.0 — agentscript: adopt current language safeguards",
+      "title": "sf-pi v0.275.1 — sf-skills: make legacy cleanup idempotent",
       "publishedAt": "2026-08-26T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.1",
       "severity": "info",
-      "body": "agentscript: adopt current language safeguards"
+      "body": "sf-skills: make legacy cleanup idempotent"
     }
   ]
 }
