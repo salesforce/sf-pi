@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.274.0-2026-08-25",
-  "latestVersion": "0.274.0",
+  "revision": "release-0.274.1-2026-08-26",
+  "latestVersion": "0.274.1",
   "announcements": [
     {
-      "id": "release-0.274.0",
+      "id": "release-0.274.1",
       "kind": "update",
-      "title": "sf-pi v0.274.0 — agentscript: nested component skills: moved to top-level",
-      "publishedAt": "2026-08-25T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.274.0",
+      "title": "sf-pi v0.274.1 — sf-docs: align retrieval with current docs service",
+      "publishedAt": "2026-08-26T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.274.1",
       "severity": "info",
-      "body": "agentscript: nested component skills: moved to top-level — agentscript: adopt Agent Script language 3.2.3 toolchain"
+      "body": "sf-docs: align retrieval with current docs service"
     }
   ]
 }
