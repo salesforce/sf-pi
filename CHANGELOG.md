@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.0](https://github.com/salesforce/sf-pi/compare/v0.274.1...v0.275.0) (2026-08-26)
+
+
+### Features
+
+* **agentscript:** adopt current language safeguards ([b363bc5](https://github.com/salesforce/sf-pi/commit/b363bc59384f60cbf58e4dd72490485172265e8c))
+
 ## [0.274.1](https://github.com/salesforce/sf-pi/compare/v0.274.0...v0.274.1) (2026-08-26)
 
 
