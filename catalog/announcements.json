@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.274.1-2026-08-26",
-  "latestVersion": "0.274.1",
+  "revision": "release-0.275.0-2026-08-26",
+  "latestVersion": "0.275.0",
   "announcements": [
     {
-      "id": "release-0.274.1",
+      "id": "release-0.275.0",
       "kind": "update",
-      "title": "sf-pi v0.274.1 — sf-docs: align retrieval with current docs service",
+      "title": "sf-pi v0.275.0 — agentscript: adopt current language safeguards",
       "publishedAt": "2026-08-26T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.274.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.0",
       "severity": "info",
-      "body": "sf-docs: align retrieval with current docs service"
+      "body": "agentscript: adopt current language safeguards"
     }
   ]
 }
