@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.1](https://github.com/salesforce/sf-pi/compare/v0.275.0...v0.275.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **sf-skills:** make legacy cleanup idempotent ([b47039c](https://github.com/salesforce/sf-pi/commit/b47039ccaa42b4b2c90a9080797309eb5c3ffe45))
+
 ## [0.275.0](https://github.com/salesforce/sf-pi/compare/v0.274.1...v0.275.0) (2026-08-26)
 
 
