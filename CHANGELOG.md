@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.274.1](https://github.com/salesforce/sf-pi/compare/v0.274.0...v0.274.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **sf-docs:** align retrieval with current docs service ([e4043e3](https://github.com/salesforce/sf-pi/commit/e4043e3554927b7a075a97a195920bdcc1d60af4))
+
 ## [0.274.0](https://github.com/salesforce/sf-pi/compare/v0.273.0...v0.274.0) (2026-08-25)
 
 
