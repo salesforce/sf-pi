@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.2-2026-09-01",
-  "latestVersion": "0.275.2",
+  "revision": "release-0.275.3-2026-09-01",
+  "latestVersion": "0.275.3",
   "announcements": [
     {
-      "id": "release-0.275.2",
+      "id": "release-0.275.3",
       "kind": "update",
-      "title": "sf-pi v0.275.2 — deps: update browserslist past security advisories",
+      "title": "sf-pi v0.275.3 — sf-pi-manager: avoid stale ctx after doctor reload",
       "publishedAt": "2026-09-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.3",
       "severity": "info",
-      "body": "deps: update browserslist past security advisories — sf-llm-gateway: refresh usage after completed turns"
+      "body": "sf-pi-manager: avoid stale ctx after doctor reload"
     }
   ]
 }
