@@ -60,6 +60,10 @@ describe("formatUsd", () => {
     expect(formatUsd(0)).toBe("$0.00");
   });
 
+  it("keeps positive sub-cent spend visible", () => {
+    expect(formatUsd(0.0049)).toBe("<$0.01");
+  });
+
   it("formats large amounts without decimals", () => {
     expect(formatUsd(1500)).toBe("$1500");
   });

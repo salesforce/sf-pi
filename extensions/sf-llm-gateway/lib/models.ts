@@ -332,6 +332,9 @@ export function formatUsd(value: number): string {
   if (!Number.isFinite(value)) {
     return "$0.00";
   }
+  if (value > 0 && value < 0.01) {
+    return "<$0.01";
+  }
   if (value >= 1000) {
     return `$${value.toFixed(0)}`;
   }
