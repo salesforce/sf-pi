@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.4](https://github.com/salesforce/sf-pi/compare/v0.275.3...v0.275.4) (2026-09-01)
+
+
+### Bug Fixes
+
+* **sf-lsp:** resolve JDK via java_home, never run PATH java placeholder ([#654](https://github.com/salesforce/sf-pi/issues/654)) ([6793933](https://github.com/salesforce/sf-pi/commit/6793933b535ac8ecaf025f51cfca82157b2863c2))
+
 ## [0.275.3](https://github.com/salesforce/sf-pi/compare/v0.275.2...v0.275.3) (2026-09-01)
 
 
