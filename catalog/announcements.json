@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.1-2026-08-26",
-  "latestVersion": "0.275.1",
+  "revision": "release-0.275.2-2026-09-01",
+  "latestVersion": "0.275.2",
   "announcements": [
     {
-      "id": "release-0.275.1",
+      "id": "release-0.275.2",
       "kind": "update",
-      "title": "sf-pi v0.275.1 — sf-skills: make legacy cleanup idempotent",
-      "publishedAt": "2026-08-26T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.1",
+      "title": "sf-pi v0.275.2 — deps: update browserslist past security advisories",
+      "publishedAt": "2026-09-01T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.2",
       "severity": "info",
-      "body": "sf-skills: make legacy cleanup idempotent"
+      "body": "deps: update browserslist past security advisories — sf-llm-gateway: refresh usage after completed turns"
     }
   ]
 }

@@ -44,7 +44,7 @@ import { gatewayProviderRuntime } from "./provider.ts";
 import { toGatewayRootBaseUrl } from "./gateway-url.ts";
 import { fetchWithTimeout } from "./models.ts";
 
-// Short TTL so the `💰 $N/∞` pill refreshes roughly once a minute even
+// Short TTL so the monthly spend pill refreshes roughly once a minute even
 // during back-to-back turns. The gateway endpoints are cheap GETs and this
 // is still bounded by how often a consumer (footer repaint on turn_end)
 // actually asks for a refresh, so the request rate stays reasonable.
@@ -180,8 +180,7 @@ export function registerGatewayMonthlyUsageRefresher(): () => void {
 
 /**
  * Refresh the three primary connection probes (user-info, key-info,
- * health) plus the monthly-usage payload that drives the splash and the
- * `💰 $N/∞` footer pill.
+ * health) plus the monthly-usage payload that drives the splash and footer pill.
  *
  * Phase 1 changes:
  *   1.1 Publishes `kind: "checking"` *before* firing requests so first-paint
