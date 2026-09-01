@@ -83,6 +83,8 @@ vi.mock("../lib/onboard-action.ts", () => onboardMock);
 
 const providerTelemetryMock = vi.hoisted(() => ({
   clearProviderSignal: vi.fn(),
+  formatProviderSignalBadge: vi.fn(() => ""),
+  getActiveProviderSignal: vi.fn(() => null),
   recordProviderResponse: vi.fn(),
 }));
 vi.mock("../lib/provider-telemetry.ts", () => providerTelemetryMock);
@@ -135,9 +137,13 @@ describe("gateway extension lifecycle", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     monthlyUsageMock.unregisters.length = 0;
+    monthlyUsageMock.getMonthlyUsageState.mockClear();
+    monthlyUsageMock.refreshMonthlyUsage.mockClear();
+    monthlyUsageMock.refreshUsageDetails.mockClear();
     monthlyUsageMock.registerGatewayMonthlyUsageRefresher.mockClear();
     providerRuntimeMock.bind.mockClear();
     providerRuntimeMock.clear.mockClear();
+    providerTelemetryMock.recordProviderResponse.mockClear();
     piSettingsMock.getEffectiveDefaultModelSetting.mockReturnValue({
       provider: "anthropic",
       modelId: "claude",
@@ -188,6 +194,55 @@ describe("gateway extension lifecycle", () => {
     extension(pi as never);
 
     expect(pi.handlers.before_provider_headers).toBeUndefined();
+  });
+
+  it("refreshes usage after turn completion, not before response consumption", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+    extension(pi as never);
+    const cwd = mkdtempSync(join(tmpdir(), "sf-pi-gateway-refresh-order-"));
+    const ctx = makeCtx(cwd);
+    (ctx as { model?: unknown }).model = {
+      provider: "sf-llm-gateway",
+      id: "example-model",
+    };
+
+    await pi.handlers.after_provider_response?.[0]?.(
+      { type: "after_provider_response", status: 200, headers: {} },
+      ctx,
+    );
+
+    expect(providerTelemetryMock.recordProviderResponse).toHaveBeenCalledOnce();
+    expect(monthlyUsageMock.refreshMonthlyUsage).not.toHaveBeenCalled();
+    expect(ctx.ui.setStatus).toHaveBeenCalled();
+
+    await pi.handlers.turn_end?.[0]?.({ type: "turn_end" }, ctx);
+
+    expect(monthlyUsageMock.refreshMonthlyUsage).toHaveBeenCalledOnce();
+    expect(monthlyUsageMock.refreshMonthlyUsage).toHaveBeenCalledWith(false, cwd);
+  });
+
+  it("repaints cached usage at startup without consuming the first post-turn refresh", async () => {
+    const { default: extension } = await import("../index.ts");
+    const pi = makeFakePi();
+    extension(pi as never);
+    const cwd = mkdtempSync(join(tmpdir(), "sf-pi-gateway-startup-repaint-"));
+    const ctx = makeCtx(cwd);
+    (ctx as { model?: unknown }).model = {
+      provider: "sf-llm-gateway",
+      id: "example-model",
+    };
+
+    await pi.handlers.session_start?.[0]?.({ type: "session_start", reason: "startup" }, ctx);
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    expect(ctx.ui.setStatus).toHaveBeenCalled();
+    expect(monthlyUsageMock.refreshMonthlyUsage).not.toHaveBeenCalled();
+
+    await pi.handlers.turn_end?.[0]?.({ type: "turn_end" }, ctx);
+
+    expect(monthlyUsageMock.refreshMonthlyUsage).toHaveBeenCalledOnce();
+    expect(monthlyUsageMock.refreshMonthlyUsage).toHaveBeenCalledWith(false, cwd);
   });
 
   it.each(["set", "cycle", "restore"] as const)(

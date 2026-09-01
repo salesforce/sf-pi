@@ -85,7 +85,7 @@ function withDefaults(partial: Partial<GatewayRuntimeStatusState>): GatewayRunti
 }
 
 describe("buildFooterStatus", () => {
-  it("returns monthly usage with spend and infinity budget", () => {
+  it("returns monthly usage with spend and a finite budget", () => {
     const text = buildFooterStatus(
       withDefaults({
         discovery: {
@@ -105,11 +105,27 @@ describe("buildFooterStatus", () => {
       }),
     );
 
-    // Should only contain the monthly spend with infinity, not model/context info
-    expect(text).toBe("💰 $12.50/∞");
+    expect(text).toBe("💰 $12.50/$100.00");
     expect(text).not.toContain("Opus");
     expect(text).not.toContain("ctx");
     expect(text).not.toContain("SF LLM Gateway");
+  });
+
+  it("returns infinity only for an unbounded budget", () => {
+    const text = buildFooterStatus(
+      withDefaults({
+        monthlyUsage: {
+          maxBudget: Number.POSITIVE_INFINITY,
+          spend: 12.5,
+          remaining: Number.POSITIVE_INFINITY,
+          budgetResetAt: "",
+          budgetDuration: "",
+          fetchedAt: new Date().toISOString(),
+        },
+      }),
+    );
+
+    expect(text).toBe("💰 $12.50/∞");
   });
 
   it("omits the monthly icon in ascii glyph mode to avoid duplicate dollars", () => {
@@ -130,7 +146,7 @@ describe("buildFooterStatus", () => {
       }),
     );
 
-    expect(text).toBe("$12.50/∞");
+    expect(text).toBe("$12.50/$100.00");
   });
 
   it("returns loading state when monthly usage is not yet fetched", () => {
@@ -174,7 +190,7 @@ describe("buildFooterStatus", () => {
       }),
     );
 
-    expect(text).toBe("💰 $12.50/∞ ↺ last known");
+    expect(text).toBe("💰 $12.50/$100.00 ↺ last known");
   });
 });
 

@@ -52,13 +52,13 @@
  *   ----------------------------|------------------------------------|-------------------------------
  *   Extension load              | —                                  | Register one complete Provider; restore Pi catalog cache offline
  *   session_start               | —                                  | Bind cwd/UI/model registry; sync local defaults; no model-discovery network
- *   turn_end                    | model is gateway model             | Update footer (context + monthly usage); first turn_end also kicks refreshUsageDetails
+ *   turn_end                    | model is gateway model             | Refresh monthly usage after completion; first turn also kicks refreshUsageDetails
  *   turn_end                    | model is NOT gateway model         | Clear footer status
- *   model_select                | model changes                       | Refresh footer without mutating thinking
- *   after_provider_response     | model is gateway model + 2xx       | Clear any live throttle/upstream warning
- *   after_provider_response     | model is gateway model + 429       | Record throttle signal, footer shows ⚠ badge for 60s
- *   after_provider_response     | model is gateway model + 401/403   | Record access signal, footer shows ⚠ badge for 60s
- *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal, footer shows ⚠ badge for 60s
+ *   model_select                | model changes                       | Repaint cached footer without mutating thinking
+ *   after_provider_response     | model is gateway model + 2xx       | Clear warning and repaint cached usage without a pre-stream probe
+ *   after_provider_response     | model is gateway model + 429       | Record throttle signal and repaint cached usage
+ *   after_provider_response     | model is gateway model + 401/403   | Record access signal and repaint cached usage
+ *   after_provider_response     | model is gateway model + 5xx       | Record upstream signal and repaint cached usage
  *   message_end                 | recognized gateway request error    | Replace raw error with bounded recovery guidance
  *   session_before_compact      | dedicated model configured          | Summarize through that model or fall back to Pi
  *   session_shutdown            | —                                  | Cancel credential UI; clear cwd/auth/footer/provider state
@@ -391,9 +391,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // stays fast (Phase 1.4 + 2.1).
   let detailsKickedOff = false;
   pi.on("turn_end", async (_event, ctx) => {
-    // Refresh the `💰 $N/∞` pill right after every assistant turn so the
-    // cost figure tracks the session closely. The refresh is throttled by
-    // MONTHLY_USAGE_TTL_MS inside refreshMonthlyUsage(), so back-to-back
+    // Refresh monthly Gateway spend after the assistant turn completes so
+    // accounting for that request can be reflected. The refresh is throttled
+    // by MONTHLY_USAGE_TTL_MS inside refreshMonthlyUsage(), so back-to-back
     // turns do not hammer the gateway — the network call only fires once
     // per TTL window.
     await updateFooterStatus(ctx, false);
@@ -408,7 +408,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   });
 
   pi.on("model_select", async (_event, ctx) => {
-    await updateFooterStatus(ctx, false);
+    paintFooterStatus(ctx);
   });
 
   // Capture gateway-side throttle/upstream signals so the footer can render
@@ -421,7 +421,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
     // explicitly instead of using a non-null assertion.
     if (!ctx.model || !isGatewayProvider(ctx.model.provider)) return;
     recordProviderResponse(event.status, event.headers, ctx.model.id);
-    await updateFooterStatus(ctx, false);
+    paintFooterStatus(ctx);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
@@ -2092,7 +2092,7 @@ async function syncGatewaySessionDefaults(
   if (options.awaitFooterRefresh === false) {
     const footerTimer = setTimeout(() => {
       void markBootStep("sf-llm-gateway.sync.footer-refresh (deferred)", () =>
-        updateFooterStatus(ctx, forceRefreshUsage),
+        paintFooterStatus(ctx),
       ).catch(() => undefined);
     }, 3_000);
     footerTimer.unref?.();
@@ -2104,18 +2104,27 @@ async function syncGatewaySessionDefaults(
   );
 }
 
-async function updateFooterStatus(
-  ctx: ExtensionContext,
-  forceRefreshUsage: boolean,
-): Promise<void> {
+function paintFooterStatus(ctx: ExtensionContext): void {
   if (!isGatewayProvider(ctx.model?.provider)) {
     ctx.ui.setStatus(STATUS_KEY, undefined);
     return;
   }
 
+  ctx.ui.setStatus(STATUS_KEY, buildFooterStatus(getRuntimeStatusState()));
+}
+
+async function updateFooterStatus(
+  ctx: ExtensionContext,
+  forceRefreshUsage: boolean,
+): Promise<void> {
+  if (!isGatewayProvider(ctx.model?.provider)) {
+    paintFooterStatus(ctx);
+    return;
+  }
+
   await refreshMonthlyUsage(forceRefreshUsage, ctx.cwd);
   const state = getRuntimeStatusState();
-  ctx.ui.setStatus(STATUS_KEY, buildFooterStatus(state));
+  paintFooterStatus(ctx);
 
   if (!forceRefreshUsage) {
     maybeAutoRefreshStaleUsage({
