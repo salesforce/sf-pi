@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.7](https://github.com/salesforce/sf-pi/compare/v0.275.6...v0.275.7) (2026-09-02)
+
+
+### Bug Fixes
+
+* **ui:** honor Pi terminal truecolor capability ([55e9263](https://github.com/salesforce/sf-pi/commit/55e926340bb575d3323bd6e255a4cfd56fc9da07))
+
 ## [0.275.6](https://github.com/salesforce/sf-pi/compare/v0.275.5...v0.275.6) (2026-09-02)
 
 
