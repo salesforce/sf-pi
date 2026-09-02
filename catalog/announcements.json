@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.5-2026-09-02",
-  "latestVersion": "0.275.5",
+  "revision": "release-0.275.6-2026-09-02",
+  "latestVersion": "0.275.6",
   "announcements": [
     {
-      "id": "release-0.275.5",
+      "id": "release-0.275.6",
       "kind": "update",
-      "title": "sf-pi v0.275.5 — runtime: audit Pi 0.84.4",
+      "title": "sf-pi v0.275.6 — agentscript: delegate Eval Studio clipboard writes to Pi",
       "publishedAt": "2026-09-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.6",
       "severity": "info",
-      "body": "runtime: audit Pi 0.84.4"
+      "body": "agentscript: delegate Eval Studio clipboard writes to Pi"
     }
   ]
 }
