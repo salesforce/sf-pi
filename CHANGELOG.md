@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.6](https://github.com/salesforce/sf-pi/compare/v0.275.5...v0.275.6) (2026-09-02)
+
+
+### Bug Fixes
+
+* **agentscript:** delegate Eval Studio clipboard writes to Pi ([251ba18](https://github.com/salesforce/sf-pi/commit/251ba186e182f536fa7bc953eeef20012694ff27))
+
 ## [0.275.5](https://github.com/salesforce/sf-pi/compare/v0.275.4...v0.275.5) (2026-09-02)
 
 
