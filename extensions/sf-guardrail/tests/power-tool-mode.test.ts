@@ -35,6 +35,24 @@ describe("Power Tool Mode", () => {
     expect(shouldPowerToolAutoApprove(decision(), { mode: "off" })).toBe(false);
   });
 
+  it("auto-approves Data 360 confirmed execution in native mode", () => {
+    const data360 = decision({
+      ruleId: "native-data360-confirmed-execute",
+      approvalScope: {
+        ...decision().approvalScope!,
+        operationFamily: "data360 search_index",
+        riskTier: "data360_confirmed_execution_exact",
+      },
+      orgType: "sandbox",
+    });
+    expect(
+      shouldPowerToolAutoApprove(data360, { mode: "native", nativeFamilies: ["data360"] }),
+    ).toBe(true);
+    expect(
+      shouldPowerToolAutoApprove(data360, { mode: "native", nativeFamilies: ["browser"] }),
+    ).toBe(false);
+  });
+
   it("auto-approves selected native families in native mode", () => {
     const settings: GuardrailPowerToolSettings = { mode: "native", nativeFamilies: ["browser"] };
     expect(shouldPowerToolAutoApprove(decision({ orgType: "sandbox" }), settings)).toBe(true);

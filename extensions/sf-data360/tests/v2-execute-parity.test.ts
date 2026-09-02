@@ -121,6 +121,39 @@ describe("Data 360 v2 execute parity across action kinds", () => {
     );
   });
 
+  it("executes confirmed REST actions without a local HITL prompt", async () => {
+    const select = vi.fn(async () => "Allow once");
+    const uiCtx = { hasUI: true, cwd: process.cwd(), signal: undefined, ui: { select } } as never;
+    requestMock.mockResolvedValue({ id: "idx" });
+
+    const result = await runData360V2Action(
+      {
+        tool: "data360_semantic",
+        action: "search_index.create",
+        target_org: "AgentforceSTDM",
+        allow_confirmed: true,
+        params: { body: { name: "DemoIndex" } },
+      },
+      env,
+      uiCtx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      action: "search_index.create",
+      capability: "d360_search_index_create",
+      safety: "confirmed",
+    });
+    expect(select).not.toHaveBeenCalled();
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "POST",
+        url: "/services/data/v67.0/ssot/search-index",
+      }),
+    );
+  });
+
   it("dry-runs representative confirmed REST actions", async () => {
     const result = await runData360V2Action(
       {

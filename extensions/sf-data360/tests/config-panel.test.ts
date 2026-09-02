@@ -53,6 +53,13 @@ describe("Data 360 config panel", () => {
     expect(panel.renderContent(100).join("\n")).toContain("Saved Data 360 settings.");
   });
 
+  it("points mutating confirmation at SF Guardrail", () => {
+    const cwd = tempCwd();
+    const text = makePanel(cwd).renderContent(100).join("\n");
+    expect(text).toContain("SF Guardrail");
+    expect(text).not.toContain("SF_D360_ALLOW_HEADLESS_WRITE");
+  });
+
   it("stays open on no-op save", () => {
     const cwd = tempCwd();
     const done = vi.fn();

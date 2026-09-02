@@ -35,10 +35,11 @@ const env: SfEnvironment = {
 };
 
 const ctx = { hasUI: false } as never;
+const select = vi.fn(async () => "Allow once");
 const uiCtx = {
   hasUI: true,
   signal: undefined,
-  ui: { select: vi.fn(async () => "Allow once") },
+  ui: { select },
 } as never;
 
 describe("Data 360 v2 auth sessions and cleanup", () => {
@@ -47,6 +48,7 @@ describe("Data 360 v2 auth sessions and cleanup", () => {
     requestMock.mockReset();
     orgCreateMock.mockReset();
     orgCreateMock.mockResolvedValue(createTestSalesforceOrg(requestMock));
+    select.mockClear();
   });
 
   it("lists and clears in-memory ingest auth sessions without exposing tokens", async () => {
@@ -173,6 +175,7 @@ describe("Data 360 v2 auth sessions and cleanup", () => {
       action: "cleanup.run",
       results: [expect.objectContaining({ id: "1ds000000000001AAA", ok: true })],
     });
+    expect(select).not.toHaveBeenCalled();
     expect(requestMock).toHaveBeenCalledWith(
       expect.objectContaining({
         method: "DELETE",

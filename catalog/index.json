@@ -389,7 +389,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11128
+    "srcLoc": 11083
   },
   {
     "id": "sf-devbar",

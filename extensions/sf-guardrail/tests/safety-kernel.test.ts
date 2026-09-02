@@ -453,6 +453,32 @@ describe("Safety Kernel", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("confirms Data 360 search index create through the native-tool gate", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+
+    const decision = await evaluateSafety({
+      toolName: "data360_semantic",
+      input: {
+        action: "search_index.create",
+        allow_confirmed: true,
+        params: { body: { name: "DemoIndex" } },
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-data360-confirmed-execute",
+      subject: "data360_semantic search_index.create",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "data360 search_index",
+      riskTier: "data360_confirmed_execution_exact",
+    });
+  });
+
   it("lists declared child mutations for segment publishing journeys", async () => {
     const decision = await evaluateSafety({
       toolName: "data360_orchestrate",

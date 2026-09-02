@@ -41,7 +41,6 @@ import {
 } from "./facade/registry.ts";
 import { runAgentObservabilityRunbook } from "./facade/agent-observability.ts";
 import {
-  enforceOperationSafety,
   evaluateDestructiveExecutionGuard,
   shouldBlockConfirmedOperation,
   type OwnedV2SweepCleanup,
@@ -390,7 +389,6 @@ async function runExecute(
     }
   }
 
-  await enforceOperationSafety(ctx, operation);
   if (signal?.aborted) throw new Error("d360 execute cancelled before request.");
   const resp = await session.request<unknown>({
     method: operation.method,

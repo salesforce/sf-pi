@@ -10,7 +10,6 @@ import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
-import { HEADLESS_WRITE_ENV } from "./api-tool.ts";
 import { DATA360_V2_TOOL_DEFS } from "./v2/tools.ts";
 import {
   DATA360_OUTPUT_MODES,
@@ -122,9 +121,9 @@ class SfData360ConfigPanel implements Focusable {
     lines.push(pad(` ${t.fg("muted", "Safety:")}`));
     lines.push(pad(`   ${t.fg("dim", "•")} dry_run is available before mutating calls`));
     lines.push(
-      pad(`   ${t.fg("dim", "•")} DELETE always confirms; run/publish/deploy action paths confirm`),
+      pad(`   ${t.fg("dim", "•")} Confirmed actions need allow_confirmed; SF Guardrail owns HITL`),
     );
-    lines.push(pad(`   ${t.fg("dim", "•")} Headless writes require ${HEADLESS_WRITE_ENV}=1`));
+    lines.push(pad(`   ${t.fg("dim", "•")} Headless writes require SF_GUARDRAIL_ALLOW_HEADLESS=1`));
     lines.push(pad(""));
 
     lines.push(pad(` ${t.fg("muted", "References:")}`));

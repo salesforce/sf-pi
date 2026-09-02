@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Destructive-operation authority and confirmation gates for facade-backed execution. */
-
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+/** Destructive-operation authority gates for facade-backed execution. */
 
 import type { SfEnvironment } from "../../../../lib/common/sf-environment/types.ts";
 import type { D360Operation } from "./registry.ts";
@@ -88,20 +86,6 @@ export function isAgentforceStdmTarget(
       (env.config.targetOrg === DESTRUCTIVE_ALLOWED_TARGET_ORG ||
         env.org.alias === DESTRUCTIVE_ALLOWED_TARGET_ORG))
   );
-}
-
-export async function enforceOperationSafety(
-  ctx: ExtensionContext,
-  operation: D360Operation,
-): Promise<void> {
-  if (operation.safety === "read" || operation.safety === "safe_post") return;
-  if (!ctx.hasUI) return;
-  const choice = await ctx.ui.select(
-    `Confirm Data 360 ${operation.safety} operation\n\n${operation.name}`,
-    ["Allow once", "Block"],
-    { timeout: 30_000, signal: ctx.signal },
-  );
-  if (choice !== "Allow once") throw new Error("Blocked by user via d360 facade confirmation.");
 }
 
 function isVerifiedV2MutationTarget(

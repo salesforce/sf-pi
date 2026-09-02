@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 
@@ -25,7 +25,6 @@ import {
 } from "./safety.ts";
 
 export const D360_TOOL_NAME = "d360_api";
-export const HEADLESS_WRITE_ENV = "SF_D360_ALLOW_HEADLESS_WRITE";
 
 export const D360ApiParams = Type.Object({
   method: StringEnum(["GET", "POST", "PATCH", "PUT", "DELETE"] as const, {
@@ -135,8 +134,6 @@ export function registerD360ApiTool(pi: ExtensionAPI): void {
         );
       }
 
-      await enforceSafety(ctx, resolved);
-
       const { text, status, ok } = await callD360Rest(session, resolved, input, signal);
       return buildResult(text, input.output_mode ?? "inline", {
         ok,
@@ -223,37 +220,6 @@ export function resolveRequest(input: D360ApiInput, session: SalesforceSession):
     orgType: session.target.orgType,
     safety,
   };
-}
-
-async function enforceSafety(ctx: ExtensionContext, resolved: ResolvedRequest): Promise<void> {
-  if (!resolved.safety.requiresConfirmation) return;
-
-  const detail = [
-    `Method: ${resolved.method}`,
-    `Path: ${resolved.apiPath}`,
-    `Target org: ${resolved.targetOrg ?? "(none)"}`,
-    `Org type: ${resolved.orgType}`,
-    `Safety: ${resolved.safety.level}`,
-    `Reason: ${resolved.safety.reason}`,
-  ].join("\n");
-
-  if (!ctx.hasUI) {
-    const allowed = process.env[HEADLESS_WRITE_ENV];
-    if (allowed && allowed !== "0" && allowed.toLowerCase() !== "false") return;
-    throw new Error(
-      `Blocked d360_api call in headless mode. Set ${HEADLESS_WRITE_ENV}=1 to allow.\n\n${detail}`,
-    );
-  }
-
-  const choice = await ctx.ui.select(
-    `Confirm Data 360 ${resolved.safety.level} call\n\n${detail}`,
-    ["Allow once", "Block"],
-    { timeout: 30_000, signal: ctx.signal },
-  );
-
-  if (choice !== "Allow once") {
-    throw new Error("Blocked by user via d360_api confirmation.");
-  }
 }
 
 export function responseLooksLikeError(text: string): boolean {

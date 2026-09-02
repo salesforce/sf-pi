@@ -29,7 +29,7 @@ Native-tool mediation runs in SF Guardrail's existing pre-execution `tool_call` 
 
 The first implementation slice should avoid double prompts. Existing high-value paths that already have explicit interactive confirmation and headless fail-closed behavior can remain on their current confirmation path until they are deliberately migrated into Guardrail. New coverage should prioritize unmediated paths and paths where model-supplied Execution Intent Flags are currently the only execution boundary.
 
-For Data 360, the first slice should focus on raw REST and journey/run paths where `allow_confirmed=true` can move from plan or dry-run into execution. Facade paths that already perform explicit interactive confirmation should not receive a second Guardrail prompt until the confirmation is deliberately migrated into the central Guardrail flow.
+For Data 360, family-tool confirmed and destructive execution is mediated by Guardrail when `allow_confirmed=true`. Data 360 keeps dry-run/`allow_confirmed` as Execution Intent Flags and retains destructive org/UI hard-blocks, but it must not present a second interactive confirmation. Power Tool Mode therefore auto-approves Data 360 confirms like other native families.
 
 `slack_canvas create` and `slack_canvas edit` are first-slice Guardrail-native classifiers rather than new Slack-local confirmation helpers. `slack_send` and `slack_schedule` can keep their existing confirmation behavior until deliberately migrated, but new Slack write gaps should use the central Guardrail mediation path and `SF_GUARDRAIL_ALLOW_HEADLESS=1` for operator-approved headless execution.
 
