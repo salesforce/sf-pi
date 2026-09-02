@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Effectful dispatcher for intents returned by the Eval Studio overlay. */
 
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type {
-  ExtensionAPI,
-  ExtensionCommandContext,
-  ExtensionContext,
+import {
+  copyToClipboard,
+  type ExtensionAPI,
+  type ExtensionCommandContext,
+  type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { connFromAlias } from "../../../../lib/common/sf-conn/index.ts";
 import { latestEvalSpec } from "../branch-state.ts";
@@ -124,7 +125,7 @@ export async function handleEvalStudioIntent(
       `Scope: ${run.scope}${run.scenario_id ? ` · ${run.scenario_id}` : ""}`,
       `Artifacts: ${run.run_dir}`,
     ].join("\n");
-    await copyText(text);
+    await copyToClipboard(text);
     ctx.ui.notify("Run summary copied.", "info");
     return;
   }
@@ -205,22 +206,6 @@ async function discoverForContext(ctx: ExtensionCommandContext) {
     : undefined;
   return await discoverEvalStudio(ctx.cwd, {
     branch_specs: pointer ? [{ spec_path: pointer.spec_path, agent_file: pointer.agent_file }] : [],
-  });
-}
-
-async function copyText(text: string): Promise<void> {
-  const command =
-    process.platform === "darwin" ? "pbcopy" : process.platform === "win32" ? "clip" : "xclip";
-  const args = process.platform === "linux" ? ["-selection", "clipboard"] : [];
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ["pipe", "ignore", "pipe"] });
-    let stderr = "";
-    child.stderr.on("data", (chunk) => (stderr += String(chunk)));
-    child.on("error", reject);
-    child.on("close", (code) =>
-      code === 0 ? resolve() : reject(new Error(stderr || `${command} exited ${code}`)),
-    );
-    child.stdin.end(text);
   });
 }
 
