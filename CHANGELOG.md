@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.8](https://github.com/salesforce/sf-pi/compare/v0.275.7...v0.275.8) (2026-09-02)
+
+
+### Bug Fixes
+
+* **sf-data360:** route confirmed HITL through Guardrail ([6c5d12d](https://github.com/salesforce/sf-pi/commit/6c5d12d95b746df5da532b4918d38ba854bffe45))
+
 ## [0.275.7](https://github.com/salesforce/sf-pi/compare/v0.275.6...v0.275.7) (2026-09-02)
 
 
