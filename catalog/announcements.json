@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.4-2026-09-01",
-  "latestVersion": "0.275.4",
+  "revision": "release-0.275.5-2026-09-02",
+  "latestVersion": "0.275.5",
   "announcements": [
     {
-      "id": "release-0.275.4",
+      "id": "release-0.275.5",
       "kind": "update",
-      "title": "sf-pi v0.275.4 — sf-lsp: resolve JDK via java_home, never run PATH java placeholder",
-      "publishedAt": "2026-09-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.4",
+      "title": "sf-pi v0.275.5 — runtime: audit Pi 0.84.4",
+      "publishedAt": "2026-09-02T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.5",
       "severity": "info",
-      "body": "sf-lsp: resolve JDK via java_home, never run PATH java placeholder"
+      "body": "runtime: audit Pi 0.84.4"
     }
   ]
 }
