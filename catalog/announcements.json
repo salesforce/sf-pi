@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.6-2026-09-02",
-  "latestVersion": "0.275.6",
+  "revision": "release-0.275.7-2026-09-02",
+  "latestVersion": "0.275.7",
   "announcements": [
     {
-      "id": "release-0.275.6",
+      "id": "release-0.275.7",
       "kind": "update",
-      "title": "sf-pi v0.275.6 — agentscript: delegate Eval Studio clipboard writes to Pi",
+      "title": "sf-pi v0.275.7 — ui: honor Pi terminal truecolor capability",
       "publishedAt": "2026-09-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.7",
       "severity": "info",
-      "body": "agentscript: delegate Eval Studio clipboard writes to Pi"
+      "body": "ui: honor Pi terminal truecolor capability"
     }
   ]
 }
