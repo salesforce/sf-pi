@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, it } from "vitest";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { getCapabilities, setCapabilities, visibleWidth } from "@earendil-works/pi-tui";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { renderTopBar, renderTopBarLine, type TopBarState, type BarTheme } from "../lib/top-bar.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -14,6 +14,16 @@ const stubTheme: BarTheme = {
 
 const ESC = "\u001b";
 const ANSI_FG_PREFIX = `${ESC}[38;2;`;
+let priorCapabilities: ReturnType<typeof getCapabilities>;
+
+beforeEach(() => {
+  priorCapabilities = getCapabilities();
+  setCapabilities({ ...priorCapabilities, trueColor: true });
+});
+
+afterEach(() => {
+  setCapabilities(priorCapabilities);
+});
 
 function ansiFg(r: number, g: number, b: number): string {
   return `${ANSI_FG_PREFIX}${r};${g};${b}m`;
