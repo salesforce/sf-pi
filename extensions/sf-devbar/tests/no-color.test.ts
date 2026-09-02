@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Theme } from "@earendil-works/pi-coding-agent";
+import { getCapabilities, setCapabilities } from "@earendil-works/pi-tui";
 import { describe, expect, it } from "vitest";
 
 import { renderBottomBarParts } from "../lib/bottom-bar.ts";
@@ -11,12 +12,13 @@ import { renderTopBar } from "../lib/top-bar.ts";
 
 const ANSI_ESCAPE = String.fromCharCode(27);
 const ANSI_SGR = new RegExp(`${ANSI_ESCAPE}\\[[0-9;]*m`);
+const ANSI_TRUE_COLOR = new RegExp(`${ANSI_ESCAPE}\\[(?:38|48);2;`);
 const ansiTheme = {
   fg: (_color: string, text: string) => `\x1b[31m${text}\x1b[0m`,
   bold: (text: string) => `\x1b[1m${text}\x1b[0m`,
 };
 
-describe("SF DevBar NO_COLOR behavior", () => {
+describe("SF DevBar terminal color behavior", () => {
   it("renders top and bottom bars without theme, raw, or upstream ANSI colors", () => {
     withNoColor(() => {
       const [top] = renderTopBar(
@@ -72,6 +74,46 @@ describe("SF DevBar NO_COLOR behavior", () => {
       }
     });
   });
+
+  it("removes raw truecolor from DevBar surfaces when Pi disables it", () => {
+    withTrueColor(false, () => {
+      const [top] = renderTopBar(
+        {
+          folderName: "example-project",
+          modelProvider: "sf-llm-gateway",
+          modelName: "Example Model",
+          thinkingLevel: "xhigh",
+          contextPercent: 42,
+        },
+        ansiTheme,
+      );
+      const { left } = renderBottomBarParts(
+        {
+          projectDetected: true,
+          orgName: "ExampleOrg",
+          orgType: "sandbox",
+        },
+        ansiTheme,
+      );
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-devbar-no-truecolor-"));
+      try {
+        const panel = createConfigPanel(
+          ansiTheme as unknown as Theme,
+          cwd,
+          "project",
+          () => undefined,
+        ) as unknown as { renderContent(width: number): string[] };
+        const settings = panel.renderContent(100).join("\n");
+
+        expect(top).toContain("Example Model");
+        expect(left).toContain("ExampleOrg");
+        expect(settings).toContain("SF Pi › SF DevBar › Color Settings");
+        expect(`${top}\n${left}\n${settings}`).not.toMatch(ANSI_TRUE_COLOR);
+      } finally {
+        rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+  });
 });
 
 function withNoColor(work: () => void): void {
@@ -82,5 +124,15 @@ function withNoColor(work: () => void): void {
   } finally {
     if (previous === undefined) delete process.env.NO_COLOR;
     else process.env.NO_COLOR = previous;
+  }
+}
+
+function withTrueColor(enabled: boolean, work: () => void): void {
+  const prior = getCapabilities();
+  setCapabilities({ ...prior, trueColor: enabled });
+  try {
+    work();
+  } finally {
+    setCapabilities(prior);
   }
 }

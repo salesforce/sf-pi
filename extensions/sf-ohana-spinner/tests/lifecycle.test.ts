@@ -2,6 +2,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { getCapabilities, setCapabilities } from "@earendil-works/pi-tui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { stripAnsiSgr } from "../../../lib/common/color-policy.ts";
@@ -120,6 +121,26 @@ describe("sf-ohana-spinner waiting-state outcome", () => {
     } finally {
       if (previous === undefined) delete process.env.NO_COLOR;
       else process.env.NO_COLOR = previous;
+    }
+  });
+
+  it("removes raw truecolor from Ohana frames when Pi disables it", async () => {
+    const prior = getCapabilities();
+    setCapabilities({ ...prior, trueColor: false });
+    try {
+      const cwd = tempCwd();
+      writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "ohana" });
+      vi.spyOn(Math, "random").mockReturnValue(0);
+
+      const handlers = registerExtension();
+      const ctx = createCtx(cwd);
+      await runSessionStart(handlers, ctx);
+
+      const frames = latestIndicatorFrames(ctx);
+      expect(frames.every((frame) => frame.includes("Thinking…"))).toBe(true);
+      expect(frames.every((frame) => !frame.includes(ANSI_TRUE_COLOR_PREFIX))).toBe(true);
+    } finally {
+      setCapabilities(prior);
     }
   });
 
