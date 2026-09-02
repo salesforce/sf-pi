@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.7-2026-09-02",
-  "latestVersion": "0.275.7",
+  "revision": "release-0.275.8-2026-09-02",
+  "latestVersion": "0.275.8",
   "announcements": [
     {
-      "id": "release-0.275.7",
+      "id": "release-0.275.8",
       "kind": "update",
-      "title": "sf-pi v0.275.7 — ui: honor Pi terminal truecolor capability",
+      "title": "sf-pi v0.275.8 — sf-data360: route confirmed HITL through Guardrail",
       "publishedAt": "2026-09-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.7",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.8",
       "severity": "info",
-      "body": "ui: honor Pi terminal truecolor capability"
+      "body": "sf-data360: route confirmed HITL through Guardrail"
     }
   ]
 }
