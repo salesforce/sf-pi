@@ -20,7 +20,7 @@ one Gateway already depends on. A `0.83.0` floor would keep the 0.82/0.83
 void-refresh dual path, which is the opposite of a simpler architecture.
 
 Required compatibility CI starts at exact Pi `0.84.0`. The **Pi Runtime Audit
-Edge** remains exact `0.84.3`. ADR 0079's forward-compatibility behavior for
+Edge** advances to exact `0.84.4`. ADR 0079's forward-compatibility behavior for
 newer stable Pi 0.x releases remains in force.
 
 The floor contract changes atomically across package metadata, runtime gates,

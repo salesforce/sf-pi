@@ -25,7 +25,7 @@ export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "0.85.0";
 export const HARD_MAX_PI_VERSION_EXCLUSIVE = "1.0.0";
 
 /** Exact runtime used by normal development and bounded repair guidance. */
-export const RECOMMENDED_PI_VERSION = "0.84.3";
+export const RECOMMENDED_PI_VERSION = "0.84.4";
 
 export type PiVersionCompatibility =
   "audited" | "forward-compatible" | "too-old" | "prerelease" | "major-version";
