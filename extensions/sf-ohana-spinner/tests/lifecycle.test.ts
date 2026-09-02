@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { getCapabilities, setCapabilities } from "@earendil-works/pi-tui";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { stripAnsiSgr } from "../../../lib/common/color-policy.ts";
 import sfOhanaSpinner from "../index.ts";
@@ -12,6 +12,12 @@ import { writeScopedOhanaSpinnerSettings } from "../lib/settings.ts";
 
 const tempDirs = new Set<string>();
 const ANSI_TRUE_COLOR_PREFIX = `${String.fromCharCode(27)}[38;2;`;
+let priorCapabilities: ReturnType<typeof getCapabilities>;
+
+beforeEach(() => {
+  priorCapabilities = getCapabilities();
+  setCapabilities({ ...priorCapabilities, trueColor: true });
+});
 
 function tempCwd(): string {
   const dir = mkdtempSync(path.join(tmpdir(), "sf-pi-ohana-spinner-lifecycle-"));
@@ -20,6 +26,7 @@ function tempCwd(): string {
 }
 
 afterEach(() => {
+  setCapabilities(priorCapabilities);
   vi.restoreAllMocks();
   for (const dir of tempDirs) {
     rmSync(dir, { recursive: true, force: true });

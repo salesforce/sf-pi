@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { describe, expect, it } from "vitest";
+import { getCapabilities, setCapabilities } from "@earendil-works/pi-tui";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { renderBottomBarParts, type BottomBarState, type BarTheme } from "../lib/bottom-bar.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -12,6 +13,16 @@ const stubTheme: BarTheme = {
 };
 
 const ESC = "\u001b";
+let priorCapabilities: ReturnType<typeof getCapabilities>;
+
+beforeEach(() => {
+  priorCapabilities = getCapabilities();
+  setCapabilities({ ...priorCapabilities, trueColor: true });
+});
+
+afterEach(() => {
+  setCapabilities(priorCapabilities);
+});
 
 function ansiFg(r: number, g: number, b: number): string {
   return `${ESC}[38;2;${r};${g};${b}m`;
