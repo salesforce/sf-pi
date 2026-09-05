@@ -35,7 +35,7 @@ describe("detectPiReleaseStatus", () => {
       writeCachedPiReleaseStatus({
         installedVersion: "0.84.0",
         latestVersion: "0.84.0",
-        absoluteLatestVersion: "0.85.0",
+        absoluteLatestVersion: "0.86.0",
         supportWindowLimited: true,
         freshness: "latest",
         loading: false,
@@ -45,7 +45,7 @@ describe("detectPiReleaseStatus", () => {
       const status = readCachedPiReleaseStatus("0.84.0", Number.POSITIVE_INFINITY);
 
       expect(status?.freshness).toBe("update-available");
-      expect(status?.latestVersion).toBe("0.85.0");
+      expect(status?.latestVersion).toBe("0.86.0");
       expect(status?.forwardCompatibility).toBe(true);
       expect(status?.supportWindowLimited).toBe(false);
       expect(status?.updateCommand).toBe("pi update --self");
@@ -56,27 +56,27 @@ describe("detectPiReleaseStatus", () => {
   });
 
   it("allows an upstream stable Pi release in forward-compatibility mode", async () => {
-    const status = await detectPiReleaseStatus(async () => "0.85.0", {} as NodeJS.ProcessEnv, {
+    const status = await detectPiReleaseStatus(async () => "0.86.0", {} as NodeJS.ProcessEnv, {
       runNpm: noPolicyRunner,
       installedVersion: "0.84.0",
     });
 
     expect(status.freshness).toBe("update-available");
-    expect(status.latestVersion).toBe("0.85.0");
+    expect(status.latestVersion).toBe("0.86.0");
     expect(status.forwardCompatibility).toBe(true);
     expect(status.supportWindowLimited).toBe(false);
     expect(status.updateCommand).toBe("pi update --self");
   });
 
   it("still blocks Pi prereleases", async () => {
-    const status = await detectPiReleaseStatus(async () => "0.85.0-rc.1", {} as NodeJS.ProcessEnv, {
+    const status = await detectPiReleaseStatus(async () => "0.86.0-rc.1", {} as NodeJS.ProcessEnv, {
       runNpm: noPolicyRunner,
-      installedVersion: "0.84.4",
+      installedVersion: "0.85.1",
     });
 
     expect(status.freshness).toBe("latest");
-    expect(status.latestVersion).toBe("0.84.4");
-    expect(status.absoluteLatestVersion).toBe("0.85.0-rc.1");
+    expect(status.latestVersion).toBe("0.85.1");
+    expect(status.absoluteLatestVersion).toBe("0.86.0-rc.1");
     expect(status.supportWindowLimited).toBe(true);
     expect(status.updateCommand).toBe("/sf-pi doctor runtime");
   });
@@ -84,24 +84,24 @@ describe("detectPiReleaseStatus", () => {
   it("still blocks Pi 1.x pending a major-version audit", async () => {
     const status = await detectPiReleaseStatus(async () => "1.0.0", {} as NodeJS.ProcessEnv, {
       runNpm: noPolicyRunner,
-      installedVersion: "0.84.4",
+      installedVersion: "0.85.1",
     });
 
     expect(status.freshness).toBe("latest");
-    expect(status.latestVersion).toBe("0.84.4");
+    expect(status.latestVersion).toBe("0.85.1");
     expect(status.absoluteLatestVersion).toBe("1.0.0");
     expect(status.supportWindowLimited).toBe(true);
     expect(status.updateCommand).toBe("/sf-pi doctor runtime");
   });
 
   it("reports update availability for the latest audited Pi release", async () => {
-    const status = await detectPiReleaseStatus(async () => "0.84.4", {} as NodeJS.ProcessEnv, {
+    const status = await detectPiReleaseStatus(async () => "0.85.1", {} as NodeJS.ProcessEnv, {
       runNpm: noPolicyRunner,
       installedVersion: "0.83.0",
     });
 
     expect(status.freshness).toBe("update-available");
-    expect(status.latestVersion).toBe("0.84.4");
+    expect(status.latestVersion).toBe("0.85.1");
     expect(status.updateCommand).toBe("pi update --self");
   });
 

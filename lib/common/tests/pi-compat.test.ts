@@ -107,32 +107,34 @@ describe("pi version floor", () => {
     expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.84.0 <1.0.0");
     expect(pkg.peerDependencies?.["@earendil-works/pi-ai"]).toBe("*");
     expect(pkg.peerDependencies?.["@earendil-works/pi-tui"]).toBe("*");
-    expect(pkg.devDependencies?.["@earendil-works/pi-coding-agent"]).toBe("0.84.4");
-    expect(pkg.devDependencies?.["@earendil-works/pi-ai"]).toBe("0.84.4");
-    expect(pkg.devDependencies?.["@earendil-works/pi-tui"]).toBe("0.84.4");
+    expect(pkg.devDependencies?.["@earendil-works/pi-coding-agent"]).toBe("0.85.1");
+    expect(pkg.devDependencies?.["@earendil-works/pi-ai"]).toBe("0.85.1");
+    expect(pkg.devDependencies?.["@earendil-works/pi-tui"]).toBe("0.85.1");
   });
 });
 
 describe("Pi compatibility policy", () => {
   it("distinguishes audited, forward-compatible, and blocked releases", () => {
     expect(MIN_PI_VERSION).toBe("0.84.0");
-    expect(AUDITED_MAX_PI_VERSION_EXCLUSIVE).toBe("0.85.0");
+    expect(AUDITED_MAX_PI_VERSION_EXCLUSIVE).toBe("0.86.0");
     expect(HARD_MAX_PI_VERSION_EXCLUSIVE).toBe("1.0.0");
-    expect(RECOMMENDED_PI_VERSION).toBe("0.84.4");
+    expect(RECOMMENDED_PI_VERSION).toBe("0.85.1");
 
     expect(classifyPiVersion("0.81.1")).toBe("too-old");
     expect(classifyPiVersion("0.83.0")).toBe("too-old");
     expect(classifyPiVersion("0.84.0+build-1")).toBe("audited");
     expect(classifyPiVersion("0.84.4")).toBe("audited");
-    expect(classifyPiVersion("0.85.0")).toBe("forward-compatible");
+    expect(classifyPiVersion("0.85.0")).toBe("audited");
+    expect(classifyPiVersion("0.85.1")).toBe("audited");
+    expect(classifyPiVersion("0.86.0")).toBe("forward-compatible");
     expect(classifyPiVersion("0.99.0")).toBe("forward-compatible");
-    expect(classifyPiVersion("0.84.4-rc.1")).toBe("prerelease");
+    expect(classifyPiVersion("0.85.1-rc.1")).toBe("prerelease");
     expect(classifyPiVersion("1.0.0")).toBe("major-version");
 
     expect(isPiVersionLoadable("0.83.0")).toBe(false);
     expect(isPiVersionLoadable("0.84.0")).toBe(true);
-    expect(isPiVersionLoadable("0.84.4")).toBe(true);
-    expect(isPiVersionLoadable("0.84.4-rc.1")).toBe(false);
+    expect(isPiVersionLoadable("0.85.1")).toBe(true);
+    expect(isPiVersionLoadable("0.85.1-rc.1")).toBe(false);
     expect(isPiVersionLoadable("1.0.0")).toBe(false);
   });
 });
@@ -171,7 +173,7 @@ describe("requirePiVersion", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0][0]).toMatch(/sf-pi-compat-once/);
     expect(warn.mock.calls[0][0]).toMatch(/9999\.0\.0/);
-    expect(warn.mock.calls[0][0]).toMatch(/Pi 0\.84\.4/);
+    expect(warn.mock.calls[0][0]).toMatch(/Pi 0\.85\.1/);
     expect(warn.mock.calls[0][0]).toMatch(/\/sf-pi doctor runtime/);
   });
 
@@ -182,7 +184,7 @@ describe("requirePiVersion", () => {
 
     expect(ok).toBe(false);
     expect(warn.mock.calls[0][0]).toContain('Skipping "sf-old-pi-skip"');
-    expect(warn.mock.calls[0][0]).toContain("Use Pi 0.84.4");
+    expect(warn.mock.calls[0][0]).toContain("Use Pi 0.85.1");
   });
 
   it("loads a newer stable Pi in forward-compatibility mode and warns once", () => {
