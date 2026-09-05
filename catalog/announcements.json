@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.9-2026-09-05",
-  "latestVersion": "0.275.9",
+  "revision": "release-0.275.10-2026-09-05",
+  "latestVersion": "0.275.10",
   "announcements": [
     {
-      "id": "release-0.275.9",
+      "id": "release-0.275.10",
       "kind": "update",
-      "title": "sf-pi v0.275.9 — ci: allow nested pi esbuild install script",
+      "title": "sf-pi v0.275.10 — sf-welcome: keep splash within narrow terminal width",
       "publishedAt": "2026-09-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.9",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.10",
       "severity": "info",
-      "body": "ci: allow nested pi esbuild install script — runtime: audit Pi 0.85.1"
+      "body": "sf-welcome: keep splash within narrow terminal width"
     }
   ]
 }
