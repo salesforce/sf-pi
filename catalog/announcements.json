@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.8-2026-09-02",
-  "latestVersion": "0.275.8",
+  "revision": "release-0.275.9-2026-09-05",
+  "latestVersion": "0.275.9",
   "announcements": [
     {
-      "id": "release-0.275.8",
+      "id": "release-0.275.9",
       "kind": "update",
-      "title": "sf-pi v0.275.8 — sf-data360: route confirmed HITL through Guardrail",
-      "publishedAt": "2026-09-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.8",
+      "title": "sf-pi v0.275.9 — ci: allow nested pi esbuild install script",
+      "publishedAt": "2026-09-05T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.9",
       "severity": "info",
-      "body": "sf-data360: route confirmed HITL through Guardrail"
+      "body": "ci: allow nested pi esbuild install script — runtime: audit Pi 0.85.1"
     }
   ]
 }
