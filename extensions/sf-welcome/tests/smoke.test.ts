@@ -21,6 +21,28 @@ function stripAnsi(s: string): string {
   return s.replace(ANSI_ESCAPE_RE, "");
 }
 
+function widthSafeSplashData() {
+  return {
+    modelName: "Claude Opus 4.6",
+    providerName: "sf-llm-gateway",
+    loadedCounts: { extensions: 22, skills: 38, promptTemplates: 1 },
+    recentSessions: [{ name: "sample-project", timeAgo: "2h ago" }],
+    extensionHealth: [],
+    slackConnected: true,
+    slackVisible: true,
+    monthlyCost: 53.06,
+    monthlyBudget: 50000,
+    monthlyUsageSource: "gateway" as const,
+  };
+}
+
+function assertLinesFitTerminal(lines: string[], termWidth: number) {
+  const overflowing = lines
+    .map((line, index) => ({ index, width: visibleWidth(line) }))
+    .filter((row) => row.width > termWidth);
+  expect(overflowing).toEqual([]);
+}
+
 describe("sf-welcome", () => {
   it("dismisses on tool_call, not tool_result, so incremental bash streaming cannot render behind the splash", () => {
     const source = readFileSync(path.resolve("extensions/sf-welcome/index.ts"), "utf8");
@@ -766,6 +788,58 @@ describe("sf-welcome", () => {
     expect(lines).toEqual([]);
   });
 
+  it("keeps overlay and header lines within a 78-col pane", async () => {
+    // Herdr vertical splits land around 78 columns. The splash used to floor
+    // the box at 80 cols, which crashed Pi's TUI with:
+    //   Rendered line N exceeds terminal width (80 > 78)
+    const { SfWelcomeHeader, SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = widthSafeSplashData();
+    const termWidth = 78;
+
+    const overlayLines = new SfWelcomeOverlay(data).render(termWidth);
+    const headerLines = new SfWelcomeHeader(data).render(termWidth);
+
+    expect(overlayLines.length).toBeGreaterThan(5);
+    expect(headerLines.length).toBeGreaterThan(5);
+    expect(stripAnsi(overlayLines.join("\n"))).toContain("Welcome back!");
+    expect(stripAnsi(headerLines.join("\n"))).toContain("Press Esc to dismiss");
+    assertLinesFitTerminal(overlayLines, termWidth);
+    assertLinesFitTerminal(headerLines, termWidth);
+
+    const midLine =
+      stripAnsi(overlayLines.join("\n"))
+        .split("\n")
+        .find((line) => line.includes("Welcome back!")) ?? "";
+    expect((midLine.match(/│/g) ?? []).length).toBe(2);
+  });
+
+  it("keeps overlay and header lines within 60-120 col panes", async () => {
+    const { SfWelcomeHeader, SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = widthSafeSplashData();
+
+    for (const termWidth of [60, 70, 79, 80, 82, 92, 120]) {
+      assertLinesFitTerminal(new SfWelcomeOverlay(data).render(termWidth), termWidth);
+      assertLinesFitTerminal(new SfWelcomeHeader(data).render(termWidth), termWidth);
+    }
+  });
+
+  it("clamps long untruncated inner rows to the pane width", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      ...widthSafeSplashData(),
+      recentSessions: [
+        {
+          name: "very-long-session-name-that-would-overflow-a-narrow-welcome-column",
+          timeAgo: "just now",
+        },
+      ],
+    };
+
+    const lines = new SfWelcomeOverlay(data).render(60);
+    expect(lines.length).toBeGreaterThan(5);
+    assertLinesFitTerminal(lines, 60);
+  });
+
   it("falls back to a single-column stacked layout on narrow terminals (issue #17)", async () => {
     // At ~90 cols (typical Terminal.app default), the two-column layout
     // used to truncate the right column with an ellipsis. The fix swaps
@@ -784,7 +858,9 @@ describe("sf-welcome", () => {
     };
 
     const overlay = new SfWelcomeOverlay(data);
-    const plain = stripAnsi(overlay.render(92).join("\n"));
+    const lines = overlay.render(92);
+    assertLinesFitTerminal(lines, 92);
+    const plain = stripAnsi(lines.join("\n"));
 
     // Left-column content must be present…
     expect(plain).toContain("Welcome back!");

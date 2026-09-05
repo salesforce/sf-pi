@@ -1281,18 +1281,18 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
 /** Layout constants.
  *
  * Sizing rules for the splash box:
- *   - Minimum of 80 (down from 100) so narrow Terminal.app windows still
- *     fit comfortably without forcing a horizontal overflow that bleeds
- *     through Pi's startup output.
- *   - Maximum raised to 220 so wide terminals actually fill instead of
- *     leaving a truncated-looking island with background text showing
- *     around it.
+ *   - Never exceed the terminal. Keep a 2-col gutter when there is room so
+ *     rounded corners do not sit on the pane edge.
+ *   - No minimum box floor. A previous 80-col floor forced an 80-wide box
+ *     into 60–79 col panes (typical Herdr vertical splits) and crashed Pi's
+ *     TUI with `Rendered line N exceeds terminal width (80 > 78)`.
+ *   - Maximum 220 so wide terminals fill instead of leaving a truncated-
+ *     looking island with background text showing around it.
  *   - Below SINGLE_COL_THRESHOLD we switch to a single-column stacked
  *     layout so no content gets ellipsised. The wider shadowed wordmark
  *     needs more left-column space before two columns are comfortable.
  */
 const ABSOLUTE_MIN_TERM_WIDTH = 60;
-const MIN_BOX_WIDTH = 80;
 const MAX_BOX_WIDTH = 220;
 const SINGLE_COL_THRESHOLD = 120;
 // The shadowed SALESFORCE wordmark is 69 cols wide. Keep the left column
@@ -1304,8 +1304,13 @@ const MAX_LEFT_COL = 76;
 function getBoxWidth(termWidth: number): number {
   // Reserve two columns so the rounded corners do not sit against the
   // terminal edge — matches the bleed behavior Pi's editor expects.
-  const usable = Math.max(ABSOLUTE_MIN_TERM_WIDTH, termWidth - 2);
-  return Math.max(MIN_BOX_WIDTH, Math.min(usable, MAX_BOX_WIDTH));
+  // Never floor above the pane: overflow here is a process-killing TUI crash.
+  const usable = Math.max(0, termWidth - 2);
+  return Math.min(usable, MAX_BOX_WIDTH);
+}
+
+function fitSplashLines(lines: string[], termWidth: number): string[] {
+  return lines.map((line) => truncateToWidth(normalizeAnsiForTerminal(line), termWidth, ""));
 }
 
 function getColumnWidths(boxWidth: number): { leftCol: number; rightCol: number } {
@@ -1424,8 +1429,9 @@ export class SfWelcomeOverlay implements Component {
       footerStyled +
       MUTED(hChar.repeat(Math.max(0, rightPad)));
 
-    return renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset).map((line) =>
-      normalizeAnsiForTerminal(line),
+    return fitSplashLines(
+      renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset),
+      termWidth,
     );
   }
 }
@@ -1467,8 +1473,9 @@ export class SfWelcomeHeader implements Component {
       footerStyled +
       MUTED(hChar.repeat(Math.max(0, rightPad)));
 
-    return renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset).map((line) =>
-      normalizeAnsiForTerminal(line),
+    return fitSplashLines(
+      renderSplashBox(this.data, termWidth, bottomLine, this.headerOffset),
+      termWidth,
     );
   }
 }
