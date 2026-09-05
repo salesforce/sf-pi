@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.10](https://github.com/salesforce/sf-pi/compare/v0.275.9...v0.275.10) (2026-09-05)
+
+
+### Bug Fixes
+
+* **sf-welcome:** keep splash within narrow terminal width ([aed983e](https://github.com/salesforce/sf-pi/commit/aed983e7ffdbd5000fc1db42a7b59d4bb163504a))
+
 ## [0.275.9](https://github.com/salesforce/sf-pi/compare/v0.275.8...v0.275.9) (2026-09-05)
 
 
