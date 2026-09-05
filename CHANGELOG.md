@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.9](https://github.com/salesforce/sf-pi/compare/v0.275.8...v0.275.9) (2026-09-05)
+
+
+### Bug Fixes
+
+* **ci:** allow nested pi esbuild install script ([5d77017](https://github.com/salesforce/sf-pi/commit/5d77017239e50f7144679f81c7a859aa453ac4e9))
+* **runtime:** audit Pi 0.85.1 ([ac7c7c8](https://github.com/salesforce/sf-pi/commit/ac7c7c810d6e62bde0e5d31449798c8967f9919f))
+
 ## [0.275.8](https://github.com/salesforce/sf-pi/compare/v0.275.7...v0.275.8) (2026-09-02)
 
 
