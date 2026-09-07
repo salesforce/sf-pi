@@ -1,6 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { afterEach, describe, expect, it } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { runDoctorDiagnostics } from "../diagnostics.ts";
@@ -58,6 +66,36 @@ describe("runDoctorDiagnostics", () => {
       expect(report.skillCollisions[0]!.preferred.rootKind).toBe("claude");
       expect(report.skillCollisions[0]!.duplicates[0]!.rootKind).toBe("pi");
       expect(report.issues.some((issue) => issue.id === "skill-collisions")).toBe(true);
+    },
+    DOCTOR_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "ignores unwired harness roots and duplicate symlinks to one physical skill",
+    () => {
+      const home = makeHome();
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+      tempDirs.push(cwd);
+      writeSettings(home, {});
+      const agentsRoot = path.join(home, ".agents", "skills");
+      const sharedSkill = path.join(agentsRoot, "shared-skill");
+      writeSkill(agentsRoot, "shared-skill");
+      const piRoot = path.join(home, ".pi", "agent", "skills");
+      const claudeRoot = path.join(home, ".claude", "skills");
+      for (const root of [piRoot, claudeRoot]) {
+        mkdirSync(root, { recursive: true });
+        symlinkSync(sharedSkill, path.join(root, "shared-skill"));
+      }
+      writeSkill(piRoot, "unwired-copy");
+      writeSkill(claudeRoot, "unwired-copy");
+
+      const report = runDoctorDiagnostics({ cwd, home, runtime: "cached" });
+
+      expect(report.skillCollisions).toEqual([]);
+      expect(report.issues.some((issue) => issue.id === "skill-collisions")).toBe(false);
+      expect(report.availableSkillRoots.map((root) => root.settingsPath)).toContain(
+        "~/.claude/skills",
+      );
     },
     DOCTOR_TEST_TIMEOUT_MS,
   );

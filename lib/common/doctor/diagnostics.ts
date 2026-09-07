@@ -5,7 +5,7 @@
  * Keep this module side-effect free. Command handlers and startup code use it
  * to decide what to display; repair code lives in fixes.ts.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { execFile, execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -58,11 +58,11 @@ export function runDoctorDiagnostics(
   const welcomeMode = typeof welcomeSettings.mode === "string" ? welcomeSettings.mode : undefined;
 
   const skillLocations = discoverSkillLocations({ cwd, home, settings: effectiveSettings });
-  // Root-scan collisions cover all known harness roots (even unwired ones), so
-  // the doctor can proactively warn. In live mode we also union Pi's
-  // authoritative loadSkills collisions so the count can never be LOWER than
-  // what Pi actually reports at startup (and matches the Skill Funnel). The
-  // loader scan is skipped in cached mode to keep first paint off the hot path.
+  // Root-scan collisions cover only Pi's auto-discovered and settings-wired
+  // roots. Unwired harness roots are reported separately as available sources,
+  // not as startup collisions. In live mode we also union Pi's authoritative
+  // loadSkills collisions. The loader scan is skipped in cached mode to keep
+  // first paint off the hot path.
   const skillCollisions =
     runtimeMode === "live"
       ? mergeCollisions(
@@ -280,12 +280,16 @@ export function discoverSkillLocations(options: {
   const roots = buildSkillRootCandidates(options.cwd, options.home, options.settings);
   const locations: SkillLocation[] = [];
   const seenRoots = new Set<string>();
+  const seenSkillFiles = new Set<string>();
   for (const root of roots) {
     const normalizedRoot = path.resolve(root.root);
     if (seenRoots.has(normalizedRoot)) continue;
     seenRoots.add(normalizedRoot);
     if (!isDirectory(normalizedRoot)) continue;
     for (const skill of listImmediateSkills(normalizedRoot)) {
+      const physicalFile = resolvePhysicalPath(skill.file);
+      if (seenSkillFiles.has(physicalFile)) continue;
+      seenSkillFiles.add(physicalFile);
       locations.push({
         name: skill.name,
         file: skill.file,
@@ -395,9 +399,21 @@ function buildSkillRootCandidates(
   home: string,
   settings: Record<string, unknown>,
 ): SkillRootCandidate[] {
+  const skills = Array.isArray(settings.skills) ? settings.skills : [];
+  const wiredRoots = new Set(
+    skills
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => resolvePath(value, home))
+      .filter((value): value is string => !!value)
+      .map((value) => path.resolve(value)),
+  );
   const roots: SkillRootCandidate[] = [
     { root: globalAgentPath("skills"), label: "Pi", kind: "pi" },
     { root: path.join(home, ".agents", "skills"), label: "Agents", kind: "agents" },
+    { root: path.join(cwd, ".pi", "skills"), label: "Project Pi", kind: "project-pi" },
+    { root: path.join(cwd, ".agents", "skills"), label: "Project Agents", kind: "project-agents" },
+  ];
+  const harnessRoots: SkillRootCandidate[] = [
     {
       root: path.join(home, ".claude", "skills"),
       label: "Claude Code",
@@ -416,11 +432,9 @@ function buildSkillRootCandidates(
       kind: "cursor",
       settingsValue: "~/.cursor/skills",
     },
-    { root: path.join(cwd, ".pi", "skills"), label: "Project Pi", kind: "project-pi" },
-    { root: path.join(cwd, ".agents", "skills"), label: "Project Agents", kind: "project-agents" },
   ];
+  roots.push(...harnessRoots.filter((candidate) => wiredRoots.has(path.resolve(candidate.root))));
 
-  const skills = Array.isArray(settings.skills) ? settings.skills : [];
   for (const raw of skills) {
     if (typeof raw !== "string") continue;
     const resolved = resolvePath(raw, home);
@@ -910,6 +924,14 @@ function isDirectory(absolute: string): boolean {
     return statSync(absolute).isDirectory();
   } catch {
     return false;
+  }
+}
+
+function resolvePhysicalPath(file: string): string {
+  try {
+    return realpathSync(file);
+  } catch {
+    return path.resolve(file);
   }
 }
 
