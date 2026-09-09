@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.277.1-2026-09-09",
-  "latestVersion": "0.277.1",
+  "revision": "release-0.278.0-2026-09-09",
+  "latestVersion": "0.278.0",
   "announcements": [
     {
-      "id": "release-0.277.1",
+      "id": "release-0.278.0",
       "kind": "update",
-      "title": "sf-pi v0.277.1 — sf-herdr: detect duplicate npm and git Herdr packages",
+      "title": "sf-pi v0.278.0 — sf-docs: harden endpoint and evidence workflows",
       "publishedAt": "2026-09-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.277.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.278.0",
       "severity": "info",
-      "body": "sf-herdr: detect duplicate npm and git Herdr packages"
+      "body": "sf-docs: harden endpoint and evidence workflows"
     }
   ]
 }
