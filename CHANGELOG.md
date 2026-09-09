@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.276.0](https://github.com/salesforce/sf-pi/compare/v0.275.11...v0.276.0) (2026-09-09)
+
+
+### Features
+
+* **sf-ohana-spinner:** fit waiting chrome to Pi editor border ([7bd5a9c](https://github.com/salesforce/sf-pi/commit/7bd5a9c94bdf06a3990ea2f72f473e32789ddc84))
+
 ## [0.275.11](https://github.com/salesforce/sf-pi/compare/v0.275.10...v0.275.11) (2026-09-09)
 
 
