@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.277.0](https://github.com/salesforce/sf-pi/compare/v0.276.0...v0.277.0) (2026-09-09)
+
+
+### Features
+
+* **sf-docs:** collect endpoint at login and surface status ([6a8d154](https://github.com/salesforce/sf-pi/commit/6a8d154fa53b4b760f7a7384b939a4585c784912))
+
 ## [0.276.0](https://github.com/salesforce/sf-pi/compare/v0.275.11...v0.276.0) (2026-09-09)
 
 
