@@ -97,9 +97,15 @@ export function syncEffectiveSkills(
       authorDisabled,
       policy,
     });
-    const currentRaw = existsSync(effectiveFile) ? readFileSync(effectiveFile, "utf8") : cloneRaw;
-    const next = applyInvocationMode(currentRaw, desiredMode);
-    if (next !== currentRaw || !existsSync(effectiveFile)) {
+    let currentRaw: string | undefined;
+    try {
+      currentRaw = readFileSync(effectiveFile, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const baseRaw = currentRaw ?? cloneRaw;
+    const next = applyInvocationMode(baseRaw, desiredMode);
+    if (currentRaw === undefined || next !== currentRaw) {
       mkdirSync(path.dirname(effectiveFile), { recursive: true });
       writeFileSync(effectiveFile, next, "utf8");
       stamped += 1;

@@ -20,10 +20,11 @@
  * Scope: this module never shells out to `pi install` and never runs
  * network. It is a pure settings-file writer + disk scanner.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
+import { writeJsonFile } from "../sf-pi-settings.ts";
 
 /** Where a candidate writes when the user opts it in. */
 export type SkillSourceScope = "global" | "project";
@@ -282,8 +283,7 @@ export function updateSkillSources(args: {
   }
 
   const nextRoot = { ...root, skills: retained };
-  mkdirSync(path.dirname(settingsPath), { recursive: true });
-  writeFileSync(settingsPath, `${JSON.stringify(nextRoot, null, 2)}\n`, "utf8");
+  writeJsonFile(settingsPath, nextRoot);
   return { settingsPath, skills: retained };
 }
 

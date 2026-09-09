@@ -91,4 +91,18 @@ describe("Developer reference routing", () => {
       fallbackCollection: "developer",
     });
   });
+
+  it("rejects host-confused Atlas lookalikes and still accepts scheme-less Atlas paths", () => {
+    expect(
+      isAtlasDeveloperReferenceLocator(
+        "https://evil.example/developer.salesforce.com/docs/atlas.en-us.apexref",
+      ),
+    ).toBe(false);
+    expect(
+      isAtlasDeveloperReferenceLocator(
+        "developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex.htm",
+      ),
+    ).toBe(true);
+    expect(isAtlasDeveloperReferenceLocator("notes about atlas.en-us in a query")).toBe(true);
+  });
 });

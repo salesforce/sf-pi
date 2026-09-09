@@ -82,7 +82,8 @@ export function isAtlasDeveloperReferenceLocator(value: string): boolean {
     return comparable.includes("/docs/atlas") || comparable.includes("atlas.en-us");
   } catch {
     return (
-      /\batlas\.en-us\b/iu.test(value) || /developer\.salesforce\.com\/docs\/atlas/iu.test(value)
+      /\batlas\.en-us\b/iu.test(value) ||
+      /^(?:https?:\/\/)?developer\.salesforce\.com\/docs\/atlas/iu.test(value)
     );
   }
 }

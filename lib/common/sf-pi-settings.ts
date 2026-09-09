@@ -47,5 +47,8 @@ export function readJsonFile(filePath: string): Record<string, unknown> {
 /** Write a JSON object to disk, creating parent directories as needed. */
 export function writeJsonFile(filePath: string, data: Record<string, unknown>): void {
   mkdirSync(path.dirname(filePath), { recursive: true });
+  // Writes Pi settings.json (globalAgentDir or <cwd>/.pi), not an OS temp file.
+  // CodeQL taints getAgentDir() because tests override the agent dir under os.tmpdir().
+  // codeql[js/insecure-temporary-file]
   writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
