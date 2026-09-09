@@ -163,6 +163,7 @@
     "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
     "vitepress": "VitePress 1.6.4 currently depends on Vite 5.x. Keep VitePress on the stable 1.x line for docs, but override its nested Vite/plugin-vue stack to patched versions that clear active Vite/esbuild advisories and still pass the docs build. Remove once VitePress 1.x or a stable 2.x release carries patched transitive dependencies.",
     "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
+    "csv-parse": "Force >= 7.0.2 to clear GHSA-8cw4-87c7-c6xx (prototype replacement via duplicate __proto__ CSV headers). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "vitest": "Vitest resolves Vite as a transitive test runner dependency. Force the patched Vite 7 line for tests until Vitest naturally resolves to a patched Vite release without overrides.",
     "esbuild": "Force >= 0.28.1 to clear GHSA-gv7w-rqvm-qjhr. Vite uses esbuild as build/test tooling; remove once all Vite ranges in the tree naturally require a patched esbuild.",
     "vite": "Direct dev dependency used to satisfy Vite peer imports for VitePress/Vitest while pinning a patched Vite line. Keep aligned with the transitive Vite overrides and remove only if docs/test tooling no longer requires a root peer install.",
@@ -171,6 +172,7 @@
   "overrides": {
     "fast-xml-parser": "^5.7.0",
     "form-data": "^4.0.6",
+    "csv-parse": "^7.0.2",
     "vitepress": {
       "vite": "7.3.5",
       "@vitejs/plugin-vue": "^6.0.7"
