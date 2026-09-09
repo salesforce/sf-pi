@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.278.0](https://github.com/salesforce/sf-pi/compare/v0.277.1...v0.278.0) (2026-09-09)
+
+
+### Features
+
+* **sf-docs:** harden endpoint and evidence workflows ([6d8a2ae](https://github.com/salesforce/sf-pi/commit/6d8a2ae7a78e4d7851a775d47b29985e2107c72d))
+
 ## [0.277.1](https://github.com/salesforce/sf-pi/compare/v0.277.0...v0.277.1) (2026-09-09)
 
 
