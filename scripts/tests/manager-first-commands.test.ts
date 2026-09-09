@@ -28,7 +28,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe.sequential("Manager-first no-args command contract", () => {
+describe("Manager-first no-args command contract", { concurrent: false }, () => {
   for (const extension of commandExtensions) {
     it(
       extension.id,

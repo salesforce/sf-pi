@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`local hardening diagnostic parity > '@inputs reference outside action with…' 1`] = `
+exports[`local hardening diagnostic parity > @inputs reference outside action with-b… 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "@inputs reference in deterministic post-action set",
@@ -63,7 +63,7 @@ exports[`local hardening diagnostic parity > '@inputs reference outside action w
 }
 `;
 
-exports[`local hardening diagnostic parity > '@outputs reference outside post-actio…' 1`] = `
+exports[`local hardening diagnostic parity > @outputs reference outside post-action … 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "@outputs reference in deterministic action with-binding",
@@ -91,7 +91,7 @@ exports[`local hardening diagnostic parity > '@outputs reference outside post-ac
 }
 `;
 
-exports[`local hardening diagnostic parity > 'Apex target with method suffix' 1`] = `
+exports[`local hardening diagnostic parity > Apex target with method suffix 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "Apex action target declaration",
@@ -122,7 +122,7 @@ exports[`local hardening diagnostic parity > 'Apex target with method suffix' 1`
 }
 `;
 
-exports[`local hardening diagnostic parity > 'bare numeric action inputs and outputs' 1`] = `
+exports[`local hardening diagnostic parity > bare numeric action inputs and outputs 1`] = `
 {
   "decision": "historical-no-local-projection",
   "execution_context": "planner-selected numeric action binding",
@@ -150,7 +150,7 @@ exports[`local hardening diagnostic parity > 'bare numeric action inputs and out
 }
 `;
 
-exports[`local hardening diagnostic parity > 'object action I/O without contract hi…' 1`] = `
+exports[`local hardening diagnostic parity > object action I/O without contract hints 1`] = `
 {
   "decision": "completed-upstream-handoff",
   "execution_context": "planner-selected object action binding",
@@ -212,7 +212,7 @@ exports[`local hardening diagnostic parity > 'object action I/O without contract
 }
 `;
 
-exports[`local hardening diagnostic parity > 'procedural statements inside literal …' 1`] = `
+exports[`local hardening diagnostic parity > procedural statements inside literal in… 1`] = `
 {
   "decision": "completed-upstream-handoff",
   "execution_context": "procedural-looking content in literal instructions",
@@ -290,7 +290,7 @@ exports[`local hardening diagnostic parity > 'procedural statements inside liter
 }
 `;
 
-exports[`local hardening diagnostic parity > 'target reference that looks like a Sa…' 1`] = `
+exports[`local hardening diagnostic parity > target reference that looks like a Sale… 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "Flow action target declaration",

@@ -342,7 +342,7 @@ afterAll(() => {
   );
 });
 
-describe.sequential("E4 Pi resource resolution parity", () => {
+describe("E4 Pi resource resolution parity", { concurrent: false }, () => {
   it("matches global top-level loading inherited by a project", async () => {
     const fixture = makeFixture("sf-skills-e4-global-");
     const root = path.join(fixture.home, "external", "skills");
