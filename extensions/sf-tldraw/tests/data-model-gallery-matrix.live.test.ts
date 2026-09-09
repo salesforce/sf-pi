@@ -105,7 +105,7 @@ let qualification: { status: "pending" | "passed" | "failed"; message?: string }
   status: liveEnabled ? "pending" : "passed",
 };
 
-describe.sequential("sf-tldraw Data Model Gallery matrix", () => {
+describe("sf-tldraw Data Model Gallery matrix", { concurrent: false }, () => {
   beforeAll(async () => {
     if (!liveEnabled) return;
     client = new TldrawRuntimeClient({ timeoutMs: 120_000 });

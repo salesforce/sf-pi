@@ -57,7 +57,7 @@ let documentId: string | undefined;
 let preflight: Record<string, unknown> = { status: liveEnabled ? "pending" : "disabled" };
 let preflightError: Error | undefined;
 
-describe.sequential("sf-tldraw sequence hardening matrix", () => {
+describe("sf-tldraw sequence hardening matrix", { concurrent: false }, () => {
   beforeAll(async () => {
     if (!liveEnabled) return;
     client = new TldrawRuntimeClient();

@@ -212,7 +212,7 @@ describe("runtime surface isolation", () => {
   });
 });
 
-describe.sequential("real extension factories match manifest runtime surfaces", () => {
+describe("real extension factories match manifest runtime surfaces", { concurrent: false }, () => {
   for (const manifest of manifests) {
     it(
       manifest.id,

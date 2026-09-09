@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`quality upstream strict parity > 'conditional transition cycle' 1`] = `
+exports[`quality upstream strict parity > conditional transition cycle 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "component graph with conditional deterministic transitions",
@@ -59,7 +59,7 @@ exports[`quality upstream strict parity > 'conditional transition cycle' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'cyclomatic complexity' 1`] = `
+exports[`quality upstream strict parity > cyclomatic complexity 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "procedure with if and short-circuit expressions",
@@ -119,7 +119,7 @@ exports[`quality upstream strict parity > 'cyclomatic complexity' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'deep deterministic action chain' 1`] = `
+exports[`quality upstream strict parity > deep deterministic action chain 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "second nested deterministic follow-up",
@@ -171,7 +171,7 @@ exports[`quality upstream strict parity > 'deep deterministic action chain' 1`] 
 }
 `;
 
-exports[`quality upstream strict parity > 'delegation cycle and unreachable suba…' 1`] = `
+exports[`quality upstream strict parity > delegation cycle and unreachable subage… 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "returning subagent graph plus orphan declaration",
@@ -269,7 +269,7 @@ exports[`quality upstream strict parity > 'delegation cycle and unreachable suba
 }
 `;
 
-exports[`quality upstream strict parity > 'deterministic input type mismatch' 1`] = `
+exports[`quality upstream strict parity > deterministic input type mismatch 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "deterministic run with known literal input type",
@@ -321,7 +321,7 @@ exports[`quality upstream strict parity > 'deterministic input type mismatch' 1`
 }
 `;
 
-exports[`quality upstream strict parity > 'deterministic missing input' 1`] = `
+exports[`quality upstream strict parity > deterministic missing input 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "deterministic run in reasoning.instructions",
@@ -373,7 +373,7 @@ exports[`quality upstream strict parity > 'deterministic missing input' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'deterministic output type mismatch' 1`] = `
+exports[`quality upstream strict parity > deterministic output type mismatch 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "deterministic run output assigned to mutable variable",
@@ -425,7 +425,7 @@ exports[`quality upstream strict parity > 'deterministic output type mismatch' 1
 }
 `;
 
-exports[`quality upstream strict parity > 'deterministic slot filling' 1`] = `
+exports[`quality upstream strict parity > deterministic slot filling 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "deterministic run with ellipsis input",
@@ -477,7 +477,7 @@ exports[`quality upstream strict parity > 'deterministic slot filling' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'deterministic unknown input' 1`] = `
+exports[`quality upstream strict parity > deterministic unknown input 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "deterministic run with misspelled with-binding",
@@ -567,7 +567,7 @@ exports[`quality upstream strict parity > 'deterministic unknown input' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'instruction template syntax' 1`] = `
+exports[`quality upstream strict parity > instruction template syntax 1`] = `
 {
   "decision": "reuse-upstream",
   "execution_context": "official instruction interpolation diagnostic projected into quality",
@@ -666,7 +666,7 @@ exports[`quality upstream strict parity > 'instruction template syntax' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'list element and index types' 1`] = `
+exports[`quality upstream strict parity > list element and index types 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "typed list literal and statically nonnumeric subscript",
@@ -755,7 +755,7 @@ exports[`quality upstream strict parity > 'list element and index types' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'planner action input type mismatch' 1`] = `
+exports[`quality upstream strict parity > planner action input type mismatch 1`] = `
 {
   "execution_context": "planner-selected reasoning.actions binding",
   "local_diagnostics": [],
@@ -785,7 +785,7 @@ exports[`quality upstream strict parity > 'planner action input type mismatch' 1
 }
 `;
 
-exports[`quality upstream strict parity > 'planner action missing input' 1`] = `
+exports[`quality upstream strict parity > planner action missing input 1`] = `
 {
   "execution_context": "planner-selected reasoning.actions binding",
   "local_diagnostics": [],
@@ -812,7 +812,7 @@ exports[`quality upstream strict parity > 'planner action missing input' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'planner action unknown input' 1`] = `
+exports[`quality upstream strict parity > planner action unknown input 1`] = `
 {
   "execution_context": "planner-selected reasoning.actions binding",
   "local_diagnostics": [],
@@ -858,7 +858,7 @@ exports[`quality upstream strict parity > 'planner action unknown input' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'prompt and action before transition' 1`] = `
+exports[`quality upstream strict parity > prompt and action before transition 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "procedure statements before guaranteed transition",
@@ -947,7 +947,7 @@ exports[`quality upstream strict parity > 'prompt and action before transition' 
 }
 `;
 
-exports[`quality upstream strict parity > 'prompt template output flags' 1`] = `
+exports[`quality upstream strict parity > prompt template output flags 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "prompt-response action output declaration",
@@ -999,7 +999,7 @@ exports[`quality upstream strict parity > 'prompt template output flags' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'slot-filled variable description' 1`] = `
+exports[`quality upstream strict parity > slot-filled variable description 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "planner-selected setVariables binding",
@@ -1102,7 +1102,7 @@ exports[`quality upstream strict parity > 'slot-filled variable description' 1`]
 }
 `;
 
-exports[`quality upstream strict parity > 'unconditional transition cycle' 1`] = `
+exports[`quality upstream strict parity > unconditional transition cycle 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "component graph with unconditional deterministic transitions",
@@ -1163,7 +1163,7 @@ exports[`quality upstream strict parity > 'unconditional transition cycle' 1`] =
 }
 `;
 
-exports[`quality upstream strict parity > 'unused action' 1`] = `
+exports[`quality upstream strict parity > unused action 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "scoped action declaration without invocation",
@@ -1215,7 +1215,7 @@ exports[`quality upstream strict parity > 'unused action' 1`] = `
 }
 `;
 
-exports[`quality upstream strict parity > 'variable description max length' 1`] = `
+exports[`quality upstream strict parity > variable description max length 1`] = `
 {
   "decision": "retain-local",
   "execution_context": "variable declaration with a description over the publish limit",
