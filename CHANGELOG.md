@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.275.11](https://github.com/salesforce/sf-pi/compare/v0.275.10...v0.275.11) (2026-09-09)
+
+
+### Bug Fixes
+
+* **security:** close open CodeQL alerts on main ([#680](https://github.com/salesforce/sf-pi/issues/680)) ([a308ee8](https://github.com/salesforce/sf-pi/commit/a308ee85a69bda49fbe6c8981165a52936985c99))
+
 ## [0.275.10](https://github.com/salesforce/sf-pi/compare/v0.275.9...v0.275.10) (2026-09-05)
 
 

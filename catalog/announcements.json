@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.275.10-2026-09-05",
-  "latestVersion": "0.275.10",
+  "revision": "release-0.275.11-2026-09-09",
+  "latestVersion": "0.275.11",
   "announcements": [
     {
-      "id": "release-0.275.10",
+      "id": "release-0.275.11",
       "kind": "update",
-      "title": "sf-pi v0.275.10 — sf-welcome: keep splash within narrow terminal width",
-      "publishedAt": "2026-09-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.10",
+      "title": "sf-pi v0.275.11 — security: close open CodeQL alerts on main",
+      "publishedAt": "2026-09-09T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.275.11",
       "severity": "info",
-      "body": "sf-welcome: keep splash within narrow terminal width"
+      "body": "security: close open CodeQL alerts on main"
     }
   ]
 }
