@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.279.1-2026-09-09",
-  "latestVersion": "0.279.1",
+  "revision": "release-0.279.2-2026-09-09",
+  "latestVersion": "0.279.2",
   "announcements": [
     {
-      "id": "release-0.279.1",
+      "id": "release-0.279.2",
       "kind": "update",
-      "title": "sf-pi v0.279.1 — sf-docs: normalize blank grounding defaults",
+      "title": "sf-pi v0.279.2 — sf-docs: harden grounding evidence",
       "publishedAt": "2026-09-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.279.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.279.2",
       "severity": "info",
-      "body": "sf-docs: normalize blank grounding defaults"
+      "body": "sf-docs: harden grounding evidence"
     }
   ]
 }
