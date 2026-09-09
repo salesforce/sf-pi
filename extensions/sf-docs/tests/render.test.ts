@@ -3,12 +3,30 @@ import { describe, expect, it } from "vitest";
 import {
   formatAnswer,
   formatCollections,
+  formatFailure,
   formatFetch,
   formatGround,
   formatSearch,
 } from "../lib/render.ts";
 
 describe("sf-docs render", () => {
+  it("distinguishes retrieval failure from a safety block", () => {
+    const text = formatFailure(
+      "ground",
+      {
+        action: "ground",
+        ok: false,
+        verdict: "not_grounded",
+        reason: "slice_not_available",
+        effectiveSlice: { collection: "developer", version: "current", locale: "auto" },
+      },
+      "Version is not available.",
+    );
+
+    expect(text).toContain("ground not grounded");
+    expect(text).not.toContain("ground blocked");
+  });
+
   it("renders visible search URLs and ids", () => {
     const text = formatSearch({
       collection: "developer",

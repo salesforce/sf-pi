@@ -126,40 +126,35 @@ Description: Explore what's new in Salesforce Suites for Summer '26...
 </document>
 ```
 
-## Answer blocked by evidence gate
+## Ground not grounded by evidence gate
 
 ### Human sees
 
 ```text
-⛔ SF Docs · answer blocked  admin/current/en-us
+⛔ SF Docs · ground not grounded  admin/current/auto
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. Lineage
   🔎 Original     Sales Cloud Summer '26 release notes
-  ⚙ Compiled     +release:262 guides:_sales sales cloud release notes
-  🗂 Slice        admin/current/en-us
-  🎚 Filters      +release:262 guides:_sales
-  ⛔ Evidence     not_release_note_evidence — Only 1 of the first 5 citations were release-note evidence for release 262.
+  🗂 Slice        admin/current/auto
 
 2. Evidence gate
-  ✗ Status       not_release_note_evidence
-  SF Docs answer citations did not satisfy the release-specific evidence gate.
+  ✗ Status       insufficient_docs_evidence
+  Returned documents matched release 262, but did not carry release-note markers.
 
-→ Next
-💡 Inspect the query plan, adjust the slice, or retry with a narrower query.
+  Ground steps:
+  1. catalog: ok source=cache
+  2. search admin: ok (1 result(s)) query="+release:262 guides:_sales sales cloud release notes"
 ```
 
 ### LLM sees
 
 ```text
-Docs Query Plan:
-- original: Sales Cloud Summer '26 release notes
-- compiled: +release:262 guides:_sales sales cloud release notes
-- slice: admin/current/en-us
-- filters/boosts: +release:262 guides:_sales
-- evidence: not_release_note_evidence — Only 1 of the first 5 citations were release-note evidence for release 262.
+Returned documents matched release 262, but did not carry release-note markers.
 
-SF Docs answer citations did not satisfy the release-specific evidence gate.
+Ground steps:
+1. catalog: ok source=cache
+2. search admin: ok (1 result(s)) query="+release:262 guides:_sales sales cloud release notes"
 ```
 
 ## Answer or Explain

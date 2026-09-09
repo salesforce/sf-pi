@@ -5,12 +5,14 @@
  * Verifies the extension module can be imported and exports a default function.
  * This is the starting point for TDD — add specific tests as you build features.
  */
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
 import { DocsClient } from "../lib/client.ts";
 import { runGroundWorkflow } from "../lib/ground-workflow.ts";
+import { registerSfDocsTool } from "../lib/sf_docs-tool.ts";
 import { collectManagerDetailActions } from "../../../lib/common/manager-actions.ts";
 
 describe("sf-docs", () => {
@@ -199,6 +201,27 @@ describe("sf-docs", () => {
       expect(grounded).toMatchObject({
         ok: true,
         details: { verdict: expect.stringMatching(/grounded|partial/) },
+      });
+
+      const registerTool = vi.fn();
+      registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+      const tool = registerTool.mock.calls[0]?.[0];
+      const normalized = await tool.execute(
+        "live-ground",
+        {
+          action: "ground",
+          query: "How are named credentials used in Apex callouts?",
+          collection: "developer",
+          version: "",
+          locale: "",
+        },
+        undefined,
+        undefined,
+        { cwd: process.cwd(), modelRegistry: {} },
+      );
+      expect(normalized.details).toMatchObject({
+        ok: true,
+        effectiveSlice: { collection: "developer", version: "current", locale: "auto" },
       });
     },
     120_000,

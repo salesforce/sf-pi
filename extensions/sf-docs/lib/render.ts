@@ -381,13 +381,15 @@ function formatLoading(theme?: Theme): string {
   ].join("\n");
 }
 
-function formatFailure(
+export function formatFailure(
   action: string,
   details: Record<string, unknown>,
   text: string,
   theme?: Theme,
 ): string {
-  const lines = cardHeader(action, details, theme, "error", "blocked");
+  const suffix =
+    action === "ground" && details.verdict === "not_grounded" ? "not grounded" : "failed";
+  const lines = cardHeader(action, details, theme, "error", suffix);
   lines.push(...lineageSection(details, action, theme));
   lines.push(
     ...sectionBlock(

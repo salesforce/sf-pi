@@ -75,7 +75,13 @@ describe("sf_docs deterministic ground workflow", () => {
     }) as unknown as typeof fetch;
     const tool = await loadTool(fetchMock);
 
-    const result = await execute(tool, { action: "ground", query: "How do Apex callouts work?" });
+    const result = await execute(tool, {
+      action: "ground",
+      query: "How do Apex callouts work?",
+      collection: "",
+      version: "",
+      locale: "",
+    });
 
     expect(calls.map((call) => call.name)).toEqual(["list", "search", "fetch"]);
     expect(calls[1]?.args).toMatchObject({

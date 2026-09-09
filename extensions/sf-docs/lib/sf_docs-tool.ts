@@ -143,13 +143,14 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
         endpoint: endpoint.endpoint,
         timeoutMs: timeoutForAction(input.action),
       });
+      const requestedCollection = nonBlank(input.collection);
       const collectionResolution = resolveCollectionName(
-        input.collection ?? prefs.defaultCollection,
+        requestedCollection ?? prefs.defaultCollection,
       );
       const slice = {
         collection: collectionResolution.collection,
-        version: input.version ?? prefs.defaultVersion,
-        locale: input.locale ?? prefs.defaultLocale,
+        version: nonBlank(input.version) ?? prefs.defaultVersion,
+        locale: nonBlank(input.locale) ?? prefs.defaultLocale,
       };
       if (versionLooksLikeSalesforceRelease(slice.version)) {
         return fail(
@@ -180,7 +181,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             input: {
               query: input.query,
               collection: slice.collection,
-              collectionExplicit: Boolean(input.collection),
+              collectionExplicit: Boolean(requestedCollection),
               version: slice.version,
               locale: slice.locale,
               pageSize: clamp(input.pageSize ?? prefs.defaultPageSize, 1, 60),
@@ -219,7 +220,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             );
           }
           const listArgs: Record<string, unknown> = {};
-          if (input.collection) listArgs.collections = [slice.collection];
+          if (requestedCollection) listArgs.collections = [slice.collection];
           const response = parseListResponse(await client.callTool("list", listArgs, signal));
           const serviceError = docsServiceError(response);
           if (serviceError) {
@@ -426,6 +427,11 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       });
     },
   });
+}
+
+function nonBlank(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
 }
 
 function resolveCollectionName(collection: string): { collection: string; alias?: string } {
