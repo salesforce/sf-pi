@@ -165,6 +165,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `sf_herdr_plan` is unavailable
 - An ephemeral pane stayed open
 - The Herdr package is missing
+- Startup errors about `herdr_layout` / `herdr_pane` / `herdr_agent` conflicts
 
 **[SF LWC](./extensions/sf-lwc.md#troubleshooting)**
 
@@ -266,6 +267,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Glyphs render as boxes
 - The LSP row stays unknown
 - Herdr reports missing tools
+- Herdr tool-name conflicts at startup
 - Startup feels noisy
 - Content is clipped
 - Fonts are installed but glyphs remain wrong

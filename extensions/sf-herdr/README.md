@@ -58,6 +58,11 @@ ambiguous panes available.
 **The Herdr package is missing:** Install `npm:@ogulcancelik/pi-herdr`. The
 separate official skill remains a Herdr-owned installation.
 
+**Startup errors about `herdr_layout` / `herdr_pane` / `herdr_agent` conflicts:**
+Pi loaded both `npm:@ogulcancelik/pi-herdr` and `git:github.com/ogulcancelik/pi-extensions`.
+Keep the official npm package, remove the git source from `packages[]`, and run
+`/sf-pi doctor`.
+
 ## File Structure
 
 <!-- GENERATED:file-structure:start -->

@@ -21,6 +21,7 @@ import {
 import { isNodeRuntimeSupported, NODE_RUNTIME_FLOOR } from "../runtime-floor.ts";
 import { normalizeNpmConfigValue, readConfiguredNpmCommand } from "../npm-release-age-policy.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
+import { collectHerdrPackageInstall } from "../herdr-package-sources.ts";
 import { readCachedRuntimeDiagnostics, writeCachedRuntimeDiagnostics } from "./runtime-cache.ts";
 import type {
   AvailableSkillRoot,
@@ -73,6 +74,7 @@ export function runDoctorDiagnostics(
   const staleSkillPaths = findStaleSkillPaths(effectiveSettings, home);
   const availableSkillRoots = findAvailableSkillRoots(effectiveSettings, home);
   const sfPiPackageDuplicates = findSfPiPackageDuplicates(cwd);
+  const herdrPackageInstall = collectHerdrPackageInstall(cwd);
   const runtime =
     runtimeMode === "cached" ? collectStartupRuntimeDiagnostics() : collectRuntimeDiagnostics();
   const piVersion = runtime.piVersion;
@@ -176,6 +178,17 @@ export function runDoctorDiagnostics(
     });
   }
 
+  if (herdrPackageInstall.duplicate) {
+    issues.push({
+      id: "herdr-package-duplicate",
+      severity: "error",
+      title: "Herdr tools are installed twice",
+      detail:
+        "settings.packages[] includes both npm:@ogulcancelik/pi-herdr and git:github.com/ogulcancelik/pi-extensions. Pi loads both copies and fails with herdr_layout / herdr_pane / herdr_agent tool conflicts.",
+      fix: "Keep the official source npm:@ogulcancelik/pi-herdr. Remove git:github.com/ogulcancelik/pi-extensions from packages[], delete the leftover git clone under the Pi agent git directory, and restart Pi.",
+    });
+  }
+
   if (safeStartRequested) {
     issues.push({
       id: "safe-start-active",
@@ -218,6 +231,9 @@ export function summarizeStartupDoctorNudge(report: DoctorReport): StartupDoctor
     pieces.push(`${staleSkillPathCount} stale skill path${staleSkillPathCount === 1 ? "" : "s"}`);
   }
   if (packageDuplicateCount > 0) pieces.push("duplicate sf-pi packages");
+  if (report.issues.some((issue) => issue.id === "herdr-package-duplicate")) {
+    pieces.push("duplicate Herdr packages");
+  }
   if (
     report.quietStartup !== true &&
     report.welcomeMode !== "header" &&

@@ -149,6 +149,17 @@ describe("Herdr Runtime Readiness", () => {
     });
   });
 
+  it("treats the git monorepo as providing the Herdr package", () => {
+    writeGlobalSettings({ packages: ["git:github.com/ogulcancelik/pi-extensions"] });
+
+    const status = collectHerdrRuntimeStatus(cwd, { activeToolNames: [], allToolNames: [] });
+
+    expect(status).toMatchObject({
+      kind: "installed-not-active",
+      packageInstalled: true,
+    });
+  });
+
   it("detects the Herdr-installed Pi state integration version", () => {
     writePiIntegration(
       [

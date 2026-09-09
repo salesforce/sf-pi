@@ -80,17 +80,21 @@ export default function sfHerdr(pi: ExtensionAPI): void {
     },
   });
 
-  registerExtensionDoctor(EXTENSION_ID, async () => ({
+  registerExtensionDoctor(EXTENSION_ID, async (cwd) => ({
     extensionId: EXTENSION_ID,
     title: "SF Herdr",
     summary: "Current split Herdr runtime and planner readiness",
-    checks: renderDoctor(pi.getActiveTools())
+    checks: renderDoctor(pi.getActiveTools(), process.env, cwd)
       .split("\n")
-      .filter((line) => /^[✓○]/.test(line))
+      .filter((line) => /^[✓○✗]/.test(line))
       .map((line, index) => ({
         id: `sf-herdr.${index}`,
-        severity: line.startsWith("○") ? ("info" as const) : ("ok" as const),
-        title: line.replace(/^[✓○]\s*/, ""),
+        severity: line.startsWith("✗")
+          ? ("error" as const)
+          : line.startsWith("○")
+            ? ("info" as const)
+            : ("ok" as const),
+        title: line.replace(/^[✓○✗]\s*/, ""),
         detail: line,
       })),
   }));
@@ -148,7 +152,13 @@ export default function sfHerdr(pi: ExtensionAPI): void {
       return;
     }
     if (action === "doctor") {
-      await emit(ctx, "SF Herdr doctor", renderDoctor(pi.getActiveTools()), "info", fromPanel);
+      await emit(
+        ctx,
+        "SF Herdr doctor",
+        renderDoctor(pi.getActiveTools(), process.env, ctx.cwd),
+        "info",
+        fromPanel,
+      );
       return;
     }
     await emit(ctx, "SF Herdr help", renderHelp(), "info", fromPanel);

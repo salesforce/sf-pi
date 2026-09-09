@@ -123,6 +123,26 @@ describe("collectRecommendationsStatus", () => {
     if (firstDeclined !== -1) expect(lastPending).toBeLessThan(firstDeclined);
   });
 
+  it("marks pi-herdr installed when only the git monorepo is configured", () => {
+    const homeDir = makeTempDir("sf-welcome-home-");
+    const projectDir = makeTempDir("sf-welcome-project-");
+    process.env.HOME = homeDir;
+    const prevAgent = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = path.join(homeDir, ".pi", "agent");
+    try {
+      writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
+        packages: ["git:github.com/ogulcancelik/pi-extensions"],
+      });
+
+      const summary = collectRecommendationsStatus(projectDir);
+      const herdr = summary.items.find((item) => item.id === "pi-herdr");
+      expect(herdr?.status).toBe("installed");
+    } finally {
+      if (prevAgent === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = prevAgent;
+    }
+  });
+
   it("marks a git-sourced item as installed when cloned into ~/.pi/agent/skills/<id>/", () => {
     // Mirrors the real pi-skills install instructions: clone the repo
     // directly into a skill-discovery root with no entry in packages[].

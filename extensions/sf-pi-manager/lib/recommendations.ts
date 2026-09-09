@@ -21,6 +21,13 @@ import {
   loadRecommendationsManifest,
   resolveBundleItems,
 } from "../../../lib/common/catalog-state/recommendations-manifest.ts";
+import {
+  collectSettingsPackageSources,
+  HERDR_PI_GIT_MONOREPO_SOURCE,
+  HERDR_PI_PACKAGE_SOURCE,
+  HERDR_RECOMMENDATION_ID,
+  resolveHerdrOfficialInstallAction,
+} from "../../../lib/common/herdr-package-sources.ts";
 import { installPackage, removePackage, type InstallScope } from "./recommendations-install.ts";
 import {
   RecommendationsOverlayComponent,
@@ -138,15 +145,22 @@ async function handleOverlay(
 
   const state = readRecommendationsState();
   const items = Object.values(manifest.items);
-  const rows: RecommendationRow[] = items.map((item) => ({
-    item,
-    // Pre-check:
-    //   - never-seen items are pre-checked (opt-out)
-    //   - previously installed items stay checked
-    //   - previously declined items stay unchecked
-    selected: state.decisions[item.id] !== "declined",
-    previousDecision: state.decisions[item.id],
-  }));
+  const herdrSources = collectSettingsPackageSources(ctx.cwd);
+  const rows: RecommendationRow[] = items.map((item) => {
+    const herdrAction = resolveHerdrOfficialInstallAction(item.id, herdrSources);
+    const alreadyProvidesHerdr = herdrAction !== "install";
+    return {
+      item,
+      // Pre-check:
+      //   - never-seen items are pre-checked (opt-out)
+      //   - previously installed items stay checked
+      //   - previously declined items stay unchecked
+      //   - git-or-npm Herdr already providing tools counts as installed so we
+      //     do not add the other source and collide on herdr_* tool names
+      selected: alreadyProvidesHerdr ? true : state.decisions[item.id] !== "declined",
+      previousDecision: alreadyProvidesHerdr ? "installed" : state.decisions[item.id],
+    };
+  });
 
   ctx.ui.setWorkingVisible(false);
   let result: RecommendationsOverlayResult | undefined;
@@ -341,6 +355,26 @@ async function runInstall(
   item: RecommendedItem,
   scope: InstallScope,
 ): Promise<boolean> {
+  if (item.id === HERDR_RECOMMENDATION_ID) {
+    const action = resolveHerdrOfficialInstallAction(
+      item.id,
+      collectSettingsPackageSources(ctx.cwd),
+    );
+    if (action === "skip-duplicate") {
+      ctx.ui.notify(
+        `Skipped ${HERDR_PI_PACKAGE_SOURCE}. Both the official npm package and ${HERDR_PI_GIT_MONOREPO_SOURCE} are already configured; that duplicate causes herdr_* tool conflicts. Keep ${HERDR_PI_PACKAGE_SOURCE}, remove the git source, then run /sf-pi doctor.`,
+        "warning",
+      );
+      return false;
+    }
+    if (action === "already-present") {
+      ctx.ui.notify(
+        `Herdr tools already provided. Official source is ${HERDR_PI_PACKAGE_SOURCE}; do not also install ${HERDR_PI_GIT_MONOREPO_SOURCE}.`,
+        "info",
+      );
+      return true;
+    }
+  }
   ctx.ui.notify(`Installing ${item.name} (${scope})…`, "info");
   const result = await installPackage(item.source, scope, { cwd: ctx.cwd });
   if (result.success) {

@@ -52,6 +52,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `exec-adapter.ts`              | module    |                     1 |               0 |
 | `extension-toggle.ts`          | module    |                     1 |               0 |
 | `glyph-policy.ts`              | module    |                     1 |               0 |
+| `herdr-package-sources.ts`     | module    |                     1 |               0 |
 | `herdr-runtime.ts`             | module    |                     1 |               0 |
 | `herdr.ts`                     | module    |                     1 |               0 |
 | `human-only-command-output.ts` | module    |                     1 |               0 |
@@ -83,7 +84,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `slack-status/`                | directory |                     1 |               0 |
 | `state-store.ts`               | module    |                     1 |               0 |
 | `test-fixtures.ts`             | module    |                     1 |               0 |
-| `tests/`                       | directory |                     0 |              40 |
+| `tests/`                       | directory |                     0 |              41 |
 | `tldraw-status/`               | directory |                     1 |               0 |
 | `ui-glyphs.ts`                 | module    |                     1 |               0 |
 

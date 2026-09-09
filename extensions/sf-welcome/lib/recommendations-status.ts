@@ -24,6 +24,10 @@ import { fileURLToPath } from "node:url";
 import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
 import { loadRecommendationsManifest } from "../../../lib/common/catalog-state/recommendations-manifest.ts";
 import { readRecommendationsState } from "../../../lib/common/catalog-state/recommendations-state.ts";
+import {
+  HERDR_RECOMMENDATION_ID,
+  isHerdrGitMonorepoSource,
+} from "../../../lib/common/herdr-package-sources.ts";
 import type { RecommendedItem } from "../../../catalog/types.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -126,6 +130,11 @@ function isItemInstalled(
 ): boolean {
   const normalized = normalizeSource(item.source);
   if (installedSources.has(normalized)) return true;
+  if (item.id === HERDR_RECOMMENDATION_ID) {
+    for (const source of installedSources) {
+      if (isHerdrGitMonorepoSource(source)) return true;
+    }
+  }
   if (item.source.trim().toLowerCase().startsWith("git:") && skillDirClones.has(item.id)) {
     return true;
   }

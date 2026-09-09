@@ -80,6 +80,33 @@ describe("runDoctorDiagnostics", () => {
     },
     DOCTOR_TEST_TIMEOUT_MS,
   );
+
+  it(
+    "errors when npm and git Herdr packages are both configured",
+    () => {
+      const home = makeHome();
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+      tempDirs.push(cwd);
+      const prevAgent = process.env.PI_CODING_AGENT_DIR;
+      process.env.PI_CODING_AGENT_DIR = path.join(home, ".pi", "agent");
+      writeSettings(home, {
+        packages: ["npm:@ogulcancelik/pi-herdr", "git:github.com/ogulcancelik/pi-extensions"],
+      });
+
+      try {
+        const report = runDoctorDiagnostics({ cwd, home });
+        const issue = report.issues.find((entry) => entry.id === "herdr-package-duplicate");
+
+        expect(issue?.severity).toBe("error");
+        expect(issue?.detail).toContain("herdr_layout");
+        expect(issue?.fix).toContain("npm:@ogulcancelik/pi-herdr");
+      } finally {
+        if (prevAgent === undefined) delete process.env.PI_CODING_AGENT_DIR;
+        else process.env.PI_CODING_AGENT_DIR = prevAgent;
+      }
+    },
+    DOCTOR_TEST_TIMEOUT_MS,
+  );
 });
 
 describe("doctor fixes", () => {

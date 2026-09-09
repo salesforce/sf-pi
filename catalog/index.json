@@ -636,7 +636,7 @@
     "entry": "extensions/sf-herdr/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 615
+    "srcLoc": 647
   },
   {
     "id": "sf-llm-gateway",
@@ -869,7 +869,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4626
+    "srcLoc": 4660
   },
   {
     "id": "sf-skills",
@@ -1141,6 +1141,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6722
+    "srcLoc": 6729
   }
 ]

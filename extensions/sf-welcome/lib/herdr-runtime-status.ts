@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Startup-safe Herdr runtime readiness for the welcome splash. */
 import { closeSync, existsSync, openSync, readFileSync, readSync } from "node:fs";
+import { collectHerdrPackageInstall } from "../../../lib/common/herdr-package-sources.ts";
 import { getHerdrSplitToolReadiness } from "../../../lib/common/herdr-runtime.ts";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
-import { isRecommendedPackageSourceInstalled } from "./recommendations-status.ts";
 import type { HerdrPiIntegrationStatusInfo, HerdrRuntimeStatusInfo } from "./types.ts";
 
-export const HERDR_PI_PACKAGE_SOURCE = "npm:@ogulcancelik/pi-herdr";
+export { HERDR_PI_PACKAGE_SOURCE } from "../../../lib/common/herdr-package-sources.ts";
 export const HERDR_PI_INTEGRATION_FILE = "herdr-agent-state.ts";
 
 export type HerdrStatusExecFn = (
@@ -70,9 +70,7 @@ export function collectHerdrRuntimeStatus(
   const activeTools = options.activeToolNames ?? options.allToolNames ?? [];
   const readiness = getHerdrSplitToolReadiness(activeTools, env);
   const toolActive = readiness.allToolsActive;
-  const packageInstalled = cwd
-    ? isRecommendedPackageSourceInstalled(cwd, HERDR_PI_PACKAGE_SOURCE)
-    : false;
+  const packageInstalled = cwd ? collectHerdrPackageInstall(cwd).providesHerdrTools : false;
   const activeControlEnv = env.HERDR_ENV === "1" && !!env.HERDR_PANE_ID;
   const passiveStatusBridge =
     env.HERDR_ENV === "1" && !!env.HERDR_SOCKET_PATH && !!env.HERDR_PANE_ID;

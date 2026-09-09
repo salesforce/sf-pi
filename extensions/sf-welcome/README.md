@@ -66,6 +66,10 @@ readiness and never launches a duplicate probe.
 **Herdr reports missing tools:** Install `npm:@ogulcancelik/pi-herdr`, launch Pi
 inside a Herdr pane, and install the Herdr Pi bridge when needed.
 
+**Herdr tool-name conflicts at startup:** Keep `npm:@ogulcancelik/pi-herdr` and
+remove `git:github.com/ogulcancelik/pi-extensions` from `packages[]`, then run
+`/sf-pi doctor`.
+
 **Startup feels noisy:** Select `header` or `off` in Manager settings. Optional
 integrations should remain calm unless enabled or degraded.
 
