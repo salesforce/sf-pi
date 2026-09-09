@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.279.2](https://github.com/salesforce/sf-pi/compare/v0.279.1...v0.279.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* **sf-docs:** harden grounding evidence ([be34bf6](https://github.com/salesforce/sf-pi/commit/be34bf6546dae4538b0cec7c19883a69a2156015))
+
 ## [0.279.1](https://github.com/salesforce/sf-pi/compare/v0.279.0...v0.279.1) (2026-09-09)
 
 
