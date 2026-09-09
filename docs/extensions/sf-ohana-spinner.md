@@ -1,16 +1,16 @@
 ---
 title: "SF Ohana Spinner"
-description: "Salesforce-themed rainbow spinner during LLM thinking"
+description: "Short Salesforce waiting messages in Pi's working indicator"
 editLink: false
 ---
 
 # SF Ohana Spinner
 
-<p class="sfpi-page-lead">Salesforce-themed rainbow spinner during LLM thinking</p>
+<p class="sfpi-page-lead">Short Salesforce waiting messages in Pi's working indicator</p>
 
 ## What it does
 
-Pi setWorkingIndicator-driven spinner with Ohana and Calm modes. Pi manages start/stop based on streaming activity; this extension owns frame generation and a small mode preference.
+Ohana rotates short Salesforce messages through Pi's working indicator; Calm leaves Pi's default Working label. Pi owns spinner, color, and start/stop.
 
 ## Start
 

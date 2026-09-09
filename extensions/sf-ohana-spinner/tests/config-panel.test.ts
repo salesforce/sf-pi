@@ -45,6 +45,10 @@ describe("ohana spinner config panel", () => {
     const done = vi.fn();
     const panel = makePanel(cwd, done);
 
+    const initial = panel.renderContent(100).join("\n");
+    expect(initial).toContain("Pi's default Working label");
+    expect(initial).not.toContain("Thinking");
+
     panel.handleInput("\x1b[C"); // ohana -> calm
     expect(panel.renderContent(100).join("\n")).toContain("Unsaved change");
 

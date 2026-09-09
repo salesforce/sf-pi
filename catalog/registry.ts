@@ -122,7 +122,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-devbar","/sf-org"],
-    events: ["session_start","session_shutdown","model_select","session_compact","session_info_changed","thinking_level_select","turn_start","turn_end","agent_end","before_agent_start","context"],
+    events: ["session_start","session_shutdown","model_select","session_compact","session_info_changed","thinking_level_select","turn_end","agent_end","before_agent_start","context"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-devbar/lib/config-panel.ts");
@@ -243,7 +243,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-ohana-spinner",
     name: "SF Ohana Spinner",
-    description: "Salesforce-themed rainbow spinner during LLM thinking",
+    description: "Short Salesforce waiting messages in Pi's working indicator",
     file: "extensions/sf-ohana-spinner/index.ts",
     category: "ui",
     maturity: "stable",

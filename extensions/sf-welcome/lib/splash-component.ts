@@ -78,9 +78,8 @@ const WORDMARK_SHADOW = (text: string) => fg256(238, text); // Subtle depth on d
 // every section. After the animation window ends, the offset stays
 // pinned on the final frame — no ongoing repaint cost.
 //
-// If either palette changes upstream, mirror the update here:
+// If the splash palette changes upstream, mirror the update here:
 //   - this file's BLUE_PALETTE matches the previous GRADIENT_COLORS
-//   - sf-ohana-spinner/lib/rainbow.ts RAINBOW_COLORS ↔ RAINBOW_PALETTE
 // ═══════════════════════════════════════════════════════════════════════════
 
 const PI_LOGO = [

@@ -159,7 +159,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-ohana-spinner">
   <span class="sfpi-card-kicker">UI · on</span>
   <strong>SF Ohana Spinner</strong>
-  <span>Salesforce-themed rainbow spinner during LLM thinking</span>
+  <span>Short Salesforce waiting messages in Pi's working indicator</span>
   <span class="sfpi-card-meta">Works automatically</span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-pi-manager">

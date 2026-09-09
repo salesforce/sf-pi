@@ -49,8 +49,6 @@ export type TopBarState = {
   gitChanges?: GitChanges | null;
   /** Context usage percentage 0-100. */
   contextPercent?: number | null;
-  /** Whether the agent is currently processing a turn. */
-  isThinking?: boolean;
   /** Inline image width pill text, e.g. "img:120c". Empty when the user
    * left Pi's default (`terminal.imageWidthCells = 60`). */
   imageWidthPill?: string;
@@ -122,12 +120,7 @@ function renderTopBarContent(state: TopBarState, theme: BarTheme): string {
     segments.push(theme.fg("muted", state.imageWidthPill));
   }
 
-  // 7. Thinking indicator (subtle pulse when agent is working)
-  if (state.isThinking) {
-    segments.push(theme.fg("accent", "⟳"));
-  }
-
-  // 8. Optional public Pi session name. Keep it last so model, project,
+  // 7. Optional public Pi session name. Keep it last so model, project,
   // context, and active-work facts win when the terminal is narrow.
   const sessionSeg = formatSessionSegment(state.sessionName, theme);
   if (sessionSeg) segments.push(sessionSeg);

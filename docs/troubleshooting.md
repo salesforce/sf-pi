@@ -249,8 +249,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Ohana Spinner](./extensions/sf-ohana-spinner.md#troubleshooting)**
 
-- Colors look dim or garbled
 - No spinner appears
+- The message looks truncated
 
 **[SF Skills](./extensions/sf-skills.md#troubleshooting)**
 

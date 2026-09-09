@@ -19,7 +19,6 @@
  *   session_compact       | Repaint context usage from Pi's post-compaction state
  *   session_info_changed  | Repaint the optional Pi session-name segment
  *   thinking_level_select | Repaint top bar immediately on thinking-level change
- *   turn_start            | Set thinking indicator on top bar
  *   turn_end              | Refresh git changes, update context bar, trigger footer repaint
  *   agent_end             | Final git refresh + footer repaint
  *   /sf-devbar            | Open SF DevBar in the SF Pi Manager
@@ -30,7 +29,7 @@
  * Pi SDK features used:
  *   setWidget, setFooter, setTitle
  *   session_start, session_shutdown, model_select, session_compact, session_info_changed
- *   turn_start, turn_end, agent_end
+ *   turn_end, agent_end
  *   before_agent_start (with systemPromptOptions)
  *   registerCommand, registerShortcut, registerFlag
  *   getThinkingLevel, getSessionName, getContextUsage, ctx.model, ctx.cwd, ctx.hasUI
@@ -119,7 +118,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
   let displayEnv: SfEnvironment | null = null;
   let displayOrgStale = false;
   let gitChanges: GitChanges | null = null;
-  let isThinking = false;
   /** Pre-formatted inline-image-width pill (e.g. "img:120c"). Empty string
    * when the user keeps the default so the top bar stays unchanged. */
   let imageWidthPill = "";
@@ -201,7 +199,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
       folderName: basename(ctx.cwd),
       gitBranch: latestGitBranch, // Use the latest known branch from footerData
       gitChanges,
-      isThinking,
       imageWidthPill,
       colors: devbarColors,
     };
@@ -378,7 +375,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
 
     // Reset per-session state
     gitChanges = null;
-    isThinking = false;
     refreshDevbarSettings(ctx.cwd);
 
     // Set terminal title
@@ -494,17 +490,9 @@ export default function sfDevBar(pi: ExtensionAPI) {
     updateTopBar(ctx);
   });
 
-  // --- Turn start: set thinking indicator ---
-  pi.on("turn_start", async (_event, ctx) => {
-    if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
-    isThinking = true;
-    updateTopBar(ctx);
-  });
-
   // --- Turn end: refresh footer + context bar ---
   pi.on("turn_end", async (_event, ctx) => {
     if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
-    isThinking = false;
     requestFooterRender?.();
     updateTopBar(ctx);
   });
@@ -512,7 +500,6 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // --- Agent end: git refresh + footer repaint ---
   pi.on("agent_end", async (_event, ctx) => {
     if (!enabled || !ctx.hasUI || !isActiveSession(ctx)) return;
-    isThinking = false;
     requestFooterRender?.();
     refreshGitChanges(ctx);
     updateTopBar(ctx);

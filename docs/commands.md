@@ -180,7 +180,7 @@ _Bespoke Salesforce developer status bar with org context, model info, git, and 
 
 ### [SF Ohana Spinner](./extensions/sf-ohana-spinner)
 
-_Salesforce-themed rainbow spinner during LLM thinking_
+_Short Salesforce waiting messages in Pi's working indicator_
 
 - Default: **on**
 - Commands: _none_

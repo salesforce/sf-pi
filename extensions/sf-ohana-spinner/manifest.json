@@ -1,7 +1,7 @@
 {
   "id": "sf-ohana-spinner",
   "name": "SF Ohana Spinner",
-  "description": "Salesforce-themed rainbow spinner during LLM thinking",
+  "description": "Short Salesforce waiting messages in Pi's working indicator",
   "category": "ui",
   "maturity": "stable",
   "defaultEnabled": true,
@@ -10,8 +10,8 @@
   "docs": {
     "intentGroup": "Personalize pi",
     "contextGlossary": "CONTEXT.md",
-    "summary": "Pi setWorkingIndicator-driven spinner with Ohana and Calm modes. Pi manages start/stop based on streaming activity; this extension owns frame generation and a small mode preference.",
-    "primaryFiles": ["index.ts", "lib/settings.ts", "lib/rainbow.ts", "lib/messages.ts"],
+    "summary": "Ohana rotates short Salesforce messages through Pi's working indicator; Calm leaves Pi's default Working label. Pi owns spinner, color, and start/stop.",
+    "primaryFiles": ["index.ts", "lib/settings.ts", "lib/messages.ts"],
     "stateFiles": ["settings.json \u2192 sfPi.ohanaSpinner.mode"]
   }
 }

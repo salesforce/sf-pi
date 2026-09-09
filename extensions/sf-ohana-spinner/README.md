@@ -2,15 +2,15 @@
 
 ## What It Does
 
-SF Ohana Spinner replaces Pi's working indicator while the model is thinking.
-Every mode begins with `Thinking…` so activity is clear before any personality
-text appears:
+SF Ohana Spinner supplies optional personality text for Pi's working
+indicator while the model is streaming. Pi owns the spinner, color, and
+when the cue appears:
 
-- **Ohana** — animated pastel color plus rotating Salesforce ecosystem messages.
-- **Calm** — the same explicit state with only the leading glyph animated.
+- **Ohana** — rotating short Salesforce ecosystem messages.
+- **Calm** — Pi's default Working label, with no catalog text.
 
-Ohana is the default. When `NO_COLOR` is present, text and animation remain while
-SF Pi-owned ANSI color is removed.
+Ohana is the default. Messages are chrome in the editor-border working
+indicator, not a separate status row.
 
 ## Configuration
 
@@ -23,13 +23,12 @@ controls. Disable it in the Manager to restore Pi's default indicator.
 
 ## Troubleshooting
 
-**Colors look dim or garbled:** The palette is intentionally muted for dark
-terminals. Try Calm mode, set `NO_COLOR`, or disable the extension if the terminal
-theme remaps true color poorly.
-
 **No spinner appears:** Pi displays the working indicator only after a turn
 reaches the model streaming phase. Authentication or model-resolution failures
 can occur before that phase.
+
+**The message looks truncated:** Ohana lines are written to fit the border slot.
+Pi may still clip them on a very narrow terminal.
 
 ## File Structure
 

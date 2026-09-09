@@ -2,22 +2,13 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { getCapabilities, setCapabilities } from "@earendil-works/pi-tui";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { stripAnsiSgr } from "../../../lib/common/color-policy.ts";
 import sfOhanaSpinner from "../index.ts";
-import { messages } from "../lib/messages.ts";
+import { MAX_MESSAGE_LENGTH, messages } from "../lib/messages.ts";
 import { writeScopedOhanaSpinnerSettings } from "../lib/settings.ts";
 
 const tempDirs = new Set<string>();
-const ANSI_TRUE_COLOR_PREFIX = `${String.fromCharCode(27)}[38;2;`;
-let priorCapabilities: ReturnType<typeof getCapabilities>;
-
-beforeEach(() => {
-  priorCapabilities = getCapabilities();
-  setCapabilities({ ...priorCapabilities, trueColor: true });
-});
 
 function tempCwd(): string {
   const dir = mkdtempSync(path.join(tmpdir(), "sf-pi-ohana-spinner-lifecycle-"));
@@ -26,7 +17,6 @@ function tempCwd(): string {
 }
 
 afterEach(() => {
-  setCapabilities(priorCapabilities);
   vi.restoreAllMocks();
   for (const dir of tempDirs) {
     rmSync(dir, { recursive: true, force: true });
@@ -79,19 +69,8 @@ async function runSessionShutdown(
   }
 }
 
-function latestIndicatorFrames(ctx: ReturnType<typeof createCtx>): string[] {
-  const lastCall = ctx.ui.setWorkingIndicator.mock.calls.at(-1)?.[0] as
-    { frames?: unknown } | undefined;
-  expect(Array.isArray(lastCall?.frames)).toBe(true);
-  return lastCall?.frames as string[];
-}
-
-function stripAnsi(value: string): string {
-  return stripAnsiSgr(value);
-}
-
 describe("sf-ohana-spinner waiting-state outcome", () => {
-  it("shows a colorful Salesforce-themed waiting indicator in Ohana mode", async () => {
+  it("rotates Salesforce chrome through Pi's working message in Ohana mode", async () => {
     const cwd = tempCwd();
     writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "ohana" });
     vi.spyOn(Math, "random").mockReturnValue(0);
@@ -100,58 +79,12 @@ describe("sf-ohana-spinner waiting-state outcome", () => {
     const ctx = createCtx(cwd);
     await runSessionStart(handlers, ctx);
 
-    const frames = latestIndicatorFrames(ctx);
-    expect(frames.length).toBeGreaterThan(1);
-    expect(frames.every((frame) => frame.includes("Thinking…"))).toBe(true);
-    expect(frames.some((frame) => frame.includes(ANSI_TRUE_COLOR_PREFIX))).toBe(true);
-    expect(
-      frames.some((frame) => /opp|pipeline|SOQL|Apex|Flow|Agentforce/i.test(stripAnsi(frame))),
-    ).toBe(true);
-    expect(ctx.ui.setWorkingMessage).toHaveBeenLastCalledWith("");
+    expect(ctx.ui.setWorkingIndicator).toHaveBeenCalledWith();
+    expect(ctx.ui.setWorkingMessage).toHaveBeenLastCalledWith(messages[0]);
+    expect(messages[0]).toMatch(/opp|pipeline|SOQL|Apex|Flow|Agentforce|CSV/i);
   });
 
-  it("removes ANSI color escapes from Ohana frames when NO_COLOR is set", async () => {
-    const previous = process.env.NO_COLOR;
-    process.env.NO_COLOR = "1";
-    try {
-      const cwd = tempCwd();
-      writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "ohana" });
-      vi.spyOn(Math, "random").mockReturnValue(0);
-
-      const handlers = registerExtension();
-      const ctx = createCtx(cwd);
-      await runSessionStart(handlers, ctx);
-
-      const frames = latestIndicatorFrames(ctx);
-      expect(frames.every((frame) => frame.includes("Thinking…"))).toBe(true);
-      expect(frames.every((frame) => stripAnsiSgr(frame) === frame)).toBe(true);
-    } finally {
-      if (previous === undefined) delete process.env.NO_COLOR;
-      else process.env.NO_COLOR = previous;
-    }
-  });
-
-  it("removes raw truecolor from Ohana frames when Pi disables it", async () => {
-    const prior = getCapabilities();
-    setCapabilities({ ...prior, trueColor: false });
-    try {
-      const cwd = tempCwd();
-      writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "ohana" });
-      vi.spyOn(Math, "random").mockReturnValue(0);
-
-      const handlers = registerExtension();
-      const ctx = createCtx(cwd);
-      await runSessionStart(handlers, ctx);
-
-      const frames = latestIndicatorFrames(ctx);
-      expect(frames.every((frame) => frame.includes("Thinking…"))).toBe(true);
-      expect(frames.every((frame) => !frame.includes(ANSI_TRUE_COLOR_PREFIX))).toBe(true);
-    } finally {
-      setCapabilities(prior);
-    }
-  });
-
-  it("shows a quiet waiting indicator in Calm mode", async () => {
+  it("restores Pi's default Working label in Calm mode", async () => {
     const cwd = tempCwd();
     writeScopedOhanaSpinnerSettings(cwd, "project", { mode: "calm" });
 
@@ -159,12 +92,8 @@ describe("sf-ohana-spinner waiting-state outcome", () => {
     const ctx = createCtx(cwd);
     await runSessionStart(handlers, ctx);
 
-    const frames = latestIndicatorFrames(ctx);
-    expect(frames.length).toBeGreaterThan(1);
-    expect(frames.every((frame) => frame.includes("Thinking…"))).toBe(true);
-    expect(frames.every((frame) => !frame.includes(ANSI_TRUE_COLOR_PREFIX))).toBe(true);
-    expect(frames.every((frame) => !frame.includes(" · "))).toBe(true);
-    expect(ctx.ui.setWorkingMessage).toHaveBeenLastCalledWith("");
+    expect(ctx.ui.setWorkingIndicator).toHaveBeenCalledWith();
+    expect(ctx.ui.setWorkingMessage).toHaveBeenLastCalledWith();
   });
 
   it("restores Pi's default waiting indicator on shutdown", async () => {
@@ -191,7 +120,7 @@ describe("sf-ohana-spinner stale-ctx safety", () => {
       const handlers = registerExtension();
       const staleCtx = createCtx(cwd, "session-1");
       await runSessionStart(handlers, staleCtx);
-      const staleIndicatorCalls = staleCtx.ui.setWorkingIndicator.mock.calls.length;
+      const staleMessageCalls = staleCtx.ui.setWorkingMessage.mock.calls.length;
 
       const activeCtx = createCtx(cwd, "session-2");
       await runSessionStart(handlers, activeCtx);
@@ -224,8 +153,9 @@ describe("sf-ohana-spinner stale-ctx safety", () => {
       }
 
       expect(rejections).toEqual([]);
-      expect(staleCtx.ui.setWorkingIndicator.mock.calls.length).toBe(staleIndicatorCalls);
-      expect(activeCtx.ui.setWorkingIndicator.mock.calls.length).toBeGreaterThan(1);
+      expect(staleCtx.ui.setWorkingMessage.mock.calls.length).toBe(staleMessageCalls);
+      expect(activeCtx.ui.setWorkingMessage.mock.calls.length).toBeGreaterThan(1);
+      expect(activeCtx.ui.setWorkingIndicator.mock.calls.length).toBe(1);
     } finally {
       vi.useRealTimers();
     }
@@ -241,7 +171,7 @@ describe("sf-ohana-spinner stale-ctx safety", () => {
       const ctx = createCtx(cwd);
       await runSessionStart(handlers, ctx);
 
-      ctx.ui.setWorkingIndicator.mockImplementation(() => {
+      ctx.ui.setWorkingMessage.mockImplementation(() => {
         throw new Error("simulated UI rotation failure");
       });
 
@@ -269,7 +199,7 @@ describe("Ohana visible message outcomes", () => {
     expect(messages.length).toBeGreaterThan(0);
     for (const message of messages) {
       expect(message.trim()).toBe(message);
-      expect(message.length).toBeLessThanOrEqual(96);
+      expect(message.length).toBeLessThanOrEqual(MAX_MESSAGE_LENGTH);
       expect(message).not.toMatch(personSpecificTerms);
     }
   });

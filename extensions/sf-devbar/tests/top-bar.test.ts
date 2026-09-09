@@ -241,13 +241,8 @@ describe("renderTopBar", () => {
     expect(line).not.toContain("0.0%");
   });
 
-  it("shows thinking indicator when agent is working", () => {
-    const [line] = renderTopBar(makeState({ isThinking: true }), stubTheme);
-    expect(line).toContain("⟳");
-  });
-
-  it("hides thinking indicator when idle", () => {
-    const [line] = renderTopBar(makeState({ isThinking: false }), stubTheme);
+  it("does not paint a busy glyph; Pi's working indicator owns that cue", () => {
+    const [line] = renderTopBar(makeState(), stubTheme);
     expect(line).not.toContain("⟳");
   });
 
