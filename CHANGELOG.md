@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.277.1](https://github.com/salesforce/sf-pi/compare/v0.277.0...v0.277.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **sf-herdr:** detect duplicate npm and git Herdr packages ([3cd6047](https://github.com/salesforce/sf-pi/commit/3cd604746e880988fb077d1a81601ddeb5346013))
+
 ## [0.277.0](https://github.com/salesforce/sf-pi/compare/v0.276.0...v0.277.0) (2026-09-09)
 
 
