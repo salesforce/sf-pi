@@ -59,6 +59,8 @@ Next: fetch promising ids or urls before implementation-sensitive answers.
 2. Evidence packet
   📄 Documents    1
   📦 LLM packet   1.0k chars bounded source · cap 48k chars
+  ✅ Retrieval    complete
+  📦 Content      complete
   👁 Density      balanced
   📚 Source       1.0k chars fetched
 
@@ -79,6 +81,8 @@ Next: fetch promising ids or urls before implementation-sensitive answers.
 ### LLM sees
 
 ```text
+Fetch outcome: retrieval=complete; content=complete.
+
 SF Docs fetch returned 1 document(s) for admin/current/en-us.
 LLM source budget: 12000 chars per document; 48000 chars total.
 

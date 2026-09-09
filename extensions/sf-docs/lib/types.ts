@@ -3,24 +3,15 @@
 export const PROVIDER_NAME = "sf-docs";
 export const COMMAND_NAME = "sf-docs";
 export const TOOL_NAME = "sf_docs";
-export const ENV_TOKEN = "SF_DOCS_MCP_TOKEN";
 export const ENV_ENDPOINT = "SF_DOCS_MCP_ENDPOINT";
 export const WIDGET_KEY = "sf-docs-status";
-export const LONG_LIVED_EXPIRY_MS = 1000 * 60 * 60 * 24 * 365 * 10;
-export const MANUAL_REFRESH_SENTINEL = "manual-token";
 
 export type DocsAction =
   "status" | "collections" | "search" | "fetch" | "answer" | "explain" | "cheatsheet";
 
-export type TokenSource = "pi-auth" | "env" | "none";
 export type EndpointSource = "pi-auth" | "env" | "none";
 export type DocsScope = "global" | "project";
 export type SfDocsDisplayDensity = "compact" | "balanced" | "verbose";
-
-export interface TokenResolution {
-  source: Exclude<TokenSource, "none">;
-  token: string;
-}
 
 export type EndpointResolution =
   | {
@@ -41,7 +32,6 @@ export interface SfDocsPreferences {
   defaultLocale: string;
   defaultFetchFormat: "text" | "markdown" | "html";
   defaultPageSize: number;
-  includeCitations: boolean;
   displayDensity: SfDocsDisplayDensity;
   cacheCatalog: boolean;
 }

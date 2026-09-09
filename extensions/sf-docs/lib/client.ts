@@ -1,11 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** HTTP JSON-RPC/SSE client for the Salesforce Docs service. */
 import { parseJsonRpcSseResponse } from "./sse.ts";
-import { ENV_TOKEN } from "./types.ts";
 
 export interface DocsClientOptions {
   endpoint: string;
-  token: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
 }
@@ -17,7 +15,7 @@ interface JsonRpcEnvelope {
   error?: { code?: number; message?: string; data?: unknown };
 }
 
-let nextId = 1;
+const REQUEST_ID = 1;
 
 export class DocsClient {
   private readonly fetchImpl: typeof fetch;
@@ -42,13 +40,12 @@ export class DocsClient {
       const response = await this.fetchImpl(this.options.endpoint, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${this.options.token}`,
           "Content-Type": "application/json",
           Accept: "application/json, text/event-stream",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
-          id: nextId++,
+          id: REQUEST_ID,
           method: "tools/call",
           params: { name, arguments: args },
         }),
@@ -56,23 +53,15 @@ export class DocsClient {
       });
       const text = await response.text();
       if (!response.ok) {
-        throw new Error(
-          redactSecrets(
-            `Docs service HTTP ${response.status}: ${text.slice(0, 500)}`,
-            this.options.token,
-          ),
-        );
+        throw new Error(`Docs service HTTP ${response.status}: ${text.slice(0, 500)}`);
       }
-      const parsed = parseJsonRpcResponse(
-        text,
-        response.headers.get("content-type"),
-      ) as JsonRpcEnvelope;
+      const parsed = validateJsonRpcEnvelope(
+        parseJsonRpcResponse(text, response.headers.get("content-type")),
+        REQUEST_ID,
+      );
       if (parsed.error) {
         throw new Error(
-          redactSecrets(
-            `Docs service error ${parsed.error.code ?? ""}: ${parsed.error.message ?? "unknown error"}`,
-            this.options.token,
-          ),
+          `Docs service error ${parsed.error.code ?? ""}: ${parsed.error.message ?? "unknown error"}`,
         );
       }
       return unwrapToolContent(parsed.result);
@@ -81,12 +70,35 @@ export class DocsClient {
         throw new Error("Docs service request timed out or was cancelled.", { cause: err });
       }
       const message = err instanceof Error ? err.message : String(err);
-      throw new Error(redactSecrets(message, this.options.token), { cause: err });
+      throw new Error(message, { cause: err });
     } finally {
       clearTimeout(timeout);
       signal?.removeEventListener("abort", abortListener);
     }
   }
+}
+
+export function validateJsonRpcEnvelope(
+  value: unknown,
+  requestId: number | string,
+): JsonRpcEnvelope {
+  if (!isRecord(value) || value.jsonrpc !== "2.0") {
+    throw new Error("Docs service returned an invalid JSON-RPC 2.0 envelope.");
+  }
+  if (value.id !== requestId) {
+    throw new Error(
+      `Docs service JSON-RPC response id ${String(value.id)} did not match request id ${String(requestId)}.`,
+    );
+  }
+  const hasResult = Object.hasOwn(value, "result");
+  const hasError = Object.hasOwn(value, "error") && value.error !== undefined;
+  if (hasResult === hasError) {
+    throw new Error("Docs service JSON-RPC response must contain exactly one result or error.");
+  }
+  if (hasError && !isRecord(value.error)) {
+    throw new Error("Docs service JSON-RPC error must be an object.");
+  }
+  return value as JsonRpcEnvelope;
 }
 
 export function parseJsonRpcResponse(body: string, contentType?: string | null): unknown {
@@ -124,10 +136,6 @@ export function unwrapToolContent(result: unknown): unknown {
   }
 }
 
-export function redactSecrets(value: string, token?: string): string {
-  let output = value;
-  if (token) output = output.split(token).join("[REDACTED]");
-  const envToken = process.env[ENV_TOKEN];
-  if (envToken) output = output.split(envToken).join("[REDACTED]");
-  return output.replace(/Bearer\s+[^\s"']+/gi, "Bearer [REDACTED]");
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }

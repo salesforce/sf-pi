@@ -28,7 +28,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-docs">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF Docs</strong>
-  <span>Salesforce documentation lookup for agents and humans, with Pi-owned auth-store credentials, cited results, and a Manager settings surface.</span>
+  <span>Salesforce documentation lookup for agents and humans, with Pi-native endpoint configuration, cited results, and a Manager settings surface.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-docs</code></span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-lsp">

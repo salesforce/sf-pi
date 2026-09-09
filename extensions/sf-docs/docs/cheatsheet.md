@@ -18,15 +18,15 @@ See [`result-mocks.md`](./result-mocks.md) for simple examples of what humans se
 
 ## Actions
 
-| Action        | Use when                                                                      |
-| ------------- | ----------------------------------------------------------------------------- |
-| `status`      | Check auth, endpoint, defaults, and catalog-cache status.                     |
-| `collections` | Discover valid collections, versions, locales, formats, hints, and landmarks. |
-| `search`      | Find candidate docs. Omit `format` for a cheap first pass.                    |
-| `fetch`       | Read full source text by `ids` or `urls`. Use the same slice used by search.  |
-| `answer`      | Get a quick cited synthesis from one collection slice.                        |
-| `explain`     | Ask about one known document by `id` or `url`.                                |
-| `cheatsheet`  | Load this reference only when SF Docs workflow guidance is needed.            |
+| Action        | Use when                                                                       |
+| ------------- | ------------------------------------------------------------------------------ |
+| `status`      | Check endpoint configuration, defaults, and catalog-cache status.              |
+| `collections` | Discover valid collections, versions, locales, formats, hints, and landmarks.  |
+| `search`      | Find candidate docs. Omit `format` for a cheap first pass.                     |
+| `fetch`       | Read full source text by `ids` or `urls`. Use the same slice used by search.   |
+| `answer`      | Get a quick cited synthesis from one collection slice; citations are required. |
+| `explain`     | Ask about one known document by `id` or `url`; citations are required.         |
+| `cheatsheet`  | Load this reference only when SF Docs workflow guidance is needed.             |
 
 ## Collection defaults
 
@@ -35,14 +35,14 @@ Default settings are optimized for Salesforce development:
 ```text
 collection: developer
 version: current
-locale: en-us
+locale: auto
 format: markdown
 pageSize: 5
 ```
 
 Known collections include `developer`, `admin`, `architect`, `legacydeveloper`, `mulesoft`, and `tableau`.
 
-Collection versions such as `current` are docs-service slices, not Salesforce seasonal releases. For Salesforce release-note lookups, keep `version="current"` and put seasonal releases in the query with retrieval language such as `+release:260`.
+Collection versions such as `current` are docs-service slices, not Salesforce seasonal releases. Search and answer omit locale when the effective value is `auto`, allowing service-side language detection. For Salesforce release-note lookups, keep `version="current"` and put seasonal releases in the query with retrieval language such as `+release:260`.
 
 Collection routing quick guide:
 
@@ -68,9 +68,11 @@ Collection routing quick guide:
 - Fetch IDs from the same `collection`, `version`, and `locale` that produced them.
 - If a supported Salesforce-owned docs URL fetch returns no usable body, SF Docs can recover by distilled search and then fetch the strongest indexed document ID. Release-note URL recovery preserves the URL's `release=` parameter as an MCP-native `+release:<n>` filter.
 - Prefer fetching the strongest 3–4 source candidates; `fetch` accepts more for compatibility, but the Docs Evidence Packet is globally bounded.
+- Fetch results report retrieval as `complete`, `partial`, or `failed`, and report content truncation separately. A recovery is successful only after the recovered document body is usable.
 - Fetch packets include safe source metadata such as filename, source path, base URL, product, guide, locale, and release. Opaque content hashes stay in structured details / expanded human render, not the default LLM packet text.
 - Use `markdown` when headings, code blocks, lists, or tables matter.
 - Use `text` for compact triage.
+- Answer and explain always request citations and return at most 16,000 answer characters and 12 citation records to the model.
 - Avoid caching fetched docs in project files unless the user explicitly asks.
 
 ## Setup
@@ -81,25 +83,24 @@ Primary setup lives in the SF Pi Manager detail page:
 /sf-docs
 ```
 
-The detail page reports the credential source and prepares native login. Interactive setup collects a compatible docs endpoint URL, then uses SF Pi's shared fixed-mask component while Pi owns persistence and logout:
+The detail page reports the endpoint configuration source and prepares native login. Interactive setup collects and persists only an internally supplied docs endpoint URL while Pi owns persistence and logout:
 
 ```text
 /login sf-docs
 ```
 
-For non-persisted automation, set the environment credential and endpoint before starting Pi:
+For non-persisted automation, set the endpoint before starting Pi:
 
 ```text
-SF_DOCS_MCP_TOKEN=<token>
 SF_DOCS_MCP_ENDPOINT=https://docs.example.com/
 ```
 
-SF Docs ships with no default endpoint. Configure a compatible docs service URL through login or the environment variable.
+No access token is required, stored, or transmitted. SF Docs ships with no default endpoint. Configure the internally supplied docs service URL through login or the environment variable.
 
 ## Safety boundaries
 
-- Tokens are never stored in project settings, session entries, or rendered in status output.
-- Interactive entry is fixed-mask and TUI-only; RPC/JSON/print use existing credentials or environment automation.
+- `/login sf-docs` stores only the endpoint URL in Pi's provider-scoped configuration.
+- The configured service endpoint is omitted from model-visible status output.
 - Settings are non-secret preferences only.
 - The catalog cache stores only collection metadata, never search results, answer text, or fetched document bodies.
 - SF Docs uses the Salesforce Docs service as its retrieval surface; it does not scrape Salesforce websites, download documentation bundles, or build a local search index.

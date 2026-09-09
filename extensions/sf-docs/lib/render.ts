@@ -22,6 +22,7 @@ interface FetchRenderDocument extends DocsDocument {
   contentHash?: string;
   description?: string;
   status?: "ok" | "error";
+  available?: string;
   contentChars?: number;
   llmReturnedChars?: number;
   llmTruncated?: boolean;
@@ -178,9 +179,17 @@ export function formatAnswer(
         fact(
           "✅",
           "Sources",
-          `${citations.length} citation${citations.length === 1 ? "" : "s"}`,
+          `${citations.length} citation${citations.length === 1 ? "" : "s"}${details.citationsTruncated ? " shown · additional citations clipped" : ""}`,
           theme,
         ),
+        details.answerTruncated
+          ? fact(
+              "⚠",
+              "Bound",
+              `${numberValue(details.answerReturnedChars)} of ${numberValue(details.answerChars)} answer characters shown`,
+              theme,
+            )
+          : "",
         fact("👁", "Density", density, theme),
         "",
         visibleAnswer,
@@ -239,6 +248,10 @@ export function formatFetch(
           `${formatChars(returnedChars)} bounded source${maxTotalChars ? ` · cap ${formatChars(maxTotalChars)}` : ""}`,
           theme,
         ),
+        details.retrievalStatus
+          ? fact("✅", "Retrieval", String(details.retrievalStatus), theme)
+          : "",
+        details.contentStatus ? fact("📦", "Content", String(details.contentStatus), theme) : "",
         fact("👁", "Density", density, theme),
         totalContentChars
           ? fact("📚", "Source", `${formatChars(totalContentChars)} fetched`, theme)
@@ -512,6 +525,7 @@ function documentLines(
   const metadata = fetchMetadataLine(doc, expanded || density === "verbose");
   if (metadata) lines.push(dim(`     🏷 ${metadata}`, theme));
   if (doc.error) lines.push(`     ⚠ ${doc.error}`);
+  if (doc.available) lines.push(dim(`     Available: ${doc.available}`, theme));
   lines.push(
     dim(
       `     Source: ${formatChars(doc.contentChars ?? textLength(doc.content))} fetched · ${formatChars(doc.llmReturnedChars ?? textLength(doc.content))} sent to LLM${doc.llmTruncated ? " · clipped" : ""}${doc.metadataOnly ? " · metadata-only" : ""}`,

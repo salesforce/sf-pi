@@ -1,48 +1,76 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import { InMemoryCredentialStore, createModels } from "@earendil-works/pi-ai";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as types from "../lib/types.ts";
-import { normalizeEndpoint, resolveEndpoint, resolveTokenCandidates } from "../lib/auth.ts";
+import { createSfDocsProvider, normalizeEndpoint, resolveEndpoint } from "../lib/auth.ts";
 
-const tempDirs: string[] = [];
+let agentDir: string;
+
+beforeEach(() => {
+  agentDir = mkdtempSync(path.join(tmpdir(), "sf-docs-auth-"));
+  vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
+  vi.stubEnv("SF_DOCS_MCP_ENDPOINT", "");
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  rmSync(agentDir, { recursive: true, force: true });
 });
 
-function writeAuthFile(body: unknown): string {
-  const dir = mkdtempSync(path.join(tmpdir(), "sf-docs-auth-"));
-  tempDirs.push(dir);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(path.join(dir, "auth.json"), `${JSON.stringify(body)}\n`, "utf8");
-  vi.stubEnv("PI_CODING_AGENT_DIR", dir);
-  return dir;
+function writeAuthFile(body: unknown): void {
+  mkdirSync(agentDir, { recursive: true });
+  writeFileSync(path.join(agentDir, "auth.json"), `${JSON.stringify(body)}\n`, "utf8");
 }
 
-describe("sf-docs auth", () => {
-  it("ships no default docs endpoint", () => {
+describe("sf-docs endpoint configuration", () => {
+  it("ships with no default docs endpoint", () => {
     expect("DEFAULT_ENDPOINT" in types).toBe(false);
     expect(resolveEndpoint()).toMatchObject({ ok: false, source: "none" });
   });
 
-  it("resolves pi auth before env", () => {
-    expect(resolveTokenCandidates({ piAuthToken: "pi", envToken: "env" })).toEqual({
-      source: "pi-auth",
-      token: "pi",
+  it("stores only the endpoint through Pi-native login", async () => {
+    const provider = createSfDocsProvider();
+    const credentials = new InMemoryCredentialStore();
+    const models = createModels({ credentials });
+    models.setProvider(provider);
+
+    const credential = await models.login("sf-docs", "api_key", {
+      prompt: vi.fn(async () => "https://docs.example.test"),
+      notify: vi.fn(),
+    });
+
+    expect(credential).toEqual({
+      type: "api_key",
+      env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
+    });
+    expect(credential).not.toHaveProperty("key");
+    await expect(models.getAuth("sf-docs")).resolves.toMatchObject({
+      auth: { baseUrl: "https://docs.example.test/" },
+      env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
+      source: "Pi saved endpoint",
     });
   });
 
-  it("falls back to env token", () => {
-    expect(resolveTokenCandidates({ piAuthToken: "", envToken: "env" })).toEqual({
-      source: "env",
-      token: "env",
-    });
+  it("ignores a legacy saved key and resolves only its endpoint", async () => {
+    const provider = createSfDocsProvider();
+    const credentials = new InMemoryCredentialStore();
+    await credentials.modify("sf-docs", async () => ({
+      type: "api_key",
+      key: "legacy-value-must-not-be-used",
+      env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
+    }));
+    const models = createModels({ credentials });
+    models.setProvider(provider);
+
+    const resolved = await models.getAuth("sf-docs");
+    expect(resolved).toMatchObject({ auth: { baseUrl: "https://docs.example.test/" } });
+    expect(resolved?.auth.apiKey).toBeUndefined();
   });
 
-  it("normalizes endpoints and rejects unsafe credential destinations", () => {
+  it("normalizes endpoints and rejects unsafe destinations", () => {
     expect(normalizeEndpoint("https://docs.example.test")).toEqual({
       ok: true,
       endpoint: "https://docs.example.test/",
@@ -71,11 +99,10 @@ describe("sf-docs auth", () => {
     });
   });
 
-  it("resolves a saved credential endpoint before env", () => {
+  it("resolves a saved endpoint before the environment", () => {
     writeAuthFile({
       "sf-docs": {
         type: "api_key",
-        key: "sfmcp-must-not-leak",
         env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
       },
     });
@@ -87,7 +114,7 @@ describe("sf-docs auth", () => {
     });
   });
 
-  it("uses the env endpoint when no saved URL exists", () => {
+  it("uses the environment endpoint when no saved URL exists", () => {
     vi.stubEnv("SF_DOCS_MCP_ENDPOINT", "https://docs.example.test/");
     expect(resolveEndpoint()).toEqual({
       ok: true,

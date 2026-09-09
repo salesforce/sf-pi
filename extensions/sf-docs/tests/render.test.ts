@@ -99,12 +99,29 @@ describe("sf-docs render", () => {
     ).toContain("UNIQUE_ANSWER_TAIL");
   });
 
+  it("renders model-facing answer and citation bounds", () => {
+    const text = formatAnswer({
+      collection: "developer",
+      answer: "Bounded answer",
+      answerChars: 20_000,
+      answerReturnedChars: 16_000,
+      answerTruncated: true,
+      citationsTruncated: true,
+      citations: [{ title: "Apex", url: "https://developer.salesforce.com/docs/apex" }],
+    });
+
+    expect(text).toContain("additional citations clipped");
+    expect(text).toContain("16000 of 20000 answer characters shown");
+  });
+
   it("renders collapsed fetch as cards without full fetched bodies", () => {
     const text = formatFetch({
       collection: "admin",
       version: "current",
       locale: "en-us",
       displayDensity: "balanced",
+      retrievalStatus: "complete",
+      contentStatus: "truncated",
       totalContentChars: 15000,
       llmBudget: {
         maxTotalChars: 48000,
@@ -136,11 +153,37 @@ describe("sf-docs render", () => {
     );
     expect(text).toContain("abcdef12…");
     expect(text).toContain("LLM packet");
+    expect(text).toContain("Retrieval");
+    expect(text).toContain("complete");
+    expect(text).toContain("Content");
+    expect(text).toContain("truncated");
     expect(text).toContain("🏷 release 260 · product Platform");
     expect(text).toContain("Headings: Apex");
     expect(text).not.toContain("contentHash");
     expect(text).not.toContain("fedcba");
     expect(text).not.toContain("UNIQUE_FETCH_TAIL");
+  });
+
+  it("renders fetch recovery metadata for document errors", () => {
+    const text = formatFetch({
+      collection: "developer",
+      retrievalStatus: "failed",
+      contentStatus: "complete",
+      llmBudget: { maxTotalChars: 48000, returnedChars: 0 },
+      documents: [
+        {
+          id: "missing",
+          title: "Missing",
+          error: "not_found",
+          available: '{"locales":["en-us"]}',
+          contentChars: 0,
+          llmReturnedChars: 0,
+        },
+      ],
+    });
+
+    expect(text).toContain("not_found");
+    expect(text).toContain('Available: {"locales":["en-us"]}');
   });
 
   it("renders expanded fetch with bounded previews but not full bodies", () => {

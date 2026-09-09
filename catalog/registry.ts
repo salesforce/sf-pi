@@ -132,7 +132,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-docs",
     name: "SF Docs",
-    description: "Salesforce documentation lookup for agents and humans, with Pi-owned auth-store credentials, cited results, and a Manager settings surface.",
+    description: "Salesforce documentation lookup for agents and humans, with Pi-native endpoint configuration, cited results, and a Manager settings surface.",
     file: "extensions/sf-docs/index.ts",
     category: "agent-tool",
     maturity: "experimental",
@@ -140,7 +140,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     commands: ["/sf-docs"],
     providers: ["sf-docs"],
     tools: ["sf_docs"],
-    events: ["session_start","session_shutdown"],
+    events: ["session_start"],
     configurable: true,
     getConfigPanel: async () => {
       const mod = await import("../extensions/sf-docs/lib/config-panel.ts");

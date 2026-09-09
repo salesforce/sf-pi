@@ -1,28 +1,24 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { detectTokenSource, isDocsConfigured, resolveEndpoint } from "./auth.ts";
+import { resolveEndpoint } from "./auth.ts";
 import { formatCacheAge, readCatalogCache } from "./catalog-cache.ts";
 import { readEffectiveDocsPreferences } from "./preferences.ts";
 
 export function buildStatus(cwd: string): string {
-  const tokenSource = detectTokenSource();
   const endpoint = resolveEndpoint();
   const cache = readCatalogCache();
   const prefs = readEffectiveDocsPreferences(cwd);
   const lines = [
     "📚 SF Docs status",
     "",
-    `Connection: ${isDocsConfigured() ? "connected" : "not configured"}`,
-    `Token source: ${tokenSource}`,
+    `Configuration: ${endpoint.ok ? "ready" : "not configured"}`,
+    `Endpoint source: ${endpoint.source}`,
+    "Authentication: not required",
   ];
-  if (endpoint.ok === true) {
-    lines.push(`Endpoint: ${endpoint.endpoint} (${endpoint.source})`);
-    if (endpoint.warning) lines.push(`Warning: ${endpoint.warning}`);
-  } else if (endpoint.source === "none") {
-    lines.push("Endpoint: not configured");
-  } else {
-    lines.push(`Endpoint: invalid (${endpoint.source})`);
+  if (endpoint.ok && endpoint.warning) lines.push(`Warning: ${endpoint.warning}`);
+  if (endpoint.ok === false && endpoint.source !== "none") {
     lines.push(`Warning: ${endpoint.error}`);
   }
+  lines.push("Network verification: not checked");
   lines.push(
     `Catalog cache: ${cache.hit ? `${cache.collections?.length ?? 0} collections, ${formatCacheAge(cache.fetchedAt)}` : "empty"}`,
   );
@@ -33,7 +29,7 @@ export function buildStatus(cwd: string): string {
   lines.push(`- locale: ${prefs.defaultLocale}`);
   lines.push(`- fetch format: ${prefs.defaultFetchFormat}`);
   lines.push(`- page size: ${prefs.defaultPageSize}`);
-  lines.push(`- citations: ${prefs.includeCitations ? "on" : "off"}`);
+  lines.push("- citations: always on for answer/explain");
   lines.push(`- display density: ${prefs.displayDensity}`);
   lines.push(`- catalog cache: ${prefs.cacheCatalog ? "on" : "off"}`);
   return lines.join("\n");

@@ -16,7 +16,7 @@ export function createSfDocsConnectPanel(args: {
 
 export function createSfDocsDisconnectPanel(args: {
   theme: Theme;
-  tokenSourceLabel: string;
+  endpointSourceLabel: string;
   done: Done;
   disconnect: () => Promise<string> | string;
 }): Component & Focusable & { renderContent(width: number): string[] } {
@@ -62,8 +62,8 @@ class SfDocsConnectPanel implements Focusable {
     }
 
     const guidance = [
-      "Native login collects a compatible docs endpoint URL, then uses a fixed-mask SF Pi component. Pi owns persistence.",
-      "Existing saved credentials remain active. SF_DOCS_MCP_TOKEN and SF_DOCS_MCP_ENDPOINT remain the automation and CI fallbacks.",
+      "Native login collects and persists only an internally supplied docs endpoint URL. No access token is required or transmitted.",
+      "SF_DOCS_MCP_ENDPOINT remains the automation and CI fallback.",
     ];
     return [
       ` ${t.fg("accent", t.bold("Connect to SF Docs"))}`,
@@ -95,7 +95,7 @@ class SfDocsDisconnectPanel implements Focusable {
   constructor(
     private readonly args: {
       theme: Theme;
-      tokenSourceLabel: string;
+      endpointSourceLabel: string;
       done: Done;
       disconnect: () => Promise<string> | string;
     },
@@ -139,8 +139,8 @@ class SfDocsDisconnectPanel implements Focusable {
     return [
       ` ${t.fg("accent", t.bold("Disconnect SF Docs"))}`,
       ` ${t.fg("dim", "Prepare /logout sf-docs in Pi's editor for your review.")}`,
-      ` ${t.fg("dim", "No credential changes until you submit it; SF_DOCS_MCP_TOKEN is untouched.")}`,
-      ` ${t.fg("muted", `Current source: ${this.args.tokenSourceLabel}`)}`,
+      ` ${t.fg("dim", "No endpoint changes occur until you submit it; SF_DOCS_MCP_ENDPOINT is untouched.")}`,
+      ` ${t.fg("muted", `Current source: ${this.args.endpointSourceLabel}`)}`,
       "",
       ` ${confirm ? t.fg("accent", "→") : " "} ${confirm ? t.fg("accent", "Prepare native logout") : t.fg("text", "Prepare native logout")}`,
       ` ${!confirm ? t.fg("accent", "→") : " "} ${!confirm ? t.fg("accent", "Cancel") : t.fg("text", "Cancel")}`,

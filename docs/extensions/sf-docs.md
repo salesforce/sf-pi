@@ -1,16 +1,16 @@
 ---
 title: "SF Docs"
-description: "Salesforce documentation lookup for agents and humans, with Pi-owned auth-store credentials, cited results, and a Manager settings surface."
+description: "Salesforce documentation lookup for agents and humans, with Pi-native endpoint configuration, cited results, and a Manager settings surface."
 editLink: false
 ---
 
 # SF Docs
 
-<p class="sfpi-page-lead">Salesforce documentation lookup for agents and humans, with Pi-owned auth-store credentials, cited results, and a Manager settings surface.</p>
+<p class="sfpi-page-lead">Salesforce documentation lookup for agents and humans, with Pi-native endpoint configuration, cited results, and a Manager settings surface.</p>
 
 ## What it does
 
-Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to a user-configured Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport, stores the endpoint URL and token in Pi's auth store, and keeps settings limited to non-secret defaults. It ships with no default endpoint.
+Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to an internally supplied Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport. Pi-native `/login sf-docs` stores only the endpoint URL; no access token is required or transmitted, and the extension ships with no default endpoint.
 
 ## Start
 
@@ -30,10 +30,10 @@ Open its Manager detail or change its package state with:
 
 ## Safety notes
 
-- Interactive login collects a compatible docs endpoint URL, then uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials under provider id `sf-docs`. The extension ships with no default endpoint.
+- Interactive `/login sf-docs` collects and persists only an internally supplied endpoint URL under provider id `sf-docs`; no access token is required, stored, or transmitted. The extension ships with no default endpoint.
 - Uses native fetch plus a small local SSE parser; no MCP server, MCP SDK, or extra runtime dependency is required.
 - Caches only the collection catalog and never caches search results, answer text, fetched document bodies, prompts, or citations.
-- Tool output keeps URLs and citations visible while redacting token-bearing values from errors and UI surfaces.
+- Tool output keeps source URLs and always-on answer/explain citations visible, bounds model-facing text, distinguishes partial or failed retrieval from truncation, and keeps the configured service endpoint out of model-visible status output.
 
 ## Exact reference
 
@@ -48,7 +48,7 @@ Open its Manager detail or change its package state with:
 - **Commands:** `/sf-docs`
 - **LLM tools:** `sf_docs`
 - **Providers:** `sf-docs`
-- **Events/hooks:** `session_start`, `session_shutdown`
+- **Events/hooks:** `session_start`
 
 </details>
 

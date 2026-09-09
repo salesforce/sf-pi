@@ -1,7 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Collection-specific query defaults and bounded developer peer fallback. */
 import { DocsClient } from "./client.ts";
-import type { DocsSearchResult } from "./types.ts";
+import {
+  buildSearchRequest,
+  parseSearchResponse,
+  type SearchRequest,
+  type SearchResponse,
+} from "./protocol.ts";
 
 export interface CollectionQueryCompilation {
   query: string;
@@ -16,12 +21,7 @@ export interface DocsSlice {
   locale: string;
 }
 
-interface SearchResponse {
-  results?: DocsSearchResult[];
-  totalCount?: number;
-  error?: string;
-  [key: string]: unknown;
-}
+export type SearchOperationArgs = Omit<SearchRequest, "collection" | "version" | "locale">;
 
 export function compileCollectionQuery(
   collection: string,
@@ -45,7 +45,7 @@ export function compileCollectionQuery(
 
 export async function runSearchWithDeveloperPeerFallback(
   client: DocsClient,
-  args: Record<string, unknown>,
+  args: SearchOperationArgs,
   slice: DocsSlice,
   fallbackCollection: string | undefined,
   signal?: AbortSignal,
@@ -54,7 +54,9 @@ export async function runSearchWithDeveloperPeerFallback(
   slice: DocsSlice;
   collectionOverride?: { from: string; to: string; reason: "developer_reference_coverage" };
 }> {
-  const response = asSearchResponse(await client.callTool("search", { ...args, ...slice }, signal));
+  const response = parseSearchResponse(
+    await client.callTool("search", buildSearchRequest({ ...args, ...slice }), signal),
+  );
   if (
     response.error ||
     (response.results ?? []).length ||
@@ -65,8 +67,8 @@ export async function runSearchWithDeveloperPeerFallback(
   }
 
   const fallbackSlice = { ...slice, collection: fallbackCollection };
-  const fallbackResponse = asSearchResponse(
-    await client.callTool("search", { ...args, ...fallbackSlice }, signal),
+  const fallbackResponse = parseSearchResponse(
+    await client.callTool("search", buildSearchRequest({ ...args, ...fallbackSlice }), signal),
   );
   if (fallbackResponse.error || !(fallbackResponse.results ?? []).length) {
     return { response, slice };
@@ -90,10 +92,4 @@ function hasExplicitMulesoftVersion(query: string): boolean {
     ) ||
     /\/\d+\.\d+(?:\.\d+)?(?:\/|\b)/u.test(query),
   );
-}
-
-function asSearchResponse(value: unknown): SearchResponse {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as SearchResponse)
-    : {};
 }

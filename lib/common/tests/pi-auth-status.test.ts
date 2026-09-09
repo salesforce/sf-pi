@@ -66,7 +66,6 @@ describe("readPiAuthProviderStatus", () => {
     expect(readPiAuthProviderEnv("sf-docs", "SF_DOCS_MCP_ENDPOINT", file)).toBe(
       "https://docs.example.test/",
     );
-    expect(readPiAuthProviderEnv("sf-docs", "SF_DOCS_MCP_TOKEN", file)).toBeUndefined();
     expect(readPiAuthProviderEnv("sf-docs", "key", file)).toBeUndefined();
   });
 });

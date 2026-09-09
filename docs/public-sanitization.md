@@ -75,14 +75,15 @@ The SF Docs extension ships with no default endpoint or credentials. Public docs
 should use source-agnostic setup language:
 
 - say "compatible Salesforce docs endpoint" or "configured docs endpoint"
-- prefer `SF_DOCS_MCP_*` environment variables in public docs
+- refer only to `SF_DOCS_MCP_ENDPOINT` in public docs
 - use generic fixtures such as `https://docs.example.com` or
   `https://docs.example.test/`
 - avoid publishing private docs-service hostnames, internal routing details, or
   organization-specific setup URLs
 
-Interactive `/login sf-docs` collects the endpoint URL and token. The real
-service URL belongs in internal onboarding documentation, not this repository.
+Interactive `/login sf-docs` collects and persists only the endpoint URL; the
+service requires no access token. The real service URL belongs in internal
+onboarding documentation, not this repository.
 
 ## Diagnostics and artifacts
 

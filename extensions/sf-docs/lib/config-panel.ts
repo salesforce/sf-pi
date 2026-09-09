@@ -3,7 +3,7 @@
 import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
-import { detectTokenSource, isDocsConfigured, resolveEndpoint } from "./auth.ts";
+import { resolveEndpoint } from "./auth.ts";
 import {
   describePreferenceSource,
   readEffectiveDocsPreferences,
@@ -35,8 +35,8 @@ const SETTING_ROWS: readonly SettingRow[] = [
   {
     key: "defaultLocale",
     label: "Default locale",
-    description: "Docs locale used when sf_docs calls omit locale.",
-    values: ["en-us", "ja-jp", "de-de", "fr-fr", "es-mx", "pt-br", "zh-cn"],
+    description: "Use auto to let search/answer detect locale, or choose an explicit locale.",
+    values: ["auto", "en-us", "ja-jp", "de-de", "fr-fr", "es-mx", "pt-br", "zh-cn"],
   },
   {
     key: "defaultFetchFormat",
@@ -49,12 +49,6 @@ const SETTING_ROWS: readonly SettingRow[] = [
     label: "Search page size",
     description: "Default number of search results returned to the agent.",
     values: [3, 5, 10, 20],
-  },
-  {
-    key: "includeCitations",
-    label: "Include citations",
-    description: "Ask answer/explain actions to include citation arrays.",
-    values: [true, false],
   },
   {
     key: "displayDensity",
@@ -109,22 +103,15 @@ class SfDocsConfigPanel implements Focusable {
   renderContent(width: number): string[] {
     const t = this.theme;
     const pad = (line = "") => padAnsi(line, width);
-    const tokenSource = detectTokenSource();
     const endpoint = resolveEndpoint();
     const lines: string[] = [
       ` ${t.fg("accent", t.bold("📚 SF Docs Settings"))}`,
-      ` ${t.fg("dim", "Configure non-secret defaults. Use /login sf-docs for the endpoint URL and token.")}`,
+      ` ${t.fg("dim", "Configure non-secret defaults. Use /login sf-docs for the internally supplied endpoint URL.")}`,
       "",
-      ` ${isDocsConfigured() ? t.fg("success", "● Connected") : t.fg("error", "● Not configured")}`,
-      `   ${t.fg("muted", "Token source:")} ${t.fg("text", tokenSource)}`,
+      ` ${endpoint.ok ? t.fg("success", "● Configured") : t.fg("error", "● Not configured")}`,
+      `   ${t.fg("muted", "Endpoint source:")} ${t.fg("text", endpoint.source)}`,
+      `   ${t.fg("muted", "Authentication:")} ${t.fg("text", "not required")}`,
     ];
-    const endpointLabel =
-      endpoint.ok === true
-        ? `${endpoint.endpoint} (${endpoint.source})`
-        : endpoint.source === "none"
-          ? "not configured"
-          : `invalid (${endpoint.source})`;
-    lines.push(`   ${t.fg("muted", "Endpoint:")} ${t.fg("dim", endpointLabel)}`);
     if (endpoint.ok && endpoint.warning) lines.push(`   ${t.fg("warning", endpoint.warning)}`);
     if (endpoint.ok === false && endpoint.source !== "none") {
       lines.push(`   ${t.fg("warning", endpoint.error)}`);

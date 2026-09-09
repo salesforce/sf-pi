@@ -1,7 +1,8 @@
 ---
 id: "0060"
-status: accepted
+status: superseded
 date: 2026-06-23
+supersededBy: ["0111"]
 ---
 
 # SF Docs uses Pi auth store for its docs credential

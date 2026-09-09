@@ -32,6 +32,7 @@ describe("sf-docs preferences", () => {
   it("resolves project > global > default", () => {
     expect(prefs.readEffectiveDocsPreferences(cwd)).toMatchObject({
       defaultCollection: "developer",
+      defaultLocale: "auto",
       displayDensity: "balanced",
       sources: {
         defaultCollection: { scope: "default" },

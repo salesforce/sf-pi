@@ -56,7 +56,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0055: Manager detail and settings save contract](./0055-manager-detail-and-settings-save-contract.md) — 2026-06-18
 - [0057: DevBar consumes Pi runtime indicators without cloning the Pi footer](./0057-devbar-consumes-pi-runtime-indicators.md) — 2026-06-22
 - [0058: Agent Script Uses Bounded Salesforce Transport](./0058-agentscript-bounded-salesforce-transport.md) — 2026-06-21
-- [0060: SF Docs uses Pi auth store for its docs credential](./0060-sf-docs-uses-pi-auth-store.md) — 2026-06-23
 - [0061: SF Docs wraps MCP-over-HTTP directly instead of embedding an MCP runtime](./0061-sf-docs-wraps-mcp-over-http-directly.md) — 2026-06-23
 - [0062: SF Docs caches only the collection catalog](./0062-sf-docs-caches-only-the-collection-catalog.md) — 2026-06-23
 - [0063: SF Docs uses a small family-tool extension shape](./0063-sf-docs-uses-a-small-family-tool-extension-shape.md) — 2026-06-23
@@ -103,6 +102,8 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0108: Managed skill invocation stamps use an effective tree](./0108-managed-skill-invocation-stamps.md) — 2026-08-21
 - [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25
 - [0110: SF Docs ships with no default endpoint](./0110-sf-docs-ships-with-no-default-endpoint.md) — 2026-09-08
+- [0111: SF Docs Uses Endpoint-Only Pi Login](./0111-sf-docs-uses-endpoint-only-pi-login.md) — 2026-09-09
+- [0112: SF Docs Separates Protocol Validity from Evidence Outcomes](./0112-sf-docs-separates-protocol-validity-from-evidence-outcomes.md) — 2026-09-09
 
 ## Proposed
 
@@ -121,6 +122,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0047: SF Guardrail settings use a section chooser](./0047-sf-guardrail-settings-use-section-chooser.md) — 2026-06-15 — superseded by [ADR 0049](./0049-sf-guardrail-routine-preferences-live-in-pi-settings.md)
 - [0056: Pi 0.79.9 runtime floor](./0056-pi-0799-runtime-floor.md) — 2026-06-21 — superseded by [ADR 0059](./0059-pi-07910-runtime-floor.md)
 - [0059: Pi 0.79.10 runtime floor](./0059-pi-07910-runtime-floor.md) — 2026-06-22 — superseded by [ADR 0066](./0066-pi-0802-runtime-floor.md)
+- [0060: SF Docs uses Pi auth store for its docs credential](./0060-sf-docs-uses-pi-auth-store.md) — 2026-06-23 — superseded by [ADR 0111](./0111-sf-docs-uses-endpoint-only-pi-login.md)
 - [0066: Pi 0.80.2 runtime floor](./0066-pi-0802-runtime-floor.md) — 2026-06-23 — superseded by [ADR 0076](./0076-pi-0806-runtime-delegation.md)
 - [0088: Pi 0.82.0 Runtime Floor](./0088-pi-082-runtime-floor.md) — 2026-07-27 — superseded by [ADR 0109](./0109-pi-084-runtime-floor.md)
 

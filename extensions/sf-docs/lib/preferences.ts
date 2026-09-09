@@ -11,10 +11,9 @@ import type { DocsScope, EffectiveSfDocsPreferences, SfDocsPreferences } from ".
 export const DEFAULT_DOCS_PREFERENCES: SfDocsPreferences = {
   defaultCollection: "developer",
   defaultVersion: "current",
-  defaultLocale: "en-us",
+  defaultLocale: "auto",
   defaultFetchFormat: "markdown",
   defaultPageSize: 5,
-  includeCitations: true,
   displayDensity: "balanced",
   cacheCatalog: true,
 };
@@ -108,7 +107,6 @@ function sanitizePreferences(value: unknown): Partial<SfDocsPreferences> {
   if (typeof input.defaultPageSize === "number" && Number.isFinite(input.defaultPageSize)) {
     out.defaultPageSize = Math.min(60, Math.max(1, Math.round(input.defaultPageSize)));
   }
-  if (typeof input.includeCitations === "boolean") out.includeCitations = input.includeCitations;
   if (
     input.displayDensity === "compact" ||
     input.displayDensity === "balanced" ||

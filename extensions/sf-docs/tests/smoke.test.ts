@@ -37,7 +37,7 @@ describe("sf-docs", () => {
     expect(command?.getArgumentCompletions?.("status he")).toBeNull();
   });
 
-  it("provides Manager action panels for credential input flows", async () => {
+  it("provides Manager action panels for endpoint configuration flows", async () => {
     const mod = await import("../index.ts");
     const listeners = new Map<string, Array<(payload: unknown) => void>>();
     const pi = {
@@ -64,12 +64,10 @@ describe("sf-docs", () => {
   });
 
   it("publishes a cache-first DevBar pill from local configuration only", async () => {
-    const previousToken = process.env.SF_DOCS_MCP_TOKEN;
     const previousEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
     const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
     const agentDir = mkdtempSync(path.join(tmpdir(), "sf-docs-footer-"));
     process.env.PI_CODING_AGENT_DIR = agentDir;
-    delete process.env.SF_DOCS_MCP_TOKEN;
     delete process.env.SF_DOCS_MCP_ENDPOINT;
     try {
       const mod = await import("../index.ts");
@@ -101,7 +99,6 @@ describe("sf-docs", () => {
       );
       expect(setStatus).toHaveBeenCalledWith("sf-docs-status", undefined);
 
-      process.env.SF_DOCS_MCP_TOKEN = "test-token";
       process.env.SF_DOCS_MCP_ENDPOINT = "https://docs.example.test/";
       await sessionStart?.(
         {},
@@ -117,8 +114,6 @@ describe("sf-docs", () => {
       );
       expect(setStatus).toHaveBeenCalledWith("sf-docs-status", expect.stringContaining("Docs ✓"));
     } finally {
-      if (previousToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-      else process.env.SF_DOCS_MCP_TOKEN = previousToken;
       if (previousEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
       else process.env.SF_DOCS_MCP_ENDPOINT = previousEndpoint;
       if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
@@ -127,33 +122,66 @@ describe("sf-docs", () => {
     }
   });
 
-  const liveIt =
-    process.env.SF_DOCS_LIVE_SMOKE &&
-    process.env.SF_DOCS_MCP_TOKEN &&
-    process.env.SF_DOCS_MCP_ENDPOINT
-      ? it
-      : it.skip;
-  liveIt("live docs service preserves the catalog and search protocol", async () => {
-    const client = new DocsClient({
-      endpoint: process.env.SF_DOCS_MCP_ENDPOINT!,
-      token: process.env.SF_DOCS_MCP_TOKEN!,
-      timeoutMs: 30000,
-    });
-    const catalog = (await client.callTool("list", {})) as {
-      collections?: Array<Record<string, unknown>>;
-    };
-    expect(Array.isArray(catalog.collections)).toBe(true);
-    expect(catalog.collections?.some((collection) => collection.collection === "developer")).toBe(
-      true,
-    );
+  const liveIt = process.env.SF_DOCS_LIVE_SMOKE && process.env.SF_DOCS_MCP_ENDPOINT ? it : it.skip;
+  liveIt(
+    "live docs service preserves the unauthenticated tool protocol",
+    async () => {
+      const client = new DocsClient({
+        endpoint: process.env.SF_DOCS_MCP_ENDPOINT!,
+        timeoutMs: 30000,
+      });
+      const catalog = (await client.callTool("list", {})) as {
+        collections?: Array<Record<string, unknown>>;
+      };
+      expect(Array.isArray(catalog.collections)).toBe(true);
+      expect(catalog.collections?.some((collection) => collection.collection === "developer")).toBe(
+        true,
+      );
 
-    const search = (await client.callTool("search", {
-      collection: "developer",
-      version: "current",
-      locale: "en-us",
-      query: '"Named Credentials"',
-      pageSize: 1,
-    })) as { results?: unknown[] };
-    expect(Array.isArray(search.results)).toBe(true);
-  });
+      const search = (await client.callTool("search", {
+        collection: "developer",
+        version: "current",
+        query: '"Named Credentials"',
+        pageSize: 1,
+      })) as {
+        results?: Array<{
+          id?: string;
+          url?: string;
+          collection?: string;
+          version?: string;
+          locale?: string;
+        }>;
+      };
+      const candidate = search.results?.[0];
+      expect(candidate?.id).toBeTruthy();
+      expect(candidate?.url).toBeTruthy();
+
+      const fetched = (await client.callTool("fetch", {
+        ids: [candidate!.id],
+        collection: candidate!.collection ?? "developer",
+        version: candidate!.version ?? "current",
+        locale: candidate!.locale,
+        format: "markdown",
+      })) as { documents?: Array<{ content?: string }> };
+      expect(fetched.documents?.[0]?.content).toBeTruthy();
+
+      const answered = (await client.callTool("answer", {
+        query: "What is a Salesforce named credential used for?",
+        collection: "developer",
+        version: "current",
+        cite: true,
+      })) as { answer?: string; citations?: unknown[] };
+      expect(answered.answer).toBeTruthy();
+      expect(answered.citations?.length).toBeGreaterThan(0);
+
+      const explained = (await client.callTool("explain", {
+        query: "Summarize this document.",
+        url: candidate!.url,
+        cite: true,
+      })) as { answer?: string; explanation?: string; citations?: unknown[] };
+      expect(explained.answer ?? explained.explanation).toBeTruthy();
+      expect(explained.citations?.length).toBeGreaterThan(0);
+    },
+    120_000,
+  );
 });

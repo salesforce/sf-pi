@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Pure SF Docs footer classification and compact DevBar rendering. */
-import type { EndpointResolution, TokenSource } from "./types.ts";
+import type { EndpointResolution } from "./types.ts";
 
 export type DocsFooterKind = "not-configured" | "setup" | "ready";
 
@@ -13,24 +13,12 @@ export interface DocsFooterStatusInput {
   kind: DocsFooterKind;
 }
 
-export function classifyDocsFooterStatus(input: {
-  tokenSource: TokenSource;
-  endpoint: EndpointResolution;
-}): DocsFooterKind {
-  const tokenConfigured = input.tokenSource !== "none";
-  const endpointOk = input.endpoint.ok === true;
-  const endpointPresent = input.endpoint.source !== "none";
-  if (tokenConfigured && endpointOk) return "ready";
-  if (!tokenConfigured && !endpointPresent) return "not-configured";
-  return "setup";
+export function classifyDocsFooterStatus(endpoint: EndpointResolution): DocsFooterKind {
+  if (endpoint.ok) return "ready";
+  return endpoint.source === "none" ? "not-configured" : "setup";
 }
 
-/**
- * Render a compact Docs pill.
- *
- * Fully unconfigured stays off the bar so public installs stay quiet.
- * Partial setup (token XOR endpoint, or an invalid URL) is the upgrade footgun.
- */
+/** Render a compact Docs pill without exposing the configured endpoint. */
 export function formatDocsFooterStatus(
   input: DocsFooterStatusInput,
   theme: DocsFooterTheme,

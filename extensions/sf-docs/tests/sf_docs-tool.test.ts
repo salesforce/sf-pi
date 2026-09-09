@@ -6,7 +6,6 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let tempAgentDir: string;
-let originalToken: string | undefined;
 let originalEndpoint: string | undefined;
 
 vi.mock("@earendil-works/pi-coding-agent", async () => {
@@ -19,13 +18,10 @@ vi.mock("@earendil-works/pi-coding-agent", async () => {
 describe("sf_docs tool", () => {
   beforeEach(() => {
     tempAgentDir = mkdtempSync(path.join(tmpdir(), "sf-docs-tool-"));
-    originalToken = process.env.SF_DOCS_MCP_TOKEN;
     originalEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
   });
 
   afterEach(() => {
-    if (originalToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = originalToken;
     if (originalEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = originalEndpoint;
     vi.unstubAllGlobals();
@@ -41,6 +37,7 @@ describe("sf_docs tool", () => {
     const tool = registerTool.mock.calls[0]?.[0];
     expect(tool.name).toBe("sf_docs");
     expect(tool.promptGuidelines.join("\n")).toMatch(/search.*fetch/i);
+    expect(tool.parameters.properties).not.toHaveProperty("cite");
   });
 
   it("includes search result ids and URLs in tool content", async () => {
@@ -65,9 +62,7 @@ describe("sf_docs tool", () => {
   });
 
   it("rejects Salesforce release numbers in the docs version field", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn() as unknown as typeof fetch;
     vi.stubGlobal("fetch", fetchMock);
@@ -88,8 +83,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -105,9 +98,7 @@ describe("sf_docs tool", () => {
   });
 
   it("distills Salesforce Help URLs before search", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const searchCalls: Array<Record<string, unknown>> = [];
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -148,8 +139,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -173,7 +162,6 @@ describe("sf_docs tool", () => {
   });
 
   it("falls back from developer to legacydeveloper when reference coverage is missing", async () => {
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const calls: Array<Record<string, unknown>> = [];
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -232,7 +220,6 @@ describe("sf_docs tool", () => {
   });
 
   it("falls back from legacydeveloper to developer as reference content migrates", async () => {
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const collections: string[] = [];
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -287,7 +274,6 @@ describe("sf_docs tool", () => {
   });
 
   it("uses peer reference coverage before answering", async () => {
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const calls: Array<{ name: string; collection: string }> = [];
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -337,7 +323,6 @@ describe("sf_docs tool", () => {
   });
 
   it("adds the MuleSoft latest filter unless a version is requested", async () => {
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const queries: string[] = [];
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -390,9 +375,7 @@ describe("sf_docs tool", () => {
   });
 
   it("keeps weak modern developer searches in developer", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -421,8 +404,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -432,9 +413,7 @@ describe("sf_docs tool", () => {
   });
 
   it("returns balanced MCP capability summaries for collections", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -481,8 +460,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -513,9 +490,7 @@ describe("sf_docs tool", () => {
   });
 
   it("recovers failed Help URL fetches through distilled search and indexed ids", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -586,8 +561,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -613,9 +586,7 @@ describe("sf_docs tool", () => {
   });
 
   it("preserves release filters when recovering failed release-note URL fetches", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const searchQueries: string[] = [];
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -661,8 +632,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -679,9 +648,7 @@ describe("sf_docs tool", () => {
   });
 
   it("keeps release-note searches as discovery when only current docs match release metadata", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -716,8 +683,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -733,9 +698,7 @@ describe("sf_docs tool", () => {
   });
 
   it("fails release-note answers when citations are mostly current docs, not release-note evidence", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -795,8 +758,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -811,9 +772,7 @@ describe("sf_docs tool", () => {
   });
 
   it("biases seasonal release-note answers to the admin collection", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -821,8 +780,8 @@ describe("sf_docs tool", () => {
         expect(body.params.arguments).toMatchObject({
           collection: "admin",
           version: "current",
-          locale: "en-us",
         });
+        expect(body.params.arguments).not.toHaveProperty("locale");
         expect(String(body.params.arguments.query)).toContain("+release:260");
         return docsResponse({
           results: [
@@ -840,8 +799,9 @@ describe("sf_docs tool", () => {
       expect(body.params.arguments).toMatchObject({
         collection: "admin",
         version: "current",
-        locale: "en-us",
+        cite: true,
       });
+      expect(body.params.arguments).not.toHaveProperty("locale");
       expect(String(body.params.arguments.query)).toContain("+release:260");
       return docsResponse({
         answer: "Spring summary",
@@ -873,8 +833,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -889,9 +847,7 @@ describe("sf_docs tool", () => {
   });
 
   it("fails release-note answers when top citations match release but not product scope", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -957,8 +913,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -973,9 +927,7 @@ describe("sf_docs tool", () => {
   });
 
   it("fails release-note answers when the MCP evidence gate has no matches", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -1001,8 +953,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -1018,22 +968,18 @@ describe("sf_docs tool", () => {
   });
 
   it("uses a default summary query for explain by URL", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
       expect(body.params.name).toBe("explain");
-      expect(body.params.arguments).toMatchObject({
-        collection: "developer",
-        version: "current",
-        locale: "en-us",
+      expect(body.params.arguments).toEqual({
         query: "Summarize this document.",
         url: "https://developer.salesforce.com/docs/example",
+        cite: true,
       });
       return new Response(
-        'event: message\ndata: {"result":{"content":[{"type":"text","text":"{\\"answer\\":\\"Summary\\"}"}]},"jsonrpc":"2.0","id":1}\n\n',
+        'event: message\ndata: {"result":{"content":[{"type":"text","text":"{\\"answer\\":\\"Summary\\",\\"citations\\":[]}"}]},"jsonrpc":"2.0","id":1}\n\n',
         { status: 200, headers: { "content-type": "text/event-stream" } },
       );
     }) as unknown as typeof fetch;
@@ -1055,8 +1001,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -1066,9 +1010,7 @@ describe("sf_docs tool", () => {
   });
 
   it("builds a bounded fetch evidence packet without duplicating bodies in details", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const longBody = `# Apex\n\n${"Source text. ".repeat(2000)}UNIQUE_DETAILS_BODY_TAIL`;
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
@@ -1129,8 +1071,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -1152,6 +1092,8 @@ describe("sf_docs tool", () => {
       ok: true,
       action: "fetch",
       displayDensity: "balanced",
+      retrievalStatus: "complete",
+      contentStatus: "truncated",
       llmBudget: { perDocumentChars: 12000, maxTotalChars: 48000 },
     });
     const documents = result.details.documents as Array<Record<string, unknown>>;
@@ -1169,9 +1111,7 @@ describe("sf_docs tool", () => {
   });
 
   it("normalizes html headings and previews for fetch details", async () => {
-    const oldToken = process.env.SF_DOCS_MCP_TOKEN;
     const oldEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
     const htmlBody = `<div><h1>The WITH SECURITY_ENFORCED SOQL Clause is Removed&nbsp;</h1><script >window.bad = true;</script\t\n bar><p>Use <code>WITH USER_MODE</code> &amp; explicit access modes.</p><p>Escaped &amp;lt;script&amp;gt; stays text.</p></div>`;
     const fetchMock = vi.fn(
@@ -1219,8 +1159,6 @@ describe("sf_docs tool", () => {
       },
     );
 
-    if (oldToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = oldToken;
     if (oldEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = oldEndpoint;
     vi.unstubAllGlobals();
@@ -1234,8 +1172,6 @@ describe("sf_docs tool", () => {
   });
 
   it("fails closed when the configured endpoint is invalid", async () => {
-    const secret = "sfdocs_invalid_endpoint_sentinel";
-    process.env.SF_DOCS_MCP_TOKEN = secret;
     process.env.SF_DOCS_MCP_ENDPOINT = "not-a-url";
     const fetchMock = vi.fn() as unknown as typeof fetch;
     vi.stubGlobal("fetch", fetchMock);
@@ -1252,11 +1188,9 @@ describe("sf_docs tool", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.details).toMatchObject({ ok: false, reason: "invalid_endpoint" });
-    expect(JSON.stringify(result)).not.toContain(secret);
   });
 
   it("returns setup guidance when the endpoint is missing", async () => {
-    process.env.SF_DOCS_MCP_TOKEN = "test-token";
     delete process.env.SF_DOCS_MCP_ENDPOINT;
     vi.resetModules();
     const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
@@ -1274,29 +1208,6 @@ describe("sf_docs tool", () => {
       recover_via: { command: "/sf-docs connect", action: "status" },
     });
     expect(result.content[0].text).toMatch(/endpoint is not configured/i);
-  });
-
-  it("returns setup guidance when auth is missing", async () => {
-    const old = process.env.SF_DOCS_MCP_TOKEN;
-    delete process.env.SF_DOCS_MCP_TOKEN;
-    vi.resetModules();
-    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
-    const registerTool = vi.fn();
-    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
-    const tool = registerTool.mock.calls[0]?.[0];
-    const result = await tool.execute("id", { action: "collections" }, undefined, undefined, {
-      cwd: process.cwd(),
-      modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
-    });
-    if (old === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
-    else process.env.SF_DOCS_MCP_TOKEN = old;
-    expect(result.details).toMatchObject({
-      ok: false,
-      action: "collections",
-      reason: "missing_auth",
-      recover_via: { command: "/sf-docs connect", action: "status" },
-    });
-    expect(result.content[0].text).toMatch(/not connected/i);
   });
 });
 

@@ -7,14 +7,15 @@ export type SfDocsCommandAction =
 export const SF_DOCS_ACTIONS: SfPiCommandAction<SfDocsCommandAction>[] = [
   {
     value: "connect",
-    label: "Connect with masked login",
-    description: "Prepare native /login with SF Pi's fixed-mask credential component.",
+    label: "Configure endpoint",
+    description: "Prepare native /login to save an internally supplied endpoint URL.",
     group: "Connection",
   },
   {
     value: "disconnect",
     label: "Disconnect",
-    description: "Prepare a native logout handoff. Environment variables are left untouched.",
+    description:
+      "Prepare native logout for the saved endpoint. Environment variables are untouched.",
     group: "Connection",
   },
   {
@@ -57,17 +58,17 @@ export function renderHelp(): string {
     "",
     "Commands:",
     "- `/sf-docs` — open the SF Pi Manager detail page.",
-    "- `/sf-docs connect` — prepare fixed-mask native `/login sf-docs`.",
-    "- `/sf-docs disconnect` — prefill native logout for review; env vars are untouched.",
-    "- `/sf-docs status` — show auth, endpoint, defaults, and cache status.",
+    "- `/sf-docs connect` — prepare native `/login sf-docs` for endpoint configuration.",
+    "- `/sf-docs disconnect` — prefill native logout for the saved endpoint; env vars are untouched.",
+    "- `/sf-docs status` — show endpoint configuration, defaults, and cache status.",
     "- `/sf-docs collections` — list available docs collections.",
     "- `/sf-docs refresh` — refresh the collection catalog cache.",
     "- `/sf-docs cheatsheet` — show the extension-owned usage cheatsheet.",
     "",
-    "Credential setup:",
-    "- `/login sf-docs` collects a compatible docs endpoint URL, then uses SF Pi's fixed-mask token component. Pi owns persistence.",
-    "- `SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT` remain the non-persisted automation fallbacks.",
-    "- Existing Pi API-key and OAuth credentials remain compatible; re-run login to attach an endpoint URL.",
+    "Endpoint setup:",
+    "- `/login sf-docs` collects and persists only an internally supplied docs endpoint URL.",
+    "- No access token is required, stored, or transmitted.",
+    "- `SF_DOCS_MCP_ENDPOINT` remains the non-persisted automation fallback.",
     "- SF Docs ships with no default endpoint.",
   ].join("\n");
 }

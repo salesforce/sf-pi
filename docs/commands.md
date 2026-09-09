@@ -82,7 +82,7 @@ _Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, 
 
 ### [SF Docs](./extensions/sf-docs)
 
-_Salesforce documentation lookup for agents and humans, with Pi-owned auth-store credentials, cited results, and a Manager settings surface._
+_Salesforce documentation lookup for agents and humans, with Pi-native endpoint configuration, cited results, and a Manager settings surface._
 
 - Default: **on**
 - Commands: `/sf-docs`

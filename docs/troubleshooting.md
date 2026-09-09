@@ -156,7 +156,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Docs](./extensions/sf-docs.md#troubleshooting)**
 
-- SF Docs is not connected
+- SF Docs is not configured
 - Collections look stale
 - Fetch returns the wrong locale or version
 

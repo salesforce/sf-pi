@@ -5,7 +5,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { getDocsAuth } from "./auth.ts";
+import { getDocsEndpoint } from "./auth.ts";
 import { DocsClient } from "./client.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./catalog-cache.ts";
 import {
@@ -16,12 +16,34 @@ import {
   compileCollectionQuery,
   runSearchWithDeveloperPeerFallback,
   type CollectionQueryCompilation,
+  type SearchOperationArgs,
 } from "./collection-retrieval.ts";
 import {
   planDeveloperReferenceRouting,
   type DeveloperReferenceRoutingPlan,
 } from "./developer-reference.ts";
+import {
+  EVIDENCE_PREVIEW_CHAR_LIMIT,
+  buildAnswerEvidencePacket,
+  buildFetchEvidencePacket,
+  classifyFetchDocuments,
+  fetchContentStatus,
+  formatFetchOutcome,
+  previewPlainText,
+  structuredPreview,
+} from "./evidence.ts";
 import { readEffectiveDocsPreferences } from "./preferences.ts";
+import {
+  buildAnswerRequest,
+  buildFetchRequest,
+  buildExplainRequest,
+  buildSearchRequest,
+  parseAnswerResponse,
+  parseFetchResponse,
+  parseListResponse,
+  parseSearchResponse,
+  type SearchResponse,
+} from "./protocol.ts";
 import { buildStatus } from "./status.ts";
 import { renderToolCall, renderToolResult, clipText } from "./render.ts";
 import {
@@ -50,32 +72,17 @@ import {
   resultMatchesRelease,
 } from "./release-notes.ts";
 
-interface SearchResponse {
-  results?: DocsSearchResult[];
-  totalCount?: number;
-  [key: string]: unknown;
+interface DistilledServiceError {
+  error: string;
+  requested?: Record<string, unknown>;
+  available?: string;
 }
-
-interface FetchResponse {
-  documents?: DocsDocument[];
-  [key: string]: unknown;
-}
-
-interface AnswerResponse {
-  answer?: string;
-  explanation?: string;
-  citations?: DocsCitation[];
-  [key: string]: unknown;
-}
-
-const FETCH_PER_DOCUMENT_CHAR_LIMIT = 12000;
-const FETCH_TOTAL_CHAR_LIMIT = 48000;
-const FETCH_DETAILS_PREVIEW_CHAR_LIMIT = 1600;
 
 interface DistilledSearchRun {
   requests: DistilledSearchRequest[];
   batches: DistilledSearchBatch[];
   ranked: RankedDistilledResult[];
+  serviceErrors: DistilledServiceError[];
 }
 
 type DocsEvidenceStatus =
@@ -114,6 +121,8 @@ interface FetchRecoveryResult {
   slice: { collection: string; version: string; locale: string };
   recoveredRequest?: { ids?: string[]; urls?: string[]; format: "text" | "markdown" | "html" };
   resolved?: RankedDistilledResult;
+  failureReason?: "no_recovery_candidate" | "recovery_fetch_failed" | "docs_service_error";
+  failureMessage?: string;
 }
 
 const Params = Type.Object({
@@ -128,7 +137,9 @@ const Params = Type.Object({
   version: Type.Optional(
     Type.String({ description: "Collection version. Defaults to settings/current." }),
   ),
-  locale: Type.Optional(Type.String({ description: "Docs locale. Defaults to settings/en-us." })),
+  locale: Type.Optional(
+    Type.String({ description: "Docs locale. Defaults to settings/auto-detection." }),
+  ),
   page: Type.Optional(Type.Number({ description: "Search page number. Defaults to 1." })),
   pageSize: Type.Optional(
     Type.Number({ description: "Search result count. Defaults to settings." }),
@@ -142,9 +153,6 @@ const Params = Type.Object({
   ),
   id: Type.Optional(Type.String({ description: "Single document id for explain." })),
   url: Type.Optional(Type.String({ description: "Single document URL for explain." })),
-  cite: Type.Optional(
-    Type.Boolean({ description: "Include citations for answer/explain. Defaults to settings." }),
-  ),
   refresh: Type.Optional(Type.Boolean({ description: "Bypass catalog cache for collections." })),
 });
 
@@ -161,7 +169,6 @@ type Params = {
   urls?: string[];
   id?: string;
   url?: string;
-  cite?: boolean;
   refresh?: boolean;
 };
 
@@ -196,16 +203,15 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       }
       if (input.action === "cheatsheet") return cheatsheetResult(prefs.displayDensity);
 
-      const auth = await getDocsAuth(ctx);
-      if (auth.ok === false) {
-        return fail(input.action, auth.message, {
-          reason: auth.reason,
+      const endpoint = await getDocsEndpoint(ctx);
+      if (endpoint.ok === false) {
+        return fail(input.action, endpoint.message, {
+          reason: endpoint.reason,
           recover_via: { command: "/sf-docs connect", action: "status" },
         });
       }
       const client = new DocsClient({
-        endpoint: auth.endpoint,
-        token: auth.token,
+        endpoint: endpoint.endpoint,
         timeoutMs: timeoutForAction(input.action),
       });
       const collectionResolution = resolveCollectionName(
@@ -253,9 +259,15 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           }
           const listArgs: Record<string, unknown> = {};
           if (input.collection) listArgs.collections = [slice.collection];
-          const response = (await client.callTool("list", listArgs, signal)) as {
-            collections?: DocsCollection[];
-          };
+          const response = parseListResponse(await client.callTool("list", listArgs, signal));
+          const serviceError = docsServiceError(response);
+          if (serviceError) {
+            return fail("collections", serviceError, {
+              reason: "docs_service_error",
+              requested: response.requested,
+              available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
+            });
+          }
           const collections = response.collections ?? [];
           if (prefs.cacheCatalog && !input.collection) writeCatalogCache(collections);
           return collectionsResult(
@@ -306,6 +318,19 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               },
               signal,
             );
+            if (allDistilledSearchesFailed(distilledSearch)) {
+              const serviceError = distilledSearch.serviceErrors[0];
+              return fail("search", formatDistilledServiceError(serviceError), {
+                ...actionSlice,
+                query: input.query,
+                reason: "docs_service_error",
+                requested: serviceError?.requested,
+                available: serviceError?.available,
+                resolution: buildDistillationResolution(distilled, distilledSearch, {
+                  status: "service_error",
+                }),
+              });
+            }
             const response = {
               results: distilledSearch.ranked.slice(0, pageSize),
               totalCount: distilledSearch.ranked.length,
@@ -336,8 +361,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             });
           }
 
-          const searchArgs: Record<string, unknown> = {
-            ...actionSlice,
+          const searchArgs: SearchOperationArgs = {
             query: actionQuery,
             page: input.page ?? 1,
             pageSize,
@@ -364,6 +388,8 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               ...resultSlice,
               query: input.query,
               reason: "docs_service_error",
+              requested: response.requested,
+              available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
             });
           }
           const text = [
@@ -415,22 +441,25 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
                 referencePlan,
               )
             : undefined;
-          const args: Record<string, unknown> = {
+          const args = buildFetchRequest({
             ...actionSlice,
             format,
-          };
-          if (requested.ids) args.ids = requested.ids;
-          if (requested.urls) args.urls = requested.urls;
-          const response = asFetchResponse(await client.callTool("fetch", args, signal));
+            ids: requested.ids,
+            urls: requested.urls,
+          });
+          const response = parseFetchResponse(await client.callTool("fetch", args, signal));
           const serviceError = docsServiceError(response);
           if (serviceError) {
             return fail("fetch", serviceError, {
               ...actionSlice,
-              requested,
+              requested: response.requested ?? requested,
+              available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
               reason: "docs_service_error",
             });
           }
           const docs = response.documents ?? [];
+          const requestedCount = requested.ids?.length ?? requested.urls?.length ?? 0;
+          const directOutcome = classifyFetchDocuments(docs, requestedCount);
           const recoveryPlan =
             requested.urls?.length === 1
               ? distillDocsQuery(requested.urls[0], {
@@ -438,7 +467,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
                   explicitCollection: input.collection ? actionSlice.collection : undefined,
                 })
               : undefined;
-          if (recoveryPlan && fetchLooksRecoverable(docs)) {
+          if (recoveryPlan && directOutcome.retrievalStatus === "failed") {
             const recovery = await recoverFetchByDistilledSearch(
               client,
               recoveryPlan,
@@ -451,6 +480,11 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             );
             if (recovery.recovered) {
               const packet = buildFetchEvidencePacket(recovery.docs, recovery.slice);
+              const recoveryOutcome = classifyFetchDocuments(
+                recovery.docs,
+                recovery.recoveredRequest?.ids?.length ?? 1,
+              );
+              const contentStatus = fetchContentStatus(packet);
               const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
                 version: actionSlice.version,
                 locale: actionSlice.locale,
@@ -458,7 +492,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               const note = `Recovered by searching distilled docs locator: ${recoveryPlan.semanticQuery}`;
               return ok(
                 "fetch",
-                `${formatQueryPlanText(queryPlan)}\n\n${note}\n\n${packet.text || "No documents returned."}`,
+                `${formatQueryPlanText(queryPlan)}\n\n${note}\n${formatFetchOutcome(recoveryOutcome.retrievalStatus, contentStatus)}\n\n${packet.text || "No documents returned."}`,
                 {
                   ...recovery.slice,
                   requested,
@@ -469,6 +503,8 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
                   totalDocuments: packet.documents.length,
                   totalContentChars: packet.totalContentChars,
                   llmBudget: packet.llmBudget,
+                  retrievalStatus: recoveryOutcome.retrievalStatus,
+                  contentStatus,
                   resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
                     status: "recovered",
                     resolvedId: recovery.resolved?.id,
@@ -479,15 +515,24 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               );
             }
 
-            const packet = buildFetchEvidencePacket(docs, actionSlice);
+            const failureDocs = recovery.docs.length ? recovery.docs : docs;
+            const failureSlice = recovery.docs.length ? recovery.slice : actionSlice;
+            const packet = buildFetchEvidencePacket(failureDocs, failureSlice);
+            const contentStatus = fetchContentStatus(packet);
             const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
               version: actionSlice.version,
               locale: actionSlice.locale,
             });
+            const recoveryFailed = recovery.failureReason === "recovery_fetch_failed";
+            const recoveryServiceError = recovery.failureReason === "docs_service_error";
             const text = [
               formatQueryPlanText(queryPlan),
-              `Direct URL fetch was not usable. Distilled docs locator query was ambiguous: ${recoveryPlan.semanticQuery}`,
+              recovery.failureMessage ??
+                (recoveryFailed || recoveryServiceError
+                  ? `Direct URL fetch and recovery fetch were not usable: ${recoveryPlan.semanticQuery}`
+                  : `Direct URL fetch was not usable. Distilled docs locator query was ambiguous: ${recoveryPlan.semanticQuery}`),
               formatRecoveryCandidates(recovery.search.ranked),
+              formatFetchOutcome("failed", contentStatus),
               "",
               packet.text || "No documents returned.",
             ]
@@ -502,8 +547,11 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               totalDocuments: packet.documents.length,
               totalContentChars: packet.totalContentChars,
               llmBudget: packet.llmBudget,
+              retrievalStatus: "failed" as const,
+              contentStatus,
+              recoveryError: recovery.failureMessage,
               resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
-                status: "ambiguous",
+                status: recoveryFailed || recoveryServiceError ? "failed" : "ambiguous",
                 evidenceStatus: queryPlan.evidenceStatus,
               }),
             };
@@ -515,17 +563,26 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
                 recover_via: { action: "search", query: queryPlan.compiledQuery },
               });
             }
-            return ok("fetch", text, details);
+            return fail("fetch", text, {
+              ...details,
+              reason: recoveryFailed
+                ? "recovery_fetch_failed"
+                : recoveryServiceError
+                  ? "docs_service_error"
+                  : "no_usable_documents",
+            });
           }
 
           const packet = buildFetchEvidencePacket(docs, actionSlice);
+          const contentStatus = fetchContentStatus(packet);
           const text = [
             referenceQueryPlan ? formatQueryPlanText(referenceQueryPlan) : "",
+            formatFetchOutcome(directOutcome.retrievalStatus, contentStatus),
             packet.text || "No documents returned.",
           ]
             .filter(Boolean)
             .join("\n\n");
-          return ok("fetch", text, {
+          const details = {
             ...actionSlice,
             requested,
             queryPlan: referenceQueryPlan,
@@ -535,7 +592,13 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             totalDocuments: packet.documents.length,
             totalContentChars: packet.totalContentChars,
             llmBudget: packet.llmBudget,
-          });
+            retrievalStatus: directOutcome.retrievalStatus,
+            contentStatus,
+          };
+          if (directOutcome.retrievalStatus === "failed") {
+            return fail("fetch", text, { ...details, reason: "no_usable_documents" });
+          }
+          return ok("fetch", text, details);
         }
 
         if (input.action === "answer") {
@@ -598,6 +661,19 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               { version: actionSlice.version, locale: actionSlice.locale, pageSize: 5 },
               signal,
             );
+            if (allDistilledSearchesFailed(preflight)) {
+              const serviceError = preflight.serviceErrors[0];
+              return fail("answer", formatDistilledServiceError(serviceError), {
+                ...actionSlice,
+                query: input.query,
+                reason: "docs_service_error",
+                requested: serviceError?.requested,
+                available: serviceError?.available,
+                resolution: buildDistillationResolution(distilled, preflight, {
+                  status: "service_error",
+                }),
+              });
+            }
             queryPlan = buildQueryPlanSummary(distilled, preflight, {
               version: actionSlice.version,
               locale: actionSlice.locale,
@@ -630,20 +706,26 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           const answerQuery = answerBias
             ? (queryPlan?.compiledQuery ?? uniqueAnswerQuery(actionQuery, distilled.variants))
             : actionQuery;
-          const response = asAnswerResponse(
+          const response = parseAnswerResponse(
+            "answer",
             await client.callTool(
               "answer",
-              {
+              buildAnswerRequest({
                 ...answerSlice,
                 query: answerQuery,
-                cite: input.cite ?? prefs.includeCitations,
-              },
+                cite: true,
+              }),
               signal,
             ),
           );
           const serviceError = docsServiceError(response);
           if (serviceError)
-            return fail("answer", serviceError, { ...answerSlice, reason: "docs_service_error" });
+            return fail("answer", serviceError, {
+              ...answerSlice,
+              reason: "docs_service_error",
+              requested: response.requested,
+              available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
+            });
           if (answerBias && queryPlan) {
             const citationEvidence = evaluateAnswerCitationEvidence(
               distilled,
@@ -669,18 +751,21 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               );
             }
           }
-          const answer = response.answer ?? response.explanation ?? "";
+          const answerPacket = buildAnswerEvidencePacket("answer", response);
           return ok(
             "answer",
-            `${queryPlan ? `${formatQueryPlanText(queryPlan)}\n\n` : ""}${formatAnswerText(response)}`,
+            `${queryPlan ? `${formatQueryPlanText(queryPlan)}\n\n` : ""}${answerPacket.text}`,
             {
               ...answerSlice,
-              ...response,
+              ...answerPacket.details,
               retrieval_status: queryPlan?.evidenceStatus,
               queryPlan,
               collectionOverride,
               displayDensity: prefs.displayDensity,
-              answerChars: answer.length,
+              answerChars: answerPacket.answerChars,
+              answerReturnedChars: answerPacket.answerReturnedChars,
+              answerTruncated: answerPacket.answerTruncated,
+              citationsTruncated: answerPacket.citationsTruncated,
               resolution: answerBias
                 ? {
                     kind: "docs_query_distillation",
@@ -713,40 +798,51 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
                 referencePlan,
               )
             : undefined;
-          const args: Record<string, unknown> = {
-            ...actionSlice,
-            query: input.query?.trim() || "Summarize this document.",
-            cite: input.cite ?? prefs.includeCitations,
-          };
-          if (input.id) args.id = input.id;
-          else if (input.url) args.url = input.url;
+          let locator: { id: string } | { url: string };
+          if (input.id) locator = { id: input.id };
+          else if (input.url) locator = { url: input.url };
           else {
             return fail("explain", "sf_docs explain requires id or url.", {
               reason: "missing_id_or_url",
               recover_via: { action: "search", then: "explain", required: ["id", "url"] },
             });
           }
-          const response = asAnswerResponse(await client.callTool("explain", args, signal));
+          const args = buildExplainRequest({
+            query: input.query?.trim() || "Summarize this document.",
+            ...locator,
+            cite: true,
+          });
+          const response = parseAnswerResponse(
+            "explain",
+            await client.callTool("explain", args, signal),
+          );
           const serviceError = docsServiceError(response);
           if (serviceError)
-            return fail("explain", serviceError, { ...actionSlice, reason: "docs_service_error" });
-          const answer = response.answer ?? response.explanation ?? "";
+            return fail("explain", serviceError, {
+              ...actionSlice,
+              reason: "docs_service_error",
+              requested: response.requested,
+              available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
+            });
+          const answerPacket = buildAnswerEvidencePacket("explain", response);
           return ok(
             "explain",
-            `${referenceQueryPlan ? `${formatQueryPlanText(referenceQueryPlan)}\n\n` : ""}${formatAnswerText(response)}`,
+            `${referenceQueryPlan ? `${formatQueryPlanText(referenceQueryPlan)}\n\n` : ""}${answerPacket.text}`,
             {
               ...actionSlice,
-              ...response,
+              ...answerPacket.details,
               queryPlan: referenceQueryPlan,
               collectionOverride: referencePlan?.collectionOverride,
               displayDensity: prefs.displayDensity,
-              answerChars: answer.length,
+              answerChars: answerPacket.answerChars,
+              answerReturnedChars: answerPacket.answerReturnedChars,
+              answerTruncated: answerPacket.answerTruncated,
+              citationsTruncated: answerPacket.citationsTruncated,
             },
           );
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return fail(input.action, message);
+        throw err instanceof Error ? err : new Error(String(err));
       }
 
       return fail(input.action, `Unsupported sf_docs action: ${input.action}`, {
@@ -836,27 +932,42 @@ async function runDistilledSearch(
   signal?: AbortSignal,
 ): Promise<DistilledSearchRun> {
   const requests = buildDistilledSearchRequests(plan);
-  const batches = await Promise.all(
+  const runs = await Promise.all(
     requests.map(async (request) => {
-      const args: Record<string, unknown> = {
+      const args = buildSearchRequest({
         collection: request.collection,
         version: base.version,
         locale: base.locale,
         query: request.query,
         page: base.page ?? 1,
         pageSize: base.pageSize,
-      };
-      if (base.format) args.format = base.format;
-      const response = asSearchResponse(await client.callTool("search", args, signal));
-      const error = docsServiceError(response);
+        format: base.format,
+      });
+      const response = parseSearchResponse(await client.callTool("search", args, signal));
+      const serviceError = response.error
+        ? {
+            error: response.error,
+            requested: response.requested,
+            available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
+          }
+        : undefined;
       return {
-        request,
-        results: error ? [] : (response.results ?? []),
-        totalCount: response.totalCount,
+        batch: {
+          request,
+          results: serviceError ? [] : (response.results ?? []),
+          totalCount: response.totalCount,
+        },
+        serviceError,
       };
     }),
   );
-  return { requests, batches, ranked: rankDistilledResults(plan, batches) };
+  const batches = runs.map((run) => run.batch);
+  return {
+    requests,
+    batches,
+    ranked: rankDistilledResults(plan, batches),
+    serviceErrors: runs.flatMap((run) => (run.serviceError ? [run.serviceError] : [])),
+  };
 }
 
 async function recoverFetchByDistilledSearch(
@@ -871,6 +982,19 @@ async function recoverFetchByDistilledSearch(
     { version: base.version, locale: base.locale, pageSize: 5 },
     signal,
   );
+  if (allDistilledSearchesFailed(search)) {
+    return {
+      recovered: false,
+      search,
+      docs: [],
+      slice: {
+        collection: plan.collectionCandidates[0] ?? "developer",
+        version: base.version,
+        locale: base.locale,
+      },
+      failureReason: "docs_service_error",
+    };
+  }
   const best = search.ranked[0];
   if (!best?.id || !isHighConfidenceDistilledResult(best)) {
     return {
@@ -882,6 +1006,7 @@ async function recoverFetchByDistilledSearch(
         version: best?.version ?? base.version,
         locale: best?.locale ?? base.locale,
       },
+      failureReason: "no_recovery_candidate",
     };
   }
 
@@ -891,28 +1016,40 @@ async function recoverFetchByDistilledSearch(
     locale: best.locale ?? base.locale,
   };
   const recoveredRequest = { ids: [best.id], format: base.format };
-  const response = asFetchResponse(
+  const response = parseFetchResponse(
     await client.callTool(
       "fetch",
-      {
+      buildFetchRequest({
         ...recoverySlice,
         ...recoveredRequest,
-      },
+      }),
       signal,
     ),
   );
+  const serviceError = docsServiceError(response);
+  if (serviceError) {
+    return {
+      recovered: false,
+      search,
+      docs: [],
+      slice: recoverySlice,
+      recoveredRequest,
+      resolved: best,
+      failureReason: "docs_service_error",
+      failureMessage: serviceError,
+    };
+  }
+  const docs = response.documents ?? [];
+  const outcome = classifyFetchDocuments(docs, 1);
   return {
-    recovered: true,
+    recovered: outcome.retrievalStatus !== "failed",
     search,
-    docs: response.documents ?? [],
+    docs,
     slice: recoverySlice,
     recoveredRequest,
     resolved: best,
+    failureReason: outcome.retrievalStatus === "failed" ? "recovery_fetch_failed" : undefined,
   };
-}
-
-function fetchLooksRecoverable(docs: DocsDocument[]): boolean {
-  return docs.length === 0 || docs.every((doc) => Boolean(doc.error) || !doc.content?.trim());
 }
 
 function buildQueryPlanSummary(
@@ -1044,6 +1181,14 @@ function formatQueryPlanText(plan: DocsQueryPlanSummary): string {
   return lines.join("\n");
 }
 
+function allDistilledSearchesFailed(search: DistilledSearchRun): boolean {
+  return search.requests.length > 0 && search.serviceErrors.length === search.requests.length;
+}
+
+function formatDistilledServiceError(error: DistilledServiceError | undefined): string {
+  return `Docs service error: ${error?.error ?? "unknown error"}${error?.available ? `\nAvailable: ${error.available}` : ""}`;
+}
+
 function buildDistillationResolution(
   plan: DocsQueryDistillationPlan,
   search: DistilledSearchRun,
@@ -1068,6 +1213,7 @@ function buildDistillationResolution(
       score: result.score,
       matchedByUrl: result.matchedByUrl,
     })),
+    serviceErrors: search.serviceErrors,
     ...extra,
   };
 }
@@ -1176,236 +1322,6 @@ function cheatsheetResult(displayDensity: SfDocsDisplayDensity): ToolResultShape
   return ok("cheatsheet", clipText(text, 16000), { path: file, displayDensity });
 }
 
-interface FetchEvidenceDocument {
-  id?: string;
-  url?: string;
-  title: string;
-  description?: string;
-  product?: string;
-  products?: string;
-  guides?: string;
-  filename?: string;
-  sourcePath?: string;
-  baseUrl?: string;
-  release?: string | number;
-  taxonomyIds?: string | string[];
-  contentHash?: string;
-  status: "ok" | "error";
-  error?: string;
-  contentChars: number;
-  llmReturnedChars: number;
-  llmTruncated: boolean;
-  metadataOnly: boolean;
-  headings: string[];
-  humanPreview: string;
-}
-
-function buildFetchEvidencePacket(
-  docs: DocsDocument[],
-  slice: { collection: string; version: string; locale: string },
-): {
-  text: string;
-  documents: FetchEvidenceDocument[];
-  totalContentChars: number;
-  llmBudget: {
-    perDocumentChars: number;
-    maxTotalChars: number;
-    returnedChars: number;
-    truncatedDocuments: number;
-    metadataOnlyDocuments: number;
-  };
-} {
-  let remaining = FETCH_TOTAL_CHAR_LIMIT;
-  let returnedChars = 0;
-  const documents: FetchEvidenceDocument[] = [];
-  const bodyLines = [
-    `SF Docs fetch returned ${docs.length} document(s) for ${slice.collection}/${slice.version}/${slice.locale}.`,
-    `LLM source budget: ${FETCH_PER_DOCUMENT_CHAR_LIMIT} chars per document; ${FETCH_TOTAL_CHAR_LIMIT} chars total.`,
-    "",
-  ];
-
-  docs.forEach((doc, index) => {
-    const title = doc.title ?? doc.id ?? doc.url ?? "Document";
-    const source = doc.content ?? "";
-    const contentChars = source.length;
-    const allowed = doc.error ? 0 : Math.max(0, Math.min(remaining, FETCH_PER_DOCUMENT_CHAR_LIMIT));
-    const body = allowed > 0 ? source.slice(0, allowed) : "";
-    const metadataOnly = !doc.error && contentChars > 0 && body.length === 0;
-    const llmTruncated = !doc.error && body.length < contentChars;
-    remaining -= body.length;
-    returnedChars += body.length;
-
-    documents.push({
-      id: doc.id,
-      url: doc.url,
-      title,
-      description: typeof doc.description === "string" ? doc.description : undefined,
-      product: typeof doc.product === "string" ? doc.product : undefined,
-      products: typeof doc.products === "string" ? doc.products : undefined,
-      guides: typeof doc.guides === "string" ? doc.guides : undefined,
-      filename: typeof doc.filename === "string" ? doc.filename : undefined,
-      sourcePath: typeof doc.sourcePath === "string" ? doc.sourcePath : undefined,
-      baseUrl: typeof doc.baseUrl === "string" ? doc.baseUrl : undefined,
-      release:
-        typeof doc.release === "string" || typeof doc.release === "number"
-          ? doc.release
-          : undefined,
-      taxonomyIds: normalizeTaxonomyIds(doc.taxonomyIds),
-      contentHash: typeof doc.contentHash === "string" ? doc.contentHash : undefined,
-      status: doc.error ? "error" : "ok",
-      error: doc.error,
-      contentChars,
-      llmReturnedChars: body.length,
-      llmTruncated,
-      metadataOnly,
-      headings: extractHeadings(source),
-      humanPreview: previewText(source, FETCH_DETAILS_PREVIEW_CHAR_LIMIT),
-    });
-
-    bodyLines.push(
-      `<document ${documentAttributes(doc, {
-        index: index + 1,
-        title,
-        contentChars,
-        returnedChars: body.length,
-        truncated: llmTruncated,
-        metadataOnly,
-        status: doc.error ? "error" : "ok",
-        locale: slice.locale,
-      })}>`,
-    );
-    if (doc.url) bodyLines.push(`Source URL: ${doc.url}`);
-    const description = previewPlainText(
-      typeof doc.description === "string" ? doc.description : "",
-      500,
-    );
-    if (description) bodyLines.push(`Description: ${description}`);
-    if (doc.error) {
-      bodyLines.push(`Error: ${doc.error}`);
-    } else if (body) {
-      bodyLines.push(body);
-    } else if (metadataOnly) {
-      bodyLines.push(
-        "[No body text included because the global Docs Evidence Packet budget was exhausted.]",
-      );
-    }
-    bodyLines.push("</document>", "");
-  });
-
-  const truncatedDocuments = documents.filter((doc) => doc.llmTruncated).length;
-  const metadataOnlyDocuments = documents.filter((doc) => doc.metadataOnly).length;
-  return {
-    text: bodyLines.join("\n").trimEnd(),
-    documents,
-    totalContentChars: documents.reduce((sum, doc) => sum + doc.contentChars, 0),
-    llmBudget: {
-      perDocumentChars: FETCH_PER_DOCUMENT_CHAR_LIMIT,
-      maxTotalChars: FETCH_TOTAL_CHAR_LIMIT,
-      returnedChars,
-      truncatedDocuments,
-      metadataOnlyDocuments,
-    },
-  };
-}
-
-function extractHeadings(value: string): string[] {
-  const markdownHeadings = value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => /^#{1,4}\s+\S/.test(line))
-    .map((line) => line.replace(/^#{1,4}\s+/, "").trim());
-  const htmlHeadings = Array.from(value.matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/giu)).map(
-    (match) => stripHtml(String(match[1] ?? "")).trim(),
-  );
-  return [...markdownHeadings, ...htmlHeadings].filter(Boolean).slice(0, 5);
-}
-
-function previewText(value: string, max: number): string {
-  return stripHtml(value).replace(/\s+/g, " ").trim().slice(0, max);
-}
-
-function previewPlainText(value: string, max: number): string {
-  return value.replace(/\s+/g, " ").trim().slice(0, max);
-}
-
-function stripHtml(value: string): string {
-  const withoutBlocks = value
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/giu, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/giu, " ");
-  return decodeHtmlEntities(withoutBlocks.replace(/<[^>]+>/gu, " "));
-}
-
-function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&amp;/gi, "&");
-}
-
-function documentAttributes(
-  doc: DocsDocument,
-  base: {
-    index: number;
-    title: string;
-    contentChars: number;
-    returnedChars: number;
-    truncated: boolean;
-    metadataOnly: boolean;
-    status: "ok" | "error";
-    locale: string;
-  },
-): string {
-  const attributes: Array<[string, string | number | boolean | undefined]> = [
-    ["index", base.index],
-    ["id", doc.id],
-    ["title", base.title],
-    ["url", doc.url],
-    ["filename", doc.filename],
-    ["sourcePath", doc.sourcePath],
-    ["baseUrl", doc.baseUrl],
-    ["locale", doc.locale ?? base.locale],
-    ["product", doc.product],
-    ["products", doc.products],
-    ["guides", doc.guides],
-    ["release", doc.release],
-    ["contentChars", base.contentChars],
-    ["returnedChars", base.returnedChars],
-    ["truncated", base.truncated],
-    ["metadataOnly", base.metadataOnly],
-    ["status", base.status],
-  ];
-  return attributes
-    .filter(([, value]) => value !== undefined && value !== "")
-    .map(([key, value]) => `${key}="${escapeAttribute(String(value))}"`)
-    .join(" ");
-}
-
-function normalizeTaxonomyIds(value: unknown): string | string[] | undefined {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value) && value.every((item) => typeof item === "string")) return value;
-  return undefined;
-}
-
-function escapeAttribute(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function formatAnswerText(response: AnswerResponse): string {
-  const answer = response.answer ?? response.explanation ?? "";
-  const citations = response.citations ?? [];
-  const citationText = citations
-    .map((citation, i) => `${i + 1}. ${citation.title ?? "Untitled"}\n   ${citation.url ?? ""}`)
-    .join("\n");
-  return citationText ? `${answer}\n\nCitations:\n${citationText}` : answer;
-}
-
 export function formatSearchToolText(query: string, response: SearchResponse): string {
   const results = response.results ?? [];
   const total = typeof response.totalCount === "number" ? response.totalCount : results.length;
@@ -1456,19 +1372,8 @@ function docsServiceError(value: unknown): string | undefined {
   const slice = requested
     ? ` (${requested.collection ?? "?"}/${requested.version ?? "?"}/${requested.locale ?? "?"})`
     : "";
-  return `Docs service error: ${value.error}${slice}`;
-}
-
-function asSearchResponse(value: unknown): SearchResponse {
-  return isRecord(value) ? (value as SearchResponse) : {};
-}
-
-function asFetchResponse(value: unknown): FetchResponse {
-  return isRecord(value) ? (value as FetchResponse) : {};
-}
-
-function asAnswerResponse(value: unknown): AnswerResponse {
-  return isRecord(value) ? (value as AnswerResponse) : {};
+  const available = structuredPreview(value.available, EVIDENCE_PREVIEW_CHAR_LIMIT);
+  return `Docs service error: ${value.error}${slice}${available ? `\nAvailable: ${available}` : ""}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
