@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.279.0](https://github.com/salesforce/sf-pi/compare/v0.278.0...v0.279.0) (2026-09-09)
+
+
+### Features
+
+* **sf-docs:** add deterministic grounding workflow ([6f03ae3](https://github.com/salesforce/sf-pi/commit/6f03ae3b46bd77abb9da3fda1c849ad4211a5dcc))
+
 ## [0.278.0](https://github.com/salesforce/sf-pi/compare/v0.277.1...v0.278.0) (2026-09-09)
 
 
