@@ -1,7 +1,8 @@
 ---
 id: "0073"
-status: accepted
+status: superseded
 date: 2026-07-04
+supersededBy: ["0113"]
 ---
 
 # SF Docs routes Developer reference lookups to LegacyDeveloper

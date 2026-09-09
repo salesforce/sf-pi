@@ -71,6 +71,26 @@ describe("sf-docs catalog cache", () => {
     });
   });
 
+  it("scopes cached catalog metadata to a non-reversible endpoint identity", () => {
+    cache.writeCatalogCache(
+      [{ collection: "developer", versions: ["current"] }],
+      1000,
+      "https://first.example.test/",
+    );
+
+    expect(cache.readCatalogCache(1000, "https://first.example.test/")).toMatchObject({
+      hit: true,
+      stale: false,
+    });
+    expect(cache.readCatalogCache(1000, "https://second.example.test/")).toMatchObject({
+      hit: false,
+      stale: true,
+    });
+    expect(JSON.stringify(cache.readCatalogCache(1000))).not.toContain(
+      "https://first.example.test/",
+    );
+  });
+
   it("drops malformed collection and nested landmark entries", () => {
     expect(() =>
       cache.writeCatalogCache(

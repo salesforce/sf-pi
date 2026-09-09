@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Deterministic docs-locator query distillation for Salesforce-owned docs URLs. */
+/** Deterministic docs-locator query distillation for explicit grounding recovery. */
 import { isAtlasDeveloperReferenceLocator } from "./developer-reference.ts";
 import type { DocsSearchResult } from "./types.ts";
 
@@ -64,14 +64,6 @@ export interface DocsQueryDistillationPlan {
 export interface DistilledSearchRequest {
   collection: string;
   query: string;
-  variantIndex: number;
-  fallbackCollection: boolean;
-}
-
-export interface DistilledSearchBatch {
-  request: DistilledSearchRequest;
-  results: DocsSearchResult[];
-  totalCount?: number;
 }
 
 export interface RankedDistilledResult extends DocsSearchResult {
@@ -137,61 +129,31 @@ export function distillDocsQuery(
   return undefined;
 }
 
-export function buildDistilledSearchRequests(
+export function primaryDistilledSearch(
   plan: DocsQueryDistillationPlan,
-  maxCalls = 4,
-): DistilledSearchRequest[] {
-  const [primary, ...fallbacks] = plan.collectionCandidates;
-  if (!primary) return [];
-
-  const requests: DistilledSearchRequest[] = plan.variants.slice(0, 3).map((query, index) => ({
-    collection: primary,
-    query,
-    variantIndex: index,
-    fallbackCollection: false,
-  }));
-
-  for (const collection of fallbacks) {
-    if (requests.length >= maxCalls) break;
-    requests.push({
-      collection,
-      query: plan.semanticQuery,
-      variantIndex: plan.variants.indexOf(plan.semanticQuery),
-      fallbackCollection: true,
-    });
-  }
-
-  return requests.slice(0, maxCalls);
+  collection = plan.collectionCandidates[0],
+): DistilledSearchRequest | undefined {
+  const query = plan.variants[0] ?? plan.semanticQuery;
+  return collection && query ? { collection, query } : undefined;
 }
 
 export function rankDistilledResults(
   plan: DocsQueryDistillationPlan,
-  batches: DistilledSearchBatch[],
+  request: DistilledSearchRequest,
+  results: DocsSearchResult[],
 ): RankedDistilledResult[] {
-  const byKey = new Map<string, RankedDistilledResult>();
-
-  for (const batch of batches) {
-    batch.results.forEach((result, index) => {
-      const score = scoreResult(plan, result, index, batch.request.fallbackCollection);
-      const key =
-        result.id ?? result.url ?? `${result.title ?? "untitled"}:${batch.request.collection}`;
-      const existing = byKey.get(key);
-      if (!existing || score > existing.score) {
-        byKey.set(key, {
-          ...result,
-          score,
-          collection: result.collection ?? batch.request.collection,
-          version: result.version,
-          locale: result.locale,
-          matchedByUrl: locatorIsInUrl(plan, result.url),
-          rank: index + 1,
-          variant: batch.request.query,
-        });
-      }
-    });
-  }
-
-  return [...byKey.values()].sort((a, b) => b.score - a.score || a.rank - b.rank);
+  return results
+    .map((result, index) => ({
+      ...result,
+      score: scoreResult(plan, result, index),
+      collection: result.collection ?? request.collection,
+      version: result.version,
+      locale: result.locale,
+      matchedByUrl: locatorIsInUrl(plan, result.url),
+      rank: index + 1,
+      variant: request.query,
+    }))
+    .sort((a, b) => b.score - a.score || a.rank - b.rank);
 }
 
 export function isHighConfidenceDistilledResult(
@@ -338,7 +300,6 @@ function scoreResult(
   plan: DocsQueryDistillationPlan,
   result: DocsSearchResult,
   zeroBasedRank: number,
-  fallbackCollection: boolean,
 ): number {
   let score = 0;
   if (originalUrlMatchesResult(plan, result.url)) score += 250;
@@ -350,7 +311,6 @@ function scoreResult(
   if (snippetOverlap >= 0.7) score += 20;
   else if (snippetOverlap >= 0.5) score += 10;
   if (zeroBasedRank === 0) score += 10;
-  if (fallbackCollection) score -= 5;
   score += releaseAwareScore(plan, result);
   return score;
 }

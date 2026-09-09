@@ -7,7 +7,7 @@ export const ENV_ENDPOINT = "SF_DOCS_MCP_ENDPOINT";
 export const WIDGET_KEY = "sf-docs-status";
 
 export type DocsAction =
-  "status" | "collections" | "search" | "fetch" | "answer" | "explain" | "cheatsheet";
+  "status" | "collections" | "ground" | "search" | "fetch" | "answer" | "explain" | "cheatsheet";
 
 export type EndpointSource = "pi-auth" | "env" | "none";
 export type DocsScope = "global" | "project";

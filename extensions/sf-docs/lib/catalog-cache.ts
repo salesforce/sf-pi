@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Local non-secret cache for the docs collection catalog only. */
+import { createHash } from "node:crypto";
 import { createStateStore } from "../../../lib/common/state-store.ts";
 import type {
   DocsCollection,
@@ -12,6 +13,7 @@ const TTL_MS = 1000 * 60 * 60 * 24;
 
 interface CatalogCacheState {
   fetchedAt?: number;
+  endpointHash?: string;
   collections?: DocsCollection[];
 }
 
@@ -22,7 +24,10 @@ const store = createStateStore<CatalogCacheState>({
   defaults: {},
 });
 
-export function readCatalogCache(now = Date.now()): {
+export function readCatalogCache(
+  now = Date.now(),
+  endpoint?: string,
+): {
   hit: boolean;
   stale: boolean;
   fetchedAt?: number;
@@ -31,6 +36,9 @@ export function readCatalogCache(now = Date.now()): {
 } {
   const state = store.read();
   const fetchedAt = state.fetchedAt;
+  if (endpoint && state.endpointHash !== hashEndpoint(endpoint)) {
+    return { hit: false, stale: true, path: store.path };
+  }
   const collections = Array.isArray(state.collections)
     ? sanitizeCatalogCollections(state.collections)
     : undefined;
@@ -44,8 +52,16 @@ export function readCatalogCache(now = Date.now()): {
   };
 }
 
-export function writeCatalogCache(collections: DocsCollection[], now = Date.now()): void {
-  store.write({ fetchedAt: now, collections: sanitizeCatalogCollections(collections) });
+export function writeCatalogCache(
+  collections: DocsCollection[],
+  now = Date.now(),
+  endpoint?: string,
+): void {
+  store.write({
+    fetchedAt: now,
+    endpointHash: endpoint ? hashEndpoint(endpoint) : undefined,
+    collections: sanitizeCatalogCollections(collections),
+  });
 }
 
 export function clearCatalogCache(): void {
@@ -131,6 +147,10 @@ function isStringRecord(value: unknown): value is Record<string, string> {
     !Array.isArray(value) &&
     Object.values(value).every((item) => typeof item === "string"),
   );
+}
+
+function hashEndpoint(endpoint: string): string {
+  return createHash("sha256").update(endpoint).digest("hex");
 }
 
 export function formatCacheAge(fetchedAt?: number, now = Date.now()): string {

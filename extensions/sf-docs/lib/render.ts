@@ -106,6 +106,7 @@ export function renderToolResult(
   if (action === "answer" || action === "explain")
     return new Text(formatAnswer(details, theme, opts), 0, 0);
   if (action === "fetch") return new Text(formatFetch(details, theme, opts), 0, 0);
+  if (action === "ground") return new Text(formatGround(details, theme, opts), 0, 0);
   if (action === "collections") return new Text(formatCollections(details, theme), 0, 0);
   return new Text(formatSimple(action, details, firstText(result.content), theme), 0, 0);
 }
@@ -221,6 +222,23 @@ export function formatFetch(
   theme?: Theme,
   opts: { expanded?: boolean } = {},
 ): string {
+  return formatFetchLike("fetch", details, theme, opts);
+}
+
+export function formatGround(
+  details: Record<string, unknown>,
+  theme?: Theme,
+  opts: { expanded?: boolean } = {},
+): string {
+  return formatFetchLike("ground", details, theme, opts);
+}
+
+function formatFetchLike(
+  action: "fetch" | "ground",
+  details: Record<string, unknown>,
+  theme?: Theme,
+  opts: { expanded?: boolean } = {},
+): string {
   const documents = asArray<FetchRenderDocument>(details.documents);
   const density = displayDensity(details);
   const budget = DENSITY_BUDGETS[density];
@@ -234,13 +252,21 @@ export function formatFetch(
     ? budget.expandedFetchPreviewChars
     : budget.collapsedFetchPreviewChars;
   const visibleDocs = opts.expanded ? documents : documents.slice(0, budget.collapsedFetchDocs);
-  const lines = cardHeader("fetch", details, theme, "ok");
-  lines.push(...lineageSection(details, "fetch", theme));
+  const lines = cardHeader(action, details, theme, "ok");
+  lines.push(...lineageSection(details, action, theme));
+  if (action === "ground") {
+    lines.push(
+      ...sectionBlock("2", "Execution steps", groundStepLines(details.steps, theme), theme),
+    );
+  }
   lines.push(
     ...sectionBlock(
-      "2",
+      action === "ground" ? "3" : "2",
       "Evidence packet",
       [
+        action === "ground" && details.verdict
+          ? fact("🧭", "Verdict", String(details.verdict), theme)
+          : "",
         fact("📄", "Documents", String(documents.length), theme),
         fact(
           "📦",
@@ -279,7 +305,7 @@ export function formatFetch(
   );
   lines.push(
     ...sectionBlock(
-      "3",
+      action === "ground" ? "4" : "3",
       "Document evidence",
       visibleDocs.flatMap((doc, index) =>
         documentLines(doc, index, previewChars, opts.expanded, density, theme),
@@ -294,7 +320,9 @@ export function formatFetch(
   }
   lines.push(
     ...nextSection(
-      "LLM received the bounded Docs Evidence Packet. Expand for previews; open URLs for full source.",
+      action === "ground"
+        ? "Grounding completed through the explicit execution plan. Open URLs for full source."
+        : "LLM received the bounded Docs Evidence Packet. Expand for previews; open URLs for full source.",
       theme,
     ),
   );
@@ -304,7 +332,6 @@ export function formatFetch(
 export function formatCollections(details: Record<string, unknown>, theme?: Theme): string {
   const collections = asArray<DocsCollection>(details.collections);
   const summaries = asArray<Record<string, string>>(details.capabilitySummaries);
-  const profiles = asArray<Record<string, string>>(details.collectionProfiles);
   const lines = cardHeader("collections", details, theme, "ok");
   lines.push(
     ...sectionBlock(
@@ -323,7 +350,7 @@ export function formatCollections(details: Record<string, unknown>, theme?: Them
     ...sectionBlock(
       "2",
       "Collection capabilities",
-      collections.flatMap((collection) => collectionLines(collection, summaries, profiles, theme)),
+      collections.flatMap((collection) => collectionLines(collection, summaries, theme)),
       theme,
     ),
   );
@@ -545,11 +572,9 @@ function documentLines(
 function collectionLines(
   collection: DocsCollection,
   summaries: Array<Record<string, string>>,
-  profiles: Array<Record<string, string>>,
   theme?: Theme,
 ): string[] {
   const summary = summaries.find((item) => item.collection === collection.collection);
-  const profile = profiles.find((item) => item.collection === collection.collection);
   const versions = (collection.versions ?? []).join(",") || "-";
   const locales = formatCount(collection.locales);
   const formats = (collection.formats ?? []).join(",") || "-";
@@ -557,9 +582,8 @@ function collectionLines(
   const lines = [
     `${accent(collection.collection, theme)} ${dim(`${versions} · ${locales} · ${formats}${status}`, theme)}`,
   ];
-  if (profile?.coverage) lines.push(dim(`  🧭 owns ${profile.coverage}`, theme));
-  if (profile?.releaseNotes) lines.push(dim(`  🕘 release notes ${profile.releaseNotes}`, theme));
-  if (profile?.references) lines.push(dim(`  📖 reference ${profile.references}`, theme));
+  if (summary?.description) lines.push(dim(`  🧭 ${summary.description}`, theme));
+  if (summary?.hintsPreview) lines.push(dim(`  💡 ${summary.hintsPreview}`, theme));
   if (summary?.keyFilters) lines.push(dim(`  🔍 filters ${summary.keyFilters}`, theme));
   if (summary?.landmarks) lines.push(dim(`  🗺 landmarks ${summary.landmarks}`, theme));
   if (summary?.extraFields) lines.push(dim(`  🧩 extra ${summary.extraFields}`, theme));
@@ -572,12 +596,25 @@ function originalLabel(
   action: string,
 ): string {
   if (typeof details.query === "string" && details.query.trim()) return details.query;
+  const originalRequest = isRecord(details.originalRequest) ? details.originalRequest : undefined;
+  if (typeof originalRequest?.query === "string" && originalRequest.query.trim()) {
+    return originalRequest.query;
+  }
   const ids = asArray<string>(requested?.ids);
   const urls = asArray<string>(requested?.urls);
   if (ids.length) return `${ids.length} id${ids.length === 1 ? "" : "s"}`;
   if (urls.length) return `${urls.length} url${urls.length === 1 ? "" : "s"}`;
   if (action === "collections") return "collection catalog";
   return action;
+}
+
+function groundStepLines(value: unknown, theme?: Theme): string[] {
+  return asArray<Record<string, unknown>>(value).map((step, index) => {
+    const action = String(step.action ?? "step");
+    const target = step.collection ? ` · ${String(step.collection)}` : "";
+    const count = typeof step.resultCount === "number" ? ` · ${step.resultCount} result(s)` : "";
+    return `  ${index + 1}. ${strong(action, theme)}${target} · ${String(step.status ?? "unknown")}${count}`;
+  });
 }
 
 function fact(icon: string, label: string, value: string, theme?: Theme): string {
@@ -677,7 +714,8 @@ function formatCount(values?: unknown[]): string {
 }
 
 function slice(details: Record<string, unknown>): string {
-  return `${details.collection ?? "?"}/${details.version ?? "current"}/${details.locale ?? "en-us"}`;
+  const effective = isRecord(details.effectiveSlice) ? details.effectiveSlice : details;
+  return `${effective.collection ?? "?"}/${effective.version ?? "current"}/${effective.locale ?? "auto"}`;
 }
 
 function displayDensity(details: Record<string, unknown>): SfDocsDisplayDensity {

@@ -141,55 +141,6 @@ describe("sf_docs remote and evidence contracts", () => {
     });
   });
 
-  it("does not report recovery when the second fetch is unusable", async () => {
-    const requestedUrl =
-      "https://help.salesforce.com/s/articleView?id=platform.sample_article.htm&type=5";
-    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
-      const name = String(body.params.name);
-      const args = body.params.arguments as Record<string, unknown>;
-      if (name === "fetch" && Array.isArray(args.urls)) {
-        return docsResponse({ documents: [{ url: requestedUrl, error: "not_found" }] });
-      }
-      if (name === "search") {
-        return docsResponse({
-          results: [
-            {
-              id: "candidate",
-              title: "Sample Article",
-              url: requestedUrl,
-              content: "Candidate snippet",
-            },
-          ],
-          totalCount: 1,
-        });
-      }
-      if (name === "fetch" && Array.isArray(args.ids)) {
-        return docsResponse({
-          documents: [
-            {
-              id: "candidate",
-              error: "not_found",
-              available: { locales: ["en-us"] },
-            },
-          ],
-        });
-      }
-      throw new Error(`Unexpected call: ${name}`);
-    }) as unknown as typeof fetch;
-    const tool = await loadTool(fetchMock);
-
-    const result = await execute(tool, { action: "fetch", urls: [requestedUrl] });
-
-    expect(result.details).toMatchObject({
-      ok: false,
-      reason: "recovery_fetch_failed",
-      retrievalStatus: "failed",
-      resolution: { status: "failed" },
-    });
-    expect(result.content[0].text).toContain('Available: {"locales":["en-us"]}');
-  });
-
   it("bounds answer content and citations while retaining source URLs", async () => {
     const longAnswer = `${"A".repeat(20_000)}UNIQUE_ANSWER_TAIL`;
     const citations = Array.from({ length: 15 }, (_, index) => ({

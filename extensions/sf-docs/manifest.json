@@ -14,7 +14,7 @@
     "intentGroup": "Build agents",
     "editingRules": "AGENTS.md",
     "agentGuide": "AGENT_GUIDE.md",
-    "summary": "Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to an internally supplied Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport. Pi-native `/login sf-docs` stores only the endpoint URL; no access token is required or transmitted, and the extension ships with no default endpoint.",
+    "summary": "Provides one `sf_docs` family tool with explicit deterministic grounding, literal search/fetch primitives, cited answers, single-document explanations, collection discovery, status, and a lazy cheatsheet. Ground records bounded catalog, search, fallback, and fetch steps while explicit collection values remain authoritative. The extension talks directly to an internally supplied Salesforce Docs MCP-over-HTTP endpoint; Pi-native `/login sf-docs` stores only the endpoint URL, no access token is required or transmitted, and no default endpoint is shipped.",
     "primaryFiles": [
       "index.ts",
       "lib/sf_docs-tool.ts",
@@ -22,7 +22,7 @@
       "lib/protocol.ts",
       "lib/evidence.ts",
       "lib/auth.ts",
-      "lib/collection-retrieval.ts",
+      "lib/ground-workflow.ts",
       "lib/render.ts"
     ],
     "stateFiles": [
@@ -34,8 +34,8 @@
     "safety": [
       "Interactive `/login sf-docs` collects and persists only an internally supplied endpoint URL under provider id `sf-docs`; no access token is required, stored, or transmitted. The extension ships with no default endpoint.",
       "Uses native fetch plus a small local SSE parser; no MCP server, MCP SDK, or extra runtime dependency is required.",
-      "Caches only the collection catalog and never caches search results, answer text, fetched document bodies, prompts, or citations.",
-      "Tool output keeps source URLs and always-on answer/explain citations visible, bounds model-facing text, distinguishes partial or failed retrieval from truncation, and keeps the configured service endpoint out of model-visible status output."
+      "Caches only the collection catalog, scopes it by a one-way endpoint identity without persisting the endpoint URL, and never caches search results, answer text, fetched document bodies, prompts, or citations.",
+      "Tool output keeps source URLs and always-on answer/explain citations visible, bounds model-facing text, distinguishes partial or failed retrieval from truncation, records deterministic ground steps, and keeps the configured service endpoint out of model-visible status output."
     ],
     "referenceRoots": [
       {

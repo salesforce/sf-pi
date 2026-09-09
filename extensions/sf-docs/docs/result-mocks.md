@@ -7,18 +7,12 @@ These examples show the split between human-facing **Docs Result Cards** and mod
 ### Human sees
 
 ```text
-📚 SF Docs · search  legacydeveloper/current/en-us
+📚 SF Docs · search  developer/current/auto
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. Lineage
   🔎 Original     Metadata API CustomObject reference
-  🧭 Intent       developer_reference
-  ↪ Override      developer → legacydeveloper (developer_reference_coverage)
-  💬 Reason       Developer reference content is migrating between developer and legacydeveloper; retry the peer collection when the preferred collection has no matches.
-  ⚙ Compiled     guides:_api_meta Metadata API CustomObject reference
-  🗂 Slice        legacydeveloper/current/en-us
-  🎚 Filters      guides:_api_meta
-  🧪 Evidence     not_checked
+  🗂 Slice        developer/current/auto
 
 2. Results
   ✅ Matches      3 of 20163
@@ -42,6 +36,44 @@ Results:
    url: https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm
 
 Next: fetch promising ids or urls before implementation-sensitive answers.
+```
+
+## Ground
+
+### Human sees
+
+```text
+📚 SF Docs · ground  developer/current/auto
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Lineage
+  🔎 Original     How do Apex callouts work?
+  🗂 Slice        developer/current/auto
+
+2. Execution steps
+  1. catalog · ok
+  2. search · developer · ok · 2 result(s)
+  3. fetch · developer · ok · 2 result(s)
+
+3. Evidence packet
+  🧭 Verdict      grounded
+  📄 Documents    2
+  ✅ Retrieval    complete
+  📦 Content      complete
+```
+
+### LLM sees
+
+```text
+Ground verdict: grounded
+Ground steps:
+1. catalog: ok
+2. search developer: ok (2 result(s))
+3. fetch developer: ok (2 result(s))
+Fetch outcome: retrieval=complete; content=complete.
+
+SF Docs fetch returned 2 document(s) for developer/current/en-us.
+...
 ```
 
 ## Fetch
@@ -181,14 +213,13 @@ Citations:
 
 2. Collection capabilities
 admin current · en-us · text,html,markdown
-  🧭 owns Latest Salesforce product documentation plus a bounded release-note window.
-  🕘 release notes Salesforce release notes are available for the latest three release-note releases.
-  📖 reference End-user and administrator help; developer reference material belongs in developer or legacydeveloper.
+  🧭 Salesforce administrator and end-user help across Salesforce products.
+  💡 Use catalog-provided release, guide, and taxonomy filters.
   🔍 filters +release:<n>, guides:<slug>, +taxonomyIds:<guid>
 
 developer current · en-us · text,markdown
-  🧭 owns Current Salesforce developer guides published through the modern developer-docs surface.
-  📖 reference Legacy Atlas/reference docs are not modeled as primary developer coverage here; use legacydeveloper for those lookups.
+  🧭 Current Salesforce developer APIs, programming guides, and reference documentation.
+  💡 Use the catalog's guide landmarks to refine broad searches.
 
 → Next
 💡 Use the collection profile before choosing non-default slices or filters.

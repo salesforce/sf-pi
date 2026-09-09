@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { formatAnswer, formatCollections, formatFetch, formatSearch } from "../lib/render.ts";
+import {
+  formatAnswer,
+  formatCollections,
+  formatFetch,
+  formatGround,
+  formatSearch,
+} from "../lib/render.ts";
 
 describe("sf-docs render", () => {
   it("renders visible search URLs and ids", () => {
@@ -44,24 +50,29 @@ describe("sf-docs render", () => {
     expect(formatSearch({ ...details, displayDensity: "verbose" })).toContain("Snippet:");
   });
 
-  it("renders collection profile summaries", () => {
+  it("renders collection guidance from the service catalog", () => {
     const text = formatCollections({
-      collections: [{ collection: "admin", versions: ["current"], locales: ["en-us"] }],
-      capabilitySummaries: [{ collection: "admin", keyFilters: "+release:<n>" }],
-      collectionProfiles: [
+      collections: [
         {
           collection: "admin",
-          coverage: "Latest Salesforce product documentation plus a bounded release-note window.",
-          releaseNotes:
-            "Salesforce release notes are available for the latest three release-note releases.",
-          references: "End-user and administrator help.",
+          description: "Salesforce administrator and end-user help.",
+          versions: ["current"],
+          locales: ["en-us"],
+        },
+      ],
+      capabilitySummaries: [
+        {
+          collection: "admin",
+          description: "Salesforce administrator and end-user help.",
+          keyFilters: "+release:<n>",
+          hintsPreview: "Use catalog-provided release and guide filters.",
         },
       ],
     });
 
     expect(text).toContain("2. Collection capabilities");
-    expect(text).toContain("owns Latest Salesforce product documentation");
-    expect(text).toContain("release notes Salesforce release notes are available");
+    expect(text).toContain("Salesforce administrator and end-user help");
+    expect(text).toContain("Use catalog-provided release and guide filters");
     expect(text).toContain("filters +release:<n>");
   });
 
@@ -162,6 +173,30 @@ describe("sf-docs render", () => {
     expect(text).not.toContain("contentHash");
     expect(text).not.toContain("fedcba");
     expect(text).not.toContain("UNIQUE_FETCH_TAIL");
+  });
+
+  it("renders explicit ground verdict and execution steps", () => {
+    const text = formatGround({
+      verdict: "grounded",
+      effectiveSlice: { collection: "developer", version: "current", locale: "auto" },
+      originalRequest: { query: "How do Apex callouts work?" },
+      retrievalStatus: "complete",
+      contentStatus: "complete",
+      steps: [
+        { action: "catalog", status: "ok", source: "cache" },
+        { action: "search", status: "ok", collection: "developer", resultCount: 1 },
+        { action: "fetch", status: "ok", collection: "developer", resultCount: 1 },
+      ],
+      llmBudget: { maxTotalChars: 48000, returnedChars: 100 },
+      documents: [{ id: "doc", title: "Apex", contentChars: 100, llmReturnedChars: 100 }],
+    });
+
+    expect(text).toContain("SF Docs · ground");
+    expect(text).toContain("How do Apex callouts work?");
+    expect(text).toContain("Verdict");
+    expect(text).toContain("grounded");
+    expect(text).toContain("Execution steps");
+    expect(text).toContain("**search** · developer · ok · 1 result(s)");
   });
 
   it("renders fetch recovery metadata for document errors", () => {

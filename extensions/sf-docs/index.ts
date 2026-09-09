@@ -41,10 +41,6 @@ import { readEffectiveDocsPreferences } from "./lib/preferences.ts";
 import { parseListResponse } from "./lib/protocol.ts";
 import { formatCollections } from "./lib/render.ts";
 import { registerSfDocsTool, summarizeCollectionCapabilities } from "./lib/sf_docs-tool.ts";
-import {
-  docsCollectionProfilesFor,
-  summarizeDocsCollectionProfile,
-} from "./lib/collection-profiles.ts";
 import { buildStatus } from "./lib/status.ts";
 import {
   COMMAND_NAME,
@@ -249,18 +245,18 @@ function prepareDocsLogout(ctx: ExtensionCommandContext): string {
 
 async function listCollections(ctx: ExtensionCommandContext, refresh: boolean): Promise<string> {
   const prefs = readEffectiveDocsPreferences(ctx.cwd);
-  const cache = readCatalogCache();
+  const endpoint = await getDocsEndpoint(ctx);
+  if (endpoint.ok === false) return endpoint.message;
+  const cache = readCatalogCache(Date.now(), endpoint.endpoint);
   if (prefs.cacheCatalog && !refresh && cache.hit && !cache.stale && cache.collections) {
     return formatCollectionCatalog(cache.collections, `hit · ${formatCacheAge(cache.fetchedAt)}`);
   }
 
-  const endpoint = await getDocsEndpoint(ctx);
-  if (endpoint.ok === false) return endpoint.message;
   const client = new DocsClient({ endpoint: endpoint.endpoint });
   const response = parseListResponse(await client.callTool("list", {}, ctx.signal));
   if (response.error) return `Docs service error: ${response.error}`;
   const collections: DocsCollection[] = response.collections ?? [];
-  if (prefs.cacheCatalog) writeCatalogCache(collections);
+  if (prefs.cacheCatalog) writeCatalogCache(collections, Date.now(), endpoint.endpoint);
   return formatCollectionCatalog(collections, refresh ? "refreshed" : "miss/refreshed");
 }
 
@@ -268,9 +264,6 @@ function formatCollectionCatalog(collections: DocsCollection[], cache: string): 
   return formatCollections({
     collections,
     capabilitySummaries: collections.map(summarizeCollectionCapabilities),
-    collectionProfiles: docsCollectionProfilesFor(
-      collections.map((collection) => collection.collection),
-    ).map(summarizeDocsCollectionProfile),
     cache,
   });
 }

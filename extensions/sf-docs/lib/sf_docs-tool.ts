@@ -7,21 +7,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { getDocsEndpoint } from "./auth.ts";
 import { DocsClient } from "./client.ts";
+import { runGroundWorkflow } from "./ground-workflow.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./catalog-cache.ts";
-import {
-  docsCollectionProfilesFor,
-  summarizeDocsCollectionProfile,
-} from "./collection-profiles.ts";
-import {
-  compileCollectionQuery,
-  runSearchWithDeveloperPeerFallback,
-  type CollectionQueryCompilation,
-  type SearchOperationArgs,
-} from "./collection-retrieval.ts";
-import {
-  planDeveloperReferenceRouting,
-  type DeveloperReferenceRoutingPlan,
-} from "./developer-reference.ts";
 import {
   EVIDENCE_PREVIEW_CHAR_LIMIT,
   buildAnswerEvidencePacket,
@@ -47,92 +34,33 @@ import {
 import { buildStatus } from "./status.ts";
 import { renderToolCall, renderToolResult, clipText } from "./render.ts";
 import {
-  buildDistilledSearchRequests,
-  distillDocsQuery,
-  isHighConfidenceDistilledResult,
-  rankDistilledResults,
-  type DistilledSearchBatch,
-  type DistilledSearchRequest,
-  type DocsQueryDistillationPlan,
-  type RankedDistilledResult,
-} from "./query-distillation.ts";
-import {
   TOOL_NAME,
-  type DocsCitation,
   type DocsCollection,
-  type DocsDocument,
   type DocsSearchResult,
   type SfDocsDisplayDensity,
   type ToolResultShape,
 } from "./types.ts";
-import {
-  evaluateReleaseNoteEvidence,
-  normalizeReleaseValue,
-  resultHasReleaseNoteMarkers,
-  resultMatchesRelease,
-} from "./release-notes.ts";
-
-interface DistilledServiceError {
-  error: string;
-  requested?: Record<string, unknown>;
-  available?: string;
-}
-
-interface DistilledSearchRun {
-  requests: DistilledSearchRequest[];
-  batches: DistilledSearchBatch[];
-  ranked: RankedDistilledResult[];
-  serviceErrors: DistilledServiceError[];
-}
-
-type DocsEvidenceStatus =
-  | "ok"
-  | "no_matches"
-  | "wrong_release"
-  | "not_release_note_evidence"
-  | "insufficient"
-  | "coverage_gap"
-  | "not_checked";
-
-interface DocsQueryPlanSummary {
-  original: string;
-  compiledQuery: string;
-  collection: string;
-  version: string;
-  locale: string;
-  filters: string[];
-  boosts: string[];
-  evidenceStatus: DocsEvidenceStatus;
-  intent?: string;
-  reason?: string;
-  collectionOverride?: { from: string; to: string; reason: string };
-  evidenceMessage?: string;
-}
-
-interface DocsEvidenceEvaluation {
-  status: DocsEvidenceStatus;
-  message?: string;
-}
-
-interface FetchRecoveryResult {
-  recovered: boolean;
-  search: DistilledSearchRun;
-  docs: DocsDocument[];
-  slice: { collection: string; version: string; locale: string };
-  recoveredRequest?: { ids?: string[]; urls?: string[]; format: "text" | "markdown" | "html" };
-  resolved?: RankedDistilledResult;
-  failureReason?: "no_recovery_candidate" | "recovery_fetch_failed" | "docs_service_error";
-  failureMessage?: string;
-}
+import { normalizeReleaseValue } from "./release-notes.ts";
 
 const Params = Type.Object({
   action: StringEnum(
-    ["status", "collections", "search", "fetch", "answer", "explain", "cheatsheet"] as const,
+    [
+      "status",
+      "collections",
+      "ground",
+      "search",
+      "fetch",
+      "answer",
+      "explain",
+      "cheatsheet",
+    ] as const,
     {
       description: "SF Docs action to run.",
     },
   ),
-  query: Type.Optional(Type.String({ description: "Search or answer/explain query." })),
+  query: Type.Optional(
+    Type.String({ description: "Ground, search, answer, or explain query or documentation URL." }),
+  ),
   collection: Type.Optional(Type.String({ description: "Docs collection, e.g. developer." })),
   version: Type.Optional(
     Type.String({ description: "Collection version. Defaults to settings/current." }),
@@ -177,10 +105,11 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
     name: TOOL_NAME,
     label: "SF Docs",
     description:
-      "Search, fetch, and answer from Salesforce documentation through one family tool. Returns visible citations and bounded summaries.",
-    promptSnippet: "Search and fetch official Salesforce documentation with visible citations.",
+      "Ground, search, fetch, and answer from Salesforce documentation through one family tool. Ground records deterministic search/fetch evidence; primitives remain literal.",
+    promptSnippet:
+      "Ground implementation guidance or run literal Salesforce documentation actions with visible citations.",
     promptGuidelines: [
-      "Use sf_docs for official Salesforce documentation, not generic web search; implementation-sensitive guidance should be grounded by search then fetch.",
+      "Use sf_docs for official Salesforce documentation, not generic web search; use action='ground' for implementation-sensitive guidance that needs deterministic search and fetched evidence.",
       "Cite returned source URLs and report evidence gaps instead of substituting unrelated current documentation.",
       "Read extensions/sf-docs/AGENT_GUIDE.md for collection, release-note, and query-distillation guidance.",
     ],
@@ -238,8 +167,40 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       }
 
       try {
+        if (input.action === "ground") {
+          if (!input.query?.trim()) {
+            return fail("ground", "sf_docs ground requires query.", {
+              reason: "missing_query",
+              recover_via: { ask: "Provide a Salesforce documentation question or URL." },
+            });
+          }
+          const result = await runGroundWorkflow({
+            client,
+            endpoint: endpoint.endpoint,
+            input: {
+              query: input.query,
+              collection: slice.collection,
+              collectionExplicit: Boolean(input.collection),
+              version: slice.version,
+              locale: slice.locale,
+              pageSize: clamp(input.pageSize ?? prefs.defaultPageSize, 1, 60),
+              format: input.format ?? prefs.defaultFetchFormat,
+            },
+            signal,
+          });
+          return result.ok
+            ? ok("ground", result.text, {
+                ...result.details,
+                displayDensity: prefs.displayDensity,
+              })
+            : fail("ground", result.text, {
+                ...result.details,
+                displayDensity: prefs.displayDensity,
+              });
+        }
+
         if (input.action === "collections") {
-          const cache = readCatalogCache();
+          const cache = readCatalogCache(Date.now(), endpoint.endpoint);
           if (
             prefs.cacheCatalog &&
             !input.refresh &&
@@ -269,7 +230,9 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             });
           }
           const collections = response.collections ?? [];
-          if (prefs.cacheCatalog && !input.collection) writeCatalogCache(collections);
+          if (prefs.cacheCatalog && !input.collection) {
+            writeCatalogCache(collections, Date.now(), endpoint.endpoint);
+          }
           return collectionsResult(
             collections,
             input.refresh ? "refreshed" : "miss/refreshed",
@@ -286,319 +249,84 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
             });
           }
           const pageSize = clamp(input.pageSize ?? prefs.defaultPageSize, 1, 60);
-          const referencePlan = planDeveloperReferenceRouting({
-            collection: slice.collection,
+          const args = buildSearchRequest({
+            ...slice,
             query: input.query,
-          });
-          const actionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
-          const compilation = compileCollectionQuery(
-            actionSlice.collection,
-            referencePlan?.compiledQuery ?? input.query,
-          );
-          const actionQuery = compilation.query;
-          const queryPlan = referencePlan
-            ? buildDeveloperReferenceQueryPlan(input.query, actionQuery, actionSlice, referencePlan)
-            : compilation.changed
-              ? buildCollectionQueryPlan(input.query, actionQuery, actionSlice, compilation)
-              : undefined;
-          const distilled = distillDocsQuery(actionQuery, {
-            defaultCollection: actionSlice.collection,
-            explicitCollection: input.collection ? actionSlice.collection : undefined,
-          });
-          if (distilled) {
-            const distilledSearch = await runDistilledSearch(
-              client,
-              distilled,
-              {
-                version: actionSlice.version,
-                locale: actionSlice.locale,
-                page: input.page ?? 1,
-                pageSize,
-                format: input.format,
-              },
-              signal,
-            );
-            if (allDistilledSearchesFailed(distilledSearch)) {
-              const serviceError = distilledSearch.serviceErrors[0];
-              return fail("search", formatDistilledServiceError(serviceError), {
-                ...actionSlice,
-                query: input.query,
-                reason: "docs_service_error",
-                requested: serviceError?.requested,
-                available: serviceError?.available,
-                resolution: buildDistillationResolution(distilled, distilledSearch, {
-                  status: "service_error",
-                }),
-              });
-            }
-            const response = {
-              results: distilledSearch.ranked.slice(0, pageSize),
-              totalCount: distilledSearch.ranked.length,
-            };
-            const distilledQueryPlan = buildQueryPlanSummary(distilled, distilledSearch, {
-              version: actionSlice.version,
-              locale: actionSlice.locale,
-            });
-            if (referencePlan)
-              applyDeveloperReferencePlanToQueryPlan(distilledQueryPlan, referencePlan);
-            const text = [
-              formatQueryPlanText(distilledQueryPlan),
-              "",
-              formatSearchToolText(input.query, response),
-            ].join("\n");
-            return ok("search", text, {
-              ...actionSlice,
-              collection: distilled.collectionCandidates[0] ?? actionSlice.collection,
-              query: input.query,
-              ...response,
-              retrieval_status: distilledQueryPlan.evidenceStatus,
-              queryPlan: distilledQueryPlan,
-              collectionOverride: referencePlan?.collectionOverride,
-              displayDensity: prefs.displayDensity,
-              resolution: buildDistillationResolution(distilled, distilledSearch, {
-                evidenceStatus: distilledQueryPlan.evidenceStatus,
-              }),
-            });
-          }
-
-          const searchArgs: SearchOperationArgs = {
-            query: actionQuery,
             page: input.page ?? 1,
             pageSize,
-          };
-          if (input.format) searchArgs.format = input.format;
-          const searchRun = await runSearchWithDeveloperPeerFallback(
-            client,
-            searchArgs,
-            actionSlice,
-            referencePlan?.fallbackCollection,
-            signal,
-          );
-          const { response, slice: resultSlice } = searchRun;
-          const collectionOverride =
-            searchRun.collectionOverride ?? referencePlan?.collectionOverride;
-          if (searchRun.collectionOverride && queryPlan) {
-            queryPlan.collection = resultSlice.collection;
-            queryPlan.collectionOverride = searchRun.collectionOverride;
-          }
-
+            format: input.format,
+          });
+          const response = parseSearchResponse(await client.callTool("search", args, signal));
           const serviceError = docsServiceError(response);
           if (serviceError) {
             return fail("search", serviceError, {
-              ...resultSlice,
+              ...slice,
               query: input.query,
               reason: "docs_service_error",
               requested: response.requested,
               available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
             });
           }
-          const text = [
-            queryPlan ? formatQueryPlanText(queryPlan) : "",
-            formatSearchToolText(input.query, response),
-          ]
-            .filter(Boolean)
-            .join("\n\n");
-          return ok("search", text, {
-            ...resultSlice,
+          return ok("search", formatSearchToolText(input.query, response), {
+            ...slice,
             query: input.query,
-            compiledQuery: actionQuery !== input.query ? actionQuery : undefined,
             ...response,
-            queryPlan,
-            collectionOverride,
             displayDensity: prefs.displayDensity,
           });
         }
 
         if (input.action === "fetch") {
           const format = input.format ?? prefs.defaultFetchFormat;
-          const requested: {
-            ids?: string[];
-            urls?: string[];
-            format: "text" | "markdown" | "html";
-          } = {
-            format,
-          };
-          if (input.ids?.length) {
-            requested.ids = input.ids.slice(0, 12);
-          } else if (input.urls?.length) {
-            requested.urls = input.urls.slice(0, 12);
-          } else {
+          const requested = input.ids?.length
+            ? { ids: input.ids.slice(0, 12) }
+            : input.urls?.length
+              ? { urls: input.urls.slice(0, 12) }
+              : undefined;
+          if (!requested) {
             return fail("fetch", "sf_docs fetch requires ids or urls.", {
               reason: "missing_ids_or_urls",
               recover_via: { action: "search", required: ["query"] },
             });
           }
-          const referencePlan = planDeveloperReferenceRouting({
-            collection: slice.collection,
-            urls: requested.urls,
-          });
-          const actionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
-          const referenceQueryPlan = referencePlan
-            ? buildDeveloperReferenceQueryPlan(
-                requested.urls?.[0] ?? requested.ids?.[0] ?? "fetch",
-                requested.urls?.[0] ?? requested.ids?.[0] ?? "fetch",
-                actionSlice,
-                referencePlan,
-              )
-            : undefined;
-          const args = buildFetchRequest({
-            ...actionSlice,
-            format,
-            ids: requested.ids,
-            urls: requested.urls,
-          });
-          const response = parseFetchResponse(await client.callTool("fetch", args, signal));
+          const response = parseFetchResponse(
+            await client.callTool(
+              "fetch",
+              buildFetchRequest({ ...slice, ...requested, format }),
+              signal,
+            ),
+          );
           const serviceError = docsServiceError(response);
           if (serviceError) {
             return fail("fetch", serviceError, {
-              ...actionSlice,
-              requested: response.requested ?? requested,
+              ...slice,
+              requested: response.requested ?? { ...requested, format },
               available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
               reason: "docs_service_error",
             });
           }
           const docs = response.documents ?? [];
           const requestedCount = requested.ids?.length ?? requested.urls?.length ?? 0;
-          const directOutcome = classifyFetchDocuments(docs, requestedCount);
-          const recoveryPlan =
-            requested.urls?.length === 1
-              ? distillDocsQuery(requested.urls[0], {
-                  defaultCollection: actionSlice.collection,
-                  explicitCollection: input.collection ? actionSlice.collection : undefined,
-                })
-              : undefined;
-          if (recoveryPlan && directOutcome.retrievalStatus === "failed") {
-            const recovery = await recoverFetchByDistilledSearch(
-              client,
-              recoveryPlan,
-              {
-                version: actionSlice.version,
-                locale: actionSlice.locale,
-                format,
-              },
-              signal,
-            );
-            if (recovery.recovered) {
-              const packet = buildFetchEvidencePacket(recovery.docs, recovery.slice);
-              const recoveryOutcome = classifyFetchDocuments(
-                recovery.docs,
-                recovery.recoveredRequest?.ids?.length ?? 1,
-              );
-              const contentStatus = fetchContentStatus(packet);
-              const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
-                version: actionSlice.version,
-                locale: actionSlice.locale,
-              });
-              const note = `Recovered by searching distilled docs locator: ${recoveryPlan.semanticQuery}`;
-              return ok(
-                "fetch",
-                `${formatQueryPlanText(queryPlan)}\n\n${note}\n${formatFetchOutcome(recoveryOutcome.retrievalStatus, contentStatus)}\n\n${packet.text || "No documents returned."}`,
-                {
-                  ...recovery.slice,
-                  requested,
-                  recoveredRequest: recovery.recoveredRequest,
-                  displayDensity: prefs.displayDensity,
-                  queryPlan,
-                  documents: packet.documents,
-                  totalDocuments: packet.documents.length,
-                  totalContentChars: packet.totalContentChars,
-                  llmBudget: packet.llmBudget,
-                  retrievalStatus: recoveryOutcome.retrievalStatus,
-                  contentStatus,
-                  resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
-                    status: "recovered",
-                    resolvedId: recovery.resolved?.id,
-                    resolvedUrl: recovery.resolved?.url,
-                    score: recovery.resolved?.score,
-                  }),
-                },
-              );
-            }
-
-            const failureDocs = recovery.docs.length ? recovery.docs : docs;
-            const failureSlice = recovery.docs.length ? recovery.slice : actionSlice;
-            const packet = buildFetchEvidencePacket(failureDocs, failureSlice);
-            const contentStatus = fetchContentStatus(packet);
-            const queryPlan = buildQueryPlanSummary(recoveryPlan, recovery.search, {
-              version: actionSlice.version,
-              locale: actionSlice.locale,
-            });
-            const recoveryFailed = recovery.failureReason === "recovery_fetch_failed";
-            const recoveryServiceError = recovery.failureReason === "docs_service_error";
-            const text = [
-              formatQueryPlanText(queryPlan),
-              recovery.failureMessage ??
-                (recoveryFailed || recoveryServiceError
-                  ? `Direct URL fetch and recovery fetch were not usable: ${recoveryPlan.semanticQuery}`
-                  : `Direct URL fetch was not usable. Distilled docs locator query was ambiguous: ${recoveryPlan.semanticQuery}`),
-              formatRecoveryCandidates(recovery.search.ranked),
-              formatFetchOutcome("failed", contentStatus),
-              "",
-              packet.text || "No documents returned.",
-            ]
-              .filter(Boolean)
-              .join("\n");
-            const details = {
-              ...slice,
-              requested,
-              displayDensity: prefs.displayDensity,
-              queryPlan,
-              documents: packet.documents,
-              totalDocuments: packet.documents.length,
-              totalContentChars: packet.totalContentChars,
-              llmBudget: packet.llmBudget,
-              retrievalStatus: "failed" as const,
-              contentStatus,
-              recoveryError: recovery.failureMessage,
-              resolution: buildDistillationResolution(recoveryPlan, recovery.search, {
-                status: recoveryFailed || recoveryServiceError ? "failed" : "ambiguous",
-                evidenceStatus: queryPlan.evidenceStatus,
-              }),
-            };
-            if (recoveryPlan.releaseHint && recoveryPlan.releaseNoteIntent) {
-              return fail("fetch", text, {
-                ...details,
-                reason: "insufficient_docs_evidence",
-                retrieval_status: queryPlan.evidenceStatus,
-                recover_via: { action: "search", query: queryPlan.compiledQuery },
-              });
-            }
-            return fail("fetch", text, {
-              ...details,
-              reason: recoveryFailed
-                ? "recovery_fetch_failed"
-                : recoveryServiceError
-                  ? "docs_service_error"
-                  : "no_usable_documents",
-            });
-          }
-
-          const packet = buildFetchEvidencePacket(docs, actionSlice);
+          const outcome = classifyFetchDocuments(docs, requestedCount);
+          const packet = buildFetchEvidencePacket(docs, slice);
           const contentStatus = fetchContentStatus(packet);
           const text = [
-            referenceQueryPlan ? formatQueryPlanText(referenceQueryPlan) : "",
-            formatFetchOutcome(directOutcome.retrievalStatus, contentStatus),
+            formatFetchOutcome(outcome.retrievalStatus, contentStatus),
             packet.text || "No documents returned.",
-          ]
-            .filter(Boolean)
-            .join("\n\n");
+          ].join("\n\n");
           const details = {
-            ...actionSlice,
-            requested,
-            queryPlan: referenceQueryPlan,
-            collectionOverride: referencePlan?.collectionOverride,
+            ...slice,
+            requested: { ...requested, format },
             displayDensity: prefs.displayDensity,
             documents: packet.documents,
             totalDocuments: packet.documents.length,
             totalContentChars: packet.totalContentChars,
             llmBudget: packet.llmBudget,
-            retrievalStatus: directOutcome.retrievalStatus,
+            retrievalStatus: outcome.retrievalStatus,
             contentStatus,
           };
-          if (directOutcome.retrievalStatus === "failed") {
-            return fail("fetch", text, { ...details, reason: "no_usable_documents" });
-          }
-          return ok("fetch", text, details);
+          return outcome.retrievalStatus === "failed"
+            ? fail("fetch", text, { ...details, reason: "no_usable_documents" })
+            : ok("fetch", text, details);
         }
 
         if (input.action === "answer") {
@@ -608,238 +336,74 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
               recover_via: { ask: "Provide a concise Salesforce documentation question." },
             });
           }
-          const referencePlan = planDeveloperReferenceRouting({
-            collection: slice.collection,
-            query: input.query,
-          });
-          const initialActionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
-          const compilation = compileCollectionQuery(
-            initialActionSlice.collection,
-            referencePlan?.compiledQuery ?? input.query,
-          );
-          const actionQuery = compilation.query;
-          let actionSlice = initialActionSlice;
-          let collectionOverride = referencePlan?.collectionOverride;
-          let queryPlan = referencePlan
-            ? buildDeveloperReferenceQueryPlan(
-                input.query,
-                actionQuery,
-                initialActionSlice,
-                referencePlan,
-              )
-            : compilation.changed
-              ? buildCollectionQueryPlan(input.query, actionQuery, initialActionSlice, compilation)
-              : undefined;
-
-          if (referencePlan?.fallbackCollection) {
-            const preflight = await runSearchWithDeveloperPeerFallback(
-              client,
-              { query: actionQuery, page: 1, pageSize: 1 },
-              initialActionSlice,
-              referencePlan.fallbackCollection,
-              signal,
-            );
-            actionSlice = preflight.slice;
-            if (preflight.collectionOverride) {
-              collectionOverride = preflight.collectionOverride;
-              if (queryPlan) {
-                queryPlan.collection = actionSlice.collection;
-                queryPlan.collectionOverride = collectionOverride;
-              }
-            }
-          }
-
-          const distilled = distillDocsQuery(actionQuery, {
-            defaultCollection: actionSlice.collection,
-            explicitCollection: input.collection ? actionSlice.collection : undefined,
-          });
-          const answerBias = distilled?.releaseHint && distilled.releaseNoteIntent;
-          if (answerBias) {
-            const preflight = await runDistilledSearch(
-              client,
-              distilled,
-              { version: actionSlice.version, locale: actionSlice.locale, pageSize: 5 },
-              signal,
-            );
-            if (allDistilledSearchesFailed(preflight)) {
-              const serviceError = preflight.serviceErrors[0];
-              return fail("answer", formatDistilledServiceError(serviceError), {
-                ...actionSlice,
-                query: input.query,
-                reason: "docs_service_error",
-                requested: serviceError?.requested,
-                available: serviceError?.available,
-                resolution: buildDistillationResolution(distilled, preflight, {
-                  status: "service_error",
-                }),
-              });
-            }
-            queryPlan = buildQueryPlanSummary(distilled, preflight, {
-              version: actionSlice.version,
-              locale: actionSlice.locale,
-            });
-            if (queryPlan.evidenceStatus !== "ok") {
-              return fail(
-                "answer",
-                `${formatQueryPlanText(queryPlan)}\n\nSF Docs could not find sufficient official documentation evidence for this release-specific question.`,
-                {
-                  ...actionSlice,
-                  collection: distilled.collectionCandidates[0] ?? actionSlice.collection,
-                  query: input.query,
-                  reason: "insufficient_docs_evidence",
-                  retrieval_status: queryPlan.evidenceStatus,
-                  queryPlan,
-                  resolution: buildDistillationResolution(distilled, preflight, {
-                    evidenceStatus: queryPlan.evidenceStatus,
-                  }),
-                  recover_via: { action: "search", query: queryPlan.compiledQuery },
-                },
-              );
-            }
-          }
-          const answerSlice = answerBias
-            ? {
-                ...actionSlice,
-                collection: distilled.collectionCandidates[0] ?? actionSlice.collection,
-              }
-            : actionSlice;
-          const answerQuery = answerBias
-            ? (queryPlan?.compiledQuery ?? uniqueAnswerQuery(actionQuery, distilled.variants))
-            : actionQuery;
           const response = parseAnswerResponse(
             "answer",
             await client.callTool(
               "answer",
-              buildAnswerRequest({
-                ...answerSlice,
-                query: answerQuery,
+              buildAnswerRequest({ ...slice, query: input.query, cite: true }),
+              signal,
+            ),
+          );
+          const serviceError = docsServiceError(response);
+          if (serviceError) {
+            return fail("answer", serviceError, {
+              ...slice,
+              reason: "docs_service_error",
+              requested: response.requested,
+              available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
+            });
+          }
+          const packet = buildAnswerEvidencePacket("answer", response);
+          return ok("answer", packet.text, {
+            ...slice,
+            ...packet.details,
+            displayDensity: prefs.displayDensity,
+            answerChars: packet.answerChars,
+            answerReturnedChars: packet.answerReturnedChars,
+            answerTruncated: packet.answerTruncated,
+            citationsTruncated: packet.citationsTruncated,
+          });
+        }
+
+        if (input.action === "explain") {
+          const locator = input.id ? { id: input.id } : input.url ? { url: input.url } : undefined;
+          if (!locator) {
+            return fail("explain", "sf_docs explain requires id or url.", {
+              reason: "missing_id_or_url",
+              recover_via: { action: "search", then: "explain", required: ["id", "url"] },
+            });
+          }
+          const response = parseAnswerResponse(
+            "explain",
+            await client.callTool(
+              "explain",
+              buildExplainRequest({
+                query: input.query?.trim() || "Summarize this document.",
+                ...locator,
                 cite: true,
               }),
               signal,
             ),
           );
           const serviceError = docsServiceError(response);
-          if (serviceError)
-            return fail("answer", serviceError, {
-              ...answerSlice,
-              reason: "docs_service_error",
-              requested: response.requested,
-              available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
-            });
-          if (answerBias && queryPlan) {
-            const citationEvidence = evaluateAnswerCitationEvidence(
-              distilled,
-              response.citations ?? [],
-            );
-            if (citationEvidence.status !== "ok") {
-              const failedPlan = {
-                ...queryPlan,
-                evidenceStatus: citationEvidence.status,
-                evidenceMessage: citationEvidence.message,
-              };
-              return fail(
-                "answer",
-                `${formatQueryPlanText(failedPlan)}\n\nSF Docs answer citations did not satisfy the release-specific evidence gate.`,
-                {
-                  ...answerSlice,
-                  query: input.query,
-                  reason: "insufficient_docs_evidence",
-                  retrieval_status: citationEvidence.status,
-                  queryPlan: failedPlan,
-                  citations: response.citations,
-                },
-              );
-            }
-          }
-          const answerPacket = buildAnswerEvidencePacket("answer", response);
-          return ok(
-            "answer",
-            `${queryPlan ? `${formatQueryPlanText(queryPlan)}\n\n` : ""}${answerPacket.text}`,
-            {
-              ...answerSlice,
-              ...answerPacket.details,
-              retrieval_status: queryPlan?.evidenceStatus,
-              queryPlan,
-              collectionOverride,
-              displayDensity: prefs.displayDensity,
-              answerChars: answerPacket.answerChars,
-              answerReturnedChars: answerPacket.answerReturnedChars,
-              answerTruncated: answerPacket.answerTruncated,
-              citationsTruncated: answerPacket.citationsTruncated,
-              resolution: answerBias
-                ? {
-                    kind: "docs_query_distillation",
-                    original: distilled.original,
-                    source: distilled.source,
-                    semanticQuery: distilled.semanticQuery,
-                    variantsTried: distilled.variants,
-                    collectionsTried: [answerSlice.collection],
-                    releaseHint: distilled.releaseHint,
-                    status: "answer_biased",
-                    evidenceStatus: queryPlan?.evidenceStatus,
-                  }
-                : undefined,
-            },
-          );
-        }
-
-        if (input.action === "explain") {
-          const referencePlan = planDeveloperReferenceRouting({
-            collection: slice.collection,
-            query: input.query,
-            url: input.url,
-          });
-          const actionSlice = applyDeveloperReferenceRouting(slice, referencePlan);
-          const referenceQueryPlan = referencePlan
-            ? buildDeveloperReferenceQueryPlan(
-                input.url ?? input.id ?? input.query ?? "explain",
-                input.query?.trim() || "Summarize this document.",
-                actionSlice,
-                referencePlan,
-              )
-            : undefined;
-          let locator: { id: string } | { url: string };
-          if (input.id) locator = { id: input.id };
-          else if (input.url) locator = { url: input.url };
-          else {
-            return fail("explain", "sf_docs explain requires id or url.", {
-              reason: "missing_id_or_url",
-              recover_via: { action: "search", then: "explain", required: ["id", "url"] },
-            });
-          }
-          const args = buildExplainRequest({
-            query: input.query?.trim() || "Summarize this document.",
-            ...locator,
-            cite: true,
-          });
-          const response = parseAnswerResponse(
-            "explain",
-            await client.callTool("explain", args, signal),
-          );
-          const serviceError = docsServiceError(response);
-          if (serviceError)
+          if (serviceError) {
             return fail("explain", serviceError, {
-              ...actionSlice,
+              ...slice,
               reason: "docs_service_error",
               requested: response.requested,
               available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
             });
-          const answerPacket = buildAnswerEvidencePacket("explain", response);
-          return ok(
-            "explain",
-            `${referenceQueryPlan ? `${formatQueryPlanText(referenceQueryPlan)}\n\n` : ""}${answerPacket.text}`,
-            {
-              ...actionSlice,
-              ...answerPacket.details,
-              queryPlan: referenceQueryPlan,
-              collectionOverride: referencePlan?.collectionOverride,
-              displayDensity: prefs.displayDensity,
-              answerChars: answerPacket.answerChars,
-              answerReturnedChars: answerPacket.answerReturnedChars,
-              answerTruncated: answerPacket.answerTruncated,
-              citationsTruncated: answerPacket.citationsTruncated,
-            },
-          );
+          }
+          const packet = buildAnswerEvidencePacket("explain", response);
+          return ok("explain", packet.text, {
+            ...slice,
+            ...packet.details,
+            displayDensity: prefs.displayDensity,
+            answerChars: packet.answerChars,
+            answerReturnedChars: packet.answerReturnedChars,
+            answerTruncated: packet.answerTruncated,
+            citationsTruncated: packet.citationsTruncated,
+          });
         }
       } catch (err) {
         throw err instanceof Error ? err : new Error(String(err));
@@ -848,7 +412,16 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       return fail(input.action, `Unsupported sf_docs action: ${input.action}`, {
         reason: "unsupported_action",
         recover_via: {
-          actions: ["status", "collections", "search", "fetch", "answer", "explain", "cheatsheet"],
+          actions: [
+            "status",
+            "collections",
+            "ground",
+            "search",
+            "fetch",
+            "answer",
+            "explain",
+            "cheatsheet",
+          ],
         },
       });
     },
@@ -863,370 +436,11 @@ function resolveCollectionName(collection: string): { collection: string; alias?
   return { collection };
 }
 
-function buildCollectionQueryPlan(
-  original: string,
-  compiledQuery: string,
-  slice: { collection: string; version: string; locale: string },
-  compilation: CollectionQueryCompilation,
-): DocsQueryPlanSummary {
-  return {
-    original,
-    compiledQuery,
-    ...slice,
-    filters: compilation.changed ? ["+latest:true"] : [],
-    boosts: [],
-    evidenceStatus: "not_checked",
-    intent: compilation.intent,
-    reason: compilation.reason,
-  };
-}
-
-function applyDeveloperReferenceRouting(
-  slice: { collection: string; version: string; locale: string },
-  plan: DeveloperReferenceRoutingPlan | undefined,
-): { collection: string; version: string; locale: string } {
-  return plan ? { ...slice, collection: plan.collection } : slice;
-}
-
-function applyDeveloperReferencePlanToQueryPlan(
-  queryPlan: DocsQueryPlanSummary,
-  plan: DeveloperReferenceRoutingPlan,
-): void {
-  queryPlan.intent = plan.intent;
-  queryPlan.reason = plan.reason;
-  queryPlan.collectionOverride = plan.collectionOverride;
-}
-
-function buildDeveloperReferenceQueryPlan(
-  original: string,
-  compiledQuery: string,
-  slice: { collection: string; version: string; locale: string },
-  plan: DeveloperReferenceRoutingPlan,
-): DocsQueryPlanSummary {
-  const guideBoost = compiledQuery.match(/\bguides:[a-z0-9_]+\b/iu)?.[0];
-  return {
-    original,
-    compiledQuery,
-    collection: slice.collection,
-    version: slice.version,
-    locale: slice.locale,
-    filters: [],
-    boosts: guideBoost ? [guideBoost] : [],
-    evidenceStatus: "not_checked",
-    intent: plan.intent,
-    reason: plan.reason,
-    collectionOverride: plan.collectionOverride,
-  };
-}
-
-async function runDistilledSearch(
-  client: DocsClient,
-  plan: DocsQueryDistillationPlan,
-  base: {
-    version: string;
-    locale: string;
-    page?: number;
-    pageSize: number;
-    format?: "text" | "markdown" | "html";
-  },
-  signal?: AbortSignal,
-): Promise<DistilledSearchRun> {
-  const requests = buildDistilledSearchRequests(plan);
-  const runs = await Promise.all(
-    requests.map(async (request) => {
-      const args = buildSearchRequest({
-        collection: request.collection,
-        version: base.version,
-        locale: base.locale,
-        query: request.query,
-        page: base.page ?? 1,
-        pageSize: base.pageSize,
-        format: base.format,
-      });
-      const response = parseSearchResponse(await client.callTool("search", args, signal));
-      const serviceError = response.error
-        ? {
-            error: response.error,
-            requested: response.requested,
-            available: structuredPreview(response.available, EVIDENCE_PREVIEW_CHAR_LIMIT),
-          }
-        : undefined;
-      return {
-        batch: {
-          request,
-          results: serviceError ? [] : (response.results ?? []),
-          totalCount: response.totalCount,
-        },
-        serviceError,
-      };
-    }),
-  );
-  const batches = runs.map((run) => run.batch);
-  return {
-    requests,
-    batches,
-    ranked: rankDistilledResults(plan, batches),
-    serviceErrors: runs.flatMap((run) => (run.serviceError ? [run.serviceError] : [])),
-  };
-}
-
-async function recoverFetchByDistilledSearch(
-  client: DocsClient,
-  plan: DocsQueryDistillationPlan,
-  base: { version: string; locale: string; format: "text" | "markdown" | "html" },
-  signal?: AbortSignal,
-): Promise<FetchRecoveryResult> {
-  const search = await runDistilledSearch(
-    client,
-    plan,
-    { version: base.version, locale: base.locale, pageSize: 5 },
-    signal,
-  );
-  if (allDistilledSearchesFailed(search)) {
-    return {
-      recovered: false,
-      search,
-      docs: [],
-      slice: {
-        collection: plan.collectionCandidates[0] ?? "developer",
-        version: base.version,
-        locale: base.locale,
-      },
-      failureReason: "docs_service_error",
-    };
-  }
-  const best = search.ranked[0];
-  if (!best?.id || !isHighConfidenceDistilledResult(best)) {
-    return {
-      recovered: false,
-      search,
-      docs: [],
-      slice: {
-        collection: best?.collection ?? plan.collectionCandidates[0] ?? "developer",
-        version: best?.version ?? base.version,
-        locale: best?.locale ?? base.locale,
-      },
-      failureReason: "no_recovery_candidate",
-    };
-  }
-
-  const recoverySlice = {
-    collection: best.collection,
-    version: best.version ?? base.version,
-    locale: best.locale ?? base.locale,
-  };
-  const recoveredRequest = { ids: [best.id], format: base.format };
-  const response = parseFetchResponse(
-    await client.callTool(
-      "fetch",
-      buildFetchRequest({
-        ...recoverySlice,
-        ...recoveredRequest,
-      }),
-      signal,
-    ),
-  );
-  const serviceError = docsServiceError(response);
-  if (serviceError) {
-    return {
-      recovered: false,
-      search,
-      docs: [],
-      slice: recoverySlice,
-      recoveredRequest,
-      resolved: best,
-      failureReason: "docs_service_error",
-      failureMessage: serviceError,
-    };
-  }
-  const docs = response.documents ?? [];
-  const outcome = classifyFetchDocuments(docs, 1);
-  return {
-    recovered: outcome.retrievalStatus !== "failed",
-    search,
-    docs,
-    slice: recoverySlice,
-    recoveredRequest,
-    resolved: best,
-    failureReason: outcome.retrievalStatus === "failed" ? "recovery_fetch_failed" : undefined,
-  };
-}
-
-function buildQueryPlanSummary(
-  plan: DocsQueryDistillationPlan,
-  search: DistilledSearchRun,
-  slice: { version: string; locale: string },
-): DocsQueryPlanSummary {
-  const firstRequest = search.requests[0];
-  const evidence = evaluateEvidence(plan, search.ranked, firstRequest?.collection);
-  return {
-    original: plan.original,
-    compiledQuery: firstRequest?.query ?? plan.variants[0] ?? plan.semanticQuery,
-    collection: firstRequest?.collection ?? plan.collectionCandidates[0] ?? "developer",
-    version: slice.version,
-    locale: slice.locale,
-    filters: plan.retrievalFilters,
-    boosts: plan.retrievalBoosts,
-    evidenceStatus: evidence.status,
-    evidenceMessage: evidence.message,
-  };
-}
-
-function evaluateEvidence(
-  plan: DocsQueryDistillationPlan,
-  results: DocsSearchResult[],
-  collection?: string,
-): DocsEvidenceEvaluation {
-  return evaluateReleaseNoteEvidence({
-    release: plan.releaseHint?.release,
-    releaseNoteIntent: plan.releaseNoteIntent,
-    collection,
-    results,
-  });
-}
-
-function evaluateAnswerCitationEvidence(
-  plan: DocsQueryDistillationPlan,
-  citations: DocsCitation[],
-): DocsEvidenceEvaluation {
-  const releaseEvidence = evaluateEvidence(
-    plan,
-    citations,
-    citations[0]?.collection ?? plan.collectionCandidates[0],
-  );
-  if (releaseEvidence.status !== "ok") return releaseEvidence;
-
-  const visibleCitations = citations.slice(0, Math.min(5, citations.length));
-  if (plan.releaseHint?.release && plan.releaseNoteIntent && visibleCitations.length) {
-    const release = plan.releaseHint.release;
-    const releaseNoteMatches = visibleCitations.filter(
-      (citation) =>
-        resultMatchesRelease(citation, release) && resultHasReleaseNoteMarkers(citation),
-    ).length;
-    const requiredReleaseNotes = Math.max(1, Math.ceil(visibleCitations.length / 2));
-    const firstCitation = visibleCitations[0];
-    const firstIsReleaseNoteEvidence = Boolean(
-      firstCitation &&
-      resultMatchesRelease(firstCitation, release) &&
-      resultHasReleaseNoteMarkers(firstCitation),
-    );
-    if (!firstIsReleaseNoteEvidence || releaseNoteMatches < requiredReleaseNotes) {
-      return {
-        status: "not_release_note_evidence",
-        message: `Only ${releaseNoteMatches} of the first ${visibleCitations.length} citations were release-note evidence for release ${release}.`,
-      };
-    }
-  }
-
-  if (!plan.retrievalBoosts.length) return { status: "ok" };
-
-  const matches = visibleCitations.filter((citation) =>
-    plan.retrievalBoosts.some((boost) => resultMatchesGuideBoost(citation, boost)),
-  ).length;
-  const required = Math.max(1, Math.ceil(visibleCitations.length / 2));
-  if (matches < required) {
-    return {
-      status: "insufficient",
-      message: `Only ${matches} of the first ${visibleCitations.length} citations matched product boosts (${plan.retrievalBoosts.join(" ")}).`,
-    };
-  }
-  return { status: "ok" };
-}
-
 function versionLooksLikeSalesforceRelease(version: string): boolean {
   const release = normalizeReleaseValue(version);
   return Boolean(
     release && /^\d{3}$/u.test(release) && version !== "current" && version !== "next",
   );
-}
-
-function resultMatchesGuideBoost(result: DocsSearchResult, boost: string): boolean {
-  const slug = boost
-    .replace(/^\+?guides:/u, "")
-    .trim()
-    .toLowerCase();
-  if (!slug) return false;
-  const compactSlug = slug.replace(/_/gu, " ");
-  const haystack = [
-    result.guides,
-    result.product,
-    result.products,
-    result.title,
-    typeof result.url === "string" ? result.url.replace(/^https?:\/\/[^/]+/iu, "") : "",
-    result.filename,
-  ]
-    .map((value) => (typeof value === "string" ? value.toLowerCase().replace(/[_-]/gu, " ") : ""))
-    .join(" ");
-  return haystack.includes(slug.replace(/_/gu, " ")) || haystack.includes(compactSlug);
-}
-
-function formatQueryPlanText(plan: DocsQueryPlanSummary): string {
-  const lines = ["Docs Query Plan:", `- original: ${plan.original}`];
-  if (plan.intent) lines.push(`- intent: ${plan.intent}`);
-  if (plan.collectionOverride) {
-    lines.push(
-      `- collection override: ${plan.collectionOverride.from} → ${plan.collectionOverride.to} (${plan.collectionOverride.reason})`,
-    );
-  }
-  if (plan.reason) lines.push(`- reason: ${plan.reason}`);
-  lines.push(
-    `- compiled: ${plan.compiledQuery}`,
-    `- slice: ${plan.collection}/${plan.version}/${plan.locale}`,
-  );
-  const filters = [...plan.filters, ...plan.boosts];
-  if (filters.length) lines.push(`- filters/boosts: ${filters.join(" ")}`);
-  lines.push(
-    `- evidence: ${plan.evidenceStatus}${plan.evidenceMessage ? ` — ${plan.evidenceMessage}` : ""}`,
-  );
-  return lines.join("\n");
-}
-
-function allDistilledSearchesFailed(search: DistilledSearchRun): boolean {
-  return search.requests.length > 0 && search.serviceErrors.length === search.requests.length;
-}
-
-function formatDistilledServiceError(error: DistilledServiceError | undefined): string {
-  return `Docs service error: ${error?.error ?? "unknown error"}${error?.available ? `\nAvailable: ${error.available}` : ""}`;
-}
-
-function buildDistillationResolution(
-  plan: DocsQueryDistillationPlan,
-  search: DistilledSearchRun,
-  extra: Record<string, unknown> = {},
-): Record<string, unknown> {
-  return {
-    kind: "docs_query_distillation",
-    original: plan.original,
-    source: plan.source,
-    host: plan.host,
-    locator: plan.locator,
-    semanticQuery: plan.semanticQuery,
-    variantsTried: search.requests.map((request) => request.query),
-    collectionsTried: [...new Set(search.requests.map((request) => request.collection))],
-    retrievalFilters: plan.retrievalFilters,
-    retrievalBoosts: plan.retrievalBoosts,
-    topCandidates: search.ranked.slice(0, 5).map((result) => ({
-      id: result.id,
-      title: result.title,
-      url: result.url,
-      collection: result.collection,
-      score: result.score,
-      matchedByUrl: result.matchedByUrl,
-    })),
-    serviceErrors: search.serviceErrors,
-    ...extra,
-  };
-}
-
-function formatRecoveryCandidates(ranked: RankedDistilledResult[]): string {
-  if (!ranked.length) return "No recovery candidates found.";
-  const lines = ["Recovery candidates:"];
-  ranked.slice(0, 3).forEach((result, index) => {
-    lines.push(`${index + 1}. ${result.title ?? "Untitled"}`);
-    if (result.id) lines.push(`   id: ${result.id}`);
-    if (result.url) lines.push(`   url: ${result.url}`);
-  });
-  return lines.join("\n");
 }
 
 function ok(action: string, text: string, details: Record<string, unknown>): ToolResultShape {
@@ -1248,12 +462,6 @@ function collectionsResult(
   collectionAlias?: string,
 ): ToolResultShape {
   const summaries = collections.map(summarizeCollectionCapabilities);
-  const collectionProfiles = docsCollectionProfilesFor(
-    collections.map((collection) => collection.collection),
-  ).map(summarizeDocsCollectionProfile);
-  const profileByCollection = new Map(
-    collectionProfiles.map((profile) => [profile.collection, profile]),
-  );
   const lines: string[] = [];
   if (collectionAlias) lines.push(`Collection alias: ${collectionAlias}`, "");
   for (const summary of summaries) {
@@ -1261,10 +469,6 @@ function collectionsResult(
       `${summary.collection}: versions=${summary.versions || "-"}; locales=${summary.locales || "-"}; formats=${summary.formats || "-"}${summary.status ? `; status=${summary.status}` : ""}`,
     );
     if (summary.description) lines.push(`  description: ${summary.description}`);
-    const profile = profileByCollection.get(summary.collection);
-    if (profile?.coverage) lines.push(`  coverage: ${profile.coverage}`);
-    if (profile?.releaseNotes) lines.push(`  release notes: ${profile.releaseNotes}`);
-    if (profile?.references) lines.push(`  references: ${profile.references}`);
     if (summary.extraFields) lines.push(`  extraFields: ${summary.extraFields}`);
     if (summary.keyFilters) lines.push(`  key filters: ${summary.keyFilters}`);
     if (summary.landmarks) lines.push(`  landmarks: ${summary.landmarks}`);
@@ -1273,7 +477,6 @@ function collectionsResult(
   return ok("collections", lines.join("\n"), {
     collections,
     capabilitySummaries: summaries,
-    collectionProfiles,
     cache,
     collectionAlias,
     displayDensity,
@@ -1352,14 +555,6 @@ function searchSnippet(result: DocsSearchResult): string {
   const raw = result.content;
   if (typeof raw !== "string") return "";
   return raw.replace(/\s+/g, " ").trim().slice(0, 300);
-}
-
-function uniqueAnswerQuery(original: string, variants: string[]): string {
-  const canonical = variants.find((variant) =>
-    /^Salesforce\s+\w+\s+\d{2}\s+Release Notes$/iu.test(variant),
-  );
-  if (!canonical || original.toLowerCase().includes(canonical.toLowerCase())) return original;
-  return `${original} ${canonical}`;
 }
 
 function timeoutForAction(action: string): number {

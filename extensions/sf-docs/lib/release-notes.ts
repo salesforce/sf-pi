@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Release-note evidence helpers for SF Docs query plans and answer gates. */
-import { getDocsCollectionProfile } from "./collection-profiles.ts";
+/** Release-note evidence helpers for explicit SF Docs grounding. */
 import type { DocsSearchResult } from "./types.ts";
+
+const BOUNDED_RELEASE_NOTE_COLLECTIONS = new Set(["admin"]);
 
 export type ReleaseNoteEvidenceStatus =
   | "ok"
@@ -85,9 +86,7 @@ export function normalizeReleaseValue(value: unknown): string | undefined {
 }
 
 function hasBoundedReleaseNoteCoverage(collection?: string): boolean {
-  if (!collection) return false;
-  const profile = getDocsCollectionProfile(collection);
-  return Boolean(profile?.releaseNotes.toLowerCase().includes("latest three"));
+  return Boolean(collection && BOUNDED_RELEASE_NOTE_COLLECTIONS.has(collection));
 }
 
 function articleIdFromUrl(value: string): string {

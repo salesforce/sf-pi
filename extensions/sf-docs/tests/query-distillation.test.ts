@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 import {
-  buildDistilledSearchRequests,
   distillDocsQuery,
   isHighConfidenceDistilledResult,
+  primaryDistilledSearch,
   rankDistilledResults,
 } from "../lib/query-distillation.ts";
 
 describe("Docs Query Distillation", () => {
-  it("turns Salesforce Help article URLs into admin search variants", () => {
+  it("turns Salesforce Help article URLs into an admin recovery query", () => {
     const plan = distillDocsQuery(
       "https://help.salesforce.com/s/articleView?id=ai.agent_connect_rep_other_voice_calls_sample.htm&type=5",
       { defaultCollection: "developer" },
@@ -25,72 +25,46 @@ describe("Docs Query Distillation", () => {
       "agent connect rep other voice calls sample",
       "agent connect rep other voice calls",
     ]);
+    expect(primaryDistilledSearch(plan!)).toEqual({
+      collection: "admin",
+      query: "ai.agent_connect_rep_other_voice_calls_sample",
+    });
   });
 
-  it("keeps explicit collection as fallback after host-derived collections", () => {
+  it("retains an explicit collection as mismatch evidence without changing the primary", () => {
     const plan = distillDocsQuery(
       "https://help.salesforce.com/s/articleView?id=ai.agent_connect_rep_other_voice_calls_sample.htm&type=5",
       { defaultCollection: "developer", explicitCollection: "developer" },
     );
 
     expect(plan?.collectionCandidates).toEqual(["admin", "developer"]);
-    expect(buildDistilledSearchRequests(plan!)).toEqual([
-      {
-        collection: "admin",
-        query: "ai.agent_connect_rep_other_voice_calls_sample",
-        variantIndex: 0,
-        fallbackCollection: false,
-      },
-      {
-        collection: "admin",
-        query: "agent connect rep other voice calls sample",
-        variantIndex: 1,
-        fallbackCollection: false,
-      },
-      {
-        collection: "admin",
-        query: "agent connect rep other voice calls",
-        variantIndex: 2,
-        fallbackCollection: false,
-      },
-      {
-        collection: "developer",
-        query: "agent connect rep other voice calls sample",
-        variantIndex: 1,
-        fallbackCollection: true,
-      },
-    ]);
+    expect(primaryDistilledSearch(plan!)).toMatchObject({ collection: "admin" });
   });
 
-  it("supports developer docs URLs with legacydeveloper fallback", () => {
-    const plan = distillDocsQuery(
-      "https://developer.salesforce.com/docs/platform/lwc/guide/reference-wire-adapters-record",
-      { defaultCollection: "developer" },
-    );
-
-    expect(plan).toMatchObject({
-      host: "developer.salesforce.com",
+  it("supports developer docs and Atlas URL ownership", () => {
+    expect(
+      distillDocsQuery(
+        "https://developer.salesforce.com/docs/platform/lwc/guide/reference-wire-adapters-record",
+        { defaultCollection: "developer" },
+      ),
+    ).toMatchObject({
       collectionCandidates: ["developer", "legacydeveloper"],
       semanticQuery: "reference wire adapters record",
     });
-    expect(plan?.variants).toContain("lwc reference wire adapters record");
-  });
 
-  it("routes Atlas developer reference URLs to legacydeveloper first", () => {
-    const plan = distillDocsQuery(
-      "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
-      { defaultCollection: "developer" },
-    );
-
-    expect(plan).toMatchObject({
-      host: "developer.salesforce.com",
+    expect(
+      distillDocsQuery(
+        "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
+        { defaultCollection: "developer" },
+      ),
+    ).toMatchObject({
       collectionCandidates: ["legacydeveloper", "developer"],
       semanticQuery: "customobject",
     });
   });
 
-  it("detects seasonal release-note queries without a public release parameter", () => {
-    const plan = distillDocsQuery("Whats new with Spring '26 release notes", {
+  it("compiles seasonal release-note intent to one primary filtered query", () => {
+    const plan = distillDocsQuery("Sales Cloud Spring '26 release notes", {
       defaultCollection: "developer",
     });
 
@@ -99,115 +73,80 @@ describe("Docs Query Distillation", () => {
       collectionCandidates: ["admin"],
       releaseHint: { season: "spring", year: 2026, release: "260" },
       releaseNoteIntent: true,
-    });
-    expect(plan?.variants).toEqual([
-      "+release:260 whats new with release notes",
-      "+release:260 Whats new with Spring '26 release notes",
-      "+release:260 Salesforce Spring 26 Release Notes",
-    ]);
-    expect(plan?.retrievalFilters).toEqual(["+release:260"]);
-    expect(buildDistilledSearchRequests(plan!).map((request) => request.collection)).toEqual([
-      "admin",
-      "admin",
-      "admin",
-    ]);
-  });
-
-  it("compiles product seasonal release-note queries to MCP-native filters and boosts", () => {
-    const plan = distillDocsQuery("Sales Cloud Winter '25 release notes", {
-      defaultCollection: "developer",
-    });
-
-    expect(plan).toMatchObject({
-      source: "query",
-      collectionCandidates: ["admin"],
-      releaseHint: { season: "winter", year: 2025, release: "252" },
-      releaseNoteIntent: true,
-      retrievalFilters: ["+release:252"],
+      retrievalFilters: ["+release:260"],
       retrievalBoosts: ["guides:_sales"],
     });
-    expect(plan?.variants[0]).toBe("+release:252 guides:_sales sales cloud release notes");
+    expect(primaryDistilledSearch(plan!)).toEqual({
+      collection: "admin",
+      query: "+release:260 guides:_sales sales cloud release notes",
+    });
   });
 
-  it("keeps plain product release-note queries on the normal search path", () => {
+  it("keeps plain product release-note queries on the literal path", () => {
     expect(
       distillDocsQuery("Apex release notes", { defaultCollection: "developer" }),
     ).toBeUndefined();
   });
 
-  it("detects release hints from Salesforce Help release parameters", () => {
-    const plan = distillDocsQuery(
-      "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
-      { defaultCollection: "developer" },
-    );
-
-    expect(plan).toMatchObject({
-      host: "help.salesforce.com",
+  it("detects release hints from Salesforce Help parameters", () => {
+    expect(
+      distillDocsQuery(
+        "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
+        { defaultCollection: "developer" },
+      ),
+    ).toMatchObject({
       collectionCandidates: ["admin"],
       releaseHint: { season: "spring", year: 2026, release: "260" },
       releaseNoteIntent: true,
     });
   });
 
-  it("prefers exact seasonal release results and avoids patch pages unless requested", () => {
+  it("ranks matching release-note results above wrong-release and patch pages", () => {
     const plan = distillDocsQuery("Spring 2026 release notes", {
       defaultCollection: "developer",
     })!;
-    const request = buildDistilledSearchRequests(plan)[0]!;
-    const ranked = rankDistilledResults(plan, [
+    const request = primaryDistilledSearch(plan)!;
+    const ranked = rankDistilledResults(plan, request, [
       {
-        request,
-        results: [
-          {
-            id: "summer-current",
-            title: "Spring ’26 Release Notes",
-            url: "https://help.salesforce.com/s/articleView?id=xcloud.starter_prosuite_rn_2026_spring_release.htm&release=262.0.0&type=5",
-            release: "262",
-            content: "Explore what’s new in Salesforce Suites for Spring ’26.",
-          },
-          {
-            id: "patch",
-            title: "Patch Releases Spring `26",
-            url: "https://help.salesforce.com/s/articleView?id=ind.comms_patch_releases_spring_26.htm&release=260&type=5",
-            release: "260",
-            content: "Information on each Spring `26 patch release.",
-          },
-          {
-            id: "main",
-            title: "Salesforce Spring ’26 Release Notes",
-            url: "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
-            release: "260",
-            content: "The Spring ’26 release helps companies become an Agentic Enterprise.",
-          },
-        ],
+        id: "summer-current",
+        title: "Spring ’26 Release Notes",
+        url: "https://help.salesforce.com/s/articleView?id=xcloud.rn.htm&release=262&type=5",
+        release: "262",
+      },
+      {
+        id: "patch",
+        title: "Patch Releases Spring `26",
+        url: "https://help.salesforce.com/s/articleView?id=ind.patch.htm&release=260&type=5",
+        release: "260",
+      },
+      {
+        id: "main",
+        title: "Salesforce Spring ’26 Release Notes",
+        url: "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
+        release: "260",
       },
     ]);
 
     expect(ranked.map((result) => result.id)).toEqual(["main", "patch", "summer-current"]);
   });
 
-  it("keeps patch release pages competitive for patch queries", () => {
+  it("keeps patch pages competitive when the query asks for patches", () => {
     const plan = distillDocsQuery("Spring 2026 patch release notes", {
       defaultCollection: "developer",
     })!;
-    const request = buildDistilledSearchRequests(plan)[0]!;
-    const ranked = rankDistilledResults(plan, [
+    const request = primaryDistilledSearch(plan)!;
+    const ranked = rankDistilledResults(plan, request, [
       {
-        request,
-        results: [
-          {
-            id: "patch",
-            title: "Patch Releases Spring `26",
-            url: "https://help.salesforce.com/s/articleView?id=ind.comms_patch_releases_spring_26.htm&release=260&type=5",
-            release: "260",
-          },
-          {
-            id: "main",
-            title: "Salesforce Spring ’26 Release Notes",
-            url: "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
-            release: "260",
-          },
-        ],
+        id: "patch",
+        title: "Patch Releases Spring `26",
+        url: "https://help.salesforce.com/s/articleView?id=ind.patch.htm&release=260&type=5",
+        release: "260",
+      },
+      {
+        id: "main",
+        title: "Salesforce Spring ’26 Release Notes",
+        url: "https://help.salesforce.com/s/articleView?id=release-notes.salesforce_release_notes.htm&release=260&type=5",
+        release: "260",
       },
     ]);
 
@@ -216,27 +155,22 @@ describe("Docs Query Distillation", () => {
     );
   });
 
-  it("ranks exact original URL matches above neighboring docs with the same locator", () => {
+  it("ranks an exact original URL above neighboring documents", () => {
     const plan = distillDocsQuery(
       "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
       { defaultCollection: "developer" },
     )!;
-    const request = buildDistilledSearchRequests(plan)[0]!;
-    const ranked = rankDistilledResults(plan, [
+    const request = primaryDistilledSearch(plan)!;
+    const ranked = rankDistilledResults(plan, request, [
       {
-        request,
-        results: [
-          {
-            id: "tooling-custom-object",
-            title: "CustomObject",
-            url: "https://developer.salesforce.com/docs/atlas.en-us.api_tooling.meta/api_tooling/tooling_api_objects_customobject.htm",
-          },
-          {
-            id: "metadata-custom-object",
-            title: "CustomObject",
-            url: "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
-          },
-        ],
+        id: "tooling-custom-object",
+        title: "CustomObject",
+        url: "https://developer.salesforce.com/docs/atlas.en-us.api_tooling.meta/api_tooling/tooling_api_objects_customobject.htm",
+      },
+      {
+        id: "metadata-custom-object",
+        title: "CustomObject",
+        url: "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
       },
     ]);
 
@@ -244,29 +178,6 @@ describe("Docs Query Distillation", () => {
       "metadata-custom-object",
       "tooling-custom-object",
     ]);
-  });
-
-  it("scores exact locator URL matches as high confidence", () => {
-    const plan = distillDocsQuery(
-      "https://help.salesforce.com/s/articleView?id=ai.agent_connect_rep_other_voice_calls_sample.htm&type=5",
-      { defaultCollection: "developer" },
-    )!;
-    const request = buildDistilledSearchRequests(plan)[0]!;
-    const ranked = rankDistilledResults(plan, [
-      {
-        request,
-        results: [
-          {
-            id: "doc-1",
-            title: "Sample Voice Call Connection Configuration in Genesys",
-            url: "https://help.salesforce.com/s/articleView?id=ai.agent_connect_rep_other_voice_calls_sample.htm&release=262.0.0&type=5",
-            content: "Connect a Rep voice call record with an Agent voice call record.",
-          },
-        ],
-      },
-    ]);
-
-    expect(ranked[0]?.matchedByUrl).toBe(true);
     expect(isHighConfidenceDistilledResult(ranked[0])).toBe(true);
   });
 });

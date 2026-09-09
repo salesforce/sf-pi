@@ -67,7 +67,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0070: SF SOQL is an API-native Query Lifecycle Extension](./0070-sf-soql-api-native-query-lifecycle-extension.md) — 2026-06-28
 - [0071: SF LWC is a local-native LWC Lifecycle Extension](./0071-sf-lwc-local-native-lifecycle-extension.md) — 2026-06-29
 - [0072: Status Footer Prefers Last-Known Usable Status](./0072-status-footer-prefers-last-known-usable-status.md) — 2026-07-01
-- [0073: SF Docs routes Developer reference lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md) — 2026-07-04
 - [0074: SF Guardrail mediates native high-value durable mutations](./0074-sf-guardrail-mediates-native-high-value-mutations.md) — 2026-07-05
 - [0075: SF Guardrail adds persisted Power Tool Mode](./0075-sf-guardrail-adds-persisted-power-tool-mode.md) — 2026-07-06
 - [0076: Pi 0.80.6 runtime delegation](./0076-pi-0806-runtime-delegation.md) — 2026-07-12
@@ -104,6 +103,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0110: SF Docs ships with no default endpoint](./0110-sf-docs-ships-with-no-default-endpoint.md) — 2026-09-08
 - [0111: SF Docs Uses Endpoint-Only Pi Login](./0111-sf-docs-uses-endpoint-only-pi-login.md) — 2026-09-09
 - [0112: SF Docs Separates Protocol Validity from Evidence Outcomes](./0112-sf-docs-separates-protocol-validity-from-evidence-outcomes.md) — 2026-09-09
+- [0113: SF Docs Uses Explicit Grounding and Literal Primitives](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md) — 2026-09-09
 
 ## Proposed
 
@@ -124,6 +124,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0059: Pi 0.79.10 runtime floor](./0059-pi-07910-runtime-floor.md) — 2026-06-22 — superseded by [ADR 0066](./0066-pi-0802-runtime-floor.md)
 - [0060: SF Docs uses Pi auth store for its docs credential](./0060-sf-docs-uses-pi-auth-store.md) — 2026-06-23 — superseded by [ADR 0111](./0111-sf-docs-uses-endpoint-only-pi-login.md)
 - [0066: Pi 0.80.2 runtime floor](./0066-pi-0802-runtime-floor.md) — 2026-06-23 — superseded by [ADR 0076](./0076-pi-0806-runtime-delegation.md)
+- [0073: SF Docs routes Developer reference lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md) — 2026-07-04 — superseded by [ADR 0113](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md)
 - [0088: Pi 0.82.0 Runtime Floor](./0088-pi-082-runtime-floor.md) — 2026-07-27 — superseded by [ADR 0109](./0109-pi-084-runtime-floor.md)
 
 ### Rejected

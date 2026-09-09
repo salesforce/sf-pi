@@ -4,8 +4,8 @@
 
 SF Docs gives agents and humans a first-class Salesforce documentation lookup
 surface inside SF Pi. The `sf_docs` family supports status, collection
-discovery, search, fetch, cited answers, single-document explanations, and a
-lazy cheatsheet.
+discovery, deterministic grounding, literal search/fetch primitives, cited
+answers, single-document explanations, and a lazy cheatsheet.
 
 It calls the Salesforce Docs service through direct HTTP JSON-RPC/SSE. It does
 not run a local MCP server, scrape Salesforce sites, build a local document
@@ -19,15 +19,17 @@ example `+release:260`.
 
 - `admin` covers Salesforce Help/Admin docs and a bounded release-note window.
 - `developer` covers current developer guides and migrated reference material.
-- `legacydeveloper` is the deprecating Atlas-backed reference collection. Reference
-  searches retry the peer developer collection when the preferred collection has
-  no matches.
-- `architect`, `tableau`, and `mulesoft` cover their corresponding sites. MuleSoft
-  searches prefer `+latest:true` unless a component release is requested.
+- `legacydeveloper` is the deprecating Atlas-backed reference collection. The
+  explicit `ground` workflow can retry the peer developer collection when the
+  collection was inferred and the preferred collection has no matches.
+- `architect`, `tableau`, and `mulesoft` cover their corresponding sites. Grounded
+  MuleSoft searches prefer `+latest:true` unless a component release is requested.
 
-Implementation-sensitive work should search, inspect the selected source, then
-answer from that evidence. Release-specific answers fail closed when matching
-official evidence is unavailable.
+Implementation-sensitive work should use `action="ground"`, which records its
+catalog, search, fallback, and fetch steps and returns bounded source evidence.
+Primitive search, fetch, answer, and explain actions remain literal single-service
+operations. Release-specific grounding fails closed when matching official
+evidence is unavailable.
 
 ## Commands
 
@@ -53,8 +55,9 @@ or transmitted. SF Docs ships with no default endpoint.
 
 ## Safety and Data Boundaries
 
-- Only the collection catalog can be cached; search results, answers, citations,
-  prompts, and document bodies are not cached.
+- Only the collection catalog can be cached; it is scoped by a one-way endpoint
+  identity without persisting the endpoint URL. Search results, answers,
+  citations, prompts, and document bodies are not cached.
 - The configured service endpoint stays out of model-visible status output.
 - Documentation source URLs and citations remain visible so evidence can be reviewed.
 - Answer and explain responses are bounded to 16,000 characters and 12 citations.

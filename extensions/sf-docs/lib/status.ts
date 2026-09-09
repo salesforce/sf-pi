@@ -5,7 +5,7 @@ import { readEffectiveDocsPreferences } from "./preferences.ts";
 
 export function buildStatus(cwd: string): string {
   const endpoint = resolveEndpoint();
-  const cache = readCatalogCache();
+  const cache = readCatalogCache(Date.now(), endpoint.ok ? endpoint.endpoint : undefined);
   const prefs = readEffectiveDocsPreferences(cwd);
   const lines = [
     "📚 SF Docs status",

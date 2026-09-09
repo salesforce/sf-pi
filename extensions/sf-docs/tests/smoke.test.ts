@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
 import { DocsClient } from "../lib/client.ts";
+import { runGroundWorkflow } from "../lib/ground-workflow.ts";
 import { collectManagerDetailActions } from "../../../lib/common/manager-actions.ts";
 
 describe("sf-docs", () => {
@@ -181,6 +182,24 @@ describe("sf-docs", () => {
       })) as { answer?: string; explanation?: string; citations?: unknown[] };
       expect(explained.answer ?? explained.explanation).toBeTruthy();
       expect(explained.citations?.length).toBeGreaterThan(0);
+
+      const grounded = await runGroundWorkflow({
+        client,
+        endpoint: process.env.SF_DOCS_MCP_ENDPOINT!,
+        input: {
+          query: "How are named credentials used in Apex callouts?",
+          collection: "developer",
+          collectionExplicit: false,
+          version: "current",
+          locale: "auto",
+          pageSize: 3,
+          format: "markdown",
+        },
+      });
+      expect(grounded).toMatchObject({
+        ok: true,
+        details: { verdict: expect.stringMatching(/grounded|partial/) },
+      });
     },
     120_000,
   );
