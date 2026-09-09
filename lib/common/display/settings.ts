@@ -11,9 +11,9 @@
  * Project settings override global settings. Missing or invalid values fall
  * back to the balanced profile so existing behavior stays stable.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import { globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
+import { writeJsonFile } from "../sf-pi-settings.ts";
 import {
   DEFAULT_SF_PI_DISPLAY_SETTINGS,
   normalizeSfPiDisplaySettings,
@@ -118,8 +118,7 @@ export function writeScopedSfPiDisplaySettings(
   const normalized = normalizeSfPiDisplaySettings(settings);
   const nextRoot = writeDisplaySettingsToRoot(root, normalized);
 
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, `${JSON.stringify(nextRoot, null, 2)}\n`, "utf8");
+  writeJsonFile(filePath, nextRoot);
 
   return {
     scope,

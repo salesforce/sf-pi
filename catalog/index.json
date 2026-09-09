@@ -497,7 +497,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4443
+    "srcLoc": 4444
   },
   {
     "id": "sf-feedback",
@@ -912,7 +912,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6012
+    "srcLoc": 6018
   },
   {
     "id": "sf-slack",
