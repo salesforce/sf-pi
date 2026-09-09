@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.279.1](https://github.com/salesforce/sf-pi/compare/v0.279.0...v0.279.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **sf-docs:** normalize blank grounding defaults ([a576f30](https://github.com/salesforce/sf-pi/commit/a576f30351f35f23323860eabd372b9480e9db7c))
+
 ## [0.279.0](https://github.com/salesforce/sf-pi/compare/v0.278.0...v0.279.0) (2026-09-09)
 
 
