@@ -1255,6 +1255,27 @@ describe("sf_docs tool", () => {
     expect(JSON.stringify(result)).not.toContain(secret);
   });
 
+  it("returns setup guidance when the endpoint is missing", async () => {
+    process.env.SF_DOCS_MCP_TOKEN = "test-token";
+    delete process.env.SF_DOCS_MCP_ENDPOINT;
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute("id", { action: "collections" }, undefined, undefined, {
+      cwd: process.cwd(),
+      modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+    });
+    expect(result.details).toMatchObject({
+      ok: false,
+      action: "collections",
+      reason: "missing_endpoint",
+      recover_via: { command: "/sf-docs connect", action: "status" },
+    });
+    expect(result.content[0].text).toMatch(/endpoint is not configured/i);
+  });
+
   it("returns setup guidance when auth is missing", async () => {
     const old = process.env.SF_DOCS_MCP_TOKEN;
     delete process.env.SF_DOCS_MCP_TOKEN;

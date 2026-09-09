@@ -335,6 +335,17 @@ function formatGlyphInfoRow(
   return formatInfoRow(glyph(iconKey, mode), label, value, iconColor);
 }
 
+function formatDocsStatusValue(data: SplashData): string {
+  const status = data.docsStatus;
+  if (!status || status.kind === "hidden" || status.kind === "not-configured") {
+    return `${SF_ORANGE("○")} ${SF_ORANGE("Not configured")}`;
+  }
+  if (status.kind === "setup") {
+    return `${SF_ORANGE("!")} ${SF_ORANGE("Setup needed")}`;
+  }
+  return `${SF_GREEN("✓")} ${SF_GREEN("Connected")}`;
+}
+
 function formatSlackStatusValue(data: SplashData, mode: GlyphMode): string {
   const status = data.slackStatus;
   if (data.slackLoading || !status || status.kind === "loading") {
@@ -950,6 +961,9 @@ function buildLeftColumn(
   // or has published a live status. This keeps public/external installs quiet.
   if (data.slackVisible) {
     lines.push(formatGlyphInfoRow("slack", mode, "Slack", formatSlackStatusValue(data, mode)));
+  }
+  if (data.docsVisible) {
+    lines.push(formatGlyphInfoRow("docs", mode, "SF Docs", formatDocsStatusValue(data)));
   }
   if (data.tldrawVisible) {
     lines.push(formatGlyphInfoRow("tldraw", mode, "SF tldraw", formatTldrawStatusValue(data)));

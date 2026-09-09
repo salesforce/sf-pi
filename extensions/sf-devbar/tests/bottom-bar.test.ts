@@ -194,6 +194,17 @@ describe("renderBottomBarParts", () => {
     expect(right).not.toMatch(/@|\[user\]|scope/i);
   });
 
+  it("passes the compact SF Docs status through on the right", () => {
+    const pill = "📖 Docs ✓";
+    const extStatuses = new Map([["sf-docs-status", pill]]);
+    const { right } = renderBottomBarParts(
+      makeState({ extensionStatuses: extStatuses }),
+      stubTheme,
+    );
+
+    expect(right).toBe(pill);
+  });
+
   it("filters out non-allowed extension statuses (Pi core)", () => {
     const extStatuses = new Map([
       ["pi-packages", "13 pkgs • ↻ daily • 1 update"],

@@ -47,6 +47,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `command-actions.ts`           | module    |                     1 |               0 |
 | `command-panel.ts`             | module    |                     1 |               0 |
 | `display/`                     | directory |                     4 |               5 |
+| `docs-status/`                 | directory |                     1 |               0 |
 | `doctor/`                      | directory |                     5 |               2 |
 | `exec-adapter.ts`              | module    |                     1 |               0 |
 | `extension-toggle.ts`          | module    |                     1 |               0 |
@@ -82,7 +83,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `slack-status/`                | directory |                     1 |               0 |
 | `state-store.ts`               | module    |                     1 |               0 |
 | `test-fixtures.ts`             | module    |                     1 |               0 |
-| `tests/`                       | directory |                     0 |              39 |
+| `tests/`                       | directory |                     0 |              40 |
 | `tldraw-status/`               | directory |                     1 |               0 |
 | `ui-glyphs.ts`                 | module    |                     1 |               0 |
 

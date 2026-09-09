@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to the Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport, stores the token in Pi's auth store, and keeps settings limited to non-secret defaults.
+Provides one `sf_docs` family tool for Salesforce documentation collections, search, fetch, cited answers, single-document explanations, status, and a lazy cheatsheet. The extension talks directly to a user-configured Salesforce Docs MCP-over-HTTP endpoint through a small local JSON-RPC/SSE transport, stores the endpoint URL and token in Pi's auth store, and keeps settings limited to non-secret defaults. It ships with no default endpoint.
 
 ## Start
 
@@ -30,7 +30,7 @@ Open its Manager detail or change its package state with:
 
 ## Safety notes
 
-- Interactive login uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials under provider id `sf-docs`.
+- Interactive login collects a compatible docs endpoint URL, then uses SF Pi's shared fixed-mask component; Pi alone persists and removes API-key or OAuth-compatible credentials under provider id `sf-docs`. The extension ships with no default endpoint.
 - Uses native fetch plus a small local SSE parser; no MCP server, MCP SDK, or extra runtime dependency is required.
 - Caches only the collection catalog and never caches search results, answer text, fetched document bodies, prompts, or citations.
 - Tool output keeps URLs and citations visible while redacting token-bearing values from errors and UI surfaces.

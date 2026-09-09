@@ -69,6 +69,21 @@ Source code and tests may keep compatibility constants and focused regression
 fixtures when they are necessary to preserve behavior. Prefer generic fixtures in
 public docs and examples.
 
+## Docs public surface
+
+The SF Docs extension ships with no default endpoint or credentials. Public docs
+should use source-agnostic setup language:
+
+- say "compatible Salesforce docs endpoint" or "configured docs endpoint"
+- prefer `SF_DOCS_MCP_*` environment variables in public docs
+- use generic fixtures such as `https://docs.example.com` or
+  `https://docs.example.test/`
+- avoid publishing private docs-service hostnames, internal routing details, or
+  organization-specific setup URLs
+
+Interactive `/login sf-docs` collects the endpoint URL and token. The real
+service URL belongs in internal onboarding documentation, not this repository.
+
 ## Diagnostics and artifacts
 
 Public diagnostics must be summarized and sanitized. Do not paste raw command

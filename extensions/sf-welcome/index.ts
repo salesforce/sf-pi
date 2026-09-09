@@ -92,6 +92,7 @@ import {
   subscribeMonthlyUsageState,
 } from "../../lib/common/monthly-usage/store.ts";
 import { subscribeSlackStatus } from "../../lib/common/slack-status/store.ts";
+import { subscribeDocsStatus } from "../../lib/common/docs-status/store.ts";
 import { subscribeTldrawStatus } from "../../lib/common/tldraw-status/store.ts";
 import { onSfLspHealthChange } from "../../lib/common/sf-lsp-health/index.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
@@ -142,6 +143,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
    * reloads. */
   let unsubscribeUsageStore: (() => void) | null = null;
   let unsubscribeSlackStore: (() => void) | null = null;
+  let unsubscribeDocsStore: (() => void) | null = null;
   let unsubscribeTldrawStore: (() => void) | null = null;
   let unsubscribeLspStore: (() => void) | null = null;
   let startupRunId = 0;
@@ -315,6 +317,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     unsubscribeUsageStore = null;
     unsubscribeSlackStore?.();
     unsubscribeSlackStore = null;
+    unsubscribeDocsStore?.();
+    unsubscribeDocsStore = null;
     unsubscribeTldrawStore?.();
     unsubscribeTldrawStore = null;
     unsubscribeLspStore?.();
@@ -737,6 +741,14 @@ export default function sfWelcome(pi: ExtensionAPI) {
       scheduleSplashRepaint(ctx, generation);
     });
 
+    unsubscribeDocsStore?.();
+    unsubscribeDocsStore = subscribeDocsStatus((status) => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      data.docsVisible = isSfPiExtensionEnabled(ctx.cwd, "sf-docs");
+      data.docsStatus = status;
+      scheduleSplashRepaint(ctx, generation);
+    });
+
     unsubscribeTldrawStore?.();
     unsubscribeTldrawStore = subscribeTldrawStatus((status) => {
       if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
@@ -846,6 +858,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     unsubscribeUsageStore = null;
     unsubscribeSlackStore?.();
     unsubscribeSlackStore = null;
+    unsubscribeDocsStore?.();
+    unsubscribeDocsStore = null;
     unsubscribeTldrawStore?.();
     unsubscribeTldrawStore = null;
     unsubscribeLspStore?.();
@@ -1046,6 +1060,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       ? (data.gatewayStatus?.kind ?? "not checked")
       : "hidden";
     const slackStatus = data.slackVisible ? (data.slackStatus?.kind ?? "not checked") : "hidden";
+    const docsStatus = data.docsVisible ? (data.docsStatus?.kind ?? "not checked") : "hidden";
     const tldrawStatus = formatPlainTldrawStatus(data);
     const lspStatus = formatPlainLspStatus(data);
     const nodeCertStatus = data.nodeCert?.kind ?? "not checked";
@@ -1082,6 +1097,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       ...monthlyUsageLines,
       `Gateway: ${gatewayStatus}`,
       `Slack: ${slackStatus}`,
+      `SF Docs: ${docsStatus}`,
       `SF tldraw: ${tldrawStatus}`,
       `SF LSP: ${lspStatus}`,
       `Node.js: ${nodeRuntimeStatus}`,

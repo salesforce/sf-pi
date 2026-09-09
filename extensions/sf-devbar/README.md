@@ -7,7 +7,8 @@ SF DevBar renders two non-blocking Salesforce-oriented terminal surfaces:
 - a **top bar** with SF Pi branding, model and thinking level, workspace, Git
   state, context usage, optional session name, and non-default image width;
 - a **bottom bar** with active gateway usage, SF Pi package count, Salesforce DX
-  project and authenticated org context, plus Slack readiness when useful.
+  project and authenticated org context, plus Slack and SF Docs readiness when
+  useful.
 
 Each source loads independently from cached or reactive state. `NO_COLOR` keeps
 the same text and layout while removing SF DevBar-owned ANSI styling.

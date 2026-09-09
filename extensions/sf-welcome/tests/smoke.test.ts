@@ -271,6 +271,59 @@ describe("sf-welcome", () => {
     expect(partialGrant).not.toContain("Limited");
   });
 
+  it("renders SF Docs configured and not-configured states", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const baseData = {
+      modelName: "Claude Sonnet 4",
+      providerName: "anthropic",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+    };
+
+    const hidden = stripAnsi(new SfWelcomeOverlay(baseData).render(100).join("\n"));
+    expect(hidden).not.toContain("SF Docs");
+
+    const notConfigured = stripAnsi(
+      new SfWelcomeOverlay({
+        ...baseData,
+        docsVisible: true,
+        docsStatus: { kind: "not-configured" },
+      })
+        .render(100)
+        .join("\n"),
+    );
+    expect(notConfigured).toContain("SF Docs");
+    expect(notConfigured).toContain("Not configured");
+
+    const setup = stripAnsi(
+      new SfWelcomeOverlay({
+        ...baseData,
+        docsVisible: true,
+        docsStatus: { kind: "setup" },
+      })
+        .render(100)
+        .join("\n"),
+    );
+    expect(setup).toContain("Setup needed");
+
+    const connected = stripAnsi(
+      new SfWelcomeOverlay({
+        ...baseData,
+        docsVisible: true,
+        docsStatus: { kind: "ready" },
+      })
+        .render(100)
+        .join("\n"),
+    );
+    expect(connected).toContain("SF Docs");
+    expect(connected).toContain("Connected");
+    expect(connected).not.toContain("https://");
+  });
+
   it("renders layered SF tldraw availability and Canvas runtime states", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const baseData = {

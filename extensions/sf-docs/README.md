@@ -45,9 +45,10 @@ The Manager stores non-secret defaults for collection, version, locale, fetch
 format, page size, citations, display density, and collection-catalog caching.
 Project values override global values, then extension defaults.
 
-Use `/login sf-docs` for masked interactive credential entry. Pi owns credential
-persistence and logout. `SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT` remain
-non-persisted automation overrides.
+Use `/login sf-docs` to enter a compatible docs endpoint URL, then a masked
+token. Pi owns credential persistence and logout. SF Docs ships with no default
+endpoint. `SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT` remain non-persisted
+automation overrides.
 
 ## Safety and Data Boundaries
 
@@ -67,8 +68,9 @@ release-note recovery live in [`AGENT_GUIDE.md`](./AGENT_GUIDE.md).
 ## Troubleshooting
 
 **SF Docs is not connected:** Run `/sf-docs connect`, submit the prefilled native
-login command, and enter the token in the fixed-mask component. For automation,
-set `SF_DOCS_MCP_TOKEN` before starting Pi.
+login command, enter a compatible docs endpoint URL, then the token in the
+fixed-mask component. For automation, set `SF_DOCS_MCP_TOKEN` and
+`SF_DOCS_MCP_ENDPOINT` before starting Pi.
 
 **Collections look stale:** Run `/sf-docs refresh` or request `collections` with
 `refresh=true`.

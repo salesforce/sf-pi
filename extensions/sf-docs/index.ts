@@ -7,9 +7,9 @@
  *   Event/Trigger          | Result
  *   -----------------------|---------------------------------------------------------
  *   extension load         | Register auth-only Provider, `sf_docs`, `/sf-docs`
- *   session_start/shutdown | Bind/clear shared fixed-mask credential entry
+ *   session_start/shutdown | Bind/clear credential entry; cache-first DevBar pill
  *   /sf-docs (no args)     | Open SF Pi Manager detail page when UI is available
- *   /sf-docs connect       | Prepare native `/login sf-docs`
+ *   /sf-docs connect       | Prepare native `/login sf-docs` (endpoint URL + token)
  *   /sf-docs status        | Print connection/default/cache status
  *   sf_docs search/fetch   | Call docs service via direct HTTP JSON-RPC/SSE transport
  */
@@ -31,12 +31,15 @@ import {
   registerManagerDetailActions,
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
+import { setDocsStatus } from "../../lib/common/docs-status/store.ts";
+import { glyph, resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
 import {
   detectTokenSource,
-  getDocsToken,
+  getDocsAuth,
   resolveEndpoint,
   sfDocsAuthController,
 } from "./lib/auth.ts";
+import { classifyDocsFooterStatus, formatDocsFooterStatus } from "./lib/footer-status.ts";
 import { DocsClient } from "./lib/client.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./lib/catalog-cache.ts";
 import { readEffectiveDocsPreferences } from "./lib/preferences.ts";
@@ -47,7 +50,14 @@ import {
   summarizeDocsCollectionProfile,
 } from "./lib/collection-profiles.ts";
 import { buildStatus } from "./lib/status.ts";
-import { COMMAND_NAME, ENV_TOKEN, PROVIDER_NAME, type DocsCollection } from "./lib/types.ts";
+import {
+  COMMAND_NAME,
+  ENV_ENDPOINT,
+  ENV_TOKEN,
+  PROVIDER_NAME,
+  WIDGET_KEY,
+  type DocsCollection,
+} from "./lib/types.ts";
 import { SF_DOCS_ACTIONS, renderHelp } from "./lib/command-surface.ts";
 import {
   createSfDocsConnectPanel,
@@ -58,9 +68,11 @@ export default function sfDocs(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-docs")) return;
 
   pi.registerProvider(sfDocsAuthController.provider);
+  publishDocsConnection();
 
   pi.on("session_start", async (_event, ctx) => {
     sfDocsAuthController.bind(ctx.ui, ctx.mode);
+    publishDocsConnection(ctx);
   });
   pi.on("session_shutdown", async () => {
     sfDocsAuthController.clear();
@@ -140,6 +152,7 @@ async function handleCommand(
   rawArgs: string,
   fromPanel: boolean,
 ): Promise<void> {
+  publishDocsConnection(ctx);
   const parts = rawArgs.trim().split(/\s+/).filter(Boolean);
   const sub = parts[0] ? (resolveAction(SF_DOCS_ACTIONS, parts[0]) ?? parts[0]) : "status";
 
@@ -179,10 +192,10 @@ async function connect(ctx: ExtensionCommandContext, fromPanel: boolean): Promis
     prepared
       ? [
           `Prefilled /login ${PROVIDER_NAME}.`,
-          "Credential entry uses a fixed-mask SF Pi component; Pi alone persists the result.",
-          `${ENV_TOKEN} remains available for automation and is never modified.`,
+          "Native login collects a compatible docs endpoint URL, then uses a fixed-mask SF Pi component; Pi alone persists the result.",
+          `${ENV_TOKEN} and ${ENV_ENDPOINT} remain available for automation and are never modified.`,
         ].join("\n")
-      : `Run /login ${PROVIDER_NAME} in interactive TUI mode, or set ${ENV_TOKEN} before starting Pi for automation.`,
+      : `Run /login ${PROVIDER_NAME} in interactive TUI mode, or set ${ENV_TOKEN} and ${ENV_ENDPOINT} before starting Pi for automation.`,
     prepared ? "info" : "warning",
     fromPanel,
   );
@@ -192,6 +205,27 @@ function prepareDocsLogin(ctx: ExtensionCommandContext): boolean {
   if (ctx.mode !== "tui") return false;
   ctx.ui.setEditorText(`/login ${PROVIDER_NAME}`);
   return true;
+}
+
+function publishDocsConnection(ctx?: {
+  hasUI?: boolean;
+  cwd?: string;
+  ui?: {
+    setStatus?(key: string, value: string | undefined): void;
+    theme?: { fg(color: string, text: string): string };
+  };
+}): void {
+  const kind = classifyDocsFooterStatus({
+    tokenSource: detectTokenSource(),
+    endpoint: resolveEndpoint(),
+  });
+  setDocsStatus({ kind });
+  if (!ctx?.hasUI || !ctx.ui?.setStatus || !ctx.ui.theme) return;
+  const pill = formatDocsFooterStatus(
+    { icon: glyph("docs", resolveGlyphMode({ cwd: ctx.cwd })), kind },
+    ctx.ui.theme,
+  );
+  ctx.ui.setStatus(WIDGET_KEY, pill ?? undefined);
 }
 
 async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
@@ -232,11 +266,9 @@ async function listCollections(ctx: ExtensionCommandContext, refresh: boolean): 
     return formatCollectionCatalog(cache.collections, `hit · ${formatCacheAge(cache.fetchedAt)}`);
   }
 
-  const auth = await getDocsToken(ctx);
+  const auth = await getDocsAuth(ctx);
   if (auth.ok === false) return auth.message;
-  const endpoint = resolveEndpoint();
-  if (endpoint.ok === false) return endpoint.error;
-  const client = new DocsClient({ endpoint: endpoint.endpoint, token: auth.token });
+  const client = new DocsClient({ endpoint: auth.endpoint, token: auth.token });
   const response = (await client.callTool("list", {}, ctx.signal)) as {
     collections?: DocsCollection[];
   };

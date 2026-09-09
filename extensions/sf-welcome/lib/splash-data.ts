@@ -20,6 +20,7 @@ import { discoverExtensionHealth } from "./extension-health.ts";
 import { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 import { getMonthlyUsageState } from "../../../lib/common/monthly-usage/store.ts";
 import { getSlackStatus } from "../../../lib/common/slack-status/store.ts";
+import { getDocsStatus } from "../../../lib/common/docs-status/store.ts";
 import { getTldrawStatus } from "../../../lib/common/tldraw-status/store.ts";
 import { getSfLspHealth } from "../../../lib/common/sf-lsp-health/index.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
@@ -286,6 +287,10 @@ function shouldShowSlackStatus(cwd: string): boolean {
   return status.kind !== "hidden" && status.kind !== "not-configured";
 }
 
+function shouldShowDocsStatus(cwd: string): boolean {
+  return isSfPiExtensionEnabled(cwd, "sf-docs");
+}
+
 function shouldShowGatewayStatus(cwd: string, modelName: string, providerName: string): boolean {
   if (!isSfPiExtensionEnabled(cwd, "sf-llm-gateway")) return false;
   const activeGateway =
@@ -360,6 +365,7 @@ export function collectInitialSplashData(
   const gatewayUsage = gatewayState.monthlyUsage;
   const gatewayBudget = gatewayUsage?.maxBudget;
   const slackStatus = getSlackStatus();
+  const docsStatus = getDocsStatus();
   const tldrawStatus = getTldrawStatus();
   const tldrawEnabled = cwd ? isSfPiExtensionEnabled(cwd, "sf-tldraw") : undefined;
   const lspEnabled = cwd ? isSfPiExtensionEnabled(cwd, "sf-lsp") : true;
@@ -373,6 +379,8 @@ export function collectInitialSplashData(
     slackConnected: false,
     slackVisible: false,
     slackStatus,
+    docsVisible: cwd ? isSfPiExtensionEnabled(cwd, "sf-docs") : false,
+    docsStatus,
     tldrawEnabled,
     tldrawVisible: tldrawEnabled !== undefined,
     tldrawStatus,
@@ -442,6 +450,8 @@ export function collectSplashData(
   const gatewayState = getMonthlyUsageState();
   const slackStatus = getSlackStatus();
   const slackVisible = shouldShowSlackStatus(cwd);
+  const docsVisible = shouldShowDocsStatus(cwd);
+  const docsStatus = getDocsStatus();
   const tldrawStatus = getTldrawStatus();
   const tldrawEnabled = isSfPiExtensionEnabled(cwd, "sf-tldraw");
   const lspEnabled = isSfPiExtensionEnabled(cwd, "sf-lsp");
@@ -489,6 +499,8 @@ export function collectSplashData(
     slackConnected: checkSlackConnection(cwd),
     slackVisible,
     slackStatus,
+    docsVisible,
+    docsStatus,
     tldrawEnabled,
     tldrawVisible: true,
     tldrawStatus,

@@ -67,7 +67,7 @@ describe("SF Docs credential security", () => {
       prompt: vi.fn(async () => "sfmcp-secure-provider-token"),
     };
     const controller = createSfDocsAuthController(bridge);
-    const stockPrompt = vi.fn();
+    const stockPrompt = vi.fn(async () => "https://docs.example.test/");
     const interaction = {
       signal: new AbortController().signal,
       prompt: stockPrompt,
@@ -77,13 +77,21 @@ describe("SF Docs credential security", () => {
     await expect(controller.provider.auth.apiKey?.login?.(interaction)).resolves.toEqual({
       type: "api_key",
       key: "sfmcp-secure-provider-token",
+      env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
     });
     await expect(controller.provider.auth.oauth?.login(interaction)).resolves.toMatchObject({
       type: "oauth",
       access: "sfmcp-secure-provider-token",
+      env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
     });
     expect(bridge.prompt).toHaveBeenCalledTimes(2);
-    expect(stockPrompt).not.toHaveBeenCalled();
+    expect(stockPrompt).toHaveBeenCalledTimes(2);
+    expect(stockPrompt).toHaveBeenCalledWith({
+      type: "text",
+      message: "SF Docs endpoint URL",
+      placeholder: "https://docs.example.com",
+    });
+    expect(JSON.stringify(stockPrompt.mock.calls)).not.toContain("sfmcp-secure-provider-token");
   });
 
   it("persists through Pi and keeps existing OAuth credentials compatible", async () => {
@@ -97,7 +105,10 @@ describe("SF Docs credential security", () => {
     const models = createModels({ credentials });
     models.setProvider(controller.provider);
 
-    await models.login("sf-docs", "api_key", { prompt: vi.fn(), notify: vi.fn() });
+    await models.login("sf-docs", "api_key", {
+      prompt: vi.fn(async () => "https://docs.example.test/"),
+      notify: vi.fn(),
+    });
     await expect(models.getAuth("sf-docs")).resolves.toMatchObject({
       auth: { apiKey: "sfmcp-pi-owned-token" },
       source: "Pi saved credential",

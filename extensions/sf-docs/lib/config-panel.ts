@@ -3,7 +3,7 @@
 import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
-import { detectTokenSource, resolveEndpoint } from "./auth.ts";
+import { detectTokenSource, isDocsConfigured, resolveEndpoint } from "./auth.ts";
 import {
   describePreferenceSource,
   readEffectiveDocsPreferences,
@@ -113,19 +113,22 @@ class SfDocsConfigPanel implements Focusable {
     const endpoint = resolveEndpoint();
     const lines: string[] = [
       ` ${t.fg("accent", t.bold("📚 SF Docs Settings"))}`,
-      ` ${t.fg("dim", "Configure non-secret defaults. Use /login sf-docs for fixed-mask Pi-owned credentials.")}`,
+      ` ${t.fg("dim", "Configure non-secret defaults. Use /login sf-docs for the endpoint URL and token.")}`,
       "",
-      ` ${tokenSource !== "none" ? t.fg("success", "● Connected") : t.fg("error", "● Not configured")}`,
+      ` ${isDocsConfigured() ? t.fg("success", "● Connected") : t.fg("error", "● Not configured")}`,
       `   ${t.fg("muted", "Token source:")} ${t.fg("text", tokenSource)}`,
     ];
-    lines.push(
-      `   ${t.fg("muted", "Endpoint:")} ${t.fg(
-        "dim",
-        endpoint.ok ? `${endpoint.endpoint} (${endpoint.source})` : `invalid (${endpoint.source})`,
-      )}`,
-    );
+    const endpointLabel =
+      endpoint.ok === true
+        ? `${endpoint.endpoint} (${endpoint.source})`
+        : endpoint.source === "none"
+          ? "not configured"
+          : `invalid (${endpoint.source})`;
+    lines.push(`   ${t.fg("muted", "Endpoint:")} ${t.fg("dim", endpointLabel)}`);
     if (endpoint.ok && endpoint.warning) lines.push(`   ${t.fg("warning", endpoint.warning)}`);
-    if (endpoint.ok === false) lines.push(`   ${t.fg("warning", endpoint.error)}`);
+    if (endpoint.ok === false && endpoint.source !== "none") {
+      lines.push(`   ${t.fg("warning", endpoint.error)}`);
+    }
     lines.push("", ` ${t.fg("muted", "Scope:")} ${t.fg("text", this.scope)}`);
     lines.push(` ${t.fg("muted", "Current source:")} ${t.fg("dim", this.sourceSummary)}`);
     lines.push(

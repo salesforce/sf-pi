@@ -157,6 +157,7 @@ export const GLYPH_TABLE = {
   lifetime: { emoji: "🌐", ascii: "@" },
   extensions: { emoji: "🧩", ascii: "+" },
   slack: { emoji: "💬", ascii: ">" },
+  docs: { emoji: "📖", ascii: "dc" },
   gateway: { emoji: "🔗", ascii: "~" },
   cli: { emoji: "🧰", ascii: ">" },
   lsp: { emoji: "🩻", ascii: "ls" },

@@ -9,8 +9,8 @@ The default header summarizes the active model, optional gateway usage,
 Salesforce CLI and API context, Apex/LWC/Agent Script LSP readiness, Node runtime,
 Herdr, Browser, Code Analyzer, fonts, local review tools, release freshness,
 privacy posture, announcements, recommended packages, skill sources, and recent
-sessions. Optional integrations stay hidden until enabled/configured or
-meaningfully degraded.
+sessions. Slack stays hidden until configured. SF Docs appears when the extension
+is enabled and reports connected, setup needed, or not configured.
 
 Wide terminals can show two columns; narrow terminals stack the same content.
 `NO_COLOR` preserves text/layout while removing SF Welcome-owned ANSI styling.

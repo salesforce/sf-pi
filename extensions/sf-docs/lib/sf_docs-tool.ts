@@ -5,7 +5,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { getDocsToken, resolveEndpoint } from "./auth.ts";
+import { getDocsAuth } from "./auth.ts";
 import { DocsClient } from "./client.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./catalog-cache.ts";
 import {
@@ -196,22 +196,15 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       }
       if (input.action === "cheatsheet") return cheatsheetResult(prefs.displayDensity);
 
-      const auth = await getDocsToken(ctx);
+      const auth = await getDocsAuth(ctx);
       if (auth.ok === false) {
         return fail(input.action, auth.message, {
-          reason: "missing_auth",
+          reason: auth.reason,
           recover_via: { command: "/sf-docs connect", action: "status" },
         });
       }
-      const endpoint = resolveEndpoint();
-      if (endpoint.ok === false) {
-        return fail(input.action, endpoint.error, {
-          reason: "invalid_endpoint",
-          recover_via: { env: "SF_DOCS_MCP_ENDPOINT" },
-        });
-      }
       const client = new DocsClient({
-        endpoint: endpoint.endpoint,
+        endpoint: auth.endpoint,
         token: auth.token,
         timeoutMs: timeoutForAction(input.action),
       });

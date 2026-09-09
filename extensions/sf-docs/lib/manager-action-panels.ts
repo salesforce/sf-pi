@@ -62,8 +62,8 @@ class SfDocsConnectPanel implements Focusable {
     }
 
     const guidance = [
-      "Interactive entry uses a fixed-mask SF Pi component and Pi-owned credential persistence.",
-      "Existing saved credentials remain active. SF_DOCS_MCP_TOKEN remains the automation and CI fallback.",
+      "Native login collects a compatible docs endpoint URL, then uses a fixed-mask SF Pi component. Pi owns persistence.",
+      "Existing saved credentials remain active. SF_DOCS_MCP_TOKEN and SF_DOCS_MCP_ENDPOINT remain the automation and CI fallbacks.",
     ];
     return [
       ` ${t.fg("accent", t.bold("Connect to SF Docs"))}`,

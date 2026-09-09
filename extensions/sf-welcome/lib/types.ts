@@ -8,6 +8,7 @@
  */
 import type { GatewayConnectionStatus } from "../../../lib/common/monthly-usage/store.ts";
 import type { SlackStatusSnapshot } from "../../../lib/common/slack-status/store.ts";
+import type { DocsStatusSnapshot } from "../../../lib/common/docs-status/store.ts";
 import type { TldrawStatusSnapshot } from "../../../lib/common/tldraw-status/store.ts";
 import type { CodeAnalyzerReadinessState } from "../../../lib/common/code-analyzer-status/store.ts";
 import type { AutoUpdateStatus } from "../../../lib/common/auto-update/store.ts";
@@ -270,6 +271,10 @@ export interface SplashData {
   slackConnected: boolean;
   slackVisible?: boolean;
   slackStatus?: SlackStatusSnapshot | null;
+  /** Whether the bundled sf-docs extension is enabled for this project. */
+  docsVisible?: boolean;
+  /** Cache-first Docs connection snapshot published by sf-docs. */
+  docsStatus?: DocsStatusSnapshot | null;
   /** Whether the bundled sf-tldraw extension is enabled for this project. */
   tldrawEnabled?: boolean;
   /** Passive local Canvas runtime status published by sf-tldraw. */

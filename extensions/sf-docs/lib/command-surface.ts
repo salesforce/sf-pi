@@ -65,9 +65,9 @@ export function renderHelp(): string {
     "- `/sf-docs cheatsheet` — show the extension-owned usage cheatsheet.",
     "",
     "Credential setup:",
-    "- `/login sf-docs` uses SF Pi's fixed-mask component while Pi owns persistence.",
-    "- `SF_DOCS_MCP_TOKEN` remains the non-persisted automation fallback.",
-    "- Existing Pi API-key and OAuth credentials remain compatible.",
-    "- `SF_DOCS_MCP_ENDPOINT` overrides the default endpoint for advanced testing.",
+    "- `/login sf-docs` collects a compatible docs endpoint URL, then uses SF Pi's fixed-mask token component. Pi owns persistence.",
+    "- `SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT` remain the non-persisted automation fallbacks.",
+    "- Existing Pi API-key and OAuth credentials remain compatible; re-run login to attach an endpoint URL.",
+    "- SF Docs ships with no default endpoint.",
   ].join("\n");
 }

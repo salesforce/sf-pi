@@ -81,23 +81,20 @@ Primary setup lives in the SF Pi Manager detail page:
 /sf-docs
 ```
 
-The detail page reports the credential source and prepares native login. Interactive setup uses SF Pi's shared fixed-mask component while Pi owns persistence and logout:
+The detail page reports the credential source and prepares native login. Interactive setup collects a compatible docs endpoint URL, then uses SF Pi's shared fixed-mask component while Pi owns persistence and logout:
 
 ```text
 /login sf-docs
 ```
 
-For non-persisted automation, set the environment credential before starting Pi:
+For non-persisted automation, set the environment credential and endpoint before starting Pi:
 
 ```text
 SF_DOCS_MCP_TOKEN=<token>
+SF_DOCS_MCP_ENDPOINT=https://docs.example.com/
 ```
 
-Advanced endpoint override for testing only:
-
-```text
-SF_DOCS_MCP_ENDPOINT=https://mcp.docs.salesforce.com/
-```
+SF Docs ships with no default endpoint. Configure a compatible docs service URL through login or the environment variable.
 
 ## Safety boundaries
 

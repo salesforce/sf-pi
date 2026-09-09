@@ -5,7 +5,7 @@ export const COMMAND_NAME = "sf-docs";
 export const TOOL_NAME = "sf_docs";
 export const ENV_TOKEN = "SF_DOCS_MCP_TOKEN";
 export const ENV_ENDPOINT = "SF_DOCS_MCP_ENDPOINT";
-export const DEFAULT_ENDPOINT = "https://mcp.docs.salesforce.com/";
+export const WIDGET_KEY = "sf-docs-status";
 export const LONG_LIVED_EXPIRY_MS = 1000 * 60 * 60 * 24 * 365 * 10;
 export const MANUAL_REFRESH_SENTINEL = "manual-token";
 
@@ -13,7 +13,7 @@ export type DocsAction =
   "status" | "collections" | "search" | "fetch" | "answer" | "explain" | "cheatsheet";
 
 export type TokenSource = "pi-auth" | "env" | "none";
-export type EndpointSource = "default" | "env";
+export type EndpointSource = "pi-auth" | "env" | "none";
 export type DocsScope = "global" | "project";
 export type SfDocsDisplayDensity = "compact" | "balanced" | "verbose";
 
@@ -25,13 +25,13 @@ export interface TokenResolution {
 export type EndpointResolution =
   | {
       ok: true;
-      source: EndpointSource;
+      source: Exclude<EndpointSource, "none">;
       endpoint: string;
       warning?: string;
     }
   | {
       ok: false;
-      source: "env";
+      source: EndpointSource;
       error: string;
     };
 

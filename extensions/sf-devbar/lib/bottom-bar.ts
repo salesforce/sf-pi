@@ -9,7 +9,7 @@
  *       Salesforce DX project
  *
  * Right-aligned:
- *   4.  Slack connection pill
+ *   4.  Slack and SF Docs connection pills
  *
  * Token usage, connection status, and SF CLI version/freshness are
  * intentionally omitted — the top bar context window and SF Welcome already
@@ -40,7 +40,7 @@ export type BarTheme = {
  * Only curated extensions are surfaced so the bar stays focused. Keep this
  * list small — every added key costs horizontal space on narrow terminals. */
 const LEFT_STATUS_ORDER = ["sf-llm-gateway", "sf-pi"];
-const RIGHT_STATUS_KEYS = new Set(["sf-slack-status"]);
+const RIGHT_STATUS_KEYS = new Set(["sf-slack-status", "sf-docs-status"]);
 
 export type BottomBarState = {
   /** Org alias or username. */

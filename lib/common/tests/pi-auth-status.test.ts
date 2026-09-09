@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readPiAuthProviderStatus } from "../pi-auth-status.ts";
+import { readPiAuthProviderEnv, readPiAuthProviderStatus } from "../pi-auth-status.ts";
 
 const tempDirs: string[] = [];
 
@@ -51,5 +51,22 @@ describe("readPiAuthProviderStatus", () => {
       configured: false,
       source: "pi-auth-store",
     });
+  });
+
+  it("reads a named credential env value without returning secrets", () => {
+    const secret = "sfmcp-must-not-return";
+    const file = makeAuthFile({
+      "sf-docs": {
+        type: "api_key",
+        key: secret,
+        env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
+      },
+    });
+
+    expect(readPiAuthProviderEnv("sf-docs", "SF_DOCS_MCP_ENDPOINT", file)).toBe(
+      "https://docs.example.test/",
+    );
+    expect(readPiAuthProviderEnv("sf-docs", "SF_DOCS_MCP_TOKEN", file)).toBeUndefined();
+    expect(readPiAuthProviderEnv("sf-docs", "key", file)).toBeUndefined();
   });
 });

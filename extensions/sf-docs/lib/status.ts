@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { detectTokenSource, resolveEndpoint } from "./auth.ts";
+import { detectTokenSource, isDocsConfigured, resolveEndpoint } from "./auth.ts";
 import { formatCacheAge, readCatalogCache } from "./catalog-cache.ts";
 import { readEffectiveDocsPreferences } from "./preferences.ts";
 
@@ -11,12 +11,14 @@ export function buildStatus(cwd: string): string {
   const lines = [
     "📚 SF Docs status",
     "",
-    `Connection: ${tokenSource !== "none" ? "connected" : "not configured"}`,
+    `Connection: ${isDocsConfigured() ? "connected" : "not configured"}`,
     `Token source: ${tokenSource}`,
   ];
   if (endpoint.ok === true) {
     lines.push(`Endpoint: ${endpoint.endpoint} (${endpoint.source})`);
     if (endpoint.warning) lines.push(`Warning: ${endpoint.warning}`);
+  } else if (endpoint.source === "none") {
+    lines.push("Endpoint: not configured");
   } else {
     lines.push(`Endpoint: invalid (${endpoint.source})`);
     lines.push(`Warning: ${endpoint.error}`);

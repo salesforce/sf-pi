@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Credential and endpoint resolution for SF Docs. */
+import type { AuthInteraction } from "@earendil-works/pi-ai";
 import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
-import { readPiAuthProviderStatus } from "../../../lib/common/pi-auth-status.ts";
+import {
+  readPiAuthProviderEnv,
+  readPiAuthProviderStatus,
+} from "../../../lib/common/pi-auth-status.ts";
 import { createAuthOnlyProvider } from "../../../lib/common/auth-only-provider.ts";
 import {
   createSecureCredentialPromptBridge,
@@ -9,7 +13,6 @@ import {
   type SecureCredentialPromptBridge,
 } from "../../../lib/common/secure-credential-prompt.ts";
 import {
-  DEFAULT_ENDPOINT,
   ENV_ENDPOINT,
   ENV_TOKEN,
   LONG_LIVED_EXPIRY_MS,
@@ -28,6 +31,44 @@ export interface SfDocsAuthController {
   clear(): void;
 }
 
+export type DocsAuthFailureReason = "missing_auth" | "missing_endpoint" | "invalid_endpoint";
+
+export type DocsAuthResult =
+  | {
+      ok: true;
+      token: string;
+      source: Exclude<TokenSource, "none">;
+      endpoint: string;
+      endpointSource: Exclude<EndpointResolution["source"], "none">;
+    }
+  | { ok: false; message: string; reason: DocsAuthFailureReason };
+
+async function promptDocsEndpoint(interaction: AuthInteraction): Promise<string> {
+  const current = readPiAuthProviderEnv(PROVIDER_NAME, ENV_ENDPOINT);
+  const entered = (
+    await interaction.prompt({
+      type: "text",
+      message: current
+        ? "SF Docs endpoint URL (press Enter to keep current)"
+        : "SF Docs endpoint URL",
+      placeholder: current ?? "https://docs.example.com",
+    })
+  ).trim();
+  const candidate = entered || current;
+  if (!candidate) throw new Error("A valid http:// or https:// Docs endpoint is required.");
+  const parsed = normalizeEndpoint(candidate);
+  if (parsed.ok === false) throw new Error(parsed.error);
+  return parsed.endpoint;
+}
+
+function readCredentialEnv(credential: unknown, name: string): string | undefined {
+  if (!credential || typeof credential !== "object") return undefined;
+  const env = (credential as { env?: unknown }).env;
+  if (!env || typeof env !== "object" || Array.isArray(env)) return undefined;
+  const value = (env as Record<string, unknown>)[name];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
 export function createSfDocsAuthController(
   promptBridge: SecureCredentialPromptBridge = createSecureCredentialPromptBridge({
     title: "SF Docs credential",
@@ -39,29 +80,52 @@ export function createSfDocsAuthController(
     auth: {
       apiKey: {
         name: "SF Docs token",
-        login: (interaction) => loginWithSecureCredentialPrompt(promptBridge, interaction),
+        login: async (interaction) => {
+          const endpoint = await promptDocsEndpoint(interaction);
+          const credential = await loginWithSecureCredentialPrompt(promptBridge, interaction);
+          return { ...credential, env: { [ENV_ENDPOINT]: endpoint } };
+        },
         resolve: async ({ ctx, credential }) => {
           const saved = credential?.key?.trim();
-          if (saved) return { auth: { apiKey: saved }, source: "Pi saved credential" };
-          const env = (await ctx.env(ENV_TOKEN))?.trim();
-          return env ? { auth: { apiKey: env }, source: ENV_TOKEN } : undefined;
+          const envToken = (await ctx.env(ENV_TOKEN))?.trim();
+          const token = saved || envToken;
+          if (!token) return undefined;
+          const endpointRaw = credential?.env?.[ENV_ENDPOINT] || (await ctx.env(ENV_ENDPOINT));
+          const parsed = endpointRaw ? normalizeEndpoint(endpointRaw) : undefined;
+          return {
+            auth: {
+              apiKey: token,
+              ...(parsed?.ok === true ? { baseUrl: parsed.endpoint } : {}),
+            },
+            ...(parsed?.ok === true ? { env: { [ENV_ENDPOINT]: parsed.endpoint } } : {}),
+            source: saved ? "Pi saved credential" : ENV_TOKEN,
+          };
         },
       },
       oauth: {
         name: "SF Docs compatible credential",
-        login: async (interaction) => ({
-          type: "oauth",
-          access: await promptBridge.prompt(interaction.signal),
-          refresh: MANUAL_REFRESH_SENTINEL,
-          expires: Date.now() + LONG_LIVED_EXPIRY_MS,
-        }),
+        login: async (interaction) => {
+          const endpoint = await promptDocsEndpoint(interaction);
+          return {
+            type: "oauth",
+            access: await promptBridge.prompt(interaction.signal),
+            refresh: MANUAL_REFRESH_SENTINEL,
+            expires: Date.now() + LONG_LIVED_EXPIRY_MS,
+            env: { [ENV_ENDPOINT]: endpoint },
+          };
+        },
         refresh: async (credential) => ({
           ...credential,
           expires: Date.now() + LONG_LIVED_EXPIRY_MS,
         }),
         toAuth: async (credential) => {
           const access = credential.access?.trim();
-          return access ? { apiKey: access } : {};
+          const parsed = readCredentialEnv(credential, ENV_ENDPOINT);
+          const endpoint = parsed ? normalizeEndpoint(parsed) : undefined;
+          return {
+            ...(access ? { apiKey: access } : {}),
+            ...(endpoint?.ok === true ? { baseUrl: endpoint.endpoint } : {}),
+          };
         },
       },
     },
@@ -101,6 +165,10 @@ export function detectTokenSource(): TokenSource {
   return resolveConfiguredToken()?.source ?? "none";
 }
 
+export function isDocsConfigured(): boolean {
+  return detectTokenSource() !== "none" && resolveEndpoint().ok === true;
+}
+
 export async function getDocsToken(
   ctx: ExtensionContext,
 ): Promise<
@@ -116,15 +184,74 @@ export async function getDocsToken(
     ok: false,
     message: [
       "SF Docs is not connected.",
-      "Run /login sf-docs in interactive TUI mode; SF Pi masks the token and Pi owns persistence.",
-      "For automation, set SF_DOCS_MCP_TOKEN before starting Pi.",
+      "Run /login sf-docs in interactive TUI mode; SF Pi prompts for the endpoint URL then masks the token.",
+      `For automation, set ${ENV_TOKEN} and ${ENV_ENDPOINT} before starting Pi.`,
     ].join("\n"),
   };
 }
 
+async function readEndpointFromProviderAuth(
+  ctx: ExtensionContext,
+): Promise<EndpointResolution | null> {
+  const getProviderAuth = ctx.modelRegistry.getProviderAuth;
+  if (typeof getProviderAuth !== "function") return null;
+  try {
+    const result = await getProviderAuth(PROVIDER_NAME);
+    const raw = result?.env?.[ENV_ENDPOINT] ?? result?.auth?.baseUrl;
+    if (!raw?.trim()) return null;
+    const parsed = normalizeEndpoint(raw);
+    if (parsed.ok === true) {
+      return { ok: true, source: "pi-auth", endpoint: parsed.endpoint, warning: parsed.warning };
+    }
+    return { ok: false, source: "pi-auth", error: parsed.error };
+  } catch {
+    return null;
+  }
+}
+
+export async function getDocsAuth(ctx: ExtensionContext): Promise<DocsAuthResult> {
+  const token = await getDocsToken(ctx);
+  const endpoint = (await readEndpointFromProviderAuth(ctx)) ?? resolveEndpoint();
+  if (token.ok === false) {
+    return { ok: false, message: token.message, reason: "missing_auth" };
+  }
+  if (endpoint.ok === false) {
+    return {
+      ok: false,
+      message: endpoint.error,
+      reason: endpoint.source === "none" ? "missing_endpoint" : "invalid_endpoint",
+    };
+  }
+  return {
+    ok: true,
+    token: token.token,
+    source: token.source,
+    endpoint: endpoint.endpoint,
+    endpointSource: endpoint.source,
+  };
+}
+
 export function resolveEndpoint(): EndpointResolution {
+  const fromCredential = readPiAuthProviderEnv(PROVIDER_NAME, ENV_ENDPOINT);
+  if (fromCredential) {
+    const parsed = normalizeEndpoint(fromCredential);
+    if (parsed.ok === true) {
+      return { ok: true, source: "pi-auth", endpoint: parsed.endpoint, warning: parsed.warning };
+    }
+    return { ok: false, source: "pi-auth", error: parsed.error };
+  }
   const raw = getEnv(ENV_ENDPOINT);
-  if (!raw) return { ok: true, source: "default", endpoint: DEFAULT_ENDPOINT };
+  if (!raw) {
+    return {
+      ok: false,
+      source: "none",
+      error: [
+        "SF Docs endpoint is not configured.",
+        "Run /login sf-docs in interactive TUI mode; SF Pi prompts for the endpoint URL then masks the token.",
+        `For automation, set ${ENV_ENDPOINT} before starting Pi.`,
+      ].join("\n"),
+    };
+  }
   const parsed = normalizeEndpoint(raw);
   if (parsed.ok === true) {
     return { ok: true, source: "env", endpoint: parsed.endpoint, warning: parsed.warning };
