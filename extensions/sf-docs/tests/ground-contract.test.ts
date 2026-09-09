@@ -407,6 +407,151 @@ describe("sf_docs deterministic ground workflow", () => {
     });
   });
 
+  it("does not fetch unrelated release-note search results", async () => {
+    const calls: string[] = [];
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      const name = String(body.params.name);
+      calls.push(name);
+      if (name === "list") return docsResponse(catalog());
+      if (name === "search") {
+        return docsResponse({
+          results: [
+            {
+              id: "ordinary-agentforce-page",
+              title: "Timesheets Agent with Agentforce",
+              url: "https://help.salesforce.com/s/articleView?id=xcloud.timesheets.htm&release=264&type=5",
+              release: "264",
+            },
+            {
+              id: "unrelated-release-note",
+              title: "Check the Syntax of Your Steptypes JSON File",
+              url: "https://help.salesforce.com/s/articleView?id=commerce.rn_steptypes.htm&release=264&type=5",
+              filename: "release-notes/264-0-0/rn_steptypes.html",
+              release: "264",
+            },
+          ],
+          totalCount: 2,
+        });
+      }
+      throw new Error(`Unexpected call: ${name}`);
+    }) as unknown as typeof fetch;
+    const tool = await loadTool(fetchMock);
+
+    const result = await execute(tool, {
+      action: "ground",
+      collection: "admin",
+      query: "Winter '27 release notes Agent Script Agentforce language syntax updates",
+    });
+
+    expect(calls).toEqual(["list", "search"]);
+    expect(result.details).toMatchObject({
+      ok: false,
+      verdict: "not_grounded",
+      reason: "insufficient_docs_evidence",
+      evidenceStatus: "irrelevant_release_note_evidence",
+    });
+  });
+
+  it("fetches only release-note candidates matching the requested subject", async () => {
+    const fetchedIds: string[][] = [];
+    const relevant = {
+      id: "agent-script-release-note",
+      title: "New and Changed Agent Script Functionality",
+      url: "https://help.salesforce.com/s/articleView?id=release-notes.rn_agentforce_script_new_changed.htm&release=264&type=5",
+      filename: "release-notes/264-0-0/rn_agentforce_script_new_changed.html",
+      release: "264",
+    };
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      const name = String(body.params.name);
+      if (name === "list") return docsResponse(catalog());
+      if (name === "search") {
+        return docsResponse({
+          results: [
+            {
+              id: "ordinary-agentforce-page",
+              title: "Timesheets Agent with Agentforce",
+              url: "https://help.salesforce.com/s/articleView?id=xcloud.timesheets.htm&release=264&type=5",
+              release: "264",
+            },
+            relevant,
+            {
+              id: "unrelated-release-note",
+              title: "Check the Syntax of Your Steptypes JSON File",
+              url: "https://help.salesforce.com/s/articleView?id=commerce.rn_steptypes.htm&release=264&type=5",
+              filename: "release-notes/264-0-0/rn_steptypes.html",
+              release: "264",
+            },
+          ],
+          totalCount: 3,
+        });
+      }
+      if (name === "fetch") {
+        fetchedIds.push(body.params.arguments.ids as string[]);
+        return docsResponse({
+          documents: [{ ...relevant, content: "# Agent Script\n\nRelevant release evidence." }],
+        });
+      }
+      throw new Error(`Unexpected call: ${name}`);
+    }) as unknown as typeof fetch;
+    const tool = await loadTool(fetchMock);
+
+    const result = await execute(tool, {
+      action: "ground",
+      collection: "admin",
+      query: "Winter '27 release notes Agent Script Agentforce language syntax updates",
+    });
+
+    expect(fetchedIds).toEqual([["agent-script-release-note"]]);
+    expect(result.details).toMatchObject({ ok: true, verdict: "grounded" });
+  });
+
+  it("fails closed when fetched release-note evidence no longer matches the subject", async () => {
+    const candidate = {
+      id: "agent-script-release-note",
+      title: "New and Changed Agent Script Functionality",
+      url: "https://help.salesforce.com/s/articleView?id=release-notes.rn_agentforce_script_new_changed.htm&release=264&type=5",
+      filename: "release-notes/264-0-0/rn_agentforce_script_new_changed.html",
+      release: "264",
+    };
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      const name = String(body.params.name);
+      if (name === "list") return docsResponse(catalog());
+      if (name === "search") return docsResponse({ results: [candidate], totalCount: 1 });
+      if (name === "fetch") {
+        return docsResponse({
+          documents: [
+            {
+              id: candidate.id,
+              title: "Check the Syntax of Your Steptypes JSON File",
+              url: "https://help.salesforce.com/s/articleView?id=commerce.rn_steptypes.htm&release=264&type=5",
+              filename: "release-notes/264-0-0/rn_steptypes.html",
+              release: "264",
+              content: "# Steptypes JSON",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected call: ${name}`);
+    }) as unknown as typeof fetch;
+    const tool = await loadTool(fetchMock);
+
+    const result = await execute(tool, {
+      action: "ground",
+      collection: "admin",
+      query: "Winter '27 release notes Agent Script Agentforce language syntax updates",
+    });
+
+    expect(result.details).toMatchObject({
+      ok: false,
+      verdict: "not_grounded",
+      reason: "fetched_evidence_mismatch",
+      evidenceStatus: "irrelevant_release_note_evidence",
+    });
+  });
+
   it("fails when a URL recovery candidate still has no usable body", async () => {
     const requestedUrl =
       "https://help.salesforce.com/s/articleView?id=platform.sample_article.htm&type=5";

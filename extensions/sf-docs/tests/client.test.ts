@@ -22,6 +22,78 @@ describe("DocsClient", () => {
     });
   });
 
+  it("retries one transient fetch failure", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: { content: [{ type: "text", text: '{"results":[]}' }] },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+
+    await expect(client.callTool("search", { query: "apex" })).resolves.toEqual({ results: [] });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a transient HTTP 503 once", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("unavailable", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: { content: [{ type: "text", text: '{"results":[]}' }] },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+
+    await expect(client.callTool("search", { query: "apex" })).resolves.toEqual({ results: [] });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries transient failures at most once", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError("fetch failed"));
+    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+
+    await expect(client.callTool("search", { query: "apex" })).rejects.toThrow("fetch failed");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry protocol failures", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ jsonrpc: "1.0", id: 1 }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    ) as unknown as typeof fetch;
+    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+
+    await expect(client.callTool("search", { query: "apex" })).rejects.toThrow(/JSON-RPC/i);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry HTTP 4xx failures", async () => {
+    const fetchImpl = vi.fn(
+      async () => new Response("bad request", { status: 400 }),
+    ) as unknown as typeof fetch;
+    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+
+    await expect(client.callTool("search", { query: "apex" })).rejects.toThrow(/HTTP 400/u);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it("accepts a JSON-RPC application/json response", async () => {
     const fetchImpl = vi.fn(
       async () =>
@@ -55,6 +127,7 @@ describe("DocsClient", () => {
 
     await expect(client.callTool("list", {}, controller.signal)).rejects.toThrow(/cancelled/i);
     expect(receivedAborted).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("rejects a mismatched JSON-RPC response id", async () => {

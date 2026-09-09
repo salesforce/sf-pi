@@ -111,14 +111,19 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_docs for official Salesforce documentation, not generic web search; use action='ground' for implementation-sensitive guidance that needs deterministic search and fetched evidence.",
       "Cite returned source URLs and report evidence gaps instead of substituting unrelated current documentation.",
+      "For seasonal release notes, use the admin collection or omit collection; query developer separately for current technical reference documentation.",
       "Read extensions/sf-docs/AGENT_GUIDE.md for collection, release-note, and query-distillation guidance.",
     ],
     parameters: Params,
     renderCall: (args, theme) => renderToolCall(args as Params, theme),
-    renderResult: (result, opts, theme) =>
+    renderResult: (result, opts, theme, context) =>
       renderToolResult(
         result as { details?: Record<string, unknown>; content?: unknown[] },
-        opts,
+        {
+          ...opts,
+          isError: context.isError,
+          args: context.args as Params,
+        },
         theme,
       ),
     async execute(_id, params, signal, _onUpdate, ctx) {

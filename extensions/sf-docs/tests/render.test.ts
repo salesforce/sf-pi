@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import type { Theme } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import {
   formatAnswer,
@@ -7,7 +8,13 @@ import {
   formatFetch,
   formatGround,
   formatSearch,
+  renderToolResult,
 } from "../lib/render.ts";
+
+const passthroughTheme = {
+  fg: (_color: string, text: string) => text,
+  bold: (text: string) => text,
+} as unknown as Theme;
 
 describe("sf-docs render", () => {
   it("distinguishes retrieval failure from a safety block", () => {
@@ -25,6 +32,30 @@ describe("sf-docs render", () => {
 
     expect(text).toContain("ground not grounded");
     expect(text).not.toContain("ground blocked");
+  });
+
+  it("renders thrown execution errors with the original action and slice", () => {
+    const component = renderToolResult(
+      { content: [{ type: "text", text: "fetch failed" }], details: {} },
+      {
+        isError: true,
+        args: {
+          action: "search",
+          collection: "admin",
+          version: "current",
+          locale: "en-us",
+        },
+      },
+      passthroughTheme,
+    );
+    const text = component.render(120).join("\n");
+
+    expect(text).toContain("SF Docs · search failed");
+    expect(text).toContain("admin/current/en-us");
+    expect(text).toContain("Request failure");
+    expect(text).toContain("fetch failed");
+    expect(text).not.toContain("SF Docs · status");
+    expect(text).not.toContain("Evidence gate");
   });
 
   it("renders visible search URLs and ids", () => {

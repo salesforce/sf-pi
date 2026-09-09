@@ -13,6 +13,16 @@ import type {
 interface RenderOptions {
   isPartial?: boolean;
   expanded?: boolean;
+  isError?: boolean;
+  args?: {
+    action?: string;
+    query?: string;
+    collection?: string;
+    version?: string;
+    locale?: string;
+    ids?: string[];
+    urls?: string[];
+  };
 }
 
 interface FetchRenderDocument extends DocsDocument {
@@ -98,7 +108,19 @@ export function renderToolResult(
 ): Text {
   if (opts.isPartial) return new Text(formatLoading(theme), 0, 0);
   const details = result.details ?? {};
-  const action = String(details.action ?? "status");
+  const action = String(details.action ?? opts.args?.action ?? "status");
+  if (opts.isError) {
+    return new Text(
+      formatExecutionFailure(
+        action,
+        { ...opts.args, ...details },
+        firstText(result.content),
+        theme,
+      ),
+      0,
+      0,
+    );
+  }
   if (details.ok === false) {
     return new Text(formatFailure(action, details, firstText(result.content), theme), 0, 0);
   }
@@ -379,6 +401,31 @@ function formatLoading(theme?: Theme): string {
     rule(theme),
     `${accent("⏳ Working", theme)}  ${dim("Waiting for the Salesforce Docs service…", theme)}`,
   ].join("\n");
+}
+
+export function formatExecutionFailure(
+  action: string,
+  details: Record<string, unknown>,
+  text: string,
+  theme?: Theme,
+): string {
+  const lines = cardHeader(action, details, theme, "error", "failed");
+  lines.push(...lineageSection(details, action, theme));
+  lines.push(
+    ...sectionBlock(
+      "2",
+      "Request failure",
+      [fact("✗", "Status", "execution_failed", theme), text || "SF Docs request failed."],
+      theme,
+    ),
+  );
+  lines.push(
+    ...nextSection(
+      "Retry the request. The failure occurred before SF Docs returned structured result metadata.",
+      theme,
+    ),
+  );
+  return lines.join("\n");
 }
 
 export function formatFailure(

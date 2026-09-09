@@ -20,7 +20,7 @@ Use `sf_docs` for official Salesforce-owned documentation and product/reference 
 - Grounded developer-reference queries use underscore-prefixed guide values and can retry the peer `developer` or `legacydeveloper` collection.
 - Grounded MuleSoft searches add `+latest:true` unless the query requests a specific component release; primitive search sends the caller's query unchanged.
 - Route explicit Well-Architected, decision-guide, and reference-diagram questions to `architect`; do not route on the generic word “architecture” alone.
-- Release-note requests require actual release-note evidence, not merely current-release metadata.
+- Release-note requests require actual release-note evidence, not merely current-release metadata. Use `admin` or omit the collection for seasonal release-note grounding; query `developer` separately for current technical reference documentation.
 - Fall back to broader web research only when official docs are missing, weak, or the user explicitly requests external sources.
 - Do not use SF Docs as a generic web search or as a substitute for current-org schema/runtime evidence.
 

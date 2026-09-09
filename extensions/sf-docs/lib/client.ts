@@ -16,6 +16,17 @@ interface JsonRpcEnvelope {
 }
 
 const REQUEST_ID = 1;
+const TRANSIENT_RETRY_DELAY_MS = 100;
+
+class DocsHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "DocsHttpError";
+  }
+}
 
 export class DocsClient {
   private readonly fetchImpl: typeof fetch;
@@ -37,34 +48,17 @@ export class DocsClient {
     if (signal?.aborted) controller.abort();
     else signal?.addEventListener("abort", abortListener, { once: true });
     try {
-      const response = await this.fetchImpl(this.options.endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json, text/event-stream",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: REQUEST_ID,
-          method: "tools/call",
-          params: { name, arguments: args },
-        }),
-        signal: controller.signal,
-      });
-      const text = await response.text();
-      if (!response.ok) {
-        throw new Error(`Docs service HTTP ${response.status}: ${text.slice(0, 500)}`);
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          return await this.callToolOnce(name, args, controller.signal);
+        } catch (err) {
+          if (attempt === 0 && !controller.signal.aborted && isRetryableRequestError(err)) {
+            await waitForRetry(controller.signal);
+            continue;
+          }
+          throw err;
+        }
       }
-      const parsed = validateJsonRpcEnvelope(
-        parseJsonRpcResponse(text, response.headers.get("content-type")),
-        REQUEST_ID,
-      );
-      if (parsed.error) {
-        throw new Error(
-          `Docs service error ${parsed.error.code ?? ""}: ${parsed.error.message ?? "unknown error"}`,
-        );
-      }
-      return unwrapToolContent(parsed.result);
     } catch (err) {
       if (controller.signal.aborted) {
         throw new Error("Docs service request timed out or was cancelled.", { cause: err });
@@ -76,6 +70,70 @@ export class DocsClient {
       signal?.removeEventListener("abort", abortListener);
     }
   }
+
+  private async callToolOnce(
+    name: string,
+    args: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<unknown> {
+    const response = await this.fetchImpl(this.options.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: REQUEST_ID,
+        method: "tools/call",
+        params: { name, arguments: args },
+      }),
+      signal,
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new DocsHttpError(
+        response.status,
+        `Docs service HTTP ${response.status}: ${text.slice(0, 500)}`,
+      );
+    }
+    const parsed = validateJsonRpcEnvelope(
+      parseJsonRpcResponse(text, response.headers.get("content-type")),
+      REQUEST_ID,
+    );
+    if (parsed.error) {
+      throw new Error(
+        `Docs service error ${parsed.error.code ?? ""}: ${parsed.error.message ?? "unknown error"}`,
+      );
+    }
+    return unwrapToolContent(parsed.result);
+  }
+}
+
+function isRetryableRequestError(error: unknown): boolean {
+  if (error instanceof DocsHttpError) return [502, 503, 504].includes(error.status);
+  if (!(error instanceof TypeError)) return false;
+  if (/fetch failed|connection (?:closed|reset)|network error/iu.test(error.message)) return true;
+  const code = (error.cause as { code?: unknown } | undefined)?.code;
+  return (
+    typeof code === "string" &&
+    ["EAI_AGAIN", "ECONNRESET", "ENETUNREACH", "UND_ERR_SOCKET"].includes(code)
+  );
+}
+
+function waitForRetry(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.reject(new DOMException("aborted", "AbortError"));
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, TRANSIENT_RETRY_DELAY_MS);
+    const onAbort = () => {
+      clearTimeout(timeout);
+      reject(new DOMException("aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 export function validateJsonRpcEnvelope(

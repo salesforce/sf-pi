@@ -61,6 +61,88 @@ describe("Release-Note Evidence", () => {
     ).toMatchObject({ status: "not_release_note_evidence" });
   });
 
+  it("rejects release notes that do not match the requested subject", () => {
+    expect(
+      evaluateReleaseNoteEvidence({
+        release: "264",
+        releaseNoteIntent: true,
+        collection: "admin",
+        subjectTokens: [
+          "winter",
+          "27",
+          "release",
+          "notes",
+          "agent",
+          "script",
+          "agentforce",
+          "language",
+          "syntax",
+          "updates",
+        ],
+        results: [
+          {
+            id: "ordinary-agentforce-page",
+            title: "Timesheets Agent with Agentforce",
+            url: "https://help.salesforce.com/s/articleView?id=xcloud.timesheets.htm&release=264&type=5",
+            release: "264",
+          },
+          {
+            id: "unrelated-release-note",
+            title: "Check the Syntax of Your Steptypes JSON File",
+            url: "https://help.salesforce.com/s/articleView?id=commerce.rn_steptypes.htm&release=264&type=5",
+            filename: "release-notes/264-0-0/rn_steptypes.html",
+            release: "264",
+          },
+        ],
+      }),
+    ).toMatchObject({ status: "irrelevant_release_note_evidence", candidates: [] });
+  });
+
+  it("returns only release-note candidates matching the requested subject", () => {
+    const relevant = {
+      id: "agent-script-release-note",
+      title: "New and Changed Agent Script Functionality",
+      url: "https://help.salesforce.com/s/articleView?id=release-notes.rn_agentforce_script_new_changed.htm&release=264&type=5",
+      filename: "release-notes/264-0-0/rn_agentforce_script_new_changed.html",
+      release: "264",
+    };
+    expect(
+      evaluateReleaseNoteEvidence({
+        release: "264",
+        releaseNoteIntent: true,
+        collection: "admin",
+        subjectTokens: ["agent", "script", "agentforce"],
+        results: [
+          {
+            id: "unrelated-release-note",
+            title: "Check the Syntax of Your Steptypes JSON File",
+            url: "https://help.salesforce.com/s/articleView?id=commerce.rn_steptypes.htm&release=264&type=5",
+            release: "264",
+          },
+          relevant,
+        ],
+      }),
+    ).toMatchObject({ status: "ok", candidates: [relevant] });
+  });
+
+  it("keeps product numbers such as Data 360 in the release-note subject", () => {
+    expect(
+      evaluateReleaseNoteEvidence({
+        release: "264",
+        releaseNoteIntent: true,
+        collection: "admin",
+        subjectTokens: ["data", "360", "winter", "27", "release", "notes"],
+        results: [
+          {
+            title: "Data Storage Changes",
+            url: "https://help.salesforce.com/s/articleView?id=release-notes.rn_data_storage.htm&release=264&type=5",
+            release: "264",
+          },
+        ],
+      }),
+    ).toMatchObject({ status: "irrelevant_release_note_evidence", candidates: [] });
+  });
+
   it("accepts matching release-note evidence", () => {
     expect(
       evaluateReleaseNoteEvidence({

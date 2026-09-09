@@ -70,6 +70,11 @@ interface GroundContext {
   slice: { collection: string; version: string; locale: string };
 }
 
+interface ReleaseEvidenceRequirement {
+  release: string;
+  subjectTokens: string[];
+}
+
 export async function runGroundWorkflow(args: {
   client: DocsClient;
   endpoint: string;
@@ -242,9 +247,15 @@ async function groundQuery(context: GroundContext): Promise<GroundWorkflowResult
     );
   }
 
+  let candidatePool = search.results;
+  let releaseRequirement: ReleaseEvidenceRequirement | undefined;
   if (context.distilled?.releaseHint && context.distilled.releaseNoteIntent) {
-    const evidence = evaluateReleaseNoteEvidence({
+    releaseRequirement = {
       release: context.distilled.releaseHint.release,
+      subjectTokens: context.distilled.semanticTokens,
+    };
+    const evidence = evaluateReleaseNoteEvidence({
+      ...releaseRequirement,
       releaseNoteIntent: true,
       collection: context.slice.collection,
       results: search.results,
@@ -259,9 +270,10 @@ async function groundQuery(context: GroundContext): Promise<GroundWorkflowResult
         },
       );
     }
+    candidatePool = evidence.candidates;
   }
 
-  const candidates = search.results
+  const candidates = candidatePool
     .slice(0, Math.min(3, context.input.pageSize))
     .filter((candidate): candidate is DocsSearchResult & { id: string } => Boolean(candidate.id));
   if (!candidates.length) {
@@ -280,6 +292,7 @@ async function groundQuery(context: GroundContext): Promise<GroundWorkflowResult
     candidates.map((candidate) => candidate.id),
     fetchSlice,
     { status: "search_fetch" },
+    releaseRequirement,
   );
 }
 
@@ -376,6 +389,7 @@ async function fetchGroundedDocuments(
   ids: string[],
   slice: { collection: string; version: string; locale: string },
   resolution: Record<string, unknown>,
+  releaseRequirement?: ReleaseEvidenceRequirement,
 ): Promise<GroundWorkflowResult> {
   const fetched = await fetchDocuments(context, { ids, slice });
   if (isGroundFailure(fetched)) return fetched;
@@ -398,6 +412,43 @@ async function fetchGroundedDocuments(
         contentStatus: fetchContentStatus(packet),
       },
     );
+  }
+  if (releaseRequirement) {
+    const expectedIds = new Set(ids);
+    const hasUnexpectedDocument = fetched.docs.some(
+      (document) => !document.id || !expectedIds.has(document.id),
+    );
+    const evidence = evaluateReleaseNoteEvidence({
+      ...releaseRequirement,
+      releaseNoteIntent: true,
+      collection: fetched.slice.collection,
+      results: fetched.docs,
+    });
+    if (
+      hasUnexpectedDocument ||
+      evidence.status !== "ok" ||
+      evidence.candidates.length !== fetched.docs.length
+    ) {
+      const packet = buildFetchEvidencePacket(fetched.docs, fetched.slice);
+      const evidenceStatus = hasUnexpectedDocument
+        ? "unexpected_fetched_document"
+        : evidence.status;
+      return groundFailure(
+        "fetched_evidence_mismatch",
+        hasUnexpectedDocument
+          ? "Fetched documents did not match the selected release-note candidate IDs."
+          : (evidence.message ??
+              "Fetched documents did not satisfy the release-note evidence gate."),
+        {
+          ...baseDetails(context),
+          resolution,
+          evidenceStatus,
+          documents: packet.documents,
+          retrievalStatus: fetched.outcome.retrievalStatus,
+          contentStatus: fetchContentStatus(packet),
+        },
+      );
+    }
   }
   return groundedResult(context, fetched.docs, fetched.slice, fetched.outcome, resolution);
 }

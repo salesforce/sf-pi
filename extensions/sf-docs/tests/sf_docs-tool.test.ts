@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -37,7 +37,42 @@ describe("sf_docs tool", () => {
     const tool = registerTool.mock.calls[0]?.[0];
     expect(tool.name).toBe("sf_docs");
     expect(tool.promptGuidelines.join("\n")).toMatch(/search.*fetch/i);
+    expect(tool.promptGuidelines.join("\n")).toMatch(
+      /seasonal release notes.*admin.*developer separately/i,
+    );
     expect(tool.parameters.properties).not.toHaveProperty("cite");
+  });
+
+  it("passes thrown-error context through the registered result renderer", async () => {
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const theme = {
+      fg: (_color: string, text: string) => text,
+      bold: (text: string) => text,
+    } as unknown as Theme;
+
+    const component = tool.renderResult(
+      { content: [{ type: "text", text: "fetch failed" }], details: {} },
+      { expanded: false, isPartial: false },
+      theme,
+      {
+        isError: true,
+        args: {
+          action: "search",
+          collection: "admin",
+          version: "current",
+          locale: "en-us",
+        },
+      },
+    );
+    const text = component.render(120).join("\n");
+
+    expect(text).toContain("SF Docs · search failed");
+    expect(text).toContain("admin/current/en-us");
+    expect(text).not.toContain("SF Docs · status");
   });
 
   it("includes search result ids and URLs in tool content", async () => {
