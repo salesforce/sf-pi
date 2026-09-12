@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.280.0-2026-09-12",
-  "latestVersion": "0.280.0",
+  "revision": "release-0.281.0-2026-09-12",
+  "latestVersion": "0.281.0",
   "announcements": [
     {
-      "id": "release-0.280.0",
+      "id": "release-0.281.0",
       "kind": "update",
-      "title": "sf-pi v0.280.0 — sf-pi-manager: recommend FFF and opt-in MCP",
+      "title": "sf-pi v0.281.0 — sf-skills: add MCP readiness guidance",
       "publishedAt": "2026-09-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.280.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.281.0",
       "severity": "info",
-      "body": "sf-pi-manager: recommend FFF and opt-in MCP"
+      "body": "sf-skills: add MCP readiness guidance"
     }
   ]
 }
