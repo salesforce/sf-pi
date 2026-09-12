@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.281.0](https://github.com/salesforce/sf-pi/compare/v0.280.0...v0.281.0) (2026-09-12)
+
+
+### Features
+
+* **sf-skills:** add MCP readiness guidance ([a871199](https://github.com/salesforce/sf-pi/commit/a871199a01ec027f4457c33c52e14bfff97f4537))
+
 ## [0.280.0](https://github.com/salesforce/sf-pi/compare/v0.279.2...v0.280.0) (2026-09-12)
 
 
