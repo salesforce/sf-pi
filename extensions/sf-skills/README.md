@@ -20,8 +20,15 @@ out of the system prompt while `/skill:name` keeps working.
 
 It also provides an optional active-context HUD, the managed public Salesforce
 skill-library installer (`forcedotcom/sf-skills`), explicit invocation counters,
-and stale-entry/orphan cleanup. A retired `forcedotcom/afv-library` checkout is
-detected and warned; `/sf-skills defaults install` switches wiring to the new
+and stale-entry/orphan cleanup. On the first agent turn, it checks only
+agent-invocable managed skills in the current system prompt and emits one
+human-only warning when their declared `metadata.mcpTools` servers are not
+configured. The compact row identifies each affected skill, declared service and
+tools, and its effective `SKILL.md` source. Expanding the row shows declared
+versions and explains `/mcp setup` and `/sf-skills toggle`. The check is local and
+advisory: it does not connect servers, mutate skill settings, or block the turn. A
+retired `forcedotcom/afv-library` checkout
+is detected and warned; `/sf-skills defaults install` switches wiring to the new
 library without deleting the old clone.
 
 ## Commands
@@ -73,6 +80,13 @@ per-root scans; that work stays off the startup path.
 **Toggles vanished after update:** `/sf-skills defaults update` restamps the
 effective tree from `sfPi.skillInvocation`. The clone is never the preference
 store. If flags are missing, check that settings key and rerun `/sf-skills toggle`.
+
+**A skill-readiness warning appears:** One or more agent-invocable managed skills
+declare an MCP server that is not configured. The compact row shows the source
+skill, service, and tool names; expand it for version details and guided command
+explanations. Run `/mcp setup` to review and configure MCP sources, or
+`/sf-skills toggle` to make the affected skills manual-only. Disabled and
+manual-only skills do not trigger this warning.
 
 ## File Structure
 

@@ -17,6 +17,7 @@ function buildExtension() {
       handlers.set(event, [...(handlers.get(event) ?? []), handler]);
     }),
     registerCommand: vi.fn(),
+    registerEntryRenderer: vi.fn(),
     getCommands: vi.fn(() => []),
   };
   return { handlers, pi };

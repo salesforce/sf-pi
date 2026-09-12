@@ -171,7 +171,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-skills">
   <span class="sfpi-card-kicker">UI · on</span>
   <strong>SF Skills</strong>
-  <span>Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Toggle managed-library invocation via disable-model-invocation stamps on an effective tree. Plus a passive live-context HUD, forcedotcom/sf-skills install, per-skill usage counters, and prune.</span>
+  <span>Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Toggle managed-library invocation via disable-model-invocation stamps on an effective tree. Plus a passive live-context HUD, an expandable first-turn warning with source and setup guidance for unconfigured MCP services declared by agent-invocable managed skills, forcedotcom/sf-skills install, per-skill usage counters, and prune.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-skills</code></span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-welcome">

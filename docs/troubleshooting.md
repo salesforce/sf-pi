@@ -261,6 +261,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - A custom source vanished
 - The funnel is slow to open
 - Toggles vanished after update
+- A skill-readiness warning appears
 
 **[SF Welcome](./extensions/sf-welcome.md#troubleshooting)**
 

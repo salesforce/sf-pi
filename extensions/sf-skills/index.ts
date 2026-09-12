@@ -100,6 +100,17 @@ import {
 import { SkillFunnelViewComponent } from "./lib/funnel-view/index.ts";
 import type { FunnelAction, FunnelResult } from "./lib/funnel-view/types.ts";
 import { applyFileAction, type FileActionOp } from "./lib/conflict-actions.ts";
+import {
+  buildMcpReadinessWarning,
+  collectVisibleManagedMcpSkills,
+  configuredMcpServerNames,
+  isMcpStatusSnapshot,
+  MCP_READINESS_ENTRY_TYPE,
+  MCP_STATUS_EVENT,
+  registerMcpReadinessRenderer,
+  type ManagedMcpSkill,
+  type McpStatusSnapshot,
+} from "./lib/mcp-readiness.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -293,9 +304,38 @@ export function shouldShowFloatingHud(
 export default function sfSkills(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-skills")) return;
 
+  registerMcpReadinessRenderer(pi);
+
   let hudState: SkillsHudState = EMPTY_STATE;
   let hudComponent: SkillsHudComponent | null = null;
   let dismissHud: (() => void) | null = null;
+  let latestMcpStatus: McpStatusSnapshot | undefined;
+  let visibleManagedMcpSkills: ManagedMcpSkill[] = [];
+  let mcpReadinessSkillsCaptured = false;
+  let mcpReadinessWarningEmitted = false;
+
+  function maybeEmitMcpReadinessWarning(): void {
+    if (mcpReadinessWarningEmitted || visibleManagedMcpSkills.length === 0) return;
+
+    const adapterInstalled = pi.getAllTools().some((tool) => tool.name === "mcp");
+    if (adapterInstalled && !latestMcpStatus) return;
+
+    const warning = buildMcpReadinessWarning(
+      visibleManagedMcpSkills,
+      latestMcpStatus ? configuredMcpServerNames(latestMcpStatus) : new Set<string>(),
+      adapterInstalled,
+    );
+    if (!warning) return;
+
+    pi.appendEntry(MCP_READINESS_ENTRY_TYPE, warning);
+    mcpReadinessWarningEmitted = true;
+  }
+
+  pi.events?.on(MCP_STATUS_EVENT, (snapshot: unknown) => {
+    if (!isMcpStatusSnapshot(snapshot)) return;
+    latestMcpStatus = snapshot;
+    maybeEmitMcpReadinessWarning();
+  });
 
   function refreshHud(ctx: ExtensionContext): void {
     const branchEntries = ctx.sessionManager.getBranch();
@@ -365,6 +405,9 @@ export default function sfSkills(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     dismissOverlay();
     hudState = EMPTY_STATE;
+    visibleManagedMcpSkills = [];
+    mcpReadinessSkillsCaptured = false;
+    mcpReadinessWarningEmitted = false;
     if (ctx.mode === "tui") {
       const warning = formatLegacyDefaultLibraryWarning(detectLegacyDefaultLibrary(ctx.cwd), {
         sessionStart: true,
@@ -387,6 +430,14 @@ export default function sfSkills(pi: ExtensionAPI) {
   });
 
   pi.on("before_agent_start", async (event, ctx) => {
+    if (!mcpReadinessSkillsCaptured) {
+      visibleManagedMcpSkills = collectVisibleManagedMcpSkills(
+        event.systemPromptOptions.skills ?? [],
+      );
+      mcpReadinessSkillsCaptured = true;
+      maybeEmitMcpReadinessWarning();
+    }
+
     // Bump persistent counters on explicit /skill:<name> invocations.
     // We mirror sf-skills-hud's signal model (explicit only) so the
     // counter never drifts ahead of what the HUD calls "used".

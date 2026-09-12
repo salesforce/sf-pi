@@ -75,6 +75,7 @@ describe("sf-skills boot path", () => {
         handlers.set(event, [...(handlers.get(event) ?? []), handler]);
       }),
       registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
       getCommands: vi.fn(() => []),
     };
 
