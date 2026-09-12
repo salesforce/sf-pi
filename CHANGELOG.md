@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.280.0](https://github.com/salesforce/sf-pi/compare/v0.279.2...v0.280.0) (2026-09-12)
+
+
+### Features
+
+* **sf-pi-manager:** recommend FFF and opt-in MCP ([9b94c8f](https://github.com/salesforce/sf-pi/commit/9b94c8f68a5c325a8f96d3647b7210b2892be840))
+
 ## [0.279.2](https://github.com/salesforce/sf-pi/compare/v0.279.1...v0.279.2) (2026-09-09)
 
 
