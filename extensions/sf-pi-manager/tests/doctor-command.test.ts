@@ -5,6 +5,7 @@
  * accidentally drift the user-visible block.
  */
 import { describe, expect, it, vi } from "vitest";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { handleDoctor, renderExtensionOutcomes } from "../lib/doctor-command.ts";
 import type { RegisteredDoctorOutcome } from "../../../lib/common/doctor/registry.ts";
 
@@ -50,10 +51,35 @@ const SAMPLE_OUTCOMES: RegisteredDoctorOutcome[] = [
 
 vi.mock("../../../lib/common/doctor/diagnostics.ts", () => ({
   runDoctorDiagnostics: () => ({
+    piVersion: "0.85.1",
+    nodeVersion: "v22.19.0",
     runtime: {},
+    quietStartup: true,
+    welcomeMode: "header",
+    safeStartRequested: false,
+    welcomeDisabled: false,
+    issues: [],
     skillCollisions: [],
     staleSkillPaths: [],
     availableSkillRoots: [],
+    sfPiPackageDuplicates: [],
+  }),
+}));
+vi.mock("../lib/pi-web-access-doctor.ts", () => ({
+  runPiWebAccessDoctor: vi.fn().mockResolvedValue({
+    extensionId: "sf-pi-manager",
+    title: "pi-web-access compatibility",
+    summary: "1 warning",
+    durationMs: 3,
+    checks: [
+      {
+        id: "pi-web-access.synthetic-dns",
+        severity: "warn",
+        title: "pi-web-access may reject public fetches behind synthetic DNS",
+        detail: "github.com resolved into a reserved range.",
+        fix: "Review web-search.json.",
+      },
+    ],
   }),
 }));
 vi.mock("../../../lib/common/doctor/runtime-cache.ts", () => ({
@@ -77,10 +103,30 @@ describe("handleDoctor", () => {
       reload,
     };
 
-    await expect(handleDoctor(ctx as any, { subcommand: "fix", target: "startup" })).resolves.toBe(
-      true,
-    );
+    await expect(
+      handleDoctor(ctx as unknown as ExtensionCommandContext, {
+        subcommand: "fix",
+        target: "startup",
+      }),
+    ).resolves.toBe(true);
     expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("includes recommended pi-web-access compatibility diagnostics in status", async () => {
+    const notify = vi.fn();
+    const ctx = {
+      cwd: "/tmp/sf-pi-doctor-test",
+      hasUI: false,
+      ui: { notify },
+      reload: vi.fn(),
+    };
+
+    await handleDoctor(ctx as unknown as ExtensionCommandContext, { subcommand: "status" });
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.stringContaining("pi-web-access may reject public fetches behind synthetic DNS"),
+      "info",
+    );
   });
 });
 

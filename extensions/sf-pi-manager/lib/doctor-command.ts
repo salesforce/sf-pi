@@ -13,6 +13,7 @@ import {
   AUDITED_MAX_PI_VERSION_EXCLUSIVE,
   HARD_MAX_PI_VERSION_EXCLUSIVE,
 } from "../../../lib/common/pi-compat.ts";
+import { runPiWebAccessDoctor } from "./pi-web-access-doctor.ts";
 
 export type DoctorSubcommand = "status" | "fix" | "runtime";
 export type DoctorFixTarget = "all" | "startup" | "skills";
@@ -66,9 +67,22 @@ async function handleStatus(ctx: ExtensionCommandContext): Promise<void> {
   const report = runDoctorDiagnostics({ cwd: ctx.cwd });
   writeCachedRuntimeDiagnostics(report.runtime);
   // Aggregate every registered per-extension doctor with a small budget so
-  // a slow network probe never blocks the report. Slow / failed providers
-  // are surfaced inline as "timeout" / "error" rows.
-  const extensionOutcomes = await runRegisteredDoctors({ cwd: ctx.cwd });
+  // a slow network probe never blocks the report. The recommended-package
+  // compatibility check is also bounded and returns null when not installed.
+  // Slow / failed providers are surfaced inline as "timeout" / "error" rows.
+  const [extensionOutcomes, webAccessReport] = await Promise.all([
+    runRegisteredDoctors({ cwd: ctx.cwd }),
+    runPiWebAccessDoctor({ cwd: ctx.cwd }),
+  ]);
+  if (webAccessReport) {
+    extensionOutcomes.push({
+      extensionId: webAccessReport.extensionId,
+      status: "ok",
+      report: webAccessReport,
+      durationMs: webAccessReport.durationMs ?? 0,
+    });
+    extensionOutcomes.sort((a, b) => a.extensionId.localeCompare(b.extensionId));
+  }
 
   const lines = [renderDoctorReport(report)];
   if (extensionOutcomes.length > 0) {

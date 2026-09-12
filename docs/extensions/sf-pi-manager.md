@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor/auto-update commands plus the interactive TUI overlay and settings panel. Pi runtime updates remain user-managed, with newer stable 0.x releases loading in forward-compatibility mode. Opt-in Auto Update waits for agent_settled, updates only declared-compatible unpinned global npm Pi packages through Pi, and runs the independent Salesforce CLI stable update. alwaysActive: enable/disable is mediated through this extension only.
+Core manager for the sf-pi package. Provides /sf-pi list/enable/disable/status/display/recommended/announcements/skills/doctor/auto-update commands plus the interactive TUI overlay and settings panel. Doctor includes a bounded, read-only synthetic-DNS compatibility check for the recommended pi-web-access package without changing third-party security configuration. Pi runtime updates remain user-managed, with newer stable 0.x releases loading in forward-compatibility mode. Opt-in Auto Update waits for agent_settled, updates only declared-compatible unpinned global npm Pi packages through Pi, and runs the independent Salesforce CLI stable update. alwaysActive: enable/disable is mediated through this extension only.
 
 ## Start
 
@@ -24,6 +24,7 @@ Open the extension from its primary command:
 
 - Owns the WRITE side of pi's package filter list via lib/common/sf-pi-package-state.ts.
 - Auto Update is opt-in, interactive-session only, agent-settled, machine-locked, abortable, and output-redacted; it never performs an unbounded Pi self-update.
+- Recommended-package compatibility diagnostics are explicit-command, bounded, and read-only; they never weaken or rewrite third-party security settings.
 - Package automation is limited to outdated unpinned global npm packages with declared active Pi/Node compatibility; pinned, local, git, project, incompatible, and unverifiable packages are skipped.
 - alwaysActive cannot be disabled through the standard toggle action.
 

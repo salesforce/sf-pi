@@ -100,6 +100,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Auto Update waits for `agent_settled`
 - Project changes do not stick
 - Recommended items or skill roots look stale
+- `pi-web-access` reports `Blocked internal address` for a public site
 
 **[SF LLM Gateway](./extensions/sf-llm-gateway.md#troubleshooting)**
 

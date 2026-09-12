@@ -90,6 +90,25 @@ explicitly when changing extension state.
 and skill-source decisions are revision/state based. Use their Manager pages and
 `/sf-pi doctor` before editing state files manually.
 
+**`pi-web-access` reports `Blocked internal address` for a public site:** A VPN or
+TUN client can map public hostnames into a reserved synthetic address range such
+as `100.64.0.0/10` or `198.18.0.0/15`. `pi-web-access` blocks those ranges by
+default to prevent server-side request forgery. Run `/sf-pi doctor` to check the
+active DNS result. If the reported mapping is verified as tunnel-owned, add only
+the narrowest working subnet to `ssrf.allowRanges` in the reported
+`web-search.json` path, for example:
+
+```json
+{
+  "ssrf": {
+    "allowRanges": ["100.64.1.0/24"]
+  }
+}
+```
+
+Do not exempt the complete `100.64.0.0/10` range. SF Pi reports this condition
+and guidance but never changes third-party security configuration automatically.
+
 ## File Structure
 
 <!-- GENERATED:file-structure:start -->
