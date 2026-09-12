@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.279.2-2026-09-09",
-  "latestVersion": "0.279.2",
+  "revision": "release-0.280.0-2026-09-12",
+  "latestVersion": "0.280.0",
   "announcements": [
     {
-      "id": "release-0.279.2",
+      "id": "release-0.280.0",
       "kind": "update",
-      "title": "sf-pi v0.279.2 — sf-docs: harden grounding evidence",
-      "publishedAt": "2026-09-09T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.279.2",
+      "title": "sf-pi v0.280.0 — sf-pi-manager: recommend FFF and opt-in MCP",
+      "publishedAt": "2026-09-12T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.280.0",
       "severity": "info",
-      "body": "sf-docs: harden grounding evidence"
+      "body": "sf-pi-manager: recommend FFF and opt-in MCP"
     }
   ]
 }
