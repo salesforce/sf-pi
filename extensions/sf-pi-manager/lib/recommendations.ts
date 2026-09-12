@@ -130,6 +130,46 @@ export async function handleRecommended(
 // Overlay
 // -------------------------------------------------------------------------------------------------
 
+/**
+ * Build checklist rows from sticky decisions and bundle defaults.
+ *
+ * New items are preselected only when they belong to a first-run bundle.
+ * Installed package settings and sticky decisions remain authoritative across
+ * revisions.
+ */
+export function buildRecommendationRows(
+  manifest: RecommendationsManifest,
+  state: RecommendationsState,
+  configuredSources: readonly string[],
+): RecommendationRow[] {
+  const defaultItemIds = new Set(
+    resolveBundleItems(manifest, defaultFirstRunBundleIds(manifest)).map((item) => item.id),
+  );
+
+  return Object.values(manifest.items).map((item) => {
+    const herdrAction = resolveHerdrOfficialInstallAction(item.id, configuredSources);
+    const alreadyInstalled =
+      settingsProvidePackage(item.source, configuredSources) || herdrAction !== "install";
+    const previousDecision = alreadyInstalled ? "installed" : state.decisions[item.id];
+    const selected =
+      previousDecision === "installed" ||
+      (previousDecision === undefined && defaultItemIds.has(item.id));
+
+    return { item, selected, previousDecision };
+  });
+}
+
+function settingsProvidePackage(
+  expectedSource: string,
+  configuredSources: readonly string[],
+): boolean {
+  const expected = expectedSource.trim().toLowerCase();
+  return configuredSources.some((source) => {
+    const configured = source.trim().toLowerCase();
+    return configured === expected || configured.startsWith(`${expected}@`);
+  });
+}
+
 async function handleOverlay(
   ctx: ExtensionCommandContext,
   packageVersion: string,
@@ -144,23 +184,8 @@ async function handleOverlay(
   }
 
   const state = readRecommendationsState();
-  const items = Object.values(manifest.items);
-  const herdrSources = collectSettingsPackageSources(ctx.cwd);
-  const rows: RecommendationRow[] = items.map((item) => {
-    const herdrAction = resolveHerdrOfficialInstallAction(item.id, herdrSources);
-    const alreadyProvidesHerdr = herdrAction !== "install";
-    return {
-      item,
-      // Pre-check:
-      //   - never-seen items are pre-checked (opt-out)
-      //   - previously installed items stay checked
-      //   - previously declined items stay unchecked
-      //   - git-or-npm Herdr already providing tools counts as installed so we
-      //     do not add the other source and collide on herdr_* tool names
-      selected: alreadyProvidesHerdr ? true : state.decisions[item.id] !== "declined",
-      previousDecision: alreadyProvidesHerdr ? "installed" : state.decisions[item.id],
-    };
-  });
+  const configuredSources = collectSettingsPackageSources(ctx.cwd);
+  const rows = buildRecommendationRows(manifest, state, configuredSources);
 
   ctx.ui.setWorkingVisible(false);
   let result: RecommendationsOverlayResult | undefined;

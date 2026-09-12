@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-05-25",
+  "revision": "2026-09-12",
   "bundles": [
     {
       "id": "default",
@@ -10,6 +10,7 @@
       "items": [
         "pi-skills",
         "pi-web-access",
+        "pi-fff",
         "pi-aliases",
         "pi-interview",
         "glimpseui",
@@ -17,6 +18,13 @@
         "pi-subagents",
         "pi-herdr"
       ]
+    },
+    {
+      "id": "advanced-integrations",
+      "name": "Advanced integrations",
+      "description": "Optional bridges to external tool ecosystems that require an explicit install choice.",
+      "defaultOnFirstRun": false,
+      "items": ["pi-mcp-adapter"]
     }
   ],
   "items": {
@@ -38,6 +46,16 @@
       "homepage": "https://github.com/nicobailon/pi-web-access",
       "license": "MIT",
       "rationale": "Everyday research surface for any pi session \u2014 sf-pi expects the web_search and fetch_content tools this package provides.",
+      "scope": "global"
+    },
+    "pi-fff": {
+      "id": "pi-fff",
+      "name": "pi-fff / FFF Search",
+      "description": "FFF-powered fuzzy file and content search for pi, with frecency ranking, Git-aware results, and a local background index.",
+      "source": "npm:@ff-labs/pi-fff",
+      "homepage": "https://github.com/dmtrKovalenko/fff/tree/main/packages/pi-fff",
+      "license": "MIT",
+      "rationale": "Fast local search and FFF-backed file autocomplete improve navigation in large Salesforce projects without replacing Pi's built-in search tools by default.",
       "scope": "global"
     },
     "pi-aliases": {
@@ -88,6 +106,16 @@
       "homepage": "https://github.com/nicobailon/pi-subagents",
       "license": "MIT",
       "rationale": "Unlocks multi-agent workflows \u2014 advisory review, implementation handoffs, and parallel fan-out \u2014 that pair naturally with the sf-pi planning and skill surface.",
+      "scope": "global"
+    },
+    "pi-mcp-adapter": {
+      "id": "pi-mcp-adapter",
+      "name": "Pi MCP Adapter",
+      "description": "MCP adapter for pi with lazy server connections, proxy-first discovery, approval controls, OAuth support, and project or global configuration.",
+      "source": "npm:pi-mcp-adapter",
+      "homepage": "https://github.com/nicobailon/pi-mcp-adapter",
+      "license": "MIT",
+      "rationale": "An opt-in bridge for teams that need MCP servers while keeping connections lazy and direct tool registration disabled by default.",
       "scope": "global"
     },
     "pi-herdr": {

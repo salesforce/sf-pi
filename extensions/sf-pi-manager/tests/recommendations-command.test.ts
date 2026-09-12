@@ -1,16 +1,20 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Tests for `/sf-pi recommended` argument parsing and the first-run nudge
- * decision.
+ * Tests for `/sf-pi recommended` argument parsing, checklist defaults, and the
+ * first-run nudge decision.
  *
- * Covers: parseRecommendedArgs, computeRecommendationsNudge
+ * Covers: parseRecommendedArgs, buildRecommendationRows, computeRecommendationsNudge
  *
  * The nudge rule is small but deserves explicit tests because it's the
  * contract that "installed once, left alone" relies on.
  */
 import { describe, it, expect } from "vitest";
 import type { RecommendationsManifest } from "../../../catalog/types.ts";
-import { computeRecommendationsNudge, parseRecommendedArgs } from "../lib/recommendations.ts";
+import {
+  buildRecommendationRows,
+  computeRecommendationsNudge,
+  parseRecommendedArgs,
+} from "../lib/recommendations.ts";
 import type { RecommendationsState } from "../../../lib/common/catalog-state/recommendations-state.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -86,6 +90,78 @@ function makeManifest(overrides: Partial<RecommendationsManifest> = {}): Recomme
 function makeState(overrides: Partial<RecommendationsState> = {}): RecommendationsState {
   return { acknowledgedRevision: "", decisions: {}, ...overrides };
 }
+
+// -------------------------------------------------------------------------------------------------
+// buildRecommendationRows
+// -------------------------------------------------------------------------------------------------
+
+describe("buildRecommendationRows", () => {
+  function manifestWithOptionalItem(): RecommendationsManifest {
+    const base = makeManifest();
+    return makeManifest({
+      bundles: [
+        { id: "default", name: "Default", description: "", defaultOnFirstRun: true, items: ["a"] },
+        {
+          id: "advanced",
+          name: "Advanced",
+          description: "",
+          defaultOnFirstRun: false,
+          items: ["b"],
+        },
+      ],
+      items: {
+        ...base.items,
+        b: {
+          id: "b",
+          name: "B",
+          description: "",
+          source: "npm:b",
+          homepage: "https://example.com/b",
+          license: "MIT",
+          rationale: "r",
+        },
+      },
+    });
+  }
+
+  it("preselects new default-bundle items but leaves optional items unchecked", () => {
+    const rows = buildRecommendationRows(manifestWithOptionalItem(), makeState(), []);
+
+    expect(rows.map(({ item, selected }) => [item.id, selected])).toEqual([
+      ["a", true],
+      ["b", false],
+    ]);
+  });
+
+  it("preserves installed and declined decisions across bundle defaults", () => {
+    const rows = buildRecommendationRows(
+      manifestWithOptionalItem(),
+      makeState({ decisions: { a: "declined", b: "installed" } }),
+      [],
+    );
+
+    expect(
+      rows.map(({ item, selected, previousDecision }) => [item.id, selected, previousDecision]),
+    ).toEqual([
+      ["a", false, "declined"],
+      ["b", true, "installed"],
+    ]);
+  });
+
+  it("checks optional packages already present in Pi settings", () => {
+    const manifest = manifestWithOptionalItem();
+    manifest.items.b!.source = "npm:@example/b";
+
+    const rows = buildRecommendationRows(manifest, makeState(), ["npm:@example/b@1.2.3"]);
+    const optional = rows.find((row) => row.item.id === "b");
+
+    expect(optional).toMatchObject({ selected: true, previousDecision: "installed" });
+  });
+});
+
+// -------------------------------------------------------------------------------------------------
+// computeRecommendationsNudge
+// -------------------------------------------------------------------------------------------------
 
 describe("computeRecommendationsNudge", () => {
   it("shows when there is a pending default-bundle item and no ack", () => {

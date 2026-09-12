@@ -215,7 +215,8 @@ export interface RecommendedItem {
 
 /**
  * A curated bundle of recommended items, grouped for quick opt-in.
- * `defaultOnFirstRun: true` bundles surface in the first-run nudge.
+ * `defaultOnFirstRun: true` bundles surface in the first-run nudge and their
+ * undecided items are preselected when the recommendations checklist opens.
  */
 export interface RecommendationBundle {
   id: string;

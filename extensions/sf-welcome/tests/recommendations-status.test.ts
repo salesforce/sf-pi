@@ -54,12 +54,27 @@ describe("collectRecommendationsStatus", () => {
     });
 
     const summary = collectRecommendationsStatus(projectDir);
-    expect(summary.total).toBe(8);
+    expect(summary.total).toBe(10);
     expect(summary.items.map((item) => item.id)).not.toContain("pi-updater");
 
     const installed = summary.items.filter((item) => item.status === "installed").map((i) => i.id);
     expect(installed).toContain("pi-web-access");
     expect(installed).toContain("pi-subagents");
+  });
+
+  it("detects versioned FFF and MCP Adapter npm recommendations", () => {
+    const homeDir = makeTempDir("sf-welcome-home-");
+    const projectDir = makeTempDir("sf-welcome-project-");
+    process.env.HOME = homeDir;
+
+    writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
+      packages: ["npm:@ff-labs/pi-fff@0.10.6", "npm:pi-mcp-adapter@2.33.0"],
+    });
+
+    const summary = collectRecommendationsStatus(projectDir);
+    const installed = summary.items.filter((item) => item.status === "installed").map((i) => i.id);
+    expect(installed).toContain("pi-fff");
+    expect(installed).toContain("pi-mcp-adapter");
   });
 
   it("falls back to the state file for declined markers only", () => {
