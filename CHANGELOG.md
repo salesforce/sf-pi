@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.282.1](https://github.com/salesforce/sf-pi/compare/v0.282.0...v0.282.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **deps:** update Salesforce Apex and core packages ([3938c98](https://github.com/salesforce/sf-pi/commit/3938c98f5637001b79b1c5999d62b0e238400e47))
+
 ## [0.282.0](https://github.com/salesforce/sf-pi/compare/v0.281.0...v0.282.0) (2026-09-12)
 
 
