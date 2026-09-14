@@ -148,7 +148,7 @@
     "@lwc/template-compiler": "^9.3.4",
     "@salesforce-ux/design-system": "2.264.1",
     "@salesforce/apex-node": "^9.0.9",
-    "@salesforce/core": "^9.1.10",
+    "@salesforce/core": "^9.1.11",
     "@salesforce/kit": "^4.0.0",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/soql-language-server": "^1.1.0",
