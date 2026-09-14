@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.282.0-2026-09-12",
-  "latestVersion": "0.282.0",
+  "revision": "release-0.282.1-2026-09-14",
+  "latestVersion": "0.282.1",
   "announcements": [
     {
-      "id": "release-0.282.0",
+      "id": "release-0.282.1",
       "kind": "update",
-      "title": "sf-pi v0.282.0 — sf-pi-manager: diagnose synthetic DNS for web access",
-      "publishedAt": "2026-09-12T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.282.0",
+      "title": "sf-pi v0.282.1 — deps: update Salesforce Apex and core packages",
+      "publishedAt": "2026-09-14T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.282.1",
       "severity": "info",
-      "body": "sf-pi-manager: diagnose synthetic DNS for web access"
+      "body": "deps: update Salesforce Apex and core packages"
     }
   ]
 }
