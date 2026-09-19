@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.283.0](https://github.com/salesforce/sf-pi/compare/v0.282.1...v0.283.0) (2026-09-19)
+
+
+### Features
+
+* **sf-flow:** add native Flow lifecycle tooling ([fe7a57e](https://github.com/salesforce/sf-pi/commit/fe7a57e502e5429dc2d5f7096139adc5019991d7))
+
 ## [0.282.1](https://github.com/salesforce/sf-pi/compare/v0.282.0...v0.282.1) (2026-09-14)
 
 
