@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.288.0](https://github.com/salesforce/sf-pi/compare/v0.287.0...v0.288.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** add live advanced action proofs ([95668a4](https://github.com/salesforce/sf-pi/commit/95668a42f98f71f43fb8de12b7622c2f1f043791))
+
 ## [0.287.0](https://github.com/salesforce/sf-pi/compare/v0.286.0...v0.287.0) (2026-09-20)
 
 
