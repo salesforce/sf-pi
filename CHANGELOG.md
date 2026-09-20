@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.286.0](https://github.com/salesforce/sf-pi/compare/v0.285.0...v0.286.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** broaden trigger and element runtime proofs ([36570b9](https://github.com/salesforce/sf-pi/commit/36570b9cd467c598ecca843f16ec0f52f3d6a92f))
+
 ## [0.285.0](https://github.com/salesforce/sf-pi/compare/v0.284.1...v0.285.0) (2026-09-20)
 
 
