@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.284.1](https://github.com/salesforce/sf-pi/compare/v0.284.0...v0.284.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **sf-flow:** harden core family validation and cleanup ([928236c](https://github.com/salesforce/sf-pi/commit/928236c947d6c8698c7654f8ace8754e7cd4c732))
+
 ## [0.284.0](https://github.com/salesforce/sf-pi/compare/v0.283.0...v0.284.0) (2026-09-20)
 
 
