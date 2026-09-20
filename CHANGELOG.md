@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.284.0](https://github.com/salesforce/sf-pi/compare/v0.283.0...v0.284.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** harden lifecycle proofs and topology ([c5e234c](https://github.com/salesforce/sf-pi/commit/c5e234c0bb39db577abcc1e423f547644ddf84b6))
+
 ## [0.283.0](https://github.com/salesforce/sf-pi/compare/v0.282.1...v0.283.0) (2026-09-19)
 
 
