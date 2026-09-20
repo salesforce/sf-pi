@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.287.0](https://github.com/salesforce/sf-pi/compare/v0.286.0...v0.287.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** add local configuration diagnostics ([205a15a](https://github.com/salesforce/sf-pi/commit/205a15ad161e9f0ea8503757e5d9f05a8ad7abdf))
+
 ## [0.286.0](https://github.com/salesforce/sf-pi/compare/v0.285.0...v0.286.0) (2026-09-20)
 
 
