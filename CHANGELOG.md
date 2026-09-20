@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.289.0](https://github.com/salesforce/sf-pi/compare/v0.288.0...v0.289.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** add guarded lifecycle operations ([680b4c2](https://github.com/salesforce/sf-pi/commit/680b4c280cb66314909d8656722a18f1fe8a3ced))
+
 ## [0.288.0](https://github.com/salesforce/sf-pi/compare/v0.287.0...v0.288.0) (2026-09-20)
 
 
