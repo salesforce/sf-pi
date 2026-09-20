@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.283.0-2026-09-19",
-  "latestVersion": "0.283.0",
+  "revision": "release-0.284.0-2026-09-20",
+  "latestVersion": "0.284.0",
   "announcements": [
     {
-      "id": "release-0.283.0",
+      "id": "release-0.284.0",
       "kind": "update",
-      "title": "sf-pi v0.283.0 — sf-flow: add native Flow lifecycle tooling",
-      "publishedAt": "2026-09-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.283.0",
+      "title": "sf-pi v0.284.0 — sf-flow: harden lifecycle proofs and topology",
+      "publishedAt": "2026-09-20T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.284.0",
       "severity": "info",
-      "body": "sf-flow: add native Flow lifecycle tooling"
+      "body": "sf-flow: harden lifecycle proofs and topology"
     }
   ]
 }
