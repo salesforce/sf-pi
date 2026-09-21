@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.291.1-2026-09-21",
-  "latestVersion": "0.291.1",
+  "revision": "release-0.291.2-2026-09-21",
+  "latestVersion": "0.291.2",
   "announcements": [
     {
-      "id": "release-0.291.1",
+      "id": "release-0.291.2",
       "kind": "update",
-      "title": "sf-pi v0.291.1 — deps: bump the prod-minor-and-patch group with 3 updates",
+      "title": "sf-pi v0.291.2 — deps-dev: update compatible development dependencies",
       "publishedAt": "2026-09-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.291.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.291.2",
       "severity": "info",
-      "body": "deps: bump the prod-minor-and-patch group with 3 updates — sf-slack: read direct permalinks without resolver prompt"
+      "body": "deps-dev: update compatible development dependencies"
     }
   ]
 }
