@@ -99,11 +99,15 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0106: Data 360 live proof uses the v2 registry and dispatcher](./0106-data-360-live-proof-uses-the-v2-dispatcher.md) — 2026-08-11
 - [0107: SF tldraw validates Spec v2 at execute instead of advertising the union](./0107-tldraw-validates-spec-v2-at-execute.md) — 2026-08-19
 - [0108: Managed skill invocation stamps use an effective tree](./0108-managed-skill-invocation-stamps.md) — 2026-08-21
-- [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25
 - [0110: SF Docs ships with no default endpoint](./0110-sf-docs-ships-with-no-default-endpoint.md) — 2026-09-08
 - [0111: SF Docs Uses Endpoint-Only Pi Login](./0111-sf-docs-uses-endpoint-only-pi-login.md) — 2026-09-09
 - [0112: SF Docs Separates Protocol Validity from Evidence Outcomes](./0112-sf-docs-separates-protocol-validity-from-evidence-outcomes.md) — 2026-09-09
 - [0113: SF Docs Uses Explicit Grounding and Literal Primitives](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md) — 2026-09-09
+- [0114: SF Flow is a lean Flow Lifecycle Extension](./0114-sf-flow-is-a-lean-flow-lifecycle-extension.md) — 2026-09-18
+- [0115: SF Flow quality uses white-room behavioral parity](./0115-sf-flow-quality-uses-white-room-behavioral-parity.md) — 2026-09-19
+- [0116: SF Flow repairs are bounded and source-bound](./0116-sf-flow-repairs-are-bounded-and-source-bound.md) — 2026-09-19
+- [0117: SF Flow authoring grounding and live fixtures are bounded](./0117-sf-flow-authoring-grounding-and-live-fixtures-are-bounded.md) — 2026-09-19
+- [0118: Pi 0.86.0 Runtime Floor](./0118-pi-086-runtime-floor.md) — 2026-09-21
 
 ## Proposed
 
@@ -126,6 +130,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0066: Pi 0.80.2 runtime floor](./0066-pi-0802-runtime-floor.md) — 2026-06-23 — superseded by [ADR 0076](./0076-pi-0806-runtime-delegation.md)
 - [0073: SF Docs routes Developer reference lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md) — 2026-07-04 — superseded by [ADR 0113](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md)
 - [0088: Pi 0.82.0 Runtime Floor](./0088-pi-082-runtime-floor.md) — 2026-07-27 — superseded by [ADR 0109](./0109-pi-084-runtime-floor.md)
+- [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25 — superseded by [ADR 0118](./0118-pi-086-runtime-floor.md)
 
 ### Rejected
 

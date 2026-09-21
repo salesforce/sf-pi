@@ -148,7 +148,7 @@ export function registerLifecycleTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Agent Script publication always creates an inactive version; run agentscript_eval action='run_release' before separate activation.",
       "Activation without matching exact-version evidence requires acknowledge_untested_activation=true and a distinct Guardrail approval; the intent flag is never self-approval.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md for quality overrides, version management, and Service Agent user provisioning.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> for quality overrides, version management, and Service Agent user provisioning.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {

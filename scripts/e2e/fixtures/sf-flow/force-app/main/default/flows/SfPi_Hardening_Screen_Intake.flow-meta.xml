@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <decisions>
+        <name>Request_Provided</name>
+        <label>Request Provided</label>
+        <description>Routes based on whether the user supplied a request summary.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <defaultConnector>
+            <targetReference>Show_Validation</targetReference>
+        </defaultConnector>
+        <defaultConnectorLabel>Missing Summary</defaultConnectorLabel>
+        <rules>
+            <name>Summary_Present</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>Request_Summary</leftValueReference>
+                <operator>IsNull</operator>
+                <rightValue>
+                    <booleanValue>false</booleanValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Show_Confirmation</targetReference>
+            </connector>
+            <label>Summary Present</label>
+        </rules>
+    </decisions>
+    <description>Draft Screen Flow fixture that proves input, decision, confirmation, and validation screen metadata without database mutation.</description>
+    <interviewLabel>SF Pi Screen Intake {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>SF Pi Hardening Screen Intake</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>Flow</processType>
+    <screens>
+        <name>Collect_Request</name>
+        <label>Collect Request</label>
+        <description>Collects one required request summary.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <allowBack>true</allowBack>
+        <allowFinish>false</allowFinish>
+        <allowPause>false</allowPause>
+        <connector>
+            <targetReference>Request_Provided</targetReference>
+        </connector>
+        <fields>
+            <name>Request_Summary</name>
+            <dataType>String</dataType>
+            <fieldText>Request Summary</fieldText>
+            <fieldType>InputField</fieldType>
+            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
+            <isRequired>true</isRequired>
+            <styleProperties>
+                <verticalAlignment><stringValue>top</stringValue></verticalAlignment>
+                <width><stringValue>12</stringValue></width>
+            </styleProperties>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+    <screens>
+        <name>Show_Confirmation</name>
+        <label>Show Confirmation</label>
+        <description>Confirms the captured request summary.</description>
+        <locationX>50</locationX>
+        <locationY>450</locationY>
+        <allowBack>true</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>Confirmation_Text</name>
+            <fieldText>&lt;p&gt;Request captured: {!Request_Summary}&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+            <styleProperties>
+                <verticalAlignment><stringValue>top</stringValue></verticalAlignment>
+                <width><stringValue>12</stringValue></width>
+            </styleProperties>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+    <screens>
+        <name>Show_Validation</name>
+        <label>Show Validation</label>
+        <description>Explains that a request summary is required.</description>
+        <locationX>300</locationX>
+        <locationY>450</locationY>
+        <allowBack>true</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>Validation_Text</name>
+            <fieldText>&lt;p&gt;A request summary is required.&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+            <styleProperties>
+                <verticalAlignment><stringValue>top</stringValue></verticalAlignment>
+                <width><stringValue>12</stringValue></width>
+            </styleProperties>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Collect_Request</targetReference></connector>
+    </start>
+    <status>Draft</status>
+</Flow>

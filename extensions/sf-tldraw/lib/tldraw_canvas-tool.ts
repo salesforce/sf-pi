@@ -121,7 +121,7 @@ export function registerTldrawCanvasTool(pi: ExtensionAPI): void {
       "Every Salesforce diagram element must use strict spec_version='2.0' grounding and declared evidence; never infer or fabricate Salesforce facts.",
       "Call action='cheatsheet' before the first render if you do not already have a valid Spec v2 object.",
       "A render is complete only when readiness is true, canvas lints/decorations pass, and screenshot evidence exists; never fall back to OS automation or direct archive generation.",
-      "Read extensions/sf-tldraw/AGENT_GUIDE.md for document selection, preserve/relayout semantics, and completion criteria.",
+      "Use the installed Salesforce diagrams guide path declared in <sf_engineering_constitution> for document selection, preserve/relayout semantics, and completion criteria.",
     ],
     parameters: Params,
     async execute(_toolCallId, params, signal, onUpdate, ctx) {

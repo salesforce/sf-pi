@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Public-safe platform event used only for advanced SF Pi Flow runtime fixtures.</description>
+    <eventType>HighVolume</eventType>
+    <label>SF Pi Advanced Event</label>
+    <pluralLabel>SF Pi Advanced Events</pluralLabel>
+    <publishBehavior>PublishAfterCommit</publishBehavior>
+</CustomObject>

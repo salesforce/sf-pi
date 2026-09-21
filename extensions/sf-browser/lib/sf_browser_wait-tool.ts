@@ -82,7 +82,7 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
     promptSnippet: "Wait for Salesforce UI text, URL, load state, Lightning state, or delay",
     promptGuidelines: [
       "Prefer semantic text/URL/Lightning waits over milliseconds; save-result classifies an outcome and is never itself a success assertion.",
-      "After ambiguous or timed-out waits, snapshot or verify through API; read extensions/sf-browser/AGENT_GUIDE.md for the full interaction loop.",
+      "After ambiguous or timed-out waits, snapshot or verify through API; use the installed Browser guide path declared in <sf_engineering_constitution> for the full interaction loop.",
     ],
     parameters: Type.Object({
       text: Type.Optional(

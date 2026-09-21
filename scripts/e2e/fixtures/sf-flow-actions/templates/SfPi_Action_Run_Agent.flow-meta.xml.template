@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Run_Agent</name><label>Run Agent</label><description>Invokes an org-selected Agentforce action discovered at runtime.</description><locationX>176</locationX><locationY>158</locationY>
+        <actionName>__AGENT_ACTION_NAME__</actionName><actionType>generateAiAgentResponse</actionType>
+        <connector><targetReference>Mark_Complete</targetReference></connector><faultConnector><targetReference>Capture_Fault</targetReference></faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters><name>userMessage</name><value><elementReference>userMessage</elementReference></value></inputParameters>
+        <outputParameters><assignToReference>agentResponse</assignToReference><name>agentResponse</name></outputParameters>
+        <outputParameters><assignToReference>sessionId</assignToReference><name>sessionId</name></outputParameters>
+    </actionCalls>
+    <assignments><name>Mark_Complete</name><label>Mark Complete</label><description>Marks Run Agent completion.</description><locationX>176</locationX><locationY>300</locationY><assignmentItems><assignToReference>completed</assignToReference><operator>Assign</operator><value><booleanValue>true</booleanValue></value></assignmentItems></assignments>
+    <assignments><name>Capture_Fault</name><label>Capture Fault</label><description>Returns a Run Agent fault.</description><locationX>350</locationX><locationY>300</locationY><assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems></assignments>
+    <description>Autolaunched runtime template proving an org-selected Run Agent action without committing org-specific names.</description>
+    <label>SF Pi Run Agent Action</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Run_Agent</targetReference></connector></start>
+    <status>Draft</status>
+    <variables><name>userMessage</name><dataType>String</dataType><description>Message sent to the selected agent.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>agentResponse</name><dataType>String</dataType><description>Response returned by the selected agent.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>sessionId</name><dataType>String</dataType><description>Agent session ID output.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>completed</name><dataType>Boolean</dataType><description>True after the agent returns.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Run Agent fault text.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+</Flow>

@@ -308,7 +308,7 @@ export function registerEvalTool(pi: ExtensionAPI): void {
       "Use agentscript_eval action='run_release' after inactive publication to run the generated baseline and the current designated suite against the exact latest BotVersion.",
       "Use EvalSpec seed_profiles for scenarios that need dynamic target-org IDs; query only dedicated test fixtures with bounded read-only SOQL.",
       "Incomplete batches, missing tests, evaluator failures, and step errors are failed evidence; never treat an empty or partial run as green.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md for spec generation, failure drill-down, and version-resolution guidance.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> for spec generation, failure drill-down, and version-resolution guidance.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {

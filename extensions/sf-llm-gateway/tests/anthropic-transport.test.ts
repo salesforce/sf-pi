@@ -3,11 +3,12 @@
 import { describe, expect, it } from "vitest";
 import {
   createAssistantMessageEventStream,
+  normalizeContext,
   type AssistantMessage,
   type AssistantMessageEvent,
   type AssistantMessageEventStream,
-  type Context,
   type Model,
+  type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { streamSfGatewayAnthropicFull } from "../lib/transport.ts";
 
@@ -23,7 +24,7 @@ const MODEL: Model<"anthropic-messages"> = {
   contextWindow: 1_000_000,
   maxTokens: 128_000,
 };
-const CONTEXT: Context = { messages: [] };
+const CONTEXT = normalizeContext({ messages: [] });
 
 function message(
   stopReason: AssistantMessage["stopReason"],
@@ -70,7 +71,7 @@ describe("Gateway Anthropic transport Adapter", () => {
     const done = message("stop");
     const streamer = (
       _model: Model<"anthropic-messages">,
-      _context: Context,
+      _context: TranscriptContext,
       options?: { maxRetries?: number },
     ) => {
       observed.push(options?.maxRetries);

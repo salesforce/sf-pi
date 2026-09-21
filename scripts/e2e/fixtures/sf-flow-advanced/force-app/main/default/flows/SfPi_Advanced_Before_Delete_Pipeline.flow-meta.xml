@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Build_Delete_Details</name>
+        <label>Build Delete Details</label>
+        <description>Runs the bulk-safe Apex action for every deleting Account.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <actionName>SfPiFlowBulkContractAction</actionName>
+        <actionType>apex</actionType>
+        <connector><targetReference>Get_Related_Contacts</targetReference></connector>
+        <faultConnector><targetReference>Capture_Action_Fault</targetReference></faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters><name>recordKey</name><value><elementReference>$Record.Id</elementReference></value></inputParameters>
+        <inputParameters><name>recordName</name><value><elementReference>$Record.Name</elementReference></value></inputParameters>
+        <outputParameters><assignToReference>returnedKey</assignToReference><name>recordKey</name></outputParameters>
+        <outputParameters><assignToReference>actionLabel</assignToReference><name>taskSubject</name></outputParameters>
+        <outputParameters><assignToReference>batchSize</assignToReference><name>requestCount</name></outputParameters>
+        <outputParameters><assignToReference>batchIndex</assignToReference><name>requestIndex</name></outputParameters>
+    </actionCalls>
+    <assignments>
+        <name>Capture_Action_Fault</name>
+        <label>Capture Action Fault</label>
+        <description>Captures an invocable-action failure.</description>
+        <locationX>350</locationX><locationY>300</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Create_Fault</name>
+        <label>Capture Create Fault</label>
+        <description>Captures a bulk Task creation failure.</description>
+        <locationX>350</locationX><locationY>730</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <description>Before-delete Account fixture that bulkifies Apex, related-record lookup, collection Subflow, Transform, and Create Records.</description>
+    <formulas>
+        <name>Task_Description</name>
+        <dataType>String</dataType>
+        <expression>{!actionLabel} &amp; &quot;;requestCount=&quot; &amp; TEXT({!batchSize}) &amp; &quot;;requestIndex=&quot; &amp; TEXT({!batchIndex}) &amp; &quot;;recordKey=&quot; &amp; {!returnedKey}</expression>
+    </formulas>
+    <label>SF Pi Advanced Before Delete Pipeline</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Delete_Evidence_Tasks</name>
+        <label>Create Delete Evidence Tasks</label>
+        <description>Creates the transformed Task collection once before the Account deletion finishes.</description>
+        <locationX>176</locationX><locationY>730</locationY>
+        <faultConnector><targetReference>Capture_Create_Fault</targetReference></faultConnector>
+        <inputReference>Transform_Contacts_To_Tasks</inputReference>
+    </recordCreates>
+    <recordLookups>
+        <name>Get_Related_Contacts</name>
+        <label>Get Related Contacts</label>
+        <description>Gets Contacts while the deleting Account relationship is still available.</description>
+        <locationX>176</locationX><locationY>300</locationY>
+        <connector><targetReference>Process_Related_Contacts</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>AccountId</field><operator>EqualTo</operator><value><elementReference>$Record.Id</elementReference></value></filters>
+        <getFirstRecordOnly>false</getFirstRecordOnly>
+        <object>Contact</object>
+        <queriedFields>Email</queriedFields>
+        <queriedFields>LastName</queriedFields>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
+    <start>
+        <locationX>50</locationX><locationY>50</locationY>
+        <connector><targetReference>Build_Delete_Details</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>AccountNumber</field><operator>EqualTo</operator><value><stringValue>SFPI-ADVANCED-DELETE</stringValue></value></filters>
+        <object>Account</object>
+        <recordTriggerType>Delete</recordTriggerType>
+        <triggerType>RecordBeforeDelete</triggerType>
+    </start>
+    <status>Draft</status>
+    <subflows>
+        <name>Process_Related_Contacts</name>
+        <label>Process Related Contacts</label>
+        <description>Filters and sorts related Contacts in the reusable child Flow.</description>
+        <locationX>176</locationX><locationY>450</locationY>
+        <connector><targetReference>Transform_Contacts_To_Tasks</targetReference></connector>
+        <flowName>SfPi_Advanced_Filter_Sort_Contacts</flowName>
+        <inputAssignments><name>inputContacts</name><value><elementReference>Get_Related_Contacts</elementReference></value></inputAssignments>
+        <outputAssignments><assignToReference>processedContacts</assignToReference><name>outputContacts</name></outputAssignments>
+    </subflows>
+    <transforms>
+        <name>Transform_Contacts_To_Tasks</name>
+        <label>Transform Contacts To Tasks</label>
+        <description>Maps processed Contacts to unlinked Task evidence before Account deletion.</description>
+        <locationX>176</locationX><locationY>590</locationY>
+        <connector><targetReference>Create_Delete_Evidence_Tasks</targetReference></connector>
+        <dataType>SObject</dataType><isCollection>true</isCollection><objectType>Task</objectType><storeOutputAutomatically>true</storeOutputAutomatically>
+        <transformValues>
+            <transformValueActions><outputFieldApiName>Description</outputFieldApiName><transformType>Map</transformType><value><formulaDataType>String</formulaDataType><formulaExpression>{!processedContacts[$EachItem].Email} &amp; &quot;||&quot; &amp; {!Task_Description}</formulaExpression></value></transformValueActions>
+            <transformValueActions><outputFieldApiName>OwnerId</outputFieldApiName><transformType>Map</transformType><value><elementReference>$Record.OwnerId</elementReference></value></transformValueActions>
+            <transformValueActions><outputFieldApiName>Priority</outputFieldApiName><transformType>Map</transformType><value><stringValue>Normal</stringValue></value></transformValueActions>
+            <transformValueActions><outputFieldApiName>Status</outputFieldApiName><transformType>Map</transformType><value><stringValue>Not Started</stringValue></value></transformValueActions>
+            <transformValueActions><outputFieldApiName>Subject</outputFieldApiName><transformType>Map</transformType><value><elementReference>processedContacts[$EachItem].LastName</elementReference></value></transformValueActions>
+        </transformValues>
+    </transforms>
+    <triggerOrder>80</triggerOrder>
+    <variables><name>returnedKey</name><dataType>String</dataType><description>Action record key.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <variables><name>actionLabel</name><dataType>String</dataType><description>Action subject.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <variables><name>batchSize</name><dataType>Number</dataType><description>Action request count.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput><scale>0</scale></variables>
+    <variables><name>batchIndex</name><dataType>Number</dataType><description>Action request index.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput><scale>0</scale></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Fault text.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <variables><name>processedContacts</name><dataType>SObject</dataType><description>Filtered and sorted Contacts.</description><isCollection>true</isCollection><isInput>false</isInput><isOutput>false</isOutput><objectType>Contact</objectType></variables>
+</Flow>

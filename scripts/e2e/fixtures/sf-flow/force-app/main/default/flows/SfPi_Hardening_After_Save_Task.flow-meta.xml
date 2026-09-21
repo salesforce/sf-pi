@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_Task_Fault</name>
+        <label>Capture Task Fault</label>
+        <description>Captures a Task creation fault for test visibility.</description>
+        <locationX>350</locationX>
+        <locationY>300</locationY>
+        <assignmentItems>
+            <assignToReference>statusMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <description>Draft after-save Account fixture that creates one non-committing test Task and handles creation faults.</description>
+    <label>SF Pi Hardening After Save Task</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Review_Task</name>
+        <label>Create Review Task</label>
+        <description>Creates one Task for the dedicated fixture Account.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <faultConnector><targetReference>Capture_Task_Fault</targetReference></faultConnector>
+        <inputAssignments>
+            <field>OwnerId</field>
+            <value><elementReference>$Record.OwnerId</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Priority</field>
+            <value><stringValue>Normal</stringValue></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Status</field>
+            <value><stringValue>Not Started</stringValue></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Subject</field>
+            <value><stringValue>SF Pi after-save fixture task</stringValue></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>WhatId</field>
+            <value><elementReference>$Record.Id</elementReference></value>
+        </inputAssignments>
+        <object>Task</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Create_Review_Task</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>AccountNumber</field>
+            <operator>EqualTo</operator>
+            <value><stringValue>SFPI-AFTER-SAVE</stringValue></value>
+        </filters>
+        <object>Account</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>30</triggerOrder>
+    <variables>
+        <name>statusMessage</name>
+        <dataType>String</dataType>
+        <description>Captures Task creation fault details.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

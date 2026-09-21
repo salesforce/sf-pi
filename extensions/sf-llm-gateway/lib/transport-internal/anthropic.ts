@@ -9,9 +9,9 @@
 import {
   type AnthropicOptions,
   type AssistantMessageEventStream,
-  type Context,
   type Model,
   type SimpleStreamOptions,
+  type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { streamAnthropic, streamSimpleAnthropic } from "@earendil-works/pi-ai/compat";
 import { sanitizeAnthropicStream } from "./shared.ts";
@@ -23,7 +23,7 @@ export interface GatewayAnthropicFullTestHooks {
 /** Gateway-aware full Anthropic stream used by complete native Providers. */
 export function streamSfGatewayAnthropicFull(
   model: Model<"anthropic-messages">,
-  context: Context,
+  context: TranscriptContext,
   options?: AnthropicOptions,
   hooks?: GatewayAnthropicFullTestHooks,
 ): AssistantMessageEventStream {
@@ -33,7 +33,7 @@ export function streamSfGatewayAnthropicFull(
 
 export function streamSfGatewayAnthropic(
   model: Model<"anthropic-messages">,
-  context: Context,
+  context: TranscriptContext,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
   return sanitizeAnthropicStream(

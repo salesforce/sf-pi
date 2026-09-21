@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_Wait_Record_Fault</name>
+        <label>Capture Wait Record Fault</label>
+        <description>Captures an unexpected failure while writing wait evidence.</description>
+        <locationX>500</locationX>
+        <locationY>450</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <description>Autolaunched fixture that commits a one-minute Wait interview and creates evidence after automatic resume.</description>
+    <interviewLabel>SF Pi Wait {!inputKey}</interviewLabel>
+    <label>SF Pi Advanced Wait Resume</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Resume_Evidence</name>
+        <label>Create Resume Evidence</label>
+        <description>Creates one run-scoped probe only after the paused interview resumes.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <faultConnector><targetReference>Capture_Wait_Record_Fault</targetReference></faultConnector>
+        <inputAssignments><field>Name</field><value><stringValue>Wait Resume Evidence</stringValue></value></inputAssignments>
+        <inputAssignments><field>CorrelationKey__c</field><value><elementReference>inputKey</elementReference></value></inputAssignments>
+        <inputAssignments><field>Stage__c</field><value><stringValue>resumed</stringValue></value></inputAssignments>
+        <object>SfPi_Flow_Probe__c</object>
+    </recordCreates>
+    <recordCreates>
+        <name>Create_Wait_Fault_Evidence</name>
+        <label>Create Wait Fault Evidence</label>
+        <description>Creates bounded evidence only when the Wait element itself faults.</description>
+        <locationX>400</locationX>
+        <locationY>300</locationY>
+        <faultConnector><targetReference>Capture_Wait_Record_Fault</targetReference></faultConnector>
+        <inputAssignments><field>Name</field><value><stringValue>Wait Fault Evidence</stringValue></value></inputAssignments>
+        <inputAssignments><field>CorrelationKey__c</field><value><elementReference>inputKey</elementReference></value></inputAssignments>
+        <inputAssignments><field>NullableText__c</field><value><elementReference>$Flow.FaultMessage</elementReference></value></inputAssignments>
+        <inputAssignments><field>Stage__c</field><value><stringValue>wait-fault</stringValue></value></inputAssignments>
+        <object>SfPi_Flow_Probe__c</object>
+    </recordCreates>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Wait_One_Minute</targetReference></connector></start>
+    <status>Draft</status>
+    <variables><name>inputKey</name><dataType>String</dataType><description>Run-scoped wait correlation key.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Unexpected wait-evidence write fault.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <waits>
+        <name>Wait_One_Minute</name>
+        <label>Wait One Minute</label>
+        <description>Pauses the committed interview for one minute before creating evidence.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <elementSubtype>WaitDuration</elementSubtype>
+        <defaultConnectorLabel>Default Outcome</defaultConnectorLabel>
+        <faultConnector><targetReference>Create_Wait_Fault_Evidence</targetReference></faultConnector>
+        <waitEvents>
+            <name>Resume_After_One_Minute</name>
+            <label>Resume After One Minute</label>
+            <connector><targetReference>Create_Resume_Evidence</targetReference></connector>
+            <eventType>AlarmEvent</eventType>
+            <offset>1</offset>
+            <offsetUnit>Minutes</offsetUnit>
+        </waitEvents>
+    </waits>
+</Flow>

@@ -28,6 +28,7 @@ export function classifyNativeToolRisk(
 ): NativeToolSafetySubject | undefined {
   return (
     classifySfApex(toolName, input) ??
+    classifySfFlowLifecycle(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
     classifySfSoql(toolName, input) ??
@@ -69,6 +70,60 @@ function classifySfApex(
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
+function classifySfFlowLifecycle(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_flow") return undefined;
+  const action = stringValue(input.action);
+  if (
+    action !== "deploy.activate" &&
+    action !== "lifecycle.activate" &&
+    action !== "lifecycle.deactivate"
+  ) {
+    return undefined;
+  }
+
+  const targetOrg = stringValue(input.target_org);
+  const file = stringValue(input.file);
+  const flowName = stringValue(input.flow_name) ?? flowNameFromPath(file);
+  const version = typeof input.version === "number" ? input.version : undefined;
+  const operation = {
+    action,
+    file,
+    flowName,
+    version,
+    allowMutation: input.allow_mutation === true,
+  };
+  const fingerprint = fingerprintText(JSON.stringify(operation));
+  const target = flowName ?? file ?? "unspecified Flow";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action,
+    ruleId: "native-sf-flow-lifecycle",
+    subject: `sf_flow ${action} ${target}`,
+    reason: `Flow lifecycle mutation requested for ${target}.`,
+    promptTitle: action === "lifecycle.deactivate" ? "⚠ Flow deactivation" : "⚠ Flow activation",
+    operationFamily: "flow lifecycle",
+    riskTier: "flow_lifecycle_mutation_exact",
+    fingerprint: `sf_flow|${action}|${fingerprint}`,
+    approvalLabel: `${action} ${target}`,
+    approvalDetail: [
+      flowName ? `flow=${flowName}` : undefined,
+      file ? `file=${file}` : undefined,
+      version !== undefined ? `version=${version}` : undefined,
+      `allow_mutation=${input.allow_mutation === true}`,
+    ]
+      .filter(Boolean)
+      .join("; "),
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+    blockProductionOrUnknown: true,
   };
 }
 
@@ -598,6 +653,16 @@ function primaryObjectFromSoql(query: string): string | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function flowNameFromPath(file: string | undefined): string | undefined {
+  if (!file) return undefined;
+  const basename = file.split(/[\\/]/).pop() ?? file;
+  if (basename.endsWith(".flow-meta.xml")) {
+    return basename.slice(0, -".flow-meta.xml".length);
+  }
+  if (basename.endsWith(".flow")) return basename.slice(0, -".flow".length);
+  return undefined;
 }
 
 function agentNameFromFile(agentFile: string): string {

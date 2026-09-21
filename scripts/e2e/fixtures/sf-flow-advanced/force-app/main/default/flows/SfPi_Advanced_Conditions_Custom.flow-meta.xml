@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Mark_Custom_Match</name>
+        <label>Mark Custom Match</label>
+        <description>Marks Opportunities satisfying the custom condition expression.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.Description</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>SFPI entry custom matched</stringValue></value>
+        </assignmentItems>
+    </assignments>
+    <description>Before-save Opportunity fixture proving nested custom entry logic with picklist branches and a null reference.</description>
+    <label>SF Pi Advanced Custom Conditions</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Mark_Custom_Match</targetReference></connector>
+        <filterLogic>1 AND (2 OR 3) AND 4</filterLogic>
+        <filters><field>Name</field><operator>StartsWith</operator><value><stringValue>SFPI CUSTOM</stringValue></value></filters>
+        <filters><field>Type</field><operator>EqualTo</operator><value><stringValue>New Customer</stringValue></value></filters>
+        <filters><field>LeadSource</field><operator>EqualTo</operator><value><stringValue>Web</stringValue></value></filters>
+        <filters><field>AccountId</field><operator>IsNull</operator><value><booleanValue>true</booleanValue></value></filters>
+        <object>Opportunity</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>110</triggerOrder>
+</Flow>

@@ -119,7 +119,7 @@ export function registerSendTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Call slack_send only after an explicit current-turn user request; draft first only when exact wording is missing, then let the tool's dialog provide approval.",
       "Preserve requested text and formatting verbatim; never add signatures, footers, or via-SF-Pi markers.",
-      "Read extensions/sf-slack/AGENT_GUIDE.md for DM, thread, headless, and confirmation behavior.",
+      "Use the installed Slack guide path declared in <sf_engineering_constitution> for DM, thread, headless, and confirmation behavior.",
     ],
     parameters: SlackSendParams,
     prepareArguments(args): {

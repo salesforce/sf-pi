@@ -51,7 +51,7 @@ const SAMPLE_OUTCOMES: RegisteredDoctorOutcome[] = [
 
 vi.mock("../../../lib/common/doctor/diagnostics.ts", () => ({
   runDoctorDiagnostics: () => ({
-    piVersion: "0.85.1",
+    piVersion: "0.86.1",
     nodeVersion: "v22.19.0",
     runtime: {},
     quietStartup: true,

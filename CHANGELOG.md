@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.291.0](https://github.com/salesforce/sf-pi/compare/v0.290.0...v0.291.0) (2026-09-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** bundled extensions now require Pi 0.86.0 or newer.
+
+### Features
+
+* **runtime:** require Pi 0.86.0 ([b4b15ce](https://github.com/salesforce/sf-pi/commit/b4b15ce30d97d230d5f3f6815049f9174375a099))
+
+## [0.290.0](https://github.com/salesforce/sf-pi/compare/v0.289.0...v0.290.0) (2026-09-21)
+
+
+### Features
+
+* **sf-flow:** harden advanced runtime proofs ([97339c1](https://github.com/salesforce/sf-pi/commit/97339c19f45af1911169250101c5ff2d0e3b6426))
+
+## [0.289.0](https://github.com/salesforce/sf-pi/compare/v0.288.0...v0.289.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** add guarded lifecycle operations ([680b4c2](https://github.com/salesforce/sf-pi/commit/680b4c280cb66314909d8656722a18f1fe8a3ced))
+
+## [0.288.0](https://github.com/salesforce/sf-pi/compare/v0.287.0...v0.288.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** add live advanced action proofs ([95668a4](https://github.com/salesforce/sf-pi/commit/95668a42f98f71f43fb8de12b7622c2f1f043791))
+
+## [0.287.0](https://github.com/salesforce/sf-pi/compare/v0.286.0...v0.287.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** add local configuration diagnostics ([205a15a](https://github.com/salesforce/sf-pi/commit/205a15ad161e9f0ea8503757e5d9f05a8ad7abdf))
+
+## [0.286.0](https://github.com/salesforce/sf-pi/compare/v0.285.0...v0.286.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** broaden trigger and element runtime proofs ([36570b9](https://github.com/salesforce/sf-pi/commit/36570b9cd467c598ecca843f16ec0f52f3d6a92f))
+
+## [0.285.0](https://github.com/salesforce/sf-pi/compare/v0.284.1...v0.285.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** add advanced cross-family runtime proofs ([5409e8d](https://github.com/salesforce/sf-pi/commit/5409e8dd03adae7a34aebe76717007310570536a))
+
+## [0.284.1](https://github.com/salesforce/sf-pi/compare/v0.284.0...v0.284.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **sf-flow:** harden core family validation and cleanup ([928236c](https://github.com/salesforce/sf-pi/commit/928236c947d6c8698c7654f8ace8754e7cd4c732))
+
+## [0.284.0](https://github.com/salesforce/sf-pi/compare/v0.283.0...v0.284.0) (2026-09-20)
+
+
+### Features
+
+* **sf-flow:** harden lifecycle proofs and topology ([c5e234c](https://github.com/salesforce/sf-pi/commit/c5e234c0bb39db577abcc1e423f547644ddf84b6))
+
+## [0.283.0](https://github.com/salesforce/sf-pi/compare/v0.282.1...v0.283.0) (2026-09-19)
+
+
+### Features
+
+* **sf-flow:** add native Flow lifecycle tooling ([fe7a57e](https://github.com/salesforce/sf-pi/commit/fe7a57e502e5429dc2d5f7096139adc5019991d7))
+
 ## [0.282.1](https://github.com/salesforce/sf-pi/compare/v0.282.0...v0.282.1) (2026-09-14)
 
 

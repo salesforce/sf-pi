@@ -249,7 +249,7 @@ export function registerAuthoringTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use agentscript_authoring before generic edits when a supported structural mutation exists; compile/check before and after behavioral changes.",
       "Agent Script compile validity means no severity-1 diagnostics; quality/review evidence remains separate and never becomes a hidden numeric score.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md when lifecycle ordering, recovery, or advanced inspection guidance is useful.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> when lifecycle ordering, recovery, or advanced inspection guidance is useful.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, _onUpdate, ctx) {

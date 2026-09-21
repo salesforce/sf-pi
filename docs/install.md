@@ -13,7 +13,7 @@ setup in order.
 - Node.js `>=22.19`
 - the npm version bundled with a supported Node.js installation; SF Pi declares
   no separate npm floor
-- pi coding agent `>=0.84.0 <1.0.0`
+- pi coding agent `>=0.86.0 <1.0.0`
 - a Salesforce CLI installation appropriate for the host platform
 
 ## 1. Install Node.js and npm
@@ -54,7 +54,7 @@ pi --version
 pi install git:github.com/salesforce/sf-pi
 ```
 
-SF Pi's supported Pi range is `>=0.84.0 <1.0.0`. `/sf-pi doctor` reports
+SF Pi's supported Pi range is `>=0.86.0 <1.0.0`. `/sf-pi doctor` reports
 whether the installed Pi and SF Pi versions are current.
 
 ## 4. Install or update Salesforce CLI
@@ -159,7 +159,7 @@ best-effort; use WSL when Unix shell parity is required.
 | Claim                | Maintained proof                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------ |
 | Node.js `>=22.19`    | `package.json` engines, preinstall check, doctor diagnostics, and required Ubuntu CI       |
-| Pi `>=0.84.0 <1.0.0` | peer dependency, runtime-floor checks, and nightly exact-version compatibility jobs        |
+| Pi `>=0.86.0 <1.0.0` | peer dependency, runtime-floor checks, and nightly exact-version compatibility jobs        |
 | npm client           | no independent engine/package-manager floor; required CI uses the npm bundled by Node 22   |
 | Operating systems    | required CI proves Ubuntu; other platform paths are documented at their actual proof level |
 

@@ -16,16 +16,16 @@
 import * as PiRuntime from "@earendil-works/pi-coding-agent";
 
 /** Oldest Pi release whose public APIs satisfy every bundled extension. */
-export const MIN_PI_VERSION = "0.84.0";
+export const MIN_PI_VERSION = "0.86.0";
 
 /** Exclusive end of the exact runtime range covered by required compatibility CI. */
-export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "0.86.0";
+export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "0.87.0";
 
 /** Future stable Pi 0.x releases may load; Pi 1.x requires an explicit audit. */
 export const HARD_MAX_PI_VERSION_EXCLUSIVE = "1.0.0";
 
 /** Exact runtime used by normal development and bounded repair guidance. */
-export const RECOMMENDED_PI_VERSION = "0.85.1";
+export const RECOMMENDED_PI_VERSION = "0.86.1";
 
 export type PiVersionCompatibility =
   "audited" | "forward-compatible" | "too-old" | "prerelease" | "major-version";
@@ -100,7 +100,14 @@ export function isPiVersionLoadable(
 }
 
 const warnedBlockedExtensions = new Set<string>();
-let warnedForwardCompatibility = false;
+const forwardWarningStateKey = Symbol.for("sf-pi.pi-compat.forward-warning");
+
+function claimForwardCompatibilityWarning(): boolean {
+  const processState = globalThis as typeof globalThis & Record<symbol, unknown>;
+  if (processState[forwardWarningStateKey] === true) return false;
+  processState[forwardWarningStateKey] = true;
+  return true;
+}
 
 /**
  * Gate each extension behind the hard runtime boundaries while allowing stable
@@ -125,8 +132,10 @@ export function requirePiVersion(
   if (compatibility === "audited") return true;
 
   if (compatibility === "forward-compatible") {
-    if (!warnedForwardCompatibility) {
-      warnedForwardCompatibility = true;
+    // Pi 0.86 can evaluate shared source in isolated extension module graphs.
+    // Keep this latch on the process global so one future-runtime warning does
+    // not become one warning per bundled extension.
+    if (claimForwardCompatibilityWarning()) {
       console.warn(
         `[sf-pi] Pi ${installed} is newer than the audited range (< ${auditedMaxVersionExclusive}). Loading sf-pi in forward-compatibility mode; no downgrade is recommended unless a concrete failure occurs.`,
       );

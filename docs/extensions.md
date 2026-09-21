@@ -48,6 +48,12 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
   <span>API-native Apex lifecycle workflows for pi: authoring guidance, diagnostics, trace/log/watch, Anonymous Apex, and targeted tests.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-apex</code></span>
 </a>
+<a class="sfpi-extension-card" href="./extensions/sf-flow">
+  <span class="sfpi-card-kicker">Agent Tool · on</span>
+  <strong>SF Flow</strong>
+  <span>Lean Salesforce Flow lifecycle workflows for pi: core-five and org-grounded authoring plans, preventive quality, bounded repair guidance, safe quick fixes, Mermaid topology, check-only validation, guarded activation/deactivation, and targeted Flow tests.</span>
+  <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-flow</code></span>
+</a>
 <a class="sfpi-extension-card" href="./extensions/sf-lwc">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF LWC</strong>

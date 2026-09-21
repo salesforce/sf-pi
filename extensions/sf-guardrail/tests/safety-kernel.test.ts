@@ -382,6 +382,101 @@ describe("Safety Kernel", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("confirms mutating sf_flow lifecycle actions with exact action fingerprints", async () => {
+    mockedEnv = env("FlowLifecycleDev", "developer");
+
+    const deploy = await evaluateSafety({
+      toolName: "sf_flow",
+      input: {
+        action: "deploy.activate",
+        target_org: "FlowLifecycleDev",
+        file: "force-app/main/default/flows/Example.flow-meta.xml",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const activate = await evaluateSafety({
+      toolName: "sf_flow",
+      input: {
+        action: "lifecycle.activate",
+        target_org: "FlowLifecycleDev",
+        flow_name: "Example",
+        version: 3,
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const deactivate = await evaluateSafety({
+      toolName: "sf_flow",
+      input: {
+        action: "lifecycle.deactivate",
+        target_org: "FlowLifecycleDev",
+        flow_name: "Example",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    for (const decision of [deploy, activate, deactivate]) {
+      expect(decision).toMatchObject({
+        action: "confirm",
+        feature: "nativeToolGate",
+        ruleId: "native-sf-flow-lifecycle",
+        orgAlias: "FlowLifecycleDev",
+        orgType: "developer",
+      });
+      expect(decision?.approvalScope).toMatchObject({
+        operationFamily: "flow lifecycle",
+        riskTier: "flow_lifecycle_mutation_exact",
+        allowSession: true,
+      });
+    }
+    expect(deploy?.fingerprint).not.toBe(activate?.fingerprint);
+    expect(activate?.fingerprint).not.toBe(deactivate?.fingerprint);
+  });
+
+  it("hard-blocks sf_flow lifecycle mutations for production targets", async () => {
+    mockedEnv = env("Prod", "production");
+
+    const decision = await evaluateSafety({
+      toolName: "sf_flow",
+      input: {
+        action: "deploy.activate",
+        target_org: "Prod",
+        file: "force-app/main/default/flows/Example.flow-meta.xml",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "block",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-flow-lifecycle",
+      orgType: "production",
+    });
+    expect(decision?.reason).toContain("refuses production or unknown");
+  });
+
+  it("does not mediate read-only sf_flow lifecycle status", async () => {
+    await expect(
+      evaluateSafety({
+        toolName: "sf_flow",
+        input: {
+          action: "lifecycle.status",
+          target_org: "FlowLifecycleDev",
+          flow_name: "Example",
+        },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it("confirms Data 360 allow_confirmed execution paths without mediating dry-runs", async () => {
     mockedEnv = env("DevInt", "sandbox");
 

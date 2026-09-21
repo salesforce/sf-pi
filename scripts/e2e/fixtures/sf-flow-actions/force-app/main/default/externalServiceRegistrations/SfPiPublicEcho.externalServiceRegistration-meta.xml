@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExternalServiceRegistration xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Public echo External Service for bounded SF Flow action proofs.</description>
+    <label>SF Pi Public Echo</label>
+    <namedCredential>SfPi_Public_Echo_Legacy</namedCredential>
+    <operations><active>true</active><name>echoMarker</name></operations>
+    <registrationProviderType>Custom</registrationProviderType>
+    <schema>{
+  "openapi": "3.0.1",
+  "info": {"title": "SF Pi Public Echo", "version": "1.0.0"},
+  "paths": {
+    "/get": {
+      "get": {
+        "operationId": "echoMarker",
+        "parameters": [
+          {"name": "marker", "in": "query", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Echo response",
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/EchoResponse"}}
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EchoResponse": {
+        "type": "object",
+        "properties": {
+          "args": {"$ref": "#/components/schemas/EchoArgs"},
+          "url": {"type": "string"}
+        }
+      },
+      "EchoArgs": {
+        "type": "object",
+        "properties": {"marker": {"type": "string"}}
+      }
+    }
+  }
+}</schema>
+    <schemaType>OpenApi</schemaType>
+    <status>Complete</status>
+</ExternalServiceRegistration>

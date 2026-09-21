@@ -35,7 +35,9 @@ const sources: Record<string, string> = {
 describe("prompt-surface — cross-tool routing has a single owner", () => {
   it("slack tool owns one compact cross-tool routing rule", () => {
     expect(sources.slack).toMatch(/Prefer slack_research.*slack_resolve.*slack_time_range/);
-    expect(sources.slack).toContain("extensions/sf-slack/AGENT_GUIDE.md");
+    expect(sources.slack).toContain(
+      "installed Slack guide path declared in <sf_engineering_constitution>",
+    );
   });
 
   it("slack_research no longer duplicates the 'use slack_research instead of raw operators' rule", () => {

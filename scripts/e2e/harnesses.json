@@ -52,6 +52,66 @@
       "arguments": "--org <alias> [--surface all] [--mutate]"
     },
     {
+      "script": "e2e:sf-flow",
+      "entry": "scripts/e2e/sf-flow-e2e.ts",
+      "title": "SF Flow lifecycle harness",
+      "summary": "Exercises local diagnosis, org preflight, one-file Metadata API check-only validation, Flow test discovery, and optional targeted Flow tests.",
+      "target": "Explicit non-production org and workspace-contained Flow file",
+      "posture": "read-only",
+      "artifacts": "Session-scoped Flow diagnostics, topology, validation, and optional test reports",
+      "arguments": "--org <alias> --file <flow> [--flow <FlowApiName> | --test <FlowApiName.TestName> | --run-first-discovered-test] [--async-test]"
+    },
+    {
+      "script": "e2e:sf-flow-advanced",
+      "entry": "scripts/e2e/sf-flow-advanced-sweep.ts",
+      "title": "SF Flow advanced runtime sweep",
+      "summary": "Proves record trigger variants, typed entry criteria, immediate/related/async paths, real faults, related deletion, record collections, Create Records upsert with partial/all-or-none behavior, multi-field/null ordering, Transform joins/aggregation/nested collections, committed Wait resume, Apex and standard actions, prior values, bulk execution, collection processors, and Subflow contracts across headless Flow families; Roll Back Records remains a separate Screen runtime proof.",
+      "target": "Explicit dedicated non-production org with API 67.0 or later",
+      "posture": "bounded-mutation",
+      "artifacts": "Metadata API validation/deployment evidence plus targeted Apex test and cleanup outcomes",
+      "arguments": "--org <alias> [--deploy | --runtime]"
+    },
+    {
+      "script": "e2e:sf-flow-actions",
+      "entry": "scripts/e2e/sf-flow-actions-sweep.ts",
+      "title": "SF Flow live action sweep",
+      "summary": "Proves complex Invocable Apex, Named Credential-backed Apex, OpenAPI External Service, object-specific Quick Action, workflow Email Alert, and dynamically grounded Run Agent actions through live Flow execution.",
+      "target": "Explicit dedicated non-production org with API 67.0, outbound callout access, and at least one callable Agentforce action",
+      "posture": "bounded-mutation",
+      "artifacts": "Metadata API validation/deployment, targeted Apex tests, live action outputs, and cleanup evidence",
+      "arguments": "--org <alias> [--runtime] [--agent-action <api-name>]"
+    },
+    {
+      "script": "e2e:sf-flow-lifecycle",
+      "entry": "scripts/e2e/sf-flow-lifecycle-sweep.ts",
+      "title": "SF Flow first-class lifecycle sweep",
+      "summary": "Proves canonical lifecycle status, local-file check/deploy/activation without source mutation, exact existing-version activation, and deterministic deactivation through the production sf_flow lifecycle implementation.",
+      "target": "Explicit dedicated non-production org with the SF Flow action fixture already installed",
+      "posture": "bounded-mutation",
+      "artifacts": "Session-scoped Flow lifecycle check-only, deployment, and resulting-state artifacts",
+      "arguments": "--org <alias>"
+    },
+    {
+      "script": "e2e:sf-flow-families",
+      "entry": "scripts/e2e/sf-flow-family-sweep.ts",
+      "title": "SF Flow core-family sweep",
+      "summary": "Diagnoses and check-only validates all core Flow family fixtures, then optionally deploys them as Draft, enforces FlowDefinition deactivation cleanup, runs the non-committing after-save FlowTest twice, and verifies no jobs or records remain.",
+      "target": "Explicit non-production org with FlowTest and platform-event support",
+      "posture": "bounded-mutation",
+      "artifacts": "Session-scoped diagnostics, topology, Flow test reports, and Metadata API console evidence",
+      "arguments": "--org <alias> [--deploy]"
+    },
+    {
+      "script": "e2e:sf-flow-provision",
+      "entry": "scripts/e2e/sf-flow-provision-test-fixture.ts",
+      "title": "SF Flow test-fixture provisioning",
+      "summary": "Check-only validates and optionally deploys a dedicated public-safe autolaunched Flow plus FlowTest fixture.",
+      "target": "Explicit non-production org with FlowTest support",
+      "posture": "bounded-mutation",
+      "artifacts": "Metadata API validation/deployment console evidence",
+      "arguments": "--org <alias> [--deploy]"
+    },
+    {
       "script": "e2e:sf-herdr",
       "entry": "scripts/e2e/sf-herdr-live-smoke.ts",
       "title": "SF Herdr disposable-pane smoke",

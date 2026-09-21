@@ -158,7 +158,7 @@ export function registerPreviewTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use agentscript_preview for behavioral reproduction before release eval; local-file sessions compile first and persist bounded trace artifacts.",
       "Treat the compact digest as routing/state evidence and fetch the full trace only when diagnosis requires it.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md for linked variables, cleanup, and multi-step preview guidance.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> for linked variables, cleanup, and multi-step preview guidance.",
     ],
     parameters: Params,
     async execute(_id, params, _signal, onUpdate, ctx) {

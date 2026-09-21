@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_Task_Fault</name>
+        <label>Capture Task Fault</label>
+        <description>Captures related Task creation failures.</description>
+        <locationX>350</locationX>
+        <locationY>450</locationY>
+        <assignmentItems>
+            <assignToReference>faultMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Description_Changed</name>
+        <label>Description Changed</label>
+        <description>Creates evidence only when current and prior Description values differ.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnectorLabel>Unchanged</defaultConnectorLabel>
+        <rules>
+            <name>Changed</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>$Record.Description</leftValueReference>
+                <operator>NotEqualTo</operator>
+                <rightValue><elementReference>$Record__Prior.Description</elementReference></rightValue>
+            </conditions>
+            <connector><targetReference>Create_Prior_Evidence_Task</targetReference></connector>
+            <label>Changed</label>
+        </rules>
+    </decisions>
+    <description>After-save Account update fixture that proves $Record__Prior in a related-record transaction.</description>
+    <formulas>
+        <name>Prior_Current_Summary</name>
+        <dataType>String</dataType>
+        <expression>&quot;prior=&quot; &amp; BLANKVALUE({!$Record__Prior.Description}, &quot;&lt;blank&gt;&quot;) &amp; &quot;;current=&quot; &amp; BLANKVALUE({!$Record.Description}, &quot;&lt;blank&gt;&quot;)</expression>
+    </formulas>
+    <label>SF Pi Advanced After Save Prior</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Prior_Evidence_Task</name>
+        <label>Create Prior Evidence Task</label>
+        <description>Creates one Task whose Subject contains prior and current values.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <faultConnector><targetReference>Capture_Task_Fault</targetReference></faultConnector>
+        <inputAssignments><field>OwnerId</field><value><elementReference>$Record.OwnerId</elementReference></value></inputAssignments>
+        <inputAssignments><field>Priority</field><value><stringValue>Normal</stringValue></value></inputAssignments>
+        <inputAssignments><field>Status</field><value><stringValue>Not Started</stringValue></value></inputAssignments>
+        <inputAssignments><field>Subject</field><value><elementReference>Prior_Current_Summary</elementReference></value></inputAssignments>
+        <inputAssignments><field>WhatId</field><value><elementReference>$Record.Id</elementReference></value></inputAssignments>
+        <object>Task</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Description_Changed</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>AccountNumber</field>
+            <operator>EqualTo</operator>
+            <value><stringValue>SFPI-ADVANCED-PRIOR-AFTER</stringValue></value>
+        </filters>
+        <object>Account</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>70</triggerOrder>
+    <variables>
+        <name>faultMessage</name><dataType>String</dataType><description>Task creation fault text.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput>
+    </variables>
+</Flow>

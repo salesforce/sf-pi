@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EmailTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <available>true</available>
+    <description>Public-safe email alert fixture for SF Flow action runtime proofs.</description>
+    <encodingKey>UTF-8</encodingKey>
+    <name>SF Pi Flow Email Alert</name>
+    <style>none</style>
+    <subject>SF Pi Flow Email Alert Proof</subject>
+    <type>text</type>
+</EmailTemplate>

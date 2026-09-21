@@ -106,7 +106,7 @@ export function registerSfLwcTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_lwc for local LWC inspection, diagnostics, and focused Jest evidence before raw npm commands; normal file tools own edits.",
       "sf_lwc never deploys, retrieves, installs dependencies, starts watch mode, or substitutes for Apex/schema/browser evidence.",
-      "Read extensions/sf-lwc/AGENT_GUIDE.md for lifecycle boundaries and cross-tool handoffs.",
+      "Use the installed LWC guide path declared in <sf_engineering_constitution> for lifecycle boundaries and cross-tool handoffs.",
     ],
     parameters: Params,
     renderCall: (args, theme) => renderCall(args as SfLwcParams, theme),

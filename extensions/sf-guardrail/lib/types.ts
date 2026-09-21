@@ -153,6 +153,8 @@ export interface NativeToolSafetySubject {
   targetOrgExplicit?: boolean;
   /** False for native operations that should not create session approvals. */
   allowSession?: boolean;
+  /** Fail closed before HITL when this native operation resolves to production or unknown. */
+  blockProductionOrUnknown?: boolean;
 }
 
 // ─── Decision model ─────────────────────────────────────────────────────────────

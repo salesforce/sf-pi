@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Send_Standard_Email</name>
+        <label>Send Standard Email</label>
+        <description>Invokes the standard Send Email action with caller-provided recipient data.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <actionName>emailSimple</actionName>
+        <actionType>emailSimple</actionType>
+        <connector><targetReference>Complete_Email_Action</targetReference></connector>
+        <faultConnector><targetReference>Capture_Email_Fault</targetReference></faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters><name>emailAddresses</name><value><elementReference>recipientEmail</elementReference></value></inputParameters>
+        <inputParameters><name>emailSubject</name><value><stringValue>SF Pi Flow action runtime proof</stringValue></value></inputParameters>
+        <inputParameters><name>emailBody</name><value><stringValue>This message proves the standard Send Email Flow action executes without a fault.</stringValue></value></inputParameters>
+        <inputParameters><name>sendRichBody</name><value><booleanValue>false</booleanValue></value></inputParameters>
+        <inputParameters><name>useLineBreaks</name><value><booleanValue>true</booleanValue></value></inputParameters>
+    </actionCalls>
+    <assignments>
+        <name>Complete_Email_Action</name>
+        <label>Complete Email Action</label>
+        <description>Marks successful standard action execution.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <assignmentItems><assignToReference>completed</assignToReference><operator>Assign</operator><value><booleanValue>true</booleanValue></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Email_Fault</name>
+        <label>Capture Email Fault</label>
+        <description>Returns any standard Send Email action fault to the caller.</description>
+        <locationX>350</locationX>
+        <locationY>300</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <description>Autolaunched fixture proving the standard Send Email Flow action contract.</description>
+    <label>SF Pi Advanced Email Action</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Send_Standard_Email</targetReference></connector>
+        <triggerType>None</triggerType>
+    </start>
+    <status>Draft</status>
+    <variables><name>recipientEmail</name><dataType>String</dataType><description>Email recipient supplied by the Apex test.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>completed</name><dataType>Boolean</dataType><description>True when the standard Send Email action completes.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Fault text from the standard Send Email action.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+</Flow>

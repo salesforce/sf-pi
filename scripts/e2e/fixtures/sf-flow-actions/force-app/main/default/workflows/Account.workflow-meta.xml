@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <alerts>
+        <fullName>SfPi_Flow_Email_Alert</fullName>
+        <description>Public-safe Account email alert for SF Flow runtime proofs.</description>
+        <protected>false</protected>
+        <recipients><type>owner</type></recipients>
+        <senderType>CurrentUser</senderType>
+        <template>unfiled$public/SfPi_Flow_Email_Alert</template>
+    </alerts>
+</Workflow>

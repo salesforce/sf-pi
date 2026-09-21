@@ -105,7 +105,7 @@ validation.
 This complete inventory is generated from `package.json`; edit that file and run `npm run generate-catalog`.
 
 <details>
-<summary>Show all 55 package scripts</summary>
+<summary>Show all 61 package scripts</summary>
 
 **Generated sources**
 
@@ -174,6 +174,12 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run e2e:instruction-behavior`
 - `npm run e2e:sf-apex-harness`
 - `npm run e2e:sf-browser-harden`
+- `npm run e2e:sf-flow`
+- `npm run e2e:sf-flow-actions`
+- `npm run e2e:sf-flow-advanced`
+- `npm run e2e:sf-flow-families`
+- `npm run e2e:sf-flow-lifecycle`
+- `npm run e2e:sf-flow-provision`
 - `npm run e2e:sf-herdr`
 - `npm run e2e:sf-lwc`
 - `npm run e2e:sf-soql`

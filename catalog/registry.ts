@@ -163,6 +163,18 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
+    id: "sf-flow",
+    name: "SF Flow",
+    description: "Lean Salesforce Flow lifecycle workflows for pi: core-five and org-grounded authoring plans, preventive quality, bounded repair guidance, safe quick fixes, Mermaid topology, check-only validation, guarded activation/deactivation, and targeted Flow tests.",
+    file: "extensions/sf-flow/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-flow"],
+    tools: ["sf_flow"],
+    events: ["session_start","tool_result","message_end","agent_settled"],
+  },
+  {
     id: "sf-guardrail",
     name: "SF Guardrail",
     description: "Salesforce-aware safety hooks — file protection policies, dangerous-command gating, org-aware confirmation, and native high-value mutation mediation",

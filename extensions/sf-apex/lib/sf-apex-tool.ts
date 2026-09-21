@@ -149,7 +149,7 @@ export function registerSfApexTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_apex before raw CLI for Apex lifecycle evidence; normal Pi file tools own source edits and focused tests should reproduce behavior before changes when feasible.",
       "Anonymous Apex is a bounded probe or rollback rehearsal, not a substitute for maintainable targeted tests.",
-      "Read extensions/sf-apex/AGENT_GUIDE.md for trace, log, test, coverage, and artifact workflows.",
+      "Use the installed Apex guide path declared in <sf_engineering_constitution> for trace, log, test, coverage, and artifact workflows.",
     ],
     parameters: Params,
     renderCall: (args, theme) => renderCall(args as SfApexParams, theme),

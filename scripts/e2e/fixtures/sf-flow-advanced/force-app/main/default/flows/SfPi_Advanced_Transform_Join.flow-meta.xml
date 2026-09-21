@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Return_Joined_Records</name>
+        <label>Return Joined Records</label>
+        <description>Copies the Transform inner-join output into the public collection.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <assignmentItems><assignToReference>outputRecords</assignToReference><operator>Assign</operator><value><elementReference>Join_Probe_Collections</elementReference></value></assignmentItems>
+    </assignments>
+    <description>Autolaunched fixture that inner-joins two probe collections by ExternalKey and excludes unmatched records.</description>
+    <label>SF Pi Advanced Transform Join</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Join_Probe_Collections</targetReference></connector></start>
+    <status>Draft</status>
+    <transforms>
+        <name>Join_Probe_Collections</name>
+        <label>Join Probe Collections</label>
+        <description>Inner-joins left and right probes by ExternalKey and maps selected fields into one output collection.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <connector><targetReference>Return_Joined_Records</targetReference></connector>
+        <dataType>SObject</dataType>
+        <isCollection>true</isCollection>
+        <objectType>SfPi_Flow_Probe__c</objectType>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+        <transformValues>
+            <transformValueActions>
+                <inputParameters>
+                    <name>Table</name>
+                    <value>
+                        <complexValue>{&quot;leftElementReference&quot;:&quot;leftRecords&quot;,&quot;leftJoinKeys&quot;:[&quot;ExternalKey__c&quot;],&quot;leftSelectedFields&quot;:[&quot;Name&quot;],&quot;rightElementReference&quot;:&quot;rightRecords&quot;,&quot;rightJoinKeys&quot;:[&quot;ExternalKey__c&quot;],&quot;rightSelectedFields&quot;:[&quot;Stage__c&quot;]}</complexValue>
+                        <complexValueType>JoinDefinition</complexValueType>
+                    </value>
+                </inputParameters>
+                <transformType>InnerJoin</transformType>
+            </transformValueActions>
+            <transformValueName>JoinedRecords</transformValueName>
+        </transformValues>
+        <transformValues>
+            <transformValueActions>
+                <outputFieldApiName>Name</outputFieldApiName>
+                <transformType>Map</transformType>
+                <value><transformValueReference>JoinedRecords[$EachItem].LeftTable.Name</transformValueReference></value>
+            </transformValueActions>
+            <transformValueActions>
+                <outputFieldApiName>Stage__c</outputFieldApiName>
+                <transformType>Map</transformType>
+                <value><transformValueReference>JoinedRecords[$EachItem].RightTable.Stage__c</transformValueReference></value>
+            </transformValueActions>
+        </transformValues>
+    </transforms>
+    <variables><name>leftRecords</name><dataType>SObject</dataType><description>Left probe collection.</description><isCollection>true</isCollection><isInput>true</isInput><isOutput>false</isOutput><objectType>SfPi_Flow_Probe__c</objectType></variables>
+    <variables><name>rightRecords</name><dataType>SObject</dataType><description>Right probe collection.</description><isCollection>true</isCollection><isInput>true</isInput><isOutput>false</isOutput><objectType>SfPi_Flow_Probe__c</objectType></variables>
+    <variables><name>outputRecords</name><dataType>SObject</dataType><description>Inner-joined probe collection.</description><isCollection>true</isCollection><isInput>false</isInput><isOutput>true</isOutput><objectType>SfPi_Flow_Probe__c</objectType></variables>
+</Flow>

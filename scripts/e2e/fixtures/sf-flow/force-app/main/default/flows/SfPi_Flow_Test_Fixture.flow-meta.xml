@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Set_Result</name>
+        <label>Set Result</label>
+        <description>Sets a deterministic output for the public-safe lifecycle test.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>resultText</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Passed</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <description>Public-safe autolaunched Flow used only to prove targeted Flow test lifecycle behavior.</description>
+    <label>SF Pi Flow Test Fixture</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector>
+            <targetReference>Set_Result</targetReference>
+        </connector>
+    </start>
+    <status>Draft</status>
+    <variables>
+        <name>inputText</name>
+        <dataType>String</dataType>
+        <description>Public-safe input used to prove Flow test parameter handling.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>resultText</name>
+        <dataType>String</dataType>
+        <description>Deterministic output asserted by the Flow test.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

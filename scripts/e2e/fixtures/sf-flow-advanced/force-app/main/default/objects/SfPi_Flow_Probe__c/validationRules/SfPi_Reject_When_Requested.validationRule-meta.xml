@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SfPi_Reject_When_Requested</fullName>
+    <active>true</active>
+    <description>Creates a deterministic database fault for the SF Pi Flow runtime fixture.</description>
+    <errorConditionFormula>Reject__c</errorConditionFormula>
+    <errorMessage>SF Pi forced database fault.</errorMessage>
+</ValidationRule>

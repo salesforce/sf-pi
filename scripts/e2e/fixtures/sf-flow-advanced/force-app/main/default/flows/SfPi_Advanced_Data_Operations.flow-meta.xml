@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Complete_Data_Operations</name>
+        <label>Complete Data Operations</label>
+        <description>Marks the create, update, and delete sequence complete.</description>
+        <locationX>176</locationX>
+        <locationY>650</locationY>
+        <assignmentItems><assignToReference>completed</assignToReference><operator>Assign</operator><value><booleanValue>true</booleanValue></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Data_Fault</name>
+        <label>Capture Data Fault</label>
+        <description>Captures a fault from any data mutation.</description>
+        <locationX>400</locationX>
+        <locationY>450</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Account_Not_Found</name>
+        <label>Capture Account Not Found</label>
+        <description>Returns a deterministic caller error when Get Records finds nothing.</description>
+        <locationX>400</locationX>
+        <locationY>250</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><stringValue>Account not found</stringValue></value></assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Account_Found</name>
+        <label>Account Found</label>
+        <description>Separates the found and not-found lookup outcomes.</description>
+        <locationX>176</locationX>
+        <locationY>200</locationY>
+        <defaultConnector><targetReference>Capture_Account_Not_Found</targetReference></defaultConnector>
+        <defaultConnectorLabel>Not Found</defaultConnectorLabel>
+        <rules>
+            <name>Found</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions><leftValueReference>Get_Account.Id</leftValueReference><operator>IsNull</operator><rightValue><booleanValue>false</booleanValue></rightValue></conditions>
+            <connector><targetReference>Create_Temporary_Contact</targetReference></connector>
+            <label>Found</label>
+        </rules>
+    </decisions>
+    <description>Autolaunched fixture that executes Get, Create, Update, and Delete Records in one observable transaction.</description>
+    <label>SF Pi Advanced Data Operations</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <runInMode>SystemModeWithSharing</runInMode>
+    <recordCreates>
+        <name>Create_Temporary_Contact</name>
+        <label>Create Temporary Contact</label>
+        <description>Creates a Contact that the final step deletes.</description>
+        <locationX>176</locationX>
+        <locationY>250</locationY>
+        <assignRecordIdToReference>createdContactKey</assignRecordIdToReference>
+        <connector><targetReference>Update_Account</targetReference></connector>
+        <faultConnector><targetReference>Capture_Data_Fault</targetReference></faultConnector>
+        <inputAssignments><field>AccountId</field><value><elementReference>Get_Account.Id</elementReference></value></inputAssignments>
+        <inputAssignments><field>LastName</field><value><elementReference>Get_Account.Name</elementReference></value></inputAssignments>
+        <object>Contact</object>
+    </recordCreates>
+    <recordDeletes>
+        <name>Delete_Temporary_Contact</name>
+        <label>Delete Temporary Contact</label>
+        <description>Deletes the Contact created earlier in the same interview.</description>
+        <locationX>176</locationX>
+        <locationY>550</locationY>
+        <connector><targetReference>Complete_Data_Operations</targetReference></connector>
+        <faultConnector><targetReference>Capture_Data_Fault</targetReference></faultConnector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Id</field><operator>EqualTo</operator><value><elementReference>createdContactKey</elementReference></value></filters>
+        <object>Contact</object>
+    </recordDeletes>
+    <recordLookups>
+        <name>Get_Account</name>
+        <label>Get Account</label>
+        <description>Gets the exact bounded fixture Account by its public test marker.</description>
+        <locationX>176</locationX>
+        <locationY>150</locationY>
+        <connector><targetReference>Account_Found</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>AccountNumber</field><operator>EqualTo</operator><value><stringValue>SFPI-ADVANCED-DATA-OPS</stringValue></value></filters>
+        <getFirstRecordOnly>true</getFirstRecordOnly>
+        <object>Account</object>
+        <queriedFields>Id</queriedFields>
+        <queriedFields>Name</queriedFields>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
+    <recordUpdates>
+        <name>Update_Account</name>
+        <label>Update Account</label>
+        <description>Updates the Account after the temporary Contact is created.</description>
+        <locationX>176</locationX>
+        <locationY>400</locationY>
+        <connector><targetReference>Delete_Temporary_Contact</targetReference></connector>
+        <faultConnector><targetReference>Capture_Data_Fault</targetReference></faultConnector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Id</field><operator>EqualTo</operator><value><elementReference>Get_Account.Id</elementReference></value></filters>
+        <inputAssignments><field>Description</field><value><stringValue>SFPI data operations updated</stringValue></value></inputAssignments>
+        <object>Account</object>
+    </recordUpdates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Get_Account</targetReference></connector>
+        <triggerType>None</triggerType>
+    </start>
+    <status>Draft</status>
+    <variables><name>createdContactKey</name><dataType>String</dataType><description>Temporary Contact key returned by Create Records.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <variables><name>completed</name><dataType>Boolean</dataType><description>True only after all four data operations finish.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Fault text from a failed data mutation.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+</Flow>

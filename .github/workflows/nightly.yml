@@ -23,8 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # pi >= 0.75 requires Node >= 22.19. Keep this lane equal to the
-        # supported range until pi advertises a higher floor.
+        # Pi 0.86 requires Node >= 22.19. Keep this lane equal to the
+        # supported range until Pi advertises a higher floor.
         node: [22]
 
     steps:
@@ -65,9 +65,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - pi-version: "0.84.0"
+          - pi-version: "0.86.0"
             experimental: false
-          - pi-version: "0.85.1"
+          - pi-version: "0.86.1"
             experimental: false
           - pi-version: "latest"
             experimental: true

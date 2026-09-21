@@ -22,7 +22,7 @@ export function registerSfBrowserEditorTool(pi: ExtensionAPI): void {
       "Detect, read, and write Salesforce editor surfaces without generic DOM eval or automatic Save/Apply",
     promptGuidelines: [
       "Detect before editor read/write; editor indexes are render-scoped and writes never imply Save/Apply persistence.",
-      "After writing, use the explicit commit control and verify the result; read extensions/sf-browser/AGENT_GUIDE.md for the full loop.",
+      "After writing, use the explicit commit control and verify the result; use the installed Browser guide path declared in <sf_engineering_constitution> for the full loop.",
     ],
     parameters: Type.Object({
       action: Type.Optional(EditorAction),

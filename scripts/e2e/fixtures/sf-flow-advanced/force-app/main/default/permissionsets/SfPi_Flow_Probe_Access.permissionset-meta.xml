@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Grants the advanced Flow sweep access to its isolated public-safe probe object.</description>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.CorrelationKey__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.Count__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.ExternalKey__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.NullableText__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.Parent__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.Reject__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.Sequence__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.Stage__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>SfPi_Flow_Probe__c.Total__c</field><readable>true</readable></fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SF Pi Flow Probe Access</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>true</modifyAllRecords>
+        <object>SfPi_Flow_Probe__c</object>
+        <viewAllFields>true</viewAllFields>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>

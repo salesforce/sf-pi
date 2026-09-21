@@ -15,7 +15,7 @@ fail-closed behavior, session approval memory, and audit path:
 - **Org-aware gate** applies production-level policy after resolving the target
   org type; unresolved targets fail closed.
 - **Native-tool gate** classifies known durable mutations from Agent Script,
-  Data 360, Apex, Slack, SOQL, and SF Browser surfaces.
+  SF Flow, Data 360, Apex, Slack, SOQL, and SF Browser surfaces.
 
 Intent flags such as `allow_mutation`, `allow_confirmed`, or `mutation=true` aid
 classification but never become approval.

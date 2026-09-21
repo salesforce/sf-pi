@@ -19,6 +19,8 @@ const BUNDLED_CONSTITUTION_PATH = path.resolve(
   "..",
   "SF_CONSTITUTION.md",
 );
+const SF_PI_PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const PACKAGE_ROOT_TOKEN = "{{SF_PI_PACKAGE_ROOT}}";
 
 export function constitutionAddendumPath(): string {
   return globalAgentPath("sf-brain", "SF_CONSTITUTION_APPEND.md");
@@ -29,7 +31,7 @@ export function readBundledConstitution(): string {
 }
 
 export function loadConstitution(options: { cliInstalled: boolean }): string {
-  let content = readBundledConstitution();
+  let content = readBundledConstitution().replaceAll(PACKAGE_ROOT_TOKEN, SF_PI_PACKAGE_ROOT);
   if (!options.cliInstalled) {
     content += [
       "<sf_cli_status>",

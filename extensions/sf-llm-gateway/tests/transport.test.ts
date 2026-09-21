@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createAssistantMessageEventStream,
-  type Context,
+  normalizeContext,
   type Model,
   type OpenAICompletionsOptions,
   type SimpleStreamOptions,
@@ -14,7 +14,7 @@ import {
   streamSfGatewayResponses,
 } from "../lib/transport.ts";
 
-const CONTEXT: Context = { systemPrompt: "", messages: [], tools: [] };
+const CONTEXT = normalizeContext({ systemPrompt: "", messages: [], tools: [] });
 
 function emptyStream() {
   const stream = createAssistantMessageEventStream();

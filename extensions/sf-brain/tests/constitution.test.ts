@@ -1,6 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -38,22 +46,32 @@ describe("Salesforce Engineering Constitution", () => {
     expect(CONSTITUTION_ENTRY_TYPE).toBe("sf-brain-constitution");
   });
 
-  it("routes every tool owner directly to its manifest-declared operating guide", () => {
-    const constitution = readBundledConstitution();
+  it("routes every tool owner directly to its installed manifest-declared operating guide", () => {
+    const bundled = readBundledConstitution();
+    const constitution = loadConstitution({ cliInstalled: true });
     const extensionsRoot = path.resolve(import.meta.dirname, "../..");
-    const expected = readdirSync(extensionsRoot, { withFileTypes: true })
+    const packageRoot = path.resolve(extensionsRoot, "..");
+    const manifests = readdirSync(extensionsRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) =>
         JSON.parse(readFileSync(path.join(extensionsRoot, entry.name, "manifest.json"), "utf8")),
       )
-      .filter((manifest) => (manifest.tools?.length ?? 0) > 0)
+      .filter((manifest) => (manifest.tools?.length ?? 0) > 0);
+    const expectedRelative = manifests
       .map((manifest) => `extensions/${manifest.id}/${manifest.docs.agentGuide}`)
       .sort();
-    const actual = [...constitution.matchAll(/extensions\/(sf-[a-z0-9-]+)\/(AGENT_GUIDE\.md)/g)]
+    const actualRelative = [...bundled.matchAll(/extensions\/(sf-[a-z0-9-]+)\/(AGENT_GUIDE\.md)/g)]
       .map((match) => `extensions/${match[1]}/${match[2]}`)
       .sort();
 
-    expect(actual).toEqual(expected);
+    expect(actualRelative).toEqual(expectedRelative);
+    expect(bundled).toContain("{{SF_PI_PACKAGE_ROOT}}");
+    expect(constitution).not.toContain("{{SF_PI_PACKAGE_ROOT}}");
+    for (const manifest of manifests) {
+      const guide = path.join(packageRoot, "extensions", manifest.id, manifest.docs.agentGuide);
+      expect(constitution).toContain(guide);
+      expect(existsSync(guide), guide).toBe(true);
+    }
     expect(constitution).not.toContain("SF_REFERENCE_MAP.md");
   });
 
@@ -63,7 +81,10 @@ describe("Salesforce Engineering Constitution", () => {
     writeFileSync(constitutionAddendumPath(), "Prefer project-specific test suites.\n");
 
     const content = loadConstitution({ cliInstalled: true });
-    expect(content).toContain(readBundledConstitution().trim());
+    const packageRoot = path.resolve(import.meta.dirname, "../../..");
+    expect(content).toContain(
+      readBundledConstitution().replaceAll("{{SF_PI_PACKAGE_ROOT}}", packageRoot).trim(),
+    );
     expect(content).toContain("<sf_user_constitution_addendum>");
     expect(content).toContain("Prefer project-specific test suites.");
   });

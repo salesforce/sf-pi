@@ -117,7 +117,7 @@ export function registerSfSoqlTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_soql before raw CLI and establish current schema/relationship evidence before relying on custom names.",
       "Prefer validation, count, or sample before broad execution; queryAll/deleted-row scope must be explicit and disclosed.",
-      "Read extensions/sf-soql/AGENT_GUIDE.md for Tooling API, query-plan, artifact, and export guidance.",
+      "Use the installed SOQL guide path declared in <sf_engineering_constitution> for Tooling API, query-plan, artifact, and export guidance.",
     ],
     parameters: Params,
     renderCall: (args, theme) => renderCall(args as SfSoqlParams, theme),

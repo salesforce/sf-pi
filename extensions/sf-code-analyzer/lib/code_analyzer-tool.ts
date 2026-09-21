@@ -155,7 +155,7 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use code_analyzer for explicit Salesforce static analysis; keep broad scans intentional and use last_report for artifact drill-down without rerunning.",
       "Do not start ApexGuru browser setup without user approval.",
-      "Read extensions/sf-code-analyzer/AGENT_GUIDE.md for recipes, rules, output modes, and lifecycle handoffs.",
+      "Use the installed Code Analyzer guide path declared in <sf_engineering_constitution> for recipes, rules, output modes, and lifecycle handoffs.",
     ],
     parameters: CodeAnalyzerParams,
     renderShell: "self",

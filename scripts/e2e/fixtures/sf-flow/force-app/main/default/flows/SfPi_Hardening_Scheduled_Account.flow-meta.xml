@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Prepare_Account_Summary</name>
+        <label>Prepare Account Summary</label>
+        <description>Copies the scheduled Account Name into an in-memory status value.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>statusMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Record.Name</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <description>Draft schedule-triggered fixture that proves schedule, Account filter, and scheduled record context without durable mutation.</description>
+    <label>SF Pi Hardening Scheduled Account</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Prepare_Account_Summary</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Name</field>
+            <operator>IsNull</operator>
+            <value><booleanValue>false</booleanValue></value>
+        </filters>
+        <object>Account</object>
+        <schedule>
+            <frequency>Daily</frequency>
+            <startDate>2027-01-01</startDate>
+            <startTime>00:00:00.000Z</startTime>
+        </schedule>
+        <triggerType>Scheduled</triggerType>
+    </start>
+    <status>Draft</status>
+    <variables>
+        <name>statusMessage</name>
+        <dataType>String</dataType>
+        <description>In-memory scheduled record summary.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

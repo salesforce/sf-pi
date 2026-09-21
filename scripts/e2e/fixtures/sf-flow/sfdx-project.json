@@ -1,0 +1,11 @@
+{
+  "packageDirectories": [
+    {
+      "path": "force-app",
+      "default": true
+    }
+  ],
+  "name": "sf-flow-e2e-fixture",
+  "namespace": "",
+  "sourceApiVersion": "67.0"
+}

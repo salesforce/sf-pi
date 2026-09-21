@@ -89,6 +89,14 @@ _Salesforce documentation lookup for agents and humans, with Pi-native endpoint 
 - Tools: `sf_docs`
 - Providers: `sf-docs`
 
+### [SF Flow](./extensions/sf-flow)
+
+_Lean Salesforce Flow lifecycle workflows for pi: core-five and org-grounded authoring plans, preventive quality, bounded repair guidance, safe quick fixes, Mermaid topology, check-only validation, guarded activation/deactivation, and targeted Flow tests._
+
+- Default: **on**
+- Commands: `/sf-flow`
+- Tools: `sf_flow`
+
 ### [SF Herdr](./extensions/sf-herdr)
 
 _Non-mutating Salesforce workflow plans for the current split Herdr tools._

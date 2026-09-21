@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Build_Task_Details</name>
+        <label>Build Task Details</label>
+        <description>Calls the bulk-safe Apex action once for the current Flow interview.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <actionName>SfPiFlowBulkContractAction</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Create_Related_Task</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>Capture_Action_Fault</targetReference>
+        </faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>recordKey</name>
+            <value><elementReference>$Record.Id</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>recordName</name>
+            <value><elementReference>$Record.Name</elementReference></value>
+        </inputParameters>
+        <outputParameters>
+            <assignToReference>returnedKey</assignToReference>
+            <name>recordKey</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>returnedSubject</assignToReference>
+            <name>taskSubject</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>batchSize</assignToReference>
+            <name>requestCount</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>batchIndex</assignToReference>
+            <name>requestIndex</name>
+        </outputParameters>
+    </actionCalls>
+    <assignments>
+        <name>Capture_Action_Fault</name>
+        <label>Capture Action Fault</label>
+        <description>Captures an invocable-action fault for runtime assertions.</description>
+        <locationX>350</locationX>
+        <locationY>300</locationY>
+        <assignmentItems>
+            <assignToReference>faultMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Task_Fault</name>
+        <label>Capture Task Fault</label>
+        <description>Captures a related Task creation fault for runtime assertions.</description>
+        <locationX>350</locationX>
+        <locationY>450</locationY>
+        <assignmentItems>
+            <assignToReference>faultMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <description>After-save Account fixture that proves related Task creation through a bulk-safe invocable Apex input/output contract.</description>
+    <formulas>
+        <name>Task_Description</name>
+        <dataType>String</dataType>
+        <expression>&quot;requestCount=&quot; &amp; TEXT({!batchSize}) &amp; &quot;;requestIndex=&quot; &amp; TEXT({!batchIndex}) &amp; &quot;;recordKey=&quot; &amp; {!returnedKey}</expression>
+    </formulas>
+    <label>SF Pi Advanced Related Task</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Related_Task</name>
+        <label>Create Related Task</label>
+        <description>Creates one Task related to the triggering Account after the Apex action returns.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <faultConnector>
+            <targetReference>Capture_Task_Fault</targetReference>
+        </faultConnector>
+        <inputAssignments>
+            <field>Description</field>
+            <value><elementReference>Task_Description</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>OwnerId</field>
+            <value><elementReference>$Record.OwnerId</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Priority</field>
+            <value><stringValue>Normal</stringValue></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Status</field>
+            <value><stringValue>Not Started</stringValue></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Subject</field>
+            <value><elementReference>returnedSubject</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>WhatId</field>
+            <value><elementReference>$Record.Id</elementReference></value>
+        </inputAssignments>
+        <object>Task</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Build_Task_Details</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>AccountNumber</field>
+            <operator>EqualTo</operator>
+            <value><stringValue>SFPI-ADVANCED-BULK</stringValue></value>
+        </filters>
+        <object>Account</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>50</triggerOrder>
+    <variables>
+        <name>returnedKey</name>
+        <dataType>String</dataType>
+        <description>Record key returned by the invocable action.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>returnedSubject</name>
+        <dataType>String</dataType>
+        <description>Task subject returned by the invocable action.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>batchSize</name>
+        <dataType>Number</dataType>
+        <description>Bulk request count returned by the invocable action.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <scale>0</scale>
+    </variables>
+    <variables>
+        <name>batchIndex</name>
+        <dataType>Number</dataType>
+        <description>Ordered request index returned by the invocable action.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <scale>0</scale>
+    </variables>
+    <variables>
+        <name>faultMessage</name>
+        <dataType>String</dataType>
+        <description>Fault text captured only when the action or related record creation fails.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

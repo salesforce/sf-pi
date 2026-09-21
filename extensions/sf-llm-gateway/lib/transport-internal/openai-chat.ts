@@ -2,10 +2,10 @@
 /** Generic OpenAI Chat Completions adapter for the configured gateway. */
 import {
   type AssistantMessageEventStream,
-  type Context,
   type Model,
   type OpenAICompletionsOptions,
   type SimpleStreamOptions,
+  type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import {
   streamOpenAICompletions,
@@ -18,7 +18,7 @@ export interface GatewayOpenAIFullTestHooks {
 
 export function streamSfGatewayOpenAIFull(
   model: Model<"openai-completions">,
-  context: Context,
+  context: TranscriptContext,
   options?: OpenAICompletionsOptions,
   hooks?: GatewayOpenAIFullTestHooks,
 ): AssistantMessageEventStream {
@@ -27,7 +27,7 @@ export function streamSfGatewayOpenAIFull(
 
 export function streamSfGatewayOpenAI(
   model: Model<"openai-completions">,
-  context: Context,
+  context: TranscriptContext,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
   return streamSimpleOpenAICompletions(model, context, options);

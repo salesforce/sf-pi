@@ -11,7 +11,7 @@ exports[`Every sf-agentscript tool emits an OpenAI-strict-compatible schema > pi
     "promptGuidelines": [
       "Use agentscript_authoring before generic edits when a supported structural mutation exists; compile/check before and after behavioral changes.",
       "Agent Script compile validity means no severity-1 diagnostics; quality/review evidence remains separate and never becomes a hidden numeric score.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md when lifecycle ordering, recovery, or advanced inspection guidance is useful.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> when lifecycle ordering, recovery, or advanced inspection guidance is useful.",
     ],
     "promptSnippet": "Create, compile, inspect, review, and structurally mutate Agent Script \`.agent\` files via one authoring family tool.",
     "schemaHash": "0caccdc9497571dcc1105289bbbcaba10751b03aed27d6d006c32ca2dc769be1",
@@ -25,7 +25,7 @@ exports[`Every sf-agentscript tool emits an OpenAI-strict-compatible schema > pi
     "promptGuidelines": [
       "Use agentscript_preview for behavioral reproduction before release eval; local-file sessions compile first and persist bounded trace artifacts.",
       "Treat the compact digest as routing/state evidence and fetch the full trace only when diagnosis requires it.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md for linked variables, cleanup, and multi-step preview guidance.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> for linked variables, cleanup, and multi-step preview guidance.",
     ],
     "promptSnippet": "Run a single .agent conversation against the live org with full trace capture per turn.",
     "schemaHash": "3f6ca084c40e9f97021125f269c309c781530a05dfa710a2169fa6b80fc5de2c",
@@ -40,7 +40,7 @@ exports[`Every sf-agentscript tool emits an OpenAI-strict-compatible schema > pi
       "Use agentscript_eval action='run_release' after inactive publication to run the generated baseline and the current designated suite against the exact latest BotVersion.",
       "Use EvalSpec seed_profiles for scenarios that need dynamic target-org IDs; query only dedicated test fixtures with bounded read-only SOQL.",
       "Incomplete batches, missing tests, evaluator failures, and step errors are failed evidence; never treat an empty or partial run as green.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md for spec generation, failure drill-down, and version-resolution guidance.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> for spec generation, failure drill-down, and version-resolution guidance.",
     ],
     "promptSnippet": "Run / debug / introspect Agent Script regression specs against the Salesforce Evaluation API.",
     "schemaHash": "911357590d81fb5514127552cee253a75d9ac2d11d90f4e1992fccb0a459739a",
@@ -54,7 +54,7 @@ exports[`Every sf-agentscript tool emits an OpenAI-strict-compatible schema > pi
     "promptGuidelines": [
       "Agent Script publication always creates an inactive version; run agentscript_eval action='run_release' before separate activation.",
       "Activation without matching exact-version evidence requires acknowledge_untested_activation=true and a distinct Guardrail approval; the intent flag is never self-approval.",
-      "Read extensions/sf-agentscript/AGENT_GUIDE.md for quality overrides, version management, and Service Agent user provisioning.",
+      "Use the installed Agent Script guide path declared in <sf_engineering_constitution> for quality overrides, version management, and Service Agent user provisioning.",
     ],
     "promptSnippet": "Publish inactive Agent Script versions and manage eval-gated activation lifecycle.",
     "schemaHash": "88c825565e05876cb17b28563e2ef2bd17cd28975db96a25eed94b627340d347",

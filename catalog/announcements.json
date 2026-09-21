@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.282.1-2026-09-14",
-  "latestVersion": "0.282.1",
+  "revision": "release-0.291.0-2026-09-21",
+  "latestVersion": "0.291.0",
   "announcements": [
     {
-      "id": "release-0.282.1",
+      "id": "release-0.291.0",
       "kind": "update",
-      "title": "sf-pi v0.282.1 — deps: update Salesforce Apex and core packages",
-      "publishedAt": "2026-09-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.282.1",
+      "title": "sf-pi v0.291.0 — runtime: bundled extensions now require Pi 0.86.0 or newer.",
+      "publishedAt": "2026-09-21T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.291.0",
       "severity": "info",
-      "body": "deps: update Salesforce Apex and core packages"
+      "body": "runtime: bundled extensions now require Pi 0.86.0 or newer. — runtime: require Pi 0.86.0"
     }
   ]
 }

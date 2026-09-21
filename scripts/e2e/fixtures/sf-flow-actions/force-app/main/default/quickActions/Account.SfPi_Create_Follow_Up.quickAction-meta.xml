@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QuickAction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Public-safe fixture that creates a follow-up Task related to an Account.</description>
+    <fieldOverrides><field>OwnerId</field><formula>$User.Id</formula></fieldOverrides>
+    <fieldOverrides><field>Priority</field><literalValue>Normal</literalValue></fieldOverrides>
+    <fieldOverrides><field>Status</field><literalValue>Not Started</literalValue></fieldOverrides>
+    <fieldOverrides><field>Subject</field><formula>&quot;SFPI Quick Action follow-up&quot;</formula></fieldOverrides>
+    <label>SF Pi Create Follow Up</label>
+    <optionsCreateFeedItem>false</optionsCreateFeedItem>
+    <quickActionLayout>
+        <layoutSectionStyle>TwoColumnsLeftToRight</layoutSectionStyle>
+        <quickActionLayoutColumns>
+            <quickActionLayoutItems><emptySpace>false</emptySpace><field>OwnerId</field><uiBehavior>Readonly</uiBehavior></quickActionLayoutItems>
+            <quickActionLayoutItems><emptySpace>false</emptySpace><field>WhatId</field><uiBehavior>Readonly</uiBehavior></quickActionLayoutItems>
+            <quickActionLayoutItems><emptySpace>false</emptySpace><field>Subject</field><uiBehavior>Readonly</uiBehavior></quickActionLayoutItems>
+            <quickActionLayoutItems><emptySpace>false</emptySpace><field>Status</field><uiBehavior>Readonly</uiBehavior></quickActionLayoutItems>
+            <quickActionLayoutItems><emptySpace>false</emptySpace><field>Priority</field><uiBehavior>Readonly</uiBehavior></quickActionLayoutItems>
+        </quickActionLayoutColumns>
+        <quickActionLayoutColumns/>
+    </quickActionLayout>
+    <successMessage>Follow-up created.</successMessage>
+    <targetObject>Task</targetObject>
+    <targetParentField>What</targetParentField>
+    <type>Create</type>
+</QuickAction>

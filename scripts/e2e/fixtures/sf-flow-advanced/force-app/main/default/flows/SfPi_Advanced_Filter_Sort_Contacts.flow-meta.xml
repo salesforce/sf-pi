@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Return_Processed_Contacts</name>
+        <label>Return Processed Contacts</label>
+        <description>Copies the filtered and sorted collection into the public output variable.</description>
+        <locationX>176</locationX>
+        <locationY>450</locationY>
+        <assignmentItems>
+            <assignToReference>outputContacts</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Filter_Contacts_With_Email</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <collectionProcessors>
+        <name>Filter_Contacts_With_Email</name>
+        <label>Filter Contacts With Email</label>
+        <description>Returns a new collection containing only Contacts with an Email value.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignNextValueToReference>currentContact</assignNextValueToReference>
+        <collectionProcessorType>FilterCollectionProcessor</collectionProcessorType>
+        <collectionReference>inputContacts</collectionReference>
+        <conditionLogic>and</conditionLogic>
+        <conditions>
+            <leftValueReference>currentContact.Email</leftValueReference>
+            <operator>IsNull</operator>
+            <rightValue><booleanValue>false</booleanValue></rightValue>
+        </conditions>
+        <connector><targetReference>Sort_Filtered_Contacts</targetReference></connector>
+    </collectionProcessors>
+    <collectionProcessors>
+        <name>Sort_Filtered_Contacts</name>
+        <label>Sort Filtered Contacts</label>
+        <description>Sorts the filtered collection by LastName and keeps the first two records.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <collectionProcessorType>SortCollectionProcessor</collectionProcessorType>
+        <collectionReference>Filter_Contacts_With_Email</collectionReference>
+        <connector><targetReference>Return_Processed_Contacts</targetReference></connector>
+        <limit>2</limit>
+        <sortOptions>
+            <doesPutEmptyStringAndNullFirst>false</doesPutEmptyStringAndNullFirst>
+            <sortField>LastName</sortField>
+            <sortOrder>Asc</sortOrder>
+        </sortOptions>
+    </collectionProcessors>
+    <description>Autolaunched fixture that executes Collection Filter and Collection Sort over Contact records.</description>
+    <label>SF Pi Advanced Filter Sort Contacts</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Filter_Contacts_With_Email</targetReference></connector>
+    </start>
+    <status>Draft</status>
+    <variables>
+        <name>currentContact</name>
+        <dataType>SObject</dataType>
+        <description>Current Contact evaluated by Collection Filter.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+        <objectType>Contact</objectType>
+    </variables>
+    <variables>
+        <name>inputContacts</name>
+        <dataType>SObject</dataType>
+        <description>Contact collection to filter and sort.</description>
+        <isCollection>true</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+        <objectType>Contact</objectType>
+    </variables>
+    <variables>
+        <name>outputContacts</name>
+        <dataType>SObject</dataType>
+        <description>Filtered and sorted Contact collection.</description>
+        <isCollection>true</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+        <objectType>Contact</objectType>
+    </variables>
+</Flow>

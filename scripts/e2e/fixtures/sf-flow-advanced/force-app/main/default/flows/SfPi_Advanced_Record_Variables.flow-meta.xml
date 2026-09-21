@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_Record_Operation_Fault</name>
+        <label>Capture Record Operation Fault</label>
+        <description>Returns the real record-variable or collection fault to the caller.</description>
+        <locationX>500</locationX>
+        <locationY>450</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Mark_Record_Operation_Complete</name>
+        <label>Mark Record Operation Complete</label>
+        <description>Marks one record-variable or collection operation complete.</description>
+        <locationX>176</locationX>
+        <locationY>450</locationY>
+        <assignmentItems><assignToReference>completed</assignToReference><operator>Assign</operator><value><booleanValue>true</booleanValue></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Unsupported_Operation</name>
+        <label>Capture Unsupported Operation</label>
+        <description>Returns a deterministic caller error for an unknown operation.</description>
+        <locationX>700</locationX>
+        <locationY>300</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><stringValue>Unsupported record operation</stringValue></value></assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Select_Record_Operation</name>
+        <label>Select Record Operation</label>
+        <description>Selects create, update, or delete over the exact input record collection.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnector><targetReference>Capture_Unsupported_Operation</targetReference></defaultConnector>
+        <defaultConnectorLabel>Unsupported</defaultConnectorLabel>
+        <rules>
+            <name>Create_Records</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions><leftValueReference>operation</leftValueReference><operator>EqualTo</operator><rightValue><stringValue>create</stringValue></rightValue></conditions>
+            <connector><targetReference>Create_Record_Collection</targetReference></connector>
+            <label>Create</label>
+        </rules>
+        <rules>
+            <name>Update_Records</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions><leftValueReference>operation</leftValueReference><operator>EqualTo</operator><rightValue><stringValue>update</stringValue></rightValue></conditions>
+            <connector><targetReference>Update_Record_Collection</targetReference></connector>
+            <label>Update</label>
+        </rules>
+        <rules>
+            <name>Delete_Records</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions><leftValueReference>operation</leftValueReference><operator>EqualTo</operator><rightValue><stringValue>delete</stringValue></rightValue></conditions>
+            <connector><targetReference>Delete_Record_Collection</targetReference></connector>
+            <label>Delete</label>
+        </rules>
+    </decisions>
+    <description>Autolaunched fixture that creates, updates, and deletes through one input record collection.</description>
+    <label>SF Pi Advanced Record Variables</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Record_Collection</name>
+        <label>Create Record Collection</label>
+        <description>Creates every probe supplied through the input record collection.</description>
+        <locationX>50</locationX>
+        <locationY>300</locationY>
+        <connector><targetReference>Mark_Record_Operation_Complete</targetReference></connector>
+        <faultConnector><targetReference>Capture_Record_Operation_Fault</targetReference></faultConnector>
+        <inputReference>inputRecords</inputReference>
+    </recordCreates>
+    <recordDeletes>
+        <name>Delete_Record_Collection</name>
+        <label>Delete Record Collection</label>
+        <description>Deletes every persisted probe supplied through the input record collection.</description>
+        <locationX>450</locationX>
+        <locationY>300</locationY>
+        <connector><targetReference>Mark_Record_Operation_Complete</targetReference></connector>
+        <faultConnector><targetReference>Capture_Record_Operation_Fault</targetReference></faultConnector>
+        <inputReference>inputRecords</inputReference>
+    </recordDeletes>
+    <recordUpdates>
+        <name>Update_Record_Collection</name>
+        <label>Update Record Collection</label>
+        <description>Updates every persisted probe supplied through the input record collection.</description>
+        <locationX>250</locationX>
+        <locationY>300</locationY>
+        <connector><targetReference>Mark_Record_Operation_Complete</targetReference></connector>
+        <faultConnector><targetReference>Capture_Record_Operation_Fault</targetReference></faultConnector>
+        <inputReference>inputRecords</inputReference>
+    </recordUpdates>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Select_Record_Operation</targetReference></connector></start>
+    <status>Draft</status>
+    <variables><name>operation</name><dataType>String</dataType><description>Create, update, or delete.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>inputRecords</name><dataType>SObject</dataType><description>Probe records operated on as one collection.</description><isCollection>true</isCollection><isInput>true</isInput><isOutput>false</isOutput><objectType>SfPi_Flow_Probe__c</objectType></variables>
+    <variables><name>completed</name><dataType>Boolean</dataType><description>True after the selected operation succeeds.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Operation or Flow fault text.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+</Flow>

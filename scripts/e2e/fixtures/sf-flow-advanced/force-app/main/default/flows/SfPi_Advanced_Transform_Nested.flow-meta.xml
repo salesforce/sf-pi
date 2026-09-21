@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Return_Nested_Transform</name>
+        <label>Return Nested Transform</label>
+        <description>Copies the nested Apex-defined Transform output into the public collection.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <assignmentItems><assignToReference>outputParents</assignToReference><operator>Assign</operator><value><elementReference>Map_Nested_Collections</elementReference></value></assignmentItems>
+    </assignments>
+    <description>Autolaunched fixture that preserves two collection levels in an Apex-defined Transform mapping.</description>
+    <label>SF Pi Advanced Transform Nested</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Map_Nested_Collections</targetReference></connector></start>
+    <status>Draft</status>
+    <transforms>
+        <name>Map_Nested_Collections</name>
+        <label>Map Nested Collections</label>
+        <description>Maps parent labels and child values while preserving both collection levels.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <apexClass>SfPiFlowNestedParent</apexClass>
+        <connector><targetReference>Return_Nested_Transform</targetReference></connector>
+        <dataType>Apex</dataType>
+        <isCollection>true</isCollection>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+        <transformValues>
+            <transformValueActions>
+                <outputFieldApiName>label</outputFieldApiName>
+                <transformType>Map</transformType>
+                <value><elementReference>inputParents[$EachItem].label</elementReference></value>
+            </transformValueActions>
+            <transformValueActions>
+                <outputFieldApiName>children[$EachItem].value</outputFieldApiName>
+                <transformType>Map</transformType>
+                <value><elementReference>inputParents[$EachItem].children[$EachItem].value</elementReference></value>
+            </transformValueActions>
+        </transformValues>
+    </transforms>
+    <variables><name>inputParents</name><apexClass>SfPiFlowNestedParent</apexClass><dataType>Apex</dataType><description>Nested Apex-defined parent collection.</description><isCollection>true</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>outputParents</name><apexClass>SfPiFlowNestedParent</apexClass><dataType>Apex</dataType><description>Nested Apex-defined Transform output.</description><isCollection>true</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+</Flow>

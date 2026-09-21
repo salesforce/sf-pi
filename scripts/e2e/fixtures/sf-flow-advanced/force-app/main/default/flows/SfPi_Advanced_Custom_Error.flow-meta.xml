@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Accept_Record</name>
+        <label>Accept Record</label>
+        <description>Marks a valid Account after the validation decision.</description>
+        <locationX>350</locationX>
+        <locationY>300</locationY>
+        <assignmentItems><assignToReference>$Record.Description</assignToReference><operator>Assign</operator><value><stringValue>SFPI custom error validation passed</stringValue></value></assignmentItems>
+    </assignments>
+    <customErrors>
+        <name>Reject_Record</name>
+        <label>Reject Record</label>
+        <description>Rolls back an invalid Account and returns a deterministic message.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <connector><targetReference>Accept_Record</targetReference></connector>
+        <customErrorMessages>
+            <errorMessage>SFPI custom error rejected this Account.</errorMessage>
+            <isFieldError>false</isFieldError>
+        </customErrorMessages>
+    </customErrors>
+    <decisions>
+        <name>Validate_Account</name>
+        <label>Validate Account</label>
+        <description>Routes explicitly rejected names to Custom Error.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnector><targetReference>Accept_Record</targetReference></defaultConnector>
+        <defaultConnectorLabel>Accepted</defaultConnectorLabel>
+        <rules>
+            <name>Rejected</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions><leftValueReference>$Record.Name</leftValueReference><operator>StartsWith</operator><rightValue><stringValue>SFPI Reject</stringValue></rightValue></conditions>
+            <connector><targetReference>Reject_Record</targetReference></connector>
+            <label>Rejected</label>
+        </rules>
+    </decisions>
+    <description>Before-save Account fixture that proves Decision and Custom Error rollback behavior.</description>
+    <label>SF Pi Advanced Custom Error</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Validate_Account</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>AccountNumber</field><operator>EqualTo</operator><value><stringValue>SFPI-ADVANCED-CUSTOM-ERROR</stringValue></value></filters>
+        <object>Account</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>140</triggerOrder>
+</Flow>

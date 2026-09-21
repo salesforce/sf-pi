@@ -8,6 +8,7 @@ export const extensionSidebarItems = [
   { text: "SF Docs", link: "/extensions/sf-docs" },
   { text: "SF LSP", link: "/extensions/sf-lsp" },
   { text: "SF Apex", link: "/extensions/sf-apex" },
+  { text: "SF Flow", link: "/extensions/sf-flow" },
   { text: "SF LWC", link: "/extensions/sf-lwc" },
   { text: "SF tldraw", link: "/extensions/sf-tldraw" },
   { text: "SF SOQL", link: "/extensions/sf-soql" },

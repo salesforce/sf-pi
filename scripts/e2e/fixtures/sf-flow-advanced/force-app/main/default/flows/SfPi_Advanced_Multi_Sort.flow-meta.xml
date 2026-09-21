@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Return_Sorted_Records</name>
+        <label>Return Sorted Records</label>
+        <description>Copies the in-place sorted collection into the public output.</description>
+        <locationX>176</locationX>
+        <locationY>450</locationY>
+        <assignmentItems><assignToReference>outputRecords</assignToReference><operator>Assign</operator><value><elementReference>inputRecords</elementReference></value></assignmentItems>
+    </assignments>
+    <collectionProcessors>
+        <name>Sort_Nulls_First</name>
+        <label>Sort Nulls First</label>
+        <description>Sorts by nullable text, descending sequence, then name with empty and null values first.</description>
+        <locationX>50</locationX>
+        <locationY>300</locationY>
+        <collectionProcessorType>SortCollectionProcessor</collectionProcessorType>
+        <collectionReference>inputRecords</collectionReference>
+        <connector><targetReference>Return_Sorted_Records</targetReference></connector>
+        <sortOptions><doesPutEmptyStringAndNullFirst>true</doesPutEmptyStringAndNullFirst><sortField>NullableText__c</sortField><sortOrder>Asc</sortOrder></sortOptions>
+        <sortOptions><doesPutEmptyStringAndNullFirst>false</doesPutEmptyStringAndNullFirst><sortField>Sequence__c</sortField><sortOrder>Desc</sortOrder></sortOptions>
+        <sortOptions><doesPutEmptyStringAndNullFirst>false</doesPutEmptyStringAndNullFirst><sortField>Name</sortField><sortOrder>Asc</sortOrder></sortOptions>
+    </collectionProcessors>
+    <collectionProcessors>
+        <name>Sort_Nulls_Last</name>
+        <label>Sort Nulls Last</label>
+        <description>Sorts by nullable text, descending sequence, then name with empty and null values last.</description>
+        <locationX>300</locationX>
+        <locationY>300</locationY>
+        <collectionProcessorType>SortCollectionProcessor</collectionProcessorType>
+        <collectionReference>inputRecords</collectionReference>
+        <connector><targetReference>Return_Sorted_Records</targetReference></connector>
+        <sortOptions><doesPutEmptyStringAndNullFirst>false</doesPutEmptyStringAndNullFirst><sortField>NullableText__c</sortField><sortOrder>Asc</sortOrder></sortOptions>
+        <sortOptions><doesPutEmptyStringAndNullFirst>false</doesPutEmptyStringAndNullFirst><sortField>Sequence__c</sortField><sortOrder>Desc</sortOrder></sortOptions>
+        <sortOptions><doesPutEmptyStringAndNullFirst>false</doesPutEmptyStringAndNullFirst><sortField>Name</sortField><sortOrder>Asc</sortOrder></sortOptions>
+    </collectionProcessors>
+    <decisions>
+        <name>Select_Null_Order</name>
+        <label>Select Null Order</label>
+        <description>Selects the exact null and empty-string ordering contract.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnector><targetReference>Sort_Nulls_Last</targetReference></defaultConnector>
+        <defaultConnectorLabel>Nulls Last</defaultConnectorLabel>
+        <rules>
+            <name>Nulls_First</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions><leftValueReference>nullsFirst</leftValueReference><operator>EqualTo</operator><rightValue><booleanValue>true</booleanValue></rightValue></conditions>
+            <connector><targetReference>Sort_Nulls_First</targetReference></connector>
+            <label>Nulls First</label>
+        </rules>
+    </decisions>
+    <description>Autolaunched fixture that proves three-field Collection Sort priority and both null-order variants.</description>
+    <label>SF Pi Advanced Multi Sort</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Select_Null_Order</targetReference></connector></start>
+    <status>Draft</status>
+    <variables><name>nullsFirst</name><dataType>Boolean</dataType><description>When true, empty and null values sort first.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>inputRecords</name><dataType>SObject</dataType><description>Probe collection sorted in place.</description><isCollection>true</isCollection><isInput>true</isInput><isOutput>false</isOutput><objectType>SfPi_Flow_Probe__c</objectType></variables>
+    <variables><name>outputRecords</name><dataType>SObject</dataType><description>Sorted probe collection.</description><isCollection>true</isCollection><isInput>false</isInput><isOutput>true</isOutput><objectType>SfPi_Flow_Probe__c</objectType></variables>
+</Flow>

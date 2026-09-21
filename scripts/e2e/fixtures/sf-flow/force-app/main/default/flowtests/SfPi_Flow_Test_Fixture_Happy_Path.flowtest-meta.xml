@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlowTest xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Verifies the public-safe SF Pi autolaunched Flow test fixture.</description>
+    <flowApiName>SfPi_Flow_Test_Fixture</flowApiName>
+    <label>SF Pi Flow Test Fixture Happy Path</label>
+    <testPoints>
+        <elementApiName>Start</elementApiName>
+        <parameters>
+            <leftValueReference>inputText</leftValueReference>
+            <type>InputVariable</type>
+            <value>
+                <stringValue>Hello</stringValue>
+            </value>
+        </parameters>
+    </testPoints>
+    <testPoints>
+        <assertions>
+            <conditions>
+                <leftValueReference>resultText</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>Passed</stringValue>
+                </rightValue>
+            </conditions>
+            <errorMessage>Expected the deterministic fixture output.</errorMessage>
+        </assertions>
+        <elementApiName>Finish</elementApiName>
+    </testPoints>
+    <testType>WithAssertion</testType>
+</FlowTest>

@@ -47,14 +47,19 @@ function buildNativeToolDecision(
   org: OrgContext | undefined,
 ): ClassifiedDecision {
   const scope = nativeToolSafetyEnvelope(subject, org);
-  const reason =
-    org?.guessed && subject.usesSalesforceOrg
+  const unknownTarget = org?.guessed === true || org?.type === "unknown";
+  const productionTarget = org?.type === "production";
+  const hardBlock =
+    subject.blockProductionOrUnknown === true && (productionTarget || unknownTarget);
+  const reason = hardBlock
+    ? `${subject.reason}\n\nThis native lifecycle mutation refuses production or unknown target orgs.`
+    : org?.guessed && subject.usesSalesforceOrg
       ? `${subject.reason}\n\nNote: sf-guardrail could not verify the target org type and is treating it as production.`
       : subject.reason;
   return {
     ruleId: subject.ruleId,
     feature: "nativeToolGate",
-    action: "confirm",
+    action: hardBlock ? "block" : "confirm",
     reason,
     promptTitle: subject.promptTitle,
     fingerprint: scope.fingerprint,

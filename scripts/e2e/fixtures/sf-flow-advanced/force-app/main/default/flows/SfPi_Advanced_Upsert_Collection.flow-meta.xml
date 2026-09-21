@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_All_Or_None_Fault</name>
+        <label>Capture All Or None Fault</label>
+        <description>Marks the all-or-none collection upsert fault path.</description>
+        <locationX>50</locationX>
+        <locationY>450</locationY>
+        <assignmentItems><assignToReference>outcome</assignToReference><operator>Assign</operator><value><stringValue>all-or-none-fault</stringValue></value></assignmentItems>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Partial_Fault</name>
+        <label>Capture Partial Fault</label>
+        <description>Marks a partial collection upsert fault if Salesforce emits one.</description>
+        <locationX>300</locationX>
+        <locationY>450</locationY>
+        <assignmentItems><assignToReference>outcome</assignToReference><operator>Assign</operator><value><stringValue>partial-fault</stringValue></value></assignmentItems>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Mark_All_Or_None_Complete</name>
+        <label>Mark All Or None Complete</label>
+        <description>Marks unexpected normal completion of an invalid all-or-none collection.</description>
+        <locationX>50</locationX>
+        <locationY>600</locationY>
+        <assignmentItems><assignToReference>outcome</assignToReference><operator>Assign</operator><value><stringValue>all-or-none-normal</stringValue></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Mark_Partial_Complete</name>
+        <label>Mark Partial Complete</label>
+        <description>Marks normal completion after Salesforce saves the valid collection members.</description>
+        <locationX>300</locationX>
+        <locationY>600</locationY>
+        <assignmentItems><assignToReference>outcome</assignToReference><operator>Assign</operator><value><stringValue>partial-normal</stringValue></value></assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Select_Collection_Mode</name>
+        <label>Select Collection Mode</label>
+        <description>Selects all-or-none or partial Create Records upsert behavior.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnector><targetReference>Upsert_Partial_Collection</targetReference></defaultConnector>
+        <defaultConnectorLabel>Partial</defaultConnectorLabel>
+        <rules>
+            <name>All_Or_None</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions><leftValueReference>mode</leftValueReference><operator>EqualTo</operator><rightValue><stringValue>all-or-none</stringValue></rightValue></conditions>
+            <connector><targetReference>Upsert_All_Or_None_Collection</targetReference></connector>
+            <label>All Or None</label>
+        </rules>
+    </decisions>
+    <description>Autolaunched fixture that contrasts partial and all-or-none Create Records upsert behavior.</description>
+    <label>SF Pi Advanced Upsert Collection</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Upsert_All_Or_None_Collection</name>
+        <label>Upsert All Or None Collection</label>
+        <description>Rolls back every collection member when any upsert fails.</description>
+        <locationX>50</locationX>
+        <locationY>300</locationY>
+        <connector><targetReference>Mark_All_Or_None_Complete</targetReference></connector>
+        <doesUpsert>true</doesUpsert>
+        <doesUpsertAllOrNone>true</doesUpsertAllOrNone>
+        <faultConnector><targetReference>Capture_All_Or_None_Fault</targetReference></faultConnector>
+        <inputReference>inputRecords</inputReference>
+        <upsertExternalIdField>ExternalKey__c</upsertExternalIdField>
+    </recordCreates>
+    <recordCreates>
+        <name>Upsert_Partial_Collection</name>
+        <label>Upsert Partial Collection</label>
+        <description>Saves valid collection members while invalid members fail.</description>
+        <locationX>300</locationX>
+        <locationY>300</locationY>
+        <connector><targetReference>Mark_Partial_Complete</targetReference></connector>
+        <doesUpsert>true</doesUpsert>
+        <doesUpsertAllOrNone>false</doesUpsertAllOrNone>
+        <faultConnector><targetReference>Capture_Partial_Fault</targetReference></faultConnector>
+        <inputReference>inputRecords</inputReference>
+        <upsertExternalIdField>ExternalKey__c</upsertExternalIdField>
+    </recordCreates>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Select_Collection_Mode</targetReference></connector></start>
+    <status>Draft</status>
+    <variables><name>mode</name><dataType>String</dataType><description>All-or-none or partial.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>inputRecords</name><dataType>SObject</dataType><description>Probe collection containing valid and invalid members.</description><isCollection>true</isCollection><isInput>true</isInput><isOutput>false</isOutput><objectType>SfPi_Flow_Probe__c</objectType></variables>
+    <variables><name>outcome</name><dataType>String</dataType><description>Observed connector path.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Collection upsert fault text.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+</Flow>

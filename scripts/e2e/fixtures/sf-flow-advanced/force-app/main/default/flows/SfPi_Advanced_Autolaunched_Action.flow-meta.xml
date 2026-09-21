@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Build_Output</name>
+        <label>Build Output</label>
+        <description>Calls the real bulk-safe Apex action and maps every output explicitly.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <actionName>SfPiFlowBulkContractAction</actionName>
+        <actionType>apex</actionType>
+        <faultConnector><targetReference>Capture_Action_Fault</targetReference></faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>recordKey</name>
+            <value><elementReference>inputKey</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>recordName</name>
+            <value><elementReference>inputName</elementReference></value>
+        </inputParameters>
+        <outputParameters>
+            <assignToReference>outputKey</assignToReference>
+            <name>recordKey</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>outputSubject</assignToReference>
+            <name>taskSubject</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>outputCount</assignToReference>
+            <name>requestCount</name>
+        </outputParameters>
+        <outputParameters>
+            <assignToReference>outputIndex</assignToReference>
+            <name>requestIndex</name>
+        </outputParameters>
+    </actionCalls>
+    <assignments>
+        <name>Capture_Action_Fault</name>
+        <label>Capture Action Fault</label>
+        <description>Captures the Apex action fault without hiding it from output inspection.</description>
+        <locationX>350</locationX>
+        <locationY>300</locationY>
+        <assignmentItems>
+            <assignToReference>faultMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <description>Autolaunched fixture that proves a real invocable Apex input and output contract through Flow runtime.</description>
+    <label>SF Pi Advanced Autolaunched Action</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Build_Output</targetReference></connector>
+    </start>
+    <status>Draft</status>
+    <variables>
+        <name>inputKey</name><dataType>String</dataType><description>Input key.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>inputName</name><dataType>String</dataType><description>Input name.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>outputKey</name><dataType>String</dataType><description>Returned key.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <name>outputSubject</name><dataType>String</dataType><description>Returned subject.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <name>outputCount</name><dataType>Number</dataType><description>Returned request count.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput><scale>0</scale>
+    </variables>
+    <variables>
+        <name>outputIndex</name><dataType>Number</dataType><description>Returned request index.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput><scale>0</scale>
+    </variables>
+    <variables>
+        <name>faultMessage</name><dataType>String</dataType><description>Action fault text.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput>
+    </variables>
+</Flow>

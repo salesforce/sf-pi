@@ -10,10 +10,10 @@ import {
   createAssistantMessageEventStream,
   createModels,
   createProvider,
+  normalizeContext,
   type Api,
   type ApiKeyAuth,
   type AssistantMessage,
-  type Context,
   type Model,
   type StreamOptions,
 } from "@earendil-works/pi-ai";
@@ -33,7 +33,7 @@ import {
   type GatewayStreamImplementations,
 } from "../lib/provider.ts";
 
-const EMPTY_CONTEXT: Context = { systemPrompt: "", messages: [], tools: [] };
+const EMPTY_CONTEXT = normalizeContext({ systemPrompt: "", messages: [], tools: [] });
 const UNUSED_UI = {} as ExtensionUIContext;
 
 function completedStream(model: Model<Api>, text = "ok") {

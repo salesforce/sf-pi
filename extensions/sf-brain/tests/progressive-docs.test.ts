@@ -42,9 +42,31 @@ describe("Progressive SF Pi Documentation", () => {
     }
   });
 
+  it("keeps workspace-relative operating-guide paths out of tool prompt guidelines", () => {
+    for (const manifest of manifests()) {
+      const lib = path.join(extensionsRoot, manifest.id, "lib");
+      if (!existsSync(lib)) continue;
+      for (const file of typescriptFiles(lib)) {
+        expect(readFileSync(file, "utf8"), file).not.toMatch(
+          /extensions\/sf-[a-z0-9-]+\/AGENT_GUIDE\.md/u,
+        );
+      }
+    }
+  });
+
   it("keeps retired bundled skill/reference routing absent", () => {
     expect(existsSync(path.join(extensionsRoot, "sf-brain", "SF_REFERENCE_MAP.md"))).toBe(false);
     expect(existsSync(path.join(extensionsRoot, "sf-browser", "skills"))).toBe(false);
     expect(existsSync(path.join(extensionsRoot, "sf-agentscript", "skills"))).toBe(false);
   });
 });
+
+function typescriptFiles(directory: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const absolute = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...typescriptFiles(absolute));
+    else if (entry.isFile() && entry.name.endsWith(".ts")) files.push(absolute);
+  }
+  return files;
+}

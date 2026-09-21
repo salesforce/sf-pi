@@ -14,13 +14,14 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import {
   createAssistantMessageEventStream,
+  getCurrentSystemPrompt,
   InMemoryCredentialStore,
   InMemoryModelsStore,
   type Api,
   type ApiKeyAuth,
   type AssistantMessage,
-  type Context,
   type Model,
+  type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { PROVIDER_NAME } from "../lib/config.ts";
 import { handleGatewayCompaction } from "../lib/compaction.ts";
@@ -141,9 +142,9 @@ async function createCompactionSession(
       output: reply.output ?? 20,
     });
   });
-  const dispatch = (model: Model<Api>, context: Context) => {
+  const dispatch = (model: Model<Api>, context: TranscriptContext) => {
     if (model.id === "claude-sonnet-5") return dedicatedSummarization(model);
-    return context.systemPrompt?.includes("test agent prompt")
+    return getCurrentSystemPrompt(context.messages).includes("test agent prompt")
       ? agent(model)
       : summarization(model);
   };

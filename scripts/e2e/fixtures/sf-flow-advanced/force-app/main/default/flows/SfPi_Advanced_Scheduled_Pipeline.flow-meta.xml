@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Build_Schedule_Details</name>
+        <label>Build Schedule Details</label>
+        <description>Runs the bulk-safe Apex action for the scheduled Account batch.</description>
+        <locationX>176</locationX><locationY>158</locationY>
+        <actionName>SfPiFlowBulkContractAction</actionName>
+        <actionType>apex</actionType>
+        <connector><targetReference>Get_Related_Contacts</targetReference></connector>
+        <faultConnector><targetReference>Capture_Action_Fault</targetReference></faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters><name>recordKey</name><value><elementReference>$Record.Id</elementReference></value></inputParameters>
+        <inputParameters><name>recordName</name><value><elementReference>$Record.Name</elementReference></value></inputParameters>
+        <outputParameters><assignToReference>returnedKey</assignToReference><name>recordKey</name></outputParameters>
+        <outputParameters><assignToReference>actionLabel</assignToReference><name>taskSubject</name></outputParameters>
+        <outputParameters><assignToReference>batchSize</assignToReference><name>requestCount</name></outputParameters>
+        <outputParameters><assignToReference>batchIndex</assignToReference><name>requestIndex</name></outputParameters>
+    </actionCalls>
+    <assignments>
+        <name>Capture_Action_Fault</name>
+        <label>Capture Action Fault</label>
+        <description>Captures an Apex action failure.</description>
+        <locationX>350</locationX><locationY>300</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Create_Fault</name>
+        <label>Capture Create Fault</label>
+        <description>Captures a bulk Task creation failure.</description>
+        <locationX>350</locationX><locationY>870</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Prepare_Task</name>
+        <label>Prepare Task</label>
+        <description>Builds one in-memory Task and adds it to the collection without database mutation.</description>
+        <locationX>176</locationX><locationY>730</locationY>
+        <assignmentItems><assignToReference>taskRecord.Description</assignToReference><operator>Assign</operator><value><elementReference>Task_Description</elementReference></value></assignmentItems>
+        <assignmentItems><assignToReference>taskRecord.OwnerId</assignToReference><operator>Assign</operator><value><elementReference>$Record.OwnerId</elementReference></value></assignmentItems>
+        <assignmentItems><assignToReference>taskRecord.Priority</assignToReference><operator>Assign</operator><value><stringValue>Normal</stringValue></value></assignmentItems>
+        <assignmentItems><assignToReference>taskRecord.Status</assignToReference><operator>Assign</operator><value><stringValue>Not Started</stringValue></value></assignmentItems>
+        <assignmentItems><assignToReference>taskRecord.Subject</assignToReference><operator>Assign</operator><value><elementReference>currentContact.LastName</elementReference></value></assignmentItems>
+        <assignmentItems><assignToReference>taskRecord.WhatId</assignToReference><operator>Assign</operator><value><elementReference>$Record.Id</elementReference></value></assignmentItems>
+        <assignmentItems><assignToReference>taskRecords</assignToReference><operator>Add</operator><value><elementReference>taskRecord</elementReference></value></assignmentItems>
+        <connector><targetReference>For_Each_Contact</targetReference></connector>
+    </assignments>
+    <description>Schedule-triggered Account fixture that bulkifies Apex, related lookup, collection Subflow, in-memory loop assignment, and one Create Records operation.</description>
+    <formulas>
+        <name>Task_Description</name>
+        <dataType>String</dataType>
+        <expression>{!actionLabel} &amp; &quot;;requestCount=&quot; &amp; TEXT({!batchSize}) &amp; &quot;;requestIndex=&quot; &amp; TEXT({!batchIndex}) &amp; &quot;;recordKey=&quot; &amp; {!returnedKey}</expression>
+    </formulas>
+    <label>SF Pi Advanced Scheduled Pipeline</label>
+    <loops>
+        <name>For_Each_Contact</name>
+        <label>For Each Contact</label>
+        <description>Builds Task records in memory; all DML occurs after the loop.</description>
+        <locationX>176</locationX><locationY>590</locationY>
+        <assignNextValueToReference>currentContact</assignNextValueToReference>
+        <collectionReference>processedContacts</collectionReference>
+        <iterationOrder>Asc</iterationOrder>
+        <nextValueConnector><targetReference>Prepare_Task</targetReference></nextValueConnector>
+        <noMoreValuesConnector><targetReference>Create_Scheduled_Tasks</targetReference></noMoreValuesConnector>
+    </loops>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Scheduled_Tasks</name>
+        <label>Create Scheduled Tasks</label>
+        <description>Creates the collected Task records once after the loop.</description>
+        <locationX>176</locationX><locationY>870</locationY>
+        <faultConnector><targetReference>Capture_Create_Fault</targetReference></faultConnector>
+        <inputReference>taskRecords</inputReference>
+    </recordCreates>
+    <recordLookups>
+        <name>Get_Related_Contacts</name>
+        <label>Get Related Contacts</label>
+        <description>Gets Contacts related to the scheduled Account.</description>
+        <locationX>176</locationX><locationY>300</locationY>
+        <connector><targetReference>Process_Related_Contacts</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>AccountId</field><operator>EqualTo</operator><value><elementReference>$Record.Id</elementReference></value></filters>
+        <getFirstRecordOnly>false</getFirstRecordOnly>
+        <object>Contact</object>
+        <queriedFields>Email</queriedFields>
+        <queriedFields>LastName</queriedFields>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
+    <start>
+        <locationX>50</locationX><locationY>50</locationY>
+        <connector><targetReference>Build_Schedule_Details</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>AccountNumber</field><operator>EqualTo</operator><value><stringValue>SFPI-ADVANCED-SCHEDULE</stringValue></value></filters>
+        <object>Account</object>
+        <schedule><frequency>Daily</frequency><startDate>2027-01-01</startDate><startTime>00:00:00.000Z</startTime></schedule>
+        <triggerType>Scheduled</triggerType>
+    </start>
+    <status>Draft</status>
+    <subflows>
+        <name>Process_Related_Contacts</name>
+        <label>Process Related Contacts</label>
+        <description>Filters and sorts related Contacts in the reusable child Flow.</description>
+        <locationX>176</locationX><locationY>450</locationY>
+        <connector><targetReference>For_Each_Contact</targetReference></connector>
+        <flowName>SfPi_Advanced_Filter_Sort_Contacts</flowName>
+        <inputAssignments><name>inputContacts</name><value><elementReference>Get_Related_Contacts</elementReference></value></inputAssignments>
+        <outputAssignments><assignToReference>processedContacts</assignToReference><name>outputContacts</name></outputAssignments>
+    </subflows>
+    <variables><name>returnedKey</name><dataType>String</dataType><description>Action record key.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <variables><name>actionLabel</name><dataType>String</dataType><description>Action subject.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <variables><name>batchSize</name><dataType>Number</dataType><description>Action request count.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput><scale>0</scale></variables>
+    <variables><name>batchIndex</name><dataType>Number</dataType><description>Action request index.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput><scale>0</scale></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Fault text.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput></variables>
+    <variables><name>currentContact</name><dataType>SObject</dataType><description>Current processed Contact.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput><objectType>Contact</objectType></variables>
+    <variables><name>processedContacts</name><dataType>SObject</dataType><description>Filtered and sorted related Contacts.</description><isCollection>true</isCollection><isInput>false</isInput><isOutput>false</isOutput><objectType>Contact</objectType></variables>
+    <variables><name>taskRecord</name><dataType>SObject</dataType><description>Task assembled inside the loop.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>false</isOutput><objectType>Task</objectType></variables>
+    <variables><name>taskRecords</name><dataType>SObject</dataType><description>Tasks created after the loop.</description><isCollection>true</isCollection><isInput>false</isInput><isOutput>false</isOutput><objectType>Task</objectType></variables>
+</Flow>

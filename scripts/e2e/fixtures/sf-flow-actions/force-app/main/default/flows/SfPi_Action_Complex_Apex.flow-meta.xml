@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Build_Complex_Result</name>
+        <label>Build Complex Result</label>
+        <description>Invokes the complex bulk-safe Apex input and output contract.</description>
+        <locationX>176</locationX><locationY>158</locationY>
+        <actionName>SfPiComplexFlowAction</actionName>
+        <actionType>apex</actionType>
+        <connector><targetReference>Mark_Complete</targetReference></connector>
+        <faultConnector><targetReference>Capture_Fault</targetReference></faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters><name>accountId</name><value><elementReference>accountId</elementReference></value></inputParameters>
+        <inputParameters><name>accountRecord</name><value><elementReference>accountRecord</elementReference></value></inputParameters>
+        <inputParameters><name>context</name><value><elementReference>context</elementReference></value></inputParameters>
+        <inputParameters><name>relatedContactIds</name><value><elementReference>relatedContactIds</elementReference></value></inputParameters>
+        <inputParameters><name>requestedScore</name><value><elementReference>requestedScore</elementReference></value></inputParameters>
+        <inputParameters><name>urgent</name><value><elementReference>urgent</elementReference></value></inputParameters>
+        <outputParameters><assignToReference>accountIdOutput</assignToReference><name>accountId</name></outputParameters>
+        <outputParameters><assignToReference>errorMessage</assignToReference><name>errorMessage</name></outputParameters>
+        <outputParameters><assignToReference>normalizedScore</assignToReference><name>normalizedScore</name></outputParameters>
+        <outputParameters><assignToReference>relatedCount</assignToReference><name>relatedCount</name></outputParameters>
+        <outputParameters><assignToReference>succeeded</assignToReference><name>succeeded</name></outputParameters>
+        <outputParameters><assignToReference>summary</assignToReference><name>summary</name></outputParameters>
+        <outputParameters><assignToReference>warnings</assignToReference><name>warnings</name></outputParameters>
+    </actionCalls>
+    <assignments>
+        <name>Mark_Complete</name><label>Mark Complete</label><description>Marks successful action completion.</description><locationX>176</locationX><locationY>300</locationY>
+        <assignmentItems><assignToReference>completed</assignToReference><operator>Assign</operator><value><booleanValue>true</booleanValue></value></assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Capture_Fault</name><label>Capture Fault</label><description>Returns an unhandled action fault.</description><locationX>350</locationX><locationY>300</locationY>
+        <assignmentItems><assignToReference>faultMessage</assignToReference><operator>Assign</operator><value><elementReference>$Flow.FaultMessage</elementReference></value></assignmentItems>
+    </assignments>
+    <description>Autolaunched fixture proving a complex Invocable Apex contract with scalar, sObject, collection, success, warning, and error values.</description>
+    <label>SF Pi Complex Apex Action</label>
+    <processMetadataValues><name>CanvasMode</name><value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value></processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start><locationX>50</locationX><locationY>50</locationY><connector><targetReference>Build_Complex_Result</targetReference></connector></start>
+    <status>Draft</status>
+    <variables><name>accountId</name><dataType>String</dataType><description>Account ID input.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>accountRecord</name><dataType>SObject</dataType><description>Account record input.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput><objectType>Account</objectType></variables>
+    <variables><name>context</name><dataType>String</dataType><description>Caller context input.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>relatedContactIds</name><dataType>String</dataType><description>Related Contact ID collection input.</description><isCollection>true</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>requestedScore</name><dataType>Number</dataType><description>Requested score input.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput><scale>2</scale></variables>
+    <variables><name>urgent</name><dataType>Boolean</dataType><description>Urgency input.</description><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables>
+    <variables><name>accountIdOutput</name><dataType>String</dataType><description>Account ID returned by Apex.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>summary</name><dataType>String</dataType><description>Complex result summary.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>normalizedScore</name><dataType>Number</dataType><description>Normalized score output.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput><scale>2</scale></variables>
+    <variables><name>relatedCount</name><dataType>Number</dataType><description>Related Contact count output.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput><scale>0</scale></variables>
+    <variables><name>warnings</name><dataType>String</dataType><description>Warning collection output.</description><isCollection>true</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>succeeded</name><dataType>Boolean</dataType><description>Per-request success output.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>errorMessage</name><dataType>String</dataType><description>Per-request error output.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>completed</name><dataType>Boolean</dataType><description>True after the action returns without a Flow fault.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+    <variables><name>faultMessage</name><dataType>String</dataType><description>Unhandled Flow action fault.</description><isCollection>false</isCollection><isInput>false</isInput><isOutput>true</isOutput></variables>
+</Flow>

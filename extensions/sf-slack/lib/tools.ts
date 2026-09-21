@@ -105,7 +105,7 @@ export function registerSlackTool(pi: ExtensionAPI): void {
       "Prefer slack_research for natural-language research, slack_resolve for fuzzy entities, and slack_time_range for relative dates before lower-level Slack reads.",
       "When the user supplies a canonical Slack message permalink, preserve it in thread.message_url instead of extracting channel + ts; the exact URL path avoids fuzzy recipient resolution.",
       "Start with summary/preview fields and fetch full messages or threads only for high-value results.",
-      "Read extensions/sf-slack/AGENT_GUIDE.md for auth recovery, research ordering, durable-write confirmation, and public-artifact safety.",
+      "Use the installed Slack guide path declared in <sf_engineering_constitution> for auth recovery, research ordering, durable-write confirmation, and public-artifact safety.",
     ],
     parameters: SlackParams,
     renderCall,

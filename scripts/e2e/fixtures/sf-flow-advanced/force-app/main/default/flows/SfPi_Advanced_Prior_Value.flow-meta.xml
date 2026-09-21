@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Set_Prior_Summary</name>
+        <label>Set Prior Summary</label>
+        <description>Writes the prior and current Description values to the triggering Account before save.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.Phone</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Prior_Current_Summary</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Description_Changed</name>
+        <label>Description Changed</label>
+        <description>Runs the assignment only when current and prior Description values differ.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnectorLabel>Unchanged</defaultConnectorLabel>
+        <rules>
+            <name>Changed</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>$Record.Description</leftValueReference>
+                <operator>NotEqualTo</operator>
+                <rightValue><elementReference>$Record__Prior.Description</elementReference></rightValue>
+            </conditions>
+            <connector><targetReference>Set_Prior_Summary</targetReference></connector>
+            <label>Changed</label>
+        </rules>
+    </decisions>
+    <description>Before-save Account update fixture that proves real $Record__Prior and current-value behavior.</description>
+    <formulas>
+        <name>Prior_Current_Summary</name>
+        <dataType>String</dataType>
+        <expression>&quot;prior=&quot; &amp; BLANKVALUE({!$Record__Prior.Description}, &quot;&lt;blank&gt;&quot;) &amp; &quot;;current=&quot; &amp; BLANKVALUE({!$Record.Description}, &quot;&lt;blank&gt;&quot;)</expression>
+    </formulas>
+    <label>SF Pi Advanced Prior Value</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Description_Changed</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>AccountNumber</field>
+            <operator>EqualTo</operator>
+            <value><stringValue>SFPI-ADVANCED-PRIOR</stringValue></value>
+        </filters>
+        <object>Account</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>50</triggerOrder>
+</Flow>

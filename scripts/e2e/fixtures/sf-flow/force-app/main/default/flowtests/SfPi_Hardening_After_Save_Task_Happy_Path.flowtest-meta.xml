@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlowTest xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Verifies the dedicated after-save Account fixture without committing Account or Task data.</description>
+    <doesCommitChanges>false</doesCommitChanges>
+    <flowApiName>SfPi_Hardening_After_Save_Task</flowApiName>
+    <label>SF Pi Hardening After Save Task Happy Path</label>
+    <testPoints>
+        <elementApiName>Start</elementApiName>
+        <parameters>
+            <leftValueReference>$Record</leftValueReference>
+            <type>InputTriggeringRecordInitial</type>
+            <value>
+                <sobjectValue>{&quot;AccountNumber&quot;:&quot;SFPI-AFTER-SAVE&quot;,&quot;Name&quot;:&quot;SF Pi After Save Fixture&quot;}</sobjectValue>
+            </value>
+        </parameters>
+    </testPoints>
+    <testPoints>
+        <assertions>
+            <conditions>
+                <leftValueReference>$Record.Name</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>SF Pi After Save Fixture</stringValue></rightValue>
+            </conditions>
+            <errorMessage>Expected the triggering Account Name to remain unchanged.</errorMessage>
+        </assertions>
+        <assertions>
+            <conditions>
+                <leftValueReference>$Record.AccountNumber</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>SFPI-AFTER-SAVE</stringValue></rightValue>
+            </conditions>
+            <errorMessage>Expected the triggering Account Number to remain unchanged.</errorMessage>
+        </assertions>
+        <elementApiName>Finish</elementApiName>
+    </testPoints>
+    <testType>WithAssertion</testType>
+</FlowTest>

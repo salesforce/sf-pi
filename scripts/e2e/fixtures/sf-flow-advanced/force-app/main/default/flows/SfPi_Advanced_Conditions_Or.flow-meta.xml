@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Mark_Or_Match</name>
+        <label>Mark OR Match</label>
+        <description>Marks Opportunities matching either numeric boundary.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.Description</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>SFPI entry OR matched</stringValue></value>
+        </assignmentItems>
+    </assignments>
+    <description>Before-save Opportunity fixture proving OR entry criteria and inclusive/exclusive numeric operators.</description>
+    <label>SF Pi Advanced OR Conditions</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Mark_Or_Match</targetReference></connector>
+        <filterLogic>or</filterLogic>
+        <filters><field>Amount</field><operator>GreaterThanOrEqualTo</operator><value><numberValue>9000</numberValue></value></filters>
+        <filters><field>Amount</field><operator>LessThan</operator><value><numberValue>100</numberValue></value></filters>
+        <object>Opportunity</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>100</triggerOrder>
+</Flow>
