@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.291.3](https://github.com/salesforce/sf-pi/compare/v0.291.2...v0.291.3) (2026-09-21)
+
+
+### Bug Fixes
+
+* **deps:** update GitHub Actions and migrate OSV scan args ([#716](https://github.com/salesforce/sf-pi/issues/716)) ([a702189](https://github.com/salesforce/sf-pi/commit/a70218909d33870d177457ff25f24f90b86770d5))
+
 ## [0.291.2](https://github.com/salesforce/sf-pi/compare/v0.291.1...v0.291.2) (2026-09-21)
 
 
