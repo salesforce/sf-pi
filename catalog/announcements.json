@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.291.2-2026-09-21",
-  "latestVersion": "0.291.2",
+  "revision": "release-0.291.3-2026-09-21",
+  "latestVersion": "0.291.3",
   "announcements": [
     {
-      "id": "release-0.291.2",
+      "id": "release-0.291.3",
       "kind": "update",
-      "title": "sf-pi v0.291.2 — deps-dev: update compatible development dependencies",
+      "title": "sf-pi v0.291.3 — deps: update GitHub Actions and migrate OSV scan args",
       "publishedAt": "2026-09-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.291.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.291.3",
       "severity": "info",
-      "body": "deps-dev: update compatible development dependencies"
+      "body": "deps: update GitHub Actions and migrate OSV scan args"
     }
   ]
 }
