@@ -12,6 +12,7 @@
  *   session_start             | Reset assist state
  *   session_shutdown          | Reset assist state
  *   tool_result (write/edit)  | Compile `.agent` files in-process; append LSP feedback
+ *   agent_before_settle       | Run quality and optionally continue with one repair turn
  *   /sf-agentscript           | Open SF Agent Script in the SF Pi Manager (or run subcommand)
  *   /sf-agentscript doctor    | Show official SDK package status + readiness
  *   /sf-agentscript check     | Manually compile a `.agent` file

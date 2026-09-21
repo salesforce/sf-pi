@@ -13,7 +13,7 @@
  *   extension load            | Register /sf-code-analyzer and doctor provider
  *   session_start             | Register code_analyzer tool when enabled
  *   tool_result               | Collect successful write/edit targets
- *   agent_settled             | Run one readiness-gated deferred scan
+ *   agent_before_settle       | Run one scan and optionally continue with repair
  *   session_shutdown          | Clear deferred state and registration latch
  *   /sf-code-analyzer         | Open SF Code Analyzer in the SF Pi Manager
  *   /sf-code-analyzer status  | Print readiness and tool status

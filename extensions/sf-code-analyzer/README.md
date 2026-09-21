@@ -8,12 +8,14 @@ SF Code Analyzer provides a focused wrapper around the supported
 - explicit scans, rule discovery, config generation, recipes, and prior-report
   summaries through one `code_analyzer` family tool;
 - readiness diagnostics through `/sf-code-analyzer` and `/sf-pi doctor`;
-- narrow deferred scans after successful Pi `write` or `edit` results;
+- narrow deferred scans at Pi's actionable pre-settlement boundary after successful `write` or `edit` results;
 - explicit org-backed ApexGuru analysis when the target supports it;
 - session-scoped report artifacts and bounded result cards.
 
 Automatic scans are quality feedback for files the agent just touched, not a
-replacement for full-project, AppExchange, or CI scans.
+replacement for full-project, AppExchange, or CI scans. Clean results remain
+human-only; actionable findings persist one hidden repair instruction and use
+Pi's native one-continuation boundary instead of queueing an out-of-band message.
 
 ## Automatic and explicit scans
 

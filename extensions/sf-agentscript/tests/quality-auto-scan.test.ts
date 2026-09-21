@@ -52,6 +52,22 @@ function result(findings: AgentScriptQualityResult["findings"]): AgentScriptQual
   };
 }
 
+function beforeSettleEvent(entries: unknown[] = []) {
+  return {
+    type: "agent_before_settle",
+    entries,
+    continue: false,
+    outcome: "completed",
+    context: {
+      contextEntries: [],
+      contextMessages: [],
+      llmMessages: [],
+      pendingMessages: [],
+      canContinue: true,
+    },
+  };
+}
+
 const finding = {
   rule_id: "unused-action" as const,
   rule_name: "Unused Action",
@@ -62,7 +78,7 @@ const finding = {
 };
 
 describe("deferred Agent Script quality", () => {
-  it("waits for agent_settled and sends one repair follow-up for High/Moderate", async () => {
+  it("returns one actionable repair boundary for High/Moderate findings", async () => {
     const { pi, handlers } = harness();
     const file = path.join(cwd, "A.agent");
     await writeFile(file, "x");
@@ -76,7 +92,12 @@ describe("deferred Agent Script quality", () => {
       ctx,
     );
     expect(pi.sendMessage).not.toHaveBeenCalled();
-    await handlers.get("agent_settled")?.[0]?.({}, ctx);
+    expect(handlers.get("agent_settled")).toBeUndefined();
+    const prior = { type: "custom", customType: "prior-handler", data: { ok: true } };
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(
+      beforeSettleEvent([prior]),
+      ctx,
+    );
     expect(pi.appendEntry).toHaveBeenCalledWith(
       AGENT_SCRIPT_QUALITY_ENTRY_TYPE,
       expect.objectContaining({
@@ -86,19 +107,25 @@ describe("deferred Agent Script quality", () => {
       }),
     );
     expect(pi.sendUserMessage).not.toHaveBeenCalled();
-    expect(pi.sendMessage).toHaveBeenCalledOnce();
-    const [message, options] = pi.sendMessage.mock.calls[0] ?? [];
-    expect(message).toMatchObject({
-      customType: "sf-agentscript-quality-repair",
-      display: false,
+    expect(pi.sendMessage).not.toHaveBeenCalled();
+    expect(boundary).toMatchObject({
+      entries: [
+        prior,
+        {
+          type: "custom_message",
+          customType: "sf-agentscript-quality-repair",
+          display: false,
+        },
+      ],
+      continue: true,
     });
+    const message = (boundary as { entries?: Array<{ content?: unknown }> })?.entries?.[1];
     expect(JSON.parse(String(message?.content))).toMatchObject({
       version: 1,
       task: "repair_agent_script_quality",
       attempt: 1,
       findings: [expect.objectContaining({ rule_id: "unused-action", severity: "moderate" })],
     });
-    expect(options).toEqual({ triggerTurn: true, deliverAs: "followUp" });
   });
 
   it("keeps clean and low/info-only results human-only", async () => {
@@ -114,7 +141,8 @@ describe("deferred Agent Script quality", () => {
       { isError: false, input: { path: file }, toolName: "edit" },
       ctx,
     );
-    await handlers.get("agent_settled")?.[0]?.({}, ctx);
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx);
+    expect(boundary).toBeUndefined();
     expect(pi.appendEntry).toHaveBeenCalledWith(
       AGENT_SCRIPT_QUALITY_ENTRY_TYPE,
       expect.objectContaining({ state: "passed" }),
@@ -132,14 +160,17 @@ describe("deferred Agent Script quality", () => {
       runQualityFile: async () => result([finding]),
     });
     const ctx = { cwd } as never;
+    const boundaries = [];
     for (let turn = 0; turn < 2; turn++) {
       await handlers.get("tool_result")?.[0]?.(
         { isError: false, input: { path: file }, toolName: "edit" },
         ctx,
       );
-      await handlers.get("agent_settled")?.[0]?.({}, ctx);
+      boundaries.push(await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx));
     }
-    expect(pi.sendMessage).toHaveBeenCalledOnce();
+    expect(boundaries[0]).toMatchObject({ continue: true });
+    expect(boundaries[1]).toBeUndefined();
+    expect(pi.sendMessage).not.toHaveBeenCalled();
     expect(pi.appendEntry).toHaveBeenLastCalledWith(
       AGENT_SCRIPT_QUALITY_ENTRY_TYPE,
       expect.objectContaining({ state: "stopped" }),
@@ -156,17 +187,20 @@ describe("deferred Agent Script quality", () => {
       runQualityFile: async () => (pass++ === 0 ? result([finding]) : result([])),
     });
     const ctx = { cwd } as never;
+    const boundaries = [];
     for (let turn = 0; turn < 2; turn++) {
       await handlers.get("tool_result")?.[0]?.(
         { isError: false, input: { path: file }, toolName: "edit" },
         ctx,
       );
-      await handlers.get("agent_settled")?.[0]?.({}, ctx);
+      boundaries.push(await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx));
     }
+    expect(boundaries[0]).toMatchObject({ continue: true });
+    expect(boundaries[1]).toBeUndefined();
     expect(pi.appendEntry).toHaveBeenLastCalledWith(
       AGENT_SCRIPT_QUALITY_ENTRY_TYPE,
       expect.objectContaining({ state: "fixed", repair: expect.objectContaining({ attempt: 1 }) }),
     );
-    expect(pi.sendMessage).toHaveBeenCalledOnce();
+    expect(pi.sendMessage).not.toHaveBeenCalled();
   });
 });

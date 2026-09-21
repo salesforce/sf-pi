@@ -17,7 +17,7 @@ afterEach(() => {
   rmSync(cwd, { recursive: true, force: true });
 });
 
-type EventHandler = (event: unknown, ctx: ExtensionContext) => Promise<void> | void;
+type EventHandler = (event: unknown, ctx: ExtensionContext) => Promise<unknown> | unknown;
 
 function harness() {
   const handlers = new Map<string, EventHandler[]>();
@@ -36,6 +36,22 @@ function harness() {
 
 function ctx(): ExtensionContext {
   return { cwd } as ExtensionContext;
+}
+
+function beforeSettleEvent(entries: unknown[] = []) {
+  return {
+    type: "agent_before_settle",
+    entries,
+    continue: false,
+    outcome: "completed",
+    context: {
+      contextEntries: [],
+      contextMessages: [],
+      llmMessages: [],
+      pendingMessages: [],
+      canContinue: true,
+    },
+  };
 }
 
 function writeResult(file: string): ToolResultEvent {
@@ -66,7 +82,7 @@ function readyDeps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("deferred Code Analyzer auto-scan orchestration", () => {
-  it("waits for agent_settled instead of scanning at agent_end", async () => {
+  it("waits for agent_before_settle instead of scanning at agent_end", async () => {
     const { pi, handlers } = harness();
     const runCodeAnalyzer = vi.fn();
 
@@ -78,8 +94,9 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
     expect(handlers.get("agent_end")).toBeUndefined();
+    expect(handlers.get("agent_settled")).toBeUndefined();
 
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx());
 
     expect(runCodeAnalyzer).toHaveBeenCalledOnce();
   });
@@ -100,8 +117,9 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     });
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx());
 
+    expect(boundary).toBeUndefined();
     expect(runCodeAnalyzer).not.toHaveBeenCalled();
     expect(pi.sendUserMessage).not.toHaveBeenCalled();
     expect(pi.appendEntry).toHaveBeenCalledWith(
@@ -133,8 +151,9 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx());
 
+    expect(boundary).toBeUndefined();
     expect(runCodeAnalyzer).toHaveBeenCalledOnce();
     expect(runCodeAnalyzer.mock.calls[0][2]).toMatchObject({
       rule_selector: ["eslint:Recommended"],
@@ -195,13 +214,26 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("classes/Foo.cls"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const prior = { type: "custom", customType: "prior-handler", data: { ok: true } };
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(
+      beforeSettleEvent([prior]),
+      ctx(),
+    );
 
-    expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-    expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ApexCRUDViolation"), {
-      deliverAs: "followUp",
-    });
+    expect(pi.sendUserMessage).not.toHaveBeenCalled();
     expect(pi.sendMessage).not.toHaveBeenCalled();
+    expect(boundary).toEqual({
+      entries: [
+        prior,
+        expect.objectContaining({
+          type: "custom_message",
+          customType: "sf-code-analyzer-auto-scan-repair",
+          content: expect.stringContaining("ApexCRUDViolation"),
+          display: false,
+        }),
+      ],
+      continue: true,
+    });
   });
 
   it("preserves successful group findings and report paths when another group fails", async () => {
@@ -223,14 +255,16 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
     await handlers.get("tool_result")?.[0]?.(writeResult("classes/Foo.cls"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx());
 
     expect(runCodeAnalyzer).toHaveBeenCalledTimes(2);
     expect(pi.appendEntry).toHaveBeenCalledWith(
       "sf-code-analyzer",
       expect.objectContaining({ content: expect.stringContaining("eslint unavailable") }),
     );
-    const followUp = String(pi.sendUserMessage.mock.calls[0]?.[0]);
+    const followUp = String(
+      (boundary as { entries?: Array<{ content?: unknown }> })?.entries?.[0]?.content,
+    );
     expect(followUp).toContain("ApexCRUDViolation");
     expect(followUp).toContain("/tmp/pmd-partial.json");
   });
@@ -265,11 +299,14 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("classes/Foo.cls"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx());
 
     expect(order).toEqual(["local", "apexguru"]);
-    expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("AvoidExpensiveApex"), {
-      deliverAs: "followUp",
+    expect(boundary).toMatchObject({
+      entries: [
+        expect.objectContaining({ content: expect.stringContaining("AvoidExpensiveApex") }),
+      ],
+      continue: true,
     });
   });
 
@@ -299,8 +336,9 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("classes/Foo.cls"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx());
 
+    expect(boundary).toBeUndefined();
     expect(runApexGuru).not.toHaveBeenCalled();
     expect(pi.appendEntry).toHaveBeenCalledWith(
       "sf-code-analyzer",
@@ -325,12 +363,20 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const firstBoundary = await handlers.get("agent_before_settle")?.[0]?.(
+      beforeSettleEvent(),
+      ctx(),
+    );
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const secondBoundary = await handlers.get("agent_before_settle")?.[0]?.(
+      beforeSettleEvent(),
+      ctx(),
+    );
 
     expect(runCodeAnalyzer).toHaveBeenCalledTimes(2);
-    expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+    expect(firstBoundary).toMatchObject({ continue: true });
+    expect(secondBoundary).toBeUndefined();
+    expect(pi.sendUserMessage).not.toHaveBeenCalled();
     expect(pi.appendEntry).toHaveBeenCalledWith(
       "sf-code-analyzer",
       expect.objectContaining({ content: expect.stringContaining("repair loop stopped") }),
@@ -358,9 +404,11 @@ describe("deferred Code Analyzer auto-scan orchestration", () => {
     );
 
     await handlers.get("tool_result")?.[0]?.(writeResult("src/foo.ts"), ctx());
-    await handlers.get("agent_settled")?.[0]?.({}, ctx());
+    const boundary = await handlers.get("agent_before_settle")?.[0]?.(beforeSettleEvent(), ctx());
 
-    const followUp = String(pi.sendUserMessage.mock.calls[0]?.[0]);
+    const followUp = String(
+      (boundary as { entries?: Array<{ content?: unknown }> })?.entries?.[0]?.content,
+    );
     expect(followUp).toContain("Optional broader validation:");
     expect(followUp).toContain(guidance);
   });

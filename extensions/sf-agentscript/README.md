@@ -97,8 +97,10 @@ intent; SF Guardrail owns the distinct human approval.
 
 Manager settings under `sfPi.agentScript` provide low-risk defaults for preview
 mock mode, eval trace mode, eval concurrency, deferred quality analysis, and the
-global per-rule quality catalog. Quality controls are global-only and read
-dynamically; explicit tool arguments win for one call.
+global per-rule quality catalog. Deferred analysis runs at Pi's actionable
+pre-settlement boundary; High/Moderate findings persist one hidden repair
+instruction and request one native continuation. Quality controls are global-only
+and read dynamically; explicit tool arguments win for one call.
 
 ## Safety and Data Boundaries
 

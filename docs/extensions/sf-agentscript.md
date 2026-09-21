@@ -31,6 +31,7 @@ Open its Manager detail or change its package state with:
 ## Safety notes
 
 - Compile-on-save stays silent on unsupported files and on failed write/edit results; only enabled edit-time High hardening rules join that feedback.
+- Deferred quality repair uses Pi's actionable pre-settlement boundary after retries and queued user work finish.
 - Global per-rule quality toggles dynamically control reporting, repair, metrics, and local-file publication gating without a reload.
 - Quality cards show every finding header by default; overlong variable descriptions gate publication, while official instruction-template diagnostics remain pre-activation recommendations.
 - Eval, trace, preview, and lifecycle calls reuse @salesforce/core / SF CLI auth context; timeout-sensitive HTTP may use bounded native fetch and never logs or persists tokens.
@@ -62,7 +63,7 @@ Open its Manager detail or change its package state with:
 - **Commands:** `/sf-agentscript`
 - **LLM tools:** `agentscript_authoring`, `agentscript_preview`, `agentscript_eval`, `agentscript_lifecycle`
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`, `tool_result`, `agent_settled`
+- **Events/hooks:** `session_start`, `session_shutdown`, `tool_result`, `agent_before_settle`
 
 </details>
 

@@ -107,7 +107,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0115: SF Flow quality uses white-room behavioral parity](./0115-sf-flow-quality-uses-white-room-behavioral-parity.md) — 2026-09-19
 - [0116: SF Flow repairs are bounded and source-bound](./0116-sf-flow-repairs-are-bounded-and-source-bound.md) — 2026-09-19
 - [0117: SF Flow authoring grounding and live fixtures are bounded](./0117-sf-flow-authoring-grounding-and-live-fixtures-are-bounded.md) — 2026-09-19
-- [0118: Pi 0.86.0 Runtime Floor](./0118-pi-086-runtime-floor.md) — 2026-09-21
+- [0119: Pi 0.87 Runtime Floor and Actionable Settlement](./0119-pi-087-runtime-floor-and-actionable-settlement.md) — 2026-09-21
 
 ## Proposed
 
@@ -131,6 +131,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0073: SF Docs routes Developer reference lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md) — 2026-07-04 — superseded by [ADR 0113](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md)
 - [0088: Pi 0.82.0 Runtime Floor](./0088-pi-082-runtime-floor.md) — 2026-07-27 — superseded by [ADR 0109](./0109-pi-084-runtime-floor.md)
 - [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25 — superseded by [ADR 0118](./0118-pi-086-runtime-floor.md)
+- [0118: Pi 0.86.0 Runtime Floor](./0118-pi-086-runtime-floor.md) — 2026-09-21 — superseded by [ADR 0119](./0119-pi-087-runtime-floor-and-actionable-settlement.md)
 
 ### Rejected
 

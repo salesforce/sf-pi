@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Deferred post-agent Code Analyzer quality pass.
+ * Actionable pre-settlement Code Analyzer quality pass.
  *
  * The hook records files changed by successful write/edit tool results and waits
- * until `agent_settled` before running Code Analyzer. This lets Pi finish any
- * automatic retry, compaction retry, or queued follow-up before quality feedback
- * steers a repair loop.
+ * until `agent_before_settle` before running Code Analyzer. Pi has finished any
+ * automatic retry, recovery compaction, or queued user work, while the boundary
+ * can still persist one repair instruction and request one continuation.
  */
 import path from "node:path";
 import type {
@@ -37,6 +37,7 @@ import type { CodeAnalyzerReportSummary } from "./types.ts";
 
 const AUTO_SCAN_TIMEOUT_MS = 30_000;
 const AUTO_APEXGURU_BATCH_TIMEOUT_MS = 60_000;
+const AUTO_SCAN_REPAIR_MESSAGE_TYPE = "sf-code-analyzer-auto-scan-repair";
 
 interface ScanOutcome {
   selector: string;
@@ -67,15 +68,14 @@ export function registerDeferredCodeAnalyzerAutoScan(
   const readReadiness = deps.readReadiness ?? readCodeAnalyzerReadiness;
   const isReady = deps.isReadyForAutoScan ?? isCodeAnalyzerReadyForAutoScan;
   const pendingFiles = new Set<string>();
-  let running = false;
   let lastViolationSignature: string | undefined;
 
   pi.on("tool_result", async (event, ctx) => {
     collectChangedFile(event, ctx, pendingFiles);
   });
 
-  pi.on("agent_settled", async (_event, ctx) => {
-    if (running || pendingFiles.size === 0) return;
+  pi.on("agent_before_settle", async (event, ctx) => {
+    if (pendingFiles.size === 0) return;
     const settings = readSettings(ctx.cwd);
     if (!settings.autoScan) {
       pendingFiles.clear();
@@ -94,7 +94,6 @@ export function registerDeferredCodeAnalyzerAutoScan(
       return;
     }
 
-    running = true;
     const files = [...pendingFiles].sort();
     pendingFiles.clear();
     try {
@@ -151,19 +150,33 @@ export function registerDeferredCodeAnalyzerAutoScan(
           .filter(Boolean)
           .join("\n"),
       });
-      if (followUp) pi.sendUserMessage(followUp, { deliverAs: "followUp" });
+      if (followUp) {
+        return {
+          entries: [
+            ...event.entries,
+            {
+              type: "custom_message" as const,
+              customType: AUTO_SCAN_REPAIR_MESSAGE_TYPE,
+              content: followUp,
+              display: false,
+              details: {
+                violation_count: violations.length,
+                report_count: reports.length,
+              },
+            },
+          ],
+          continue: true,
+        };
+      }
     } catch (error) {
       emitCodeAnalyzerTranscript(pi, `[sf-code-analyzer] deferred scan error · ${message(error)}`, {
         status: "error",
       });
-    } finally {
-      running = false;
     }
   });
 
   pi.on("session_shutdown", () => {
     pendingFiles.clear();
-    running = false;
     lastViolationSignature = undefined;
   });
 }

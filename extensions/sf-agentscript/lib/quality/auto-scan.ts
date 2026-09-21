@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Deferred post-agent native Agent Script quality pass and bounded repair loop. */
+/** Actionable pre-settlement Agent Script quality pass and bounded repair loop. */
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -34,7 +34,6 @@ export function registerDeferredAgentScriptQuality(
   const pending = new Set<string>();
   const signatures = new Map<string, string>();
   const attempts = new Map<string, number>();
-  let running = false;
   const readSettings = deps.readSettings ?? readEffectiveAgentScriptQualitySettings;
   const runQualityFile = deps.runQualityFile ?? runFile;
 
@@ -42,80 +41,77 @@ export function registerDeferredAgentScriptQuality(
     collectFile(event, ctx, pending);
   });
 
-  pi.on("agent_settled", async () => {
-    if (running || pending.size === 0) return;
+  pi.on("agent_before_settle", async (event) => {
+    if (pending.size === 0) return;
     if (!readSettings().autoRun) {
       pending.clear();
       return;
     }
-    running = true;
+
     const files = [...pending].sort();
+    const entries = [...event.entries];
     pending.clear();
-    try {
-      for (const file of files) {
-        const quality = await runQualityFile(file);
-        const actionable = quality.findings.filter(
-          (finding) => finding.severity === "high" || finding.severity === "moderate",
-        );
-        const signature = findingSignature(actionable);
-        const priorAttempt = attempts.get(file) ?? 0;
+    for (const file of files) {
+      const quality = await runQualityFile(file);
+      const actionable = quality.findings.filter(
+        (finding) => finding.severity === "high" || finding.severity === "moderate",
+      );
+      const signature = findingSignature(actionable);
+      const priorAttempt = attempts.get(file) ?? 0;
 
-        if (!quality.ok || quality.status === "failed" || actionable.length === 0) {
-          emitQualityCard(pi, file, quality, {
-            ...(quality.status === "clean" && priorAttempt > 0
-              ? {
-                  state: "fixed" as const,
-                  repair: { attempt: priorAttempt, signature: signatures.get(file) ?? "" },
-                }
-              : {}),
-          });
-          signatures.delete(file);
-          attempts.delete(file);
-          continue;
-        }
-
-        if (signatures.get(file) === signature) {
-          emitQualityCard(pi, file, quality, {
-            state: "stopped",
-            repair: { attempt: Math.max(1, priorAttempt), signature },
-            message: "No further automatic repair was scheduled.",
-          });
-          continue;
-        }
-
-        const attempt = priorAttempt + 1;
-        signatures.set(file, signature);
-        attempts.set(file, attempt);
+      if (!quality.ok || quality.status === "failed" || actionable.length === 0) {
         emitQualityCard(pi, file, quality, {
-          state: "repairing",
-          repair: { attempt, signature },
+          ...(quality.status === "clean" && priorAttempt > 0
+            ? {
+                state: "fixed" as const,
+                repair: { attempt: priorAttempt, signature: signatures.get(file) ?? "" },
+              }
+            : {}),
         });
-        const payload = buildQualityRepairPayload(file, actionable, attempt, signature);
-        pi.sendMessage(
-          {
-            customType: AGENT_SCRIPT_QUALITY_REPAIR_MESSAGE_TYPE,
-            content: JSON.stringify(payload),
-            display: false,
-            details: {
-              file,
-              attempt,
-              finding_signature: signature,
-              finding_count: payload.findings.length,
-            },
-          },
-          { triggerTurn: true, deliverAs: "followUp" },
-        );
+        signatures.delete(file);
+        attempts.delete(file);
+        continue;
       }
-    } finally {
-      running = false;
+
+      if (signatures.get(file) === signature) {
+        emitQualityCard(pi, file, quality, {
+          state: "stopped",
+          repair: { attempt: Math.max(1, priorAttempt), signature },
+          message: "No further automatic repair was scheduled.",
+        });
+        continue;
+      }
+
+      const attempt = priorAttempt + 1;
+      signatures.set(file, signature);
+      attempts.set(file, attempt);
+      emitQualityCard(pi, file, quality, {
+        state: "repairing",
+        repair: { attempt, signature },
+      });
+      const payload = buildQualityRepairPayload(file, actionable, attempt, signature);
+      entries.push({
+        type: "custom_message",
+        customType: AGENT_SCRIPT_QUALITY_REPAIR_MESSAGE_TYPE,
+        content: JSON.stringify(payload),
+        display: false,
+        details: {
+          file,
+          attempt,
+          finding_signature: signature,
+          finding_count: payload.findings.length,
+        },
+      });
     }
+
+    if (entries.length === event.entries.length) return;
+    return { entries, continue: true };
   });
 
   pi.on("session_shutdown", () => {
     pending.clear();
     signatures.clear();
     attempts.clear();
-    running = false;
   });
 }
 

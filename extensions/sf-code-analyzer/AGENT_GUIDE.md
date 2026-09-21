@@ -13,6 +13,7 @@ Use `code_analyzer` for explicit Salesforce static-analysis, rule discovery, con
 
 ## Boundaries
 
+- Automatic deferred scans run at Pi's `agent_before_settle` boundary; clean evidence stays human-only and actionable findings may request one native continuation.
 - Automatic deferred scans and explicit user-requested scans are different workflows; do not turn every edit into a broad scan.
 - Severity 1–2 findings are high-signal repair evidence. Lower-severity findings remain contextual and should not drive unrelated rewrites.
 - `apexguru` is an explicit org-backed Apex performance analysis for one file.

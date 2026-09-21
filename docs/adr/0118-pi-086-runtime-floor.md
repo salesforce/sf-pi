@@ -1,8 +1,9 @@
 ---
 id: "0118"
-status: accepted
+status: superseded
 date: "2026-09-21"
 supersedes: ["0109"]
+supersededBy: ["0119"]
 ---
 
 # ADR 0118: Pi 0.86.0 Runtime Floor

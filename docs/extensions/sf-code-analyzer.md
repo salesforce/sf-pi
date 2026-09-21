@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Wraps the supported `sf code-analyzer` CLI contract with a pi-native command panel and one `code_analyzer` family tool for doctor, run, rules, config, ApexGuru, ApexGuru setup-help, and last-report workflows. Reports are written as session-scoped artifacts outside the project tree by default with summary / inline / file_only output modes. Deferred post-agent local quality scans are readiness-gated and run after the agent finishes an edit pass.
+Wraps the supported `sf code-analyzer` CLI contract with a pi-native command panel and one `code_analyzer` family tool for doctor, run, rules, config, ApexGuru, ApexGuru setup-help, and last-report workflows. Reports are written as session-scoped artifacts outside the project tree by default with summary / inline / file_only output modes. Deferred local quality scans run at Pi's actionable pre-settlement boundary after the agent finishes an edit pass.
 
 ## Start
 
@@ -48,7 +48,7 @@ Open its Manager detail or change its package state with:
 - **Commands:** `/sf-code-analyzer`
 - **LLM tools:** `code_analyzer`
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `tool_result`, `agent_settled`, `session_shutdown`
+- **Events/hooks:** `session_start`, `tool_result`, `agent_before_settle`, `session_shutdown`
 
 </details>
 

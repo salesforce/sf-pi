@@ -103,8 +103,8 @@ describe("pi version floor", () => {
       devDependencies?: Record<string, string>;
     };
 
-    expect(MIN_PI_VERSION).toBe("0.86.0");
-    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.86.0 <1.0.0");
+    expect(MIN_PI_VERSION).toBe("0.87.0");
+    expect(pkg.peerDependencies?.["@earendil-works/pi-coding-agent"]).toBe(">=0.87.0 <1.0.0");
     expect(pkg.peerDependencies?.["@earendil-works/pi-ai"]).toBe("*");
     expect(pkg.peerDependencies?.["@earendil-works/pi-tui"]).toBe("*");
     expect(pkg.devDependencies?.["@earendil-works/pi-coding-agent"]).toBe("0.87.0");
@@ -115,15 +115,15 @@ describe("pi version floor", () => {
 
 describe("Pi compatibility policy", () => {
   it("distinguishes audited, forward-compatible, and blocked releases", () => {
-    expect(MIN_PI_VERSION).toBe("0.86.0");
+    expect(MIN_PI_VERSION).toBe("0.87.0");
     expect(AUDITED_MAX_PI_VERSION_EXCLUSIVE).toBe("0.88.0");
     expect(HARD_MAX_PI_VERSION_EXCLUSIVE).toBe("1.0.0");
     expect(RECOMMENDED_PI_VERSION).toBe("0.87.0");
 
     expect(classifyPiVersion("0.84.0")).toBe("too-old");
     expect(classifyPiVersion("0.85.1")).toBe("too-old");
-    expect(classifyPiVersion("0.86.0+build-1")).toBe("audited");
-    expect(classifyPiVersion("0.86.1")).toBe("audited");
+    expect(classifyPiVersion("0.86.0+build-1")).toBe("too-old");
+    expect(classifyPiVersion("0.86.1")).toBe("too-old");
     expect(classifyPiVersion("0.87.0")).toBe("audited");
     expect(classifyPiVersion("0.88.0")).toBe("forward-compatible");
     expect(classifyPiVersion("0.99.0")).toBe("forward-compatible");
@@ -131,8 +131,9 @@ describe("Pi compatibility policy", () => {
     expect(classifyPiVersion("1.0.0")).toBe("major-version");
 
     expect(isPiVersionLoadable("0.85.1")).toBe(false);
-    expect(isPiVersionLoadable("0.86.0")).toBe(true);
-    expect(isPiVersionLoadable("0.86.1")).toBe(true);
+    expect(isPiVersionLoadable("0.86.0")).toBe(false);
+    expect(isPiVersionLoadable("0.86.1")).toBe(false);
+    expect(isPiVersionLoadable("0.87.0")).toBe(true);
     expect(isPiVersionLoadable("0.87.0-rc.1")).toBe(false);
     expect(isPiVersionLoadable("1.0.0")).toBe(false);
   });

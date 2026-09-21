@@ -35,7 +35,7 @@ Inside Pi:
 ```
 
 The supported Pi range is currently
-`>=0.86.0 <1.0.0`.
+`>=0.87.0 <1.0.0`.
 
 See [Installation](./docs/install.md) for updates, project-local setup, platform
 notes, fonts, and recovery. Follow [Quickstart](./docs/quickstart.md) for a first

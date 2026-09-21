@@ -143,10 +143,11 @@ events, and the supported availability union of tools match each extension
 manifest bidirectionally.
 _Avoid_: source-string registration proof, conditional-tool allowlist
 
-**Agent-Settled Quality Gate**:
-A post-agent check that runs only after Pi has no automatic retry, compaction
-retry, or queued follow-up left.
-_Avoid_: per-tool streaming lint, immediate background scan
+**Actionable Settlement Quality Gate**:
+A pre-settlement check that runs only after Pi has no automatic retry, recovery
+compaction, or queued user work left, then may persist bounded repair context and
+request one native continuation.
+_Avoid_: notification-only repair scheduling, per-tool streaming lint
 
 **Last-Known Usable Status**:
 The newest successful status snapshot still useful for human orientation when a

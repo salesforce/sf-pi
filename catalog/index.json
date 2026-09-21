@@ -22,7 +22,7 @@
       "session_start",
       "session_shutdown",
       "tool_result",
-      "agent_settled"
+      "agent_before_settle"
     ],
     "docs": {
       "intentGroup": "Build agents",
@@ -39,6 +39,7 @@
       ],
       "safety": [
         "Compile-on-save stays silent on unsupported files and on failed write/edit results; only enabled edit-time High hardening rules join that feedback.",
+        "Deferred quality repair uses Pi's actionable pre-settlement boundary after retries and queued user work finish.",
         "Global per-rule quality toggles dynamically control reporting, repair, metrics, and local-file publication gating without a reload.",
         "Quality cards show every finding header by default; overlong variable descriptions gate publication, while official instruction-template diagnostics remain pre-activation recommendations.",
         "Eval, trace, preview, and lifecycle calls reuse @salesforce/core / SF CLI auth context; timeout-sensitive HTTP may use bounded native fetch and never logs or persists tokens.",
@@ -68,7 +69,7 @@
     "entry": "extensions/sf-agentscript/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 37599
+    "srcLoc": 37594
   },
   {
     "id": "sf-apex",
@@ -247,13 +248,13 @@
     "events": [
       "session_start",
       "tool_result",
-      "agent_settled",
+      "agent_before_settle",
       "session_shutdown"
     ],
     "docs": {
       "intentGroup": "Build agents",
       "agentGuide": "AGENT_GUIDE.md",
-      "summary": "Wraps the supported `sf code-analyzer` CLI contract with a pi-native command panel and one `code_analyzer` family tool for doctor, run, rules, config, ApexGuru, ApexGuru setup-help, and last-report workflows. Reports are written as session-scoped artifacts outside the project tree by default with summary / inline / file_only output modes. Deferred post-agent local quality scans are readiness-gated and run after the agent finishes an edit pass.",
+      "summary": "Wraps the supported `sf code-analyzer` CLI contract with a pi-native command panel and one `code_analyzer` family tool for doctor, run, rules, config, ApexGuru, ApexGuru setup-help, and last-report workflows. Reports are written as session-scoped artifacts outside the project tree by default with summary / inline / file_only output modes. Deferred local quality scans run at Pi's actionable pre-settlement boundary after the agent finishes an edit pass.",
       "primaryFiles": [
         "index.ts",
         "lib/code_analyzer-tool.ts",
@@ -274,7 +275,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4462
+    "srcLoc": 4475
   },
   {
     "id": "sf-data-explorer",

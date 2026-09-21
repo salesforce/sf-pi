@@ -8,7 +8,7 @@ date: 2026-07-22
 
 SF Pi distinguishes **loadable** Pi releases from **audited** Pi releases. Lack of an audit is not evidence of incompatibility, so a newly published stable Pi 0.x release must not preemptively disable every SF Pi extension.
 
-ADR 0118 raises the hard loadable range to stable Pi `>=0.86.0 <1.0.0`. Runtimes below the floor, prereleases, and Pi 1.x or later remain blocked with bounded repair guidance. The current required-CI audit range is `>=0.86.0 <0.88.0`: exact Pi 0.86.0 is the floor check, while exact Pi 0.87.0 is used for normal development, repair, and the latest audited edge.
+ADR 0119 raises the hard loadable range to stable Pi `>=0.87.0 <1.0.0`. Runtimes below the floor, prereleases, and Pi 1.x or later remain blocked with bounded repair guidance. The current required-CI audit range is `>=0.87.0 <0.88.0`: exact Pi 0.87.0 is the floor check, normal development runtime, repair recommendation, and latest audited edge.
 
 When a stable runtime is inside the hard range but above the audit ceiling, SF Pi:
 
@@ -18,9 +18,9 @@ When a stable runtime is inside the hard range but above the audit ceiling, SF P
 4. does not recommend a downgrade without a concrete failure; and
 5. allows Pi's native update surface to offer the release.
 
-Package metadata follows the hard range (`>=0.86.0 <1.0.0`) so npm does not reject a newly published stable Pi 0.x release. Development dependencies remain pinned to the latest exact audited runtime. Required nightly compatibility starts at the 0.86.0 floor; a non-blocking `latest` canary reports future drift so maintainers can advance the audit ceiling after evidence arrives.
+Package metadata follows the hard range (`>=0.87.0 <1.0.0`) so npm does not reject a newly published stable Pi 0.x release. Development dependencies remain pinned to the latest exact audited runtime. Required nightly compatibility covers exact Pi 0.87.0; a non-blocking `latest` canary reports future drift so maintainers can advance the audit ceiling after evidence arrives.
 
-The Pi 0.86.0 floor and Pi 0.87.0 edge audits establish compatibility for complete Providers, transcript-backed provider contexts, authentication, extension lifecycle, custom TUI behavior, compaction, and retry recovery. Exact-runtime type checking and full suites cover provider registration, provider-neutral Gateway dispatch, Docs/Slack auth-only providers, credential resolution, lifecycle teardown, and shared masked input.
+The Pi 0.87.0 floor and edge audit establishes compatibility for complete Providers, canonical session context, actionable extension boundaries, authentication, custom TUI behavior, compaction, and retry recovery. Exact-runtime type checking and full suites cover provider registration, provider-neutral Gateway dispatch, Docs/Slack auth-only providers, credential resolution, lifecycle teardown, shared masked input, and actionable settlement quality gates.
 
 Earlier Pi releases rendered values submitted through the stock secret prompt, and the audit through Pi 0.87 provides no replacement **Secure Credential Prompt Proof**. Gateway, SF Docs, and SF Slack therefore continue to use ADR 0087's shared fixed-mask component. Pi alone owns credential persistence and logout.
 
