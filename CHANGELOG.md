@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.291.1](https://github.com/salesforce/sf-pi/compare/v0.291.0...v0.291.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* **deps:** bump the prod-minor-and-patch group with 3 updates ([#708](https://github.com/salesforce/sf-pi/issues/708)) ([3ecc493](https://github.com/salesforce/sf-pi/commit/3ecc4934421881770dbf2c2484840cb5da173224))
+* **sf-slack:** read direct permalinks without resolver prompt ([#698](https://github.com/salesforce/sf-pi/issues/698)) ([b26510a](https://github.com/salesforce/sf-pi/commit/b26510a39e31b14651599e5e682c7ac830af8415))
+
 ## [0.291.0](https://github.com/salesforce/sf-pi/compare/v0.290.0...v0.291.0) (2026-09-21)
 
 
