@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.291.0](https://github.com/salesforce/sf-pi/compare/v0.290.0...v0.291.0) (2026-09-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** bundled extensions now require Pi 0.86.0 or newer.
+
+### Features
+
+* **runtime:** require Pi 0.86.0 ([b4b15ce](https://github.com/salesforce/sf-pi/commit/b4b15ce30d97d230d5f3f6815049f9174375a099))
+
 ## [0.290.0](https://github.com/salesforce/sf-pi/compare/v0.289.0...v0.290.0) (2026-09-21)
 
 
