@@ -19,13 +19,13 @@ import * as PiRuntime from "@earendil-works/pi-coding-agent";
 export const MIN_PI_VERSION = "0.86.0";
 
 /** Exclusive end of the exact runtime range covered by required compatibility CI. */
-export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "0.87.0";
+export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "0.88.0";
 
 /** Future stable Pi 0.x releases may load; Pi 1.x requires an explicit audit. */
 export const HARD_MAX_PI_VERSION_EXCLUSIVE = "1.0.0";
 
 /** Exact runtime used by normal development and bounded repair guidance. */
-export const RECOMMENDED_PI_VERSION = "0.86.1";
+export const RECOMMENDED_PI_VERSION = "0.87.0";
 
 export type PiVersionCompatibility =
   "audited" | "forward-compatible" | "too-old" | "prerelease" | "major-version";
@@ -132,7 +132,7 @@ export function requirePiVersion(
   if (compatibility === "audited") return true;
 
   if (compatibility === "forward-compatible") {
-    // Pi 0.86 can evaluate shared source in isolated extension module graphs.
+    // Pi can evaluate shared source in isolated extension module graphs.
     // Keep this latch on the process global so one future-runtime warning does
     // not become one warning per bundled extension.
     if (claimForwardCompatibilityWarning()) {
