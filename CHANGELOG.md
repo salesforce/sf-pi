@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.292.0](https://github.com/salesforce/sf-pi/compare/v0.291.3...v0.292.0) (2026-09-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** SF Pi now requires Pi 0.87.0 or newer.
+
+### Features
+
+* **runtime:** adopt Pi 0.87 actionable settlement ([#718](https://github.com/salesforce/sf-pi/issues/718)) ([ea14008](https://github.com/salesforce/sf-pi/commit/ea14008126bab63b8ddacbae835cdb0463ca4a5e))
+
 ## [0.291.3](https://github.com/salesforce/sf-pi/compare/v0.291.2...v0.291.3) (2026-09-21)
 
 
