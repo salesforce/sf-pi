@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.291.3-2026-09-21",
-  "latestVersion": "0.291.3",
+  "revision": "release-0.292.0-2026-09-21",
+  "latestVersion": "0.292.0",
   "announcements": [
     {
-      "id": "release-0.291.3",
+      "id": "release-0.292.0",
       "kind": "update",
-      "title": "sf-pi v0.291.3 — deps: update GitHub Actions and migrate OSV scan args",
+      "title": "sf-pi v0.292.0 — runtime: SF Pi now requires Pi 0.87.0 or newer.",
       "publishedAt": "2026-09-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.291.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.292.0",
       "severity": "info",
-      "body": "deps: update GitHub Actions and migrate OSV scan args"
+      "body": "runtime: SF Pi now requires Pi 0.87.0 or newer. — runtime: adopt Pi 0.87 actionable settlement"
     }
   ]
 }
