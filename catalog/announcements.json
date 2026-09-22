@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.292.0-2026-09-21",
-  "latestVersion": "0.292.0",
+  "revision": "release-0.293.0-2026-09-22",
+  "latestVersion": "0.293.0",
   "announcements": [
     {
-      "id": "release-0.292.0",
+      "id": "release-0.293.0",
       "kind": "update",
-      "title": "sf-pi v0.292.0 — runtime: SF Pi now requires Pi 0.87.0 or newer.",
-      "publishedAt": "2026-09-21T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.292.0",
+      "title": "sf-pi v0.293.0 — sf-flow: prove bulk async, schedule, order, and subflow runtime",
+      "publishedAt": "2026-09-22T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.293.0",
       "severity": "info",
-      "body": "runtime: SF Pi now requires Pi 0.87.0 or newer. — runtime: adopt Pi 0.87 actionable settlement"
+      "body": "sf-flow: prove bulk async, schedule, order, and subflow runtime"
     }
   ]
 }
