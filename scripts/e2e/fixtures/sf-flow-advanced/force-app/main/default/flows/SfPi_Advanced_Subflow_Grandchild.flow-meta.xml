@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <actionCalls>
+        <name>Force_Handled_Fault</name>
+        <label>Force Handled Fault</label>
+        <description>Raises the fixture fault and handles it inside the grandchild.</description>
+        <locationX>50</locationX>
+        <locationY>300</locationY>
+        <actionName>SfPiFlowFaultAction</actionName>
+        <actionType>apex</actionType>
+        <connector><targetReference>Mark_Unexpected_Handled_Success</targetReference></connector>
+        <faultConnector><targetReference>Return_Handled_Sentinel</targetReference></faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters><name>marker</name><value><elementReference>inputText</elementReference></value></inputParameters>
+        <inputParameters><name>shouldFail</name><value><booleanValue>true</booleanValue></value></inputParameters>
+    </actionCalls>
+    <actionCalls>
+        <name>Force_Unhandled_Fault</name>
+        <label>Force Unhandled Fault</label>
+        <description>Raises the fixture fault with no fault connector so the nested interview fails.</description>
+        <locationX>300</locationX>
+        <locationY>300</locationY>
+        <actionName>SfPiFlowFaultAction</actionName>
+        <actionType>apex</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters><name>marker</name><value><elementReference>inputText</elementReference></value></inputParameters>
+        <inputParameters><name>shouldFail</name><value><booleanValue>true</booleanValue></value></inputParameters>
+    </actionCalls>
+    <assignments>
+        <name>Mark_Unexpected_Handled_Success</name>
+        <label>Mark Unexpected Handled Success</label>
+        <description>Records that the handled fault action returned instead of faulting.</description>
+        <locationX>50</locationX>
+        <locationY>450</locationY>
+        <assignmentItems>
+            <assignToReference>outputText</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>unexpected-handled-success</stringValue></value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Return_Handled_Sentinel</name>
+        <label>Return Handled Sentinel</label>
+        <description>Replaces the success output after the grandchild handles the action fault.</description>
+        <locationX>50</locationX>
+        <locationY>590</locationY>
+        <assignmentItems>
+            <assignToReference>outputText</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>handled</stringValue></value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Return_Grandchild_Text</name>
+        <label>Return Grandchild Text</label>
+        <description>Appends the grandchild token to the propagated input.</description>
+        <locationX>550</locationX>
+        <locationY>300</locationY>
+        <assignmentItems>
+            <assignToReference>outputText</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Grandchild_Text</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Select_Grandchild_Path</name>
+        <label>Select Grandchild Path</label>
+        <description>Chooses success, a handled action fault, or the intentional unhandled fault.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnector><targetReference>Return_Grandchild_Text</targetReference></defaultConnector>
+        <defaultConnectorLabel>Success</defaultConnectorLabel>
+        <rules>
+            <name>Handle_Fault</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>shouldFail</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>handleFault</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>Force_Handled_Fault</targetReference></connector>
+            <label>Handle Fault</label>
+        </rules>
+        <rules>
+            <name>Raise_Unhandled_Fault</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>shouldFail</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>Force_Unhandled_Fault</targetReference></connector>
+            <label>Raise Unhandled Fault</label>
+        </rules>
+    </decisions>
+    <description>Autolaunched grandchild fixture. API 67 metadata rejects faultConnector on a subflow element, so this Flow handles one action fault itself and leaves the other unhandled.</description>
+    <formulas>
+        <name>Grandchild_Text</name>
+        <dataType>String</dataType>
+        <expression>{!inputText} &amp; &quot;|grand&quot;</expression>
+    </formulas>
+    <label>SF Pi Advanced Subflow Grandchild</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Select_Grandchild_Path</targetReference></connector>
+    </start>
+    <status>Draft</status>
+    <variables>
+        <name>inputText</name>
+        <dataType>String</dataType>
+        <description>Text propagated from the child Flow.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>shouldFail</name>
+        <dataType>Boolean</dataType>
+        <description>Selects a fault path instead of the success output.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>handleFault</name>
+        <dataType>Boolean</dataType>
+        <description>Handles the action fault inside this Flow when true.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>outputText</name>
+        <dataType>String</dataType>
+        <description>Text returned only when the grandchild completes.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Append_Equal_Token_B</name>
+        <label>Append Equal Token B</label>
+        <description>Appends the other token from an equal trigger-order before-save Flow.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.NullableText__c</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Equal_Token_B</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <description>Before-save probe fixture that appends a token at the same trigger order as its pair.</description>
+    <formulas>
+        <name>Equal_Token_B</name>
+        <dataType>String</dataType>
+        <expression>IF(ISBLANK({!$Record.NullableText__c}), &quot;E2&quot;, {!$Record.NullableText__c} &amp; &quot;;E2&quot;)</expression>
+    </formulas>
+    <label>SF Pi Advanced Order Equal Before B</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Append_Equal_Token_B</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Stage__c</field><operator>EqualTo</operator><value><stringValue>order-equal</stringValue></value></filters>
+        <object>SfPi_Flow_Probe__c</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>40</triggerOrder>
+</Flow>

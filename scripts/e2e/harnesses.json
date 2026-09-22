@@ -65,11 +65,11 @@
       "script": "e2e:sf-flow-advanced",
       "entry": "scripts/e2e/sf-flow-advanced-sweep.ts",
       "title": "SF Flow advanced runtime sweep",
-      "summary": "Proves record trigger variants, typed entry criteria, immediate/related/async paths, real faults, related deletion, record collections, Create Records upsert with partial/all-or-none behavior, multi-field/null ordering, Transform joins/aggregation/nested collections, committed Wait resume, Apex and standard actions, prior values, bulk execution, collection processors, and Subflow contracts across headless Flow families; Roll Back Records remains a separate Screen runtime proof.",
+      "summary": "Proves record trigger variants, typed entry criteria, immediate/related/async paths, a 200-record async-after-commit fan-out, a 201-record schedule batch without partition assertions, explicit and unspecified trigger order, nested subflow propagation and rollback, real faults, related deletion, record collections, Create Records upsert with partial/all-or-none behavior, multi-field/null ordering, Transform joins/aggregation/nested collections, committed Wait resume, Apex and standard actions, prior values, bulk execution, collection processors, and Subflow contracts across headless Flow families; Roll Back Records remains a separate Screen runtime proof.",
       "target": "Explicit dedicated non-production org with API 67.0 or later",
       "posture": "bounded-mutation",
       "artifacts": "Metadata API validation/deployment evidence plus targeted Apex test and cleanup outcomes",
-      "arguments": "--org <alias> [--deploy | --runtime]"
+      "arguments": "--org <alias> [--deploy | --runtime | --cleanup]"
     },
     {
       "script": "e2e:sf-flow-actions",

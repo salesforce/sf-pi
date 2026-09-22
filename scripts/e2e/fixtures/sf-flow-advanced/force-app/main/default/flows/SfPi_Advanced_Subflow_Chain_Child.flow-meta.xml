@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <decisions>
+        <name>Select_Child_Path</name>
+        <label>Select Child Path</label>
+        <description>Chooses success, handled-fault, or unhandled-fault propagation.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <defaultConnector><targetReference>Call_Success_Grandchild</targetReference></defaultConnector>
+        <defaultConnectorLabel>Success</defaultConnectorLabel>
+        <rules>
+            <name>Handled_Fault</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>faultMode</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>handled</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>Call_Handled_Grandchild</targetReference></connector>
+            <label>Handled Fault</label>
+        </rules>
+        <rules>
+            <name>Unhandled_Fault</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>faultMode</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>unhandled</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>Call_Unhandled_Grandchild</targetReference></connector>
+            <label>Unhandled Fault</label>
+        </rules>
+    </decisions>
+    <description>Autolaunched child fixture that calls the grandchild and either handles or propagates its fault.</description>
+    <label>SF Pi Advanced Subflow Chain Child</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Select_Child_Path</targetReference></connector>
+    </start>
+    <status>Draft</status>
+    <subflows>
+        <name>Call_Success_Grandchild</name>
+        <label>Call Success Grandchild</label>
+        <description>Propagates the grandchild output on the success path.</description>
+        <locationX>50</locationX>
+        <locationY>300</locationY>
+        <flowName>SfPi_Advanced_Subflow_Grandchild</flowName>
+        <inputAssignments><name>handleFault</name><value><booleanValue>false</booleanValue></value></inputAssignments>
+        <inputAssignments><name>inputText</name><value><elementReference>inputText</elementReference></value></inputAssignments>
+        <inputAssignments><name>shouldFail</name><value><booleanValue>false</booleanValue></value></inputAssignments>
+        <outputAssignments><assignToReference>outputText</assignToReference><name>outputText</name></outputAssignments>
+    </subflows>
+    <subflows>
+        <name>Call_Handled_Grandchild</name>
+        <label>Call Handled Grandchild</label>
+        <description>Calls the grandchild path that handles its own action fault and returns a sentinel.</description>
+        <locationX>300</locationX>
+        <locationY>300</locationY>
+        <flowName>SfPi_Advanced_Subflow_Grandchild</flowName>
+        <inputAssignments><name>handleFault</name><value><booleanValue>true</booleanValue></value></inputAssignments>
+        <inputAssignments><name>inputText</name><value><elementReference>inputText</elementReference></value></inputAssignments>
+        <inputAssignments><name>shouldFail</name><value><booleanValue>true</booleanValue></value></inputAssignments>
+        <outputAssignments><assignToReference>outputText</assignToReference><name>outputText</name></outputAssignments>
+    </subflows>
+    <subflows>
+        <name>Call_Unhandled_Grandchild</name>
+        <label>Call Unhandled Grandchild</label>
+        <description>Leaves the grandchild fault unhandled so it fails this child interview.</description>
+        <locationX>550</locationX>
+        <locationY>300</locationY>
+        <flowName>SfPi_Advanced_Subflow_Grandchild</flowName>
+        <inputAssignments><name>handleFault</name><value><booleanValue>false</booleanValue></value></inputAssignments>
+        <inputAssignments><name>inputText</name><value><elementReference>inputText</elementReference></value></inputAssignments>
+        <inputAssignments><name>shouldFail</name><value><booleanValue>true</booleanValue></value></inputAssignments>
+    </subflows>
+    <variables>
+        <name>inputText</name>
+        <dataType>String</dataType>
+        <description>Text forwarded to the grandchild.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>faultMode</name>
+        <dataType>String</dataType>
+        <description>Selects success, handled, or unhandled propagation.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>outputText</name>
+        <dataType>String</dataType>
+        <description>Propagated grandchild text or the handled-fault sentinel.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

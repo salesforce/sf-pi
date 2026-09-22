@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Set_First_Before_Token</name>
+        <label>Set First Before Token</label>
+        <description>Writes the first explicit before-save token onto the triggering probe.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.NullableText__c</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>B10</stringValue></value>
+        </assignmentItems>
+    </assignments>
+    <description>Before-save probe fixture that writes the first explicit trigger-order token.</description>
+    <label>SF Pi Advanced Order Before First</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Set_First_Before_Token</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Stage__c</field><operator>EqualTo</operator><value><stringValue>order-explicit</stringValue></value></filters>
+        <object>SfPi_Flow_Probe__c</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>10</triggerOrder>
+</Flow>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_After_Update_Fault</name>
+        <label>Capture After Update Fault</label>
+        <description>Captures a failure while writing the first after-save order token.</description>
+        <locationX>350</locationX>
+        <locationY>500</locationY>
+        <assignmentItems>
+            <assignToReference>faultMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Assign_First_After_Token</name>
+        <label>Assign First After Token</label>
+        <description>Writes the first explicit after-save token onto the precreated evidence record.</description>
+        <locationX>176</locationX>
+        <locationY>450</locationY>
+        <assignmentItems>
+            <assignToReference>Get_After_Evidence.NullableText__c</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>A10</stringValue></value>
+        </assignmentItems>
+        <connector><targetReference>Save_After_Evidence</targetReference></connector>
+    </assignments>
+    <decisions>
+        <name>Evidence_Found</name>
+        <label>Evidence Found</label>
+        <description>Continues only when the precreated order evidence probe exists.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <defaultConnectorLabel>Not Found</defaultConnectorLabel>
+        <rules>
+            <name>Found</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>Get_After_Evidence.Id</leftValueReference>
+                <operator>IsNull</operator>
+                <rightValue><booleanValue>false</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>Assign_First_After_Token</targetReference></connector>
+            <label>Found</label>
+        </rules>
+    </decisions>
+    <description>After-save probe fixture that writes the first explicit trigger-order token onto precreated evidence.</description>
+    <label>SF Pi Advanced Order After First</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordLookups>
+        <name>Get_After_Evidence</name>
+        <label>Get After Evidence</label>
+        <description>Gets the precreated evidence probe for this triggering record.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <connector><targetReference>Evidence_Found</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Parent__c</field><operator>EqualTo</operator><value><elementReference>$Record.Id</elementReference></value></filters>
+        <filters><field>Stage__c</field><operator>EqualTo</operator><value><stringValue>order-after-evidence</stringValue></value></filters>
+        <getFirstRecordOnly>true</getFirstRecordOnly>
+        <object>SfPi_Flow_Probe__c</object>
+        <queriedFields>Id</queriedFields>
+        <queriedFields>NullableText__c</queriedFields>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
+    <recordUpdates>
+        <name>Save_After_Evidence</name>
+        <label>Save After Evidence</label>
+        <description>Saves the first explicit after-save token without updating the triggering record.</description>
+        <locationX>176</locationX>
+        <locationY>590</locationY>
+        <faultConnector><targetReference>Capture_After_Update_Fault</targetReference></faultConnector>
+        <inputReference>Get_After_Evidence</inputReference>
+    </recordUpdates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Get_After_Evidence</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Stage__c</field><operator>EqualTo</operator><value><stringValue>order-explicit</stringValue></value></filters>
+        <object>SfPi_Flow_Probe__c</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>10</triggerOrder>
+    <variables>
+        <name>faultMessage</name>
+        <dataType>String</dataType>
+        <description>After-save token update fault text.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

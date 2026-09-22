@@ -16,6 +16,26 @@ import { pathToFileURL } from "node:url";
 import { ComponentSet } from "@salesforce/source-deploy-retrieve";
 import { connectSalesforce, type SalesforceSession } from "../../lib/common/sf-conn/index.ts";
 import { analyzeFlowFile } from "../../extensions/sf-flow/lib/analyzer.ts";
+import {
+  ASYNC_BULK_COUNT,
+  DEPTH_CORRELATION_PREFIX,
+  DEPTH_FLOW_API_NAMES,
+  HANDLED_CHAIN_OUTPUT,
+  PROBE_OBJECT,
+  PROBE_TRIGGERED_DEPTH_FLOWS,
+  SCHEDULE_BULK_COUNT,
+  SUCCESS_CHAIN_OUTPUT,
+  UNORDERED_AFTER_TOKENS,
+  UNORDERED_BEFORE_TOKENS,
+  assertSingleTransaction,
+  compareRecordCoverage,
+  generationDiagnosisAccepted,
+  hasSameTokens,
+  noneTriggerSubflowRejected,
+  probeIsolationFailure,
+  recordCoverageFailure,
+  scheduleWaitSecondsFromFire,
+} from "./lib/sf-flow-depth-proofs.ts";
 
 const FIXTURE_ROOT = path.resolve("scripts/e2e/fixtures/sf-flow-advanced");
 const FORCE_APP = path.join(FIXTURE_ROOT, "force-app");
@@ -53,6 +73,11 @@ export const FLOW_API_NAMES = [
   "SfPi_Advanced_Transform_Nested",
   "SfPi_Advanced_Transform_Join",
   "SfPi_Advanced_Wait_Resume",
+  ...DEPTH_FLOW_API_NAMES,
+] as const;
+const SCHEDULED_FLOW_NAMES = [
+  "SfPi_Advanced_Scheduled_Pipeline",
+  "SfPi_Advanced_Scheduled_Bulk",
 ] as const;
 const FLOW_FILES = FLOW_API_NAMES.map((name) =>
   path.join(FORCE_APP, `main/default/flows/${name}.flow-meta.xml`),
@@ -82,10 +107,11 @@ interface AdvancedArgs {
   org?: string;
   deploy: boolean;
   runtime: boolean;
+  cleanup: boolean;
 }
 
 export function parseAdvancedArgs(argv: string[]): AdvancedArgs {
-  const args: AdvancedArgs = { deploy: false, runtime: false };
+  const args: AdvancedArgs = { deploy: false, runtime: false, cleanup: false };
   for (let index = 0; index < argv.length; index++) {
     if (argv[index] === "--org") {
       const org = argv[++index];
@@ -96,6 +122,8 @@ export function parseAdvancedArgs(argv: string[]): AdvancedArgs {
     } else if (argv[index] === "--runtime") {
       args.deploy = true;
       args.runtime = true;
+    } else if (argv[index] === "--cleanup") {
+      args.cleanup = true;
     } else {
       throw new Error(`Unknown argument: ${argv[index]}`);
     }
@@ -215,10 +243,12 @@ async function diagnoseFixtures(): Promise<void> {
   for (const file of FLOW_FILES) {
     const relative = path.relative(FIXTURE_ROOT, file);
     const analysis = await analyzeFlowFile(relative, FIXTURE_ROOT, { profile: "generation" });
-    if (analysis.summary.high || analysis.summary.moderate) {
-      throw new Error(
-        `${relative} is not ready: high=${analysis.summary.high} moderate=${analysis.summary.moderate}`,
-      );
+    if (!generationDiagnosisAccepted(path.basename(file), analysis.findings)) {
+      const actionable = analysis.findings
+        .filter((finding) => finding.severity === "high" || finding.severity === "moderate")
+        .map((finding) => `${finding.severity} ${finding.rule_id}`)
+        .join(", ");
+      throw new Error(`${relative} is not ready: ${actionable || "unexpected diagnosis"}`);
     }
     console.log(`✅ diagnose: ${path.basename(file)} · ${analysis.family}`);
   }
@@ -237,7 +267,7 @@ async function stageRuntimeSource(schedule: ScheduleStart): Promise<string> {
   for (const name of FLOW_API_NAMES) {
     const file = path.join(stagedForceApp, `main/default/flows/${name}.flow-meta.xml`);
     let source = stageActiveFlowSource(await readFile(file, "utf8"));
-    if (name === "SfPi_Advanced_Scheduled_Pipeline") {
+    if ((SCHEDULED_FLOW_NAMES as readonly string[]).includes(name)) {
       source = stageScheduleSource(source, schedule.date, schedule.time);
     }
     await writeFile(file, source);
@@ -268,7 +298,10 @@ function scheduleWallClock(date: Date, timeZone: string): Omit<ScheduleStart, "t
   return { date: `${year}-${month}-${day}`, time: `${hour}:${minute}:00.000Z` };
 }
 
-async function resolveScheduleStart(session: SalesforceSession): Promise<ScheduleStart> {
+async function resolveScheduleStart(
+  session: SalesforceSession,
+  leadMinutes: number,
+): Promise<ScheduleStart> {
   const identity = await session.identity();
   const user = await session.query<{ TimeZoneSidKey?: string }>({
     soql: `SELECT TimeZoneSidKey FROM User WHERE Id = '${identity.user_id}' LIMIT 1`,
@@ -277,8 +310,18 @@ async function resolveScheduleStart(session: SalesforceSession): Promise<Schedul
   });
   const timeZone = user.records[0]?.TimeZoneSidKey;
   if (!timeZone) throw new Error("Could not resolve the activating user's time zone.");
-  // Active check-only and deployment each run the targeted Apex suite before the schedule can fire.
-  return { ...scheduleWallClock(new Date(Date.now() + 8 * 60_000), timeZone), timeZone };
+  return {
+    ...scheduleWallClock(new Date(Date.now() + leadMinutes * 60_000), timeZone),
+    timeZone,
+  };
+}
+
+async function restageScheduledStarts(root: string, schedule: ScheduleStart): Promise<void> {
+  for (const name of SCHEDULED_FLOW_NAMES) {
+    const file = path.join(root, "force-app", `main/default/flows/${name}.flow-meta.xml`);
+    const source = stageScheduleSource(await readFile(file, "utf8"), schedule.date, schedule.time);
+    await writeFile(file, source);
+  }
 }
 
 interface ScheduleFixture {
@@ -337,16 +380,20 @@ async function removeProbePermissionSetAssignment(
   assignmentId: string | undefined,
 ): Promise<void> {
   if (!assignmentId) return;
-  const response = await session.request({
-    method: "DELETE",
-    path: `/sobjects/PermissionSetAssignment/${assignmentId}`,
-  });
-  if (response.status >= 400 && response.status !== 404) {
-    throw new Error(
-      `Could not remove probe fixture permission assignment: status ${response.status}.`,
-    );
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await session.request({
+      method: "DELETE",
+      path: `/sobjects/PermissionSetAssignment/${assignmentId}`,
+    });
+    lastStatus = response.status;
+    if (response.status < 400 || response.status === 404) {
+      console.log("✅ permission cleanup: removed probe fixture assignment");
+      return;
+    }
+    await delay(2_000);
   }
-  console.log("✅ permission cleanup: removed probe fixture assignment");
+  throw new Error(`Could not remove probe fixture permission assignment: status ${lastStatus}.`);
 }
 
 async function createRecord(
@@ -720,25 +767,469 @@ async function verifyInactiveAndClean(session: SalesforceSession): Promise<void>
     maxRows: 1,
   });
   const cron = await session.query<{ Id?: string }>({
-    soql: "SELECT Id FROM CronTrigger WHERE CronJobDetail.Name LIKE 'SfPi_Advanced_Scheduled_Pipeline%' LIMIT 5",
+    soql: "SELECT Id FROM CronTrigger WHERE CronJobDetail.Name LIKE 'SfPi_Advanced_Scheduled_Pipeline%' OR CronJobDetail.Name LIKE 'SfPi_Advanced_Scheduled_Bulk%' LIMIT 5",
     api: "rest",
     maxRows: 5,
   });
-  if (
-    accounts.records.length ||
-    opportunities.records.length ||
-    tasks.records.length ||
-    contacts.records.length ||
-    probes.records.length ||
-    interviews.records.length ||
-    cron.records.length
-  ) {
-    throw new Error(
-      "Advanced Flow cleanup left records, a paused interview, or a scheduled job behind.",
-    );
+  const leftovers = [
+    accounts.records.length ? "accounts" : "",
+    opportunities.records.length ? "opportunities" : "",
+    tasks.records.length ? "tasks" : "",
+    contacts.records.length ? "contacts" : "",
+    probes.records.length ? "probes" : "",
+    interviews.records.length ? "interviews" : "",
+    cron.records.length ? "scheduled jobs" : "",
+  ].filter(Boolean);
+  if (leftovers.length) {
+    throw new Error(`Advanced Flow cleanup left ${leftovers.join(", ")} behind.`);
   }
   console.log(
     "✅ verify: all advanced Flows inactive · no records, paused interviews, or scheduled job",
+  );
+}
+
+interface CompositeSaveResult {
+  id?: string;
+  success?: boolean;
+  errors?: Array<{ message?: string }>;
+}
+
+interface FlowActionResult {
+  isSuccess?: boolean;
+  errors?: Array<{ message?: string }>;
+  outputValues?: Record<string, unknown>;
+  outputText?: string;
+  faultMessage?: string;
+}
+
+interface DepthSources {
+  prefix: string;
+  asyncKey: string;
+  scheduleKey: string;
+  asyncIds: string[];
+  asyncKeys: string[];
+  scheduleIds: string[];
+  scheduleKeys: string[];
+}
+
+async function saveProbeRecords(
+  session: SalesforceSession,
+  method: "POST" | "PATCH",
+  records: Array<Record<string, unknown>>,
+): Promise<string[]> {
+  if (method === "PATCH") assertSingleTransaction(records.length, records);
+  const response = await session.request<CompositeSaveResult[] | { message?: string }>({
+    method,
+    path: "/composite/sobjects",
+    body: { allOrNone: true, records },
+  });
+  if (!Array.isArray(response.body)) {
+    throw new Error(`Composite ${method} failed: ${JSON.stringify(response.body)}`);
+  }
+  const failed = response.body.filter((row) => row.success !== true);
+  if (response.status >= 400 || failed.length || response.body.length !== records.length) {
+    throw new Error(
+      `Composite ${method} failed: ${JSON.stringify(failed.slice(0, 3).map((row) => row.errors))}`,
+    );
+  }
+  return response.body.map((row) => {
+    if (method === "POST" && !row.id) throw new Error("Composite create did not return an id.");
+    return row.id ?? "";
+  });
+}
+
+async function deleteProbePrefix(session: SalesforceSession, prefix: string): Promise<void> {
+  const rows = await session.query<{ Id?: string }>({
+    soql: `SELECT Id FROM SfPi_Flow_Probe__c WHERE CorrelationKey__c LIKE '${prefix}%'`,
+    api: "rest",
+    maxRows: 2000,
+  });
+  const ids = rows.records.flatMap((row) => (row.Id ? [row.Id] : []));
+  for (let offset = 0; offset < ids.length; offset += 200) {
+    const batch = ids.slice(offset, offset + 200);
+    const response = await session.request({
+      method: "DELETE",
+      path: "/composite/sobjects",
+      query: { ids: batch.join(","), allOrNone: "false" },
+    });
+    if (response.status >= 400) {
+      throw new Error(`Could not delete probe records: status ${response.status}.`);
+    }
+  }
+  if (ids.length) console.log(`✅ depth cleanup: ${ids.length} probe records`);
+}
+
+async function assertProbeIsolation(
+  session: SalesforceSession,
+  requireComplete: boolean,
+): Promise<void> {
+  const flows = await session.query<{ ApiName?: string }>({
+    soql: `SELECT ApiName FROM FlowDefinitionView WHERE TriggerObjectOrEvent.QualifiedApiName = '${PROBE_OBJECT}'`,
+    api: "rest",
+    maxRows: 50,
+  });
+  const triggers = await session.query<{ Name?: string }>({
+    soql: `SELECT Name FROM ApexTrigger WHERE TableEnumOrId = '${PROBE_OBJECT}'`,
+    api: "rest",
+    maxRows: 20,
+  });
+  const failure = probeIsolationFailure({
+    flows: flows.records,
+    triggers: triggers.records,
+    allowed: PROBE_TRIGGERED_DEPTH_FLOWS,
+    requireComplete,
+  });
+  if (failure) throw new Error(`Probe object is not isolated: ${failure}.`);
+  console.log(
+    `✅ probe isolation: ${flows.records.length} fixture flows · API proof object has no foreign automation`,
+  );
+}
+
+async function populateDepthSources(
+  session: SalesforceSession,
+  prefix: string,
+): Promise<DepthSources> {
+  const sources: DepthSources = {
+    prefix,
+    asyncKey: `${prefix}async`,
+    scheduleKey: `${prefix}schedule`,
+    asyncIds: [],
+    asyncKeys: [],
+    scheduleIds: [],
+    scheduleKeys: [],
+  };
+  const asyncRecords = Array.from({ length: ASYNC_BULK_COUNT }, (_, index) => {
+    const key = `${prefix}a${String(index).padStart(3, "0")}`;
+    sources.asyncKeys.push(key);
+    return {
+      attributes: { type: PROBE_OBJECT },
+      Name: `Async ${index}`,
+      Stage__c: "async-bulk-pending",
+      CorrelationKey__c: sources.asyncKey,
+      ExternalKey__c: key,
+    };
+  });
+  assertSingleTransaction(ASYNC_BULK_COUNT, asyncRecords);
+  sources.asyncIds = await saveProbeRecords(session, "POST", asyncRecords);
+  for (let offset = 0; offset < SCHEDULE_BULK_COUNT; offset += 200) {
+    const batch = Array.from(
+      { length: Math.min(200, SCHEDULE_BULK_COUNT - offset) },
+      (_, index) => {
+        const key = `${prefix}s${String(offset + index).padStart(3, "0")}`;
+        sources.scheduleKeys.push(key);
+        return {
+          attributes: { type: PROBE_OBJECT },
+          Name: `Schedule ${offset + index}`,
+          Stage__c: "schedule-bulk-source",
+          CorrelationKey__c: sources.scheduleKey,
+          ExternalKey__c: key,
+        };
+      },
+    );
+    sources.scheduleIds.push(...(await saveProbeRecords(session, "POST", batch)));
+  }
+  console.log(
+    `✅ depth fixture: ${sources.asyncIds.length} async sources · ${sources.scheduleIds.length} schedule sources`,
+  );
+  return sources;
+}
+
+async function waitForProbeEvidence(
+  session: SalesforceSession,
+  input: {
+    correlationKey: string;
+    stage: string;
+    expectedKeys: readonly string[];
+    expectedParents: readonly string[];
+    timeoutSeconds: number;
+  },
+): Promise<void> {
+  const deadline = Date.now() + input.timeoutSeconds * 1_000;
+  let lastCount: number | undefined;
+  do {
+    const result = await session.query<{ Parent__c?: string; NullableText__c?: string }>({
+      soql: `SELECT Parent__c, NullableText__c FROM ${PROBE_OBJECT} WHERE CorrelationKey__c = '${input.correlationKey}' AND Stage__c = '${input.stage}'`,
+      api: "rest",
+      maxRows: input.expectedKeys.length + 5,
+    });
+    lastCount = result.totalSize ?? result.records.length;
+    if (lastCount > input.expectedKeys.length) {
+      throw new Error(
+        `${input.stage} evidence exceeded ${input.expectedKeys.length}: ${lastCount}.`,
+      );
+    }
+    if (result.records.length === input.expectedKeys.length && result.truncated !== true) {
+      const keys = recordCoverageFailure(
+        compareRecordCoverage(
+          input.expectedKeys,
+          result.records.map((row) => row.NullableText__c ?? ""),
+        ),
+      );
+      if (keys) throw new Error(`${input.stage} key coverage ${keys}.`);
+      const parents = recordCoverageFailure(
+        compareRecordCoverage(
+          input.expectedParents,
+          result.records.map((row) => row.Parent__c ?? ""),
+        ),
+      );
+      if (parents) throw new Error(`${input.stage} parent coverage ${parents}.`);
+      return;
+    }
+    await delay(5_000);
+  } while (Date.now() < deadline);
+  throw new Error(`Timed out waiting for ${input.stage} evidence. Last count: ${lastCount ?? 0}.`);
+}
+
+async function exerciseAsyncBulk(session: SalesforceSession, sources: DepthSources): Promise<void> {
+  const updates = sources.asyncIds.map((id) => ({
+    attributes: { type: PROBE_OBJECT },
+    id,
+    Stage__c: "async-bulk-source",
+  }));
+  assertSingleTransaction(ASYNC_BULK_COUNT, updates);
+  await saveProbeRecords(session, "PATCH", updates);
+  await waitForProbeEvidence(session, {
+    correlationKey: sources.asyncKey,
+    stage: "async-bulk-evidence",
+    expectedKeys: sources.asyncKeys,
+    expectedParents: sources.asyncIds,
+    timeoutSeconds: 900,
+  });
+  console.log("✅ async runtime: 200 committed updates · 200 unique after-commit outcomes");
+}
+
+async function nextScheduleFire(
+  session: SalesforceSession,
+  flowName: string,
+): Promise<number | undefined> {
+  const rows = await session.query<{ NextFireTime?: string }>({
+    soql: `SELECT NextFireTime FROM CronTrigger WHERE CronJobDetail.Name LIKE '${flowName}%'`,
+    api: "rest",
+    maxRows: 5,
+  });
+  const times = rows.records
+    .map((row) => (row.NextFireTime ? Date.parse(row.NextFireTime) : Number.NaN))
+    .filter((time) => Number.isFinite(time));
+  return times.length ? Math.min(...times) : undefined;
+}
+
+async function scheduleWaitSeconds(session: SalesforceSession, flowName: string): Promise<number> {
+  const nextFire = await nextScheduleFire(session, flowName);
+  const seconds = scheduleWaitSecondsFromFire(nextFire, Date.now());
+  console.log(
+    `Schedule wait: ${flowName} · next=${nextFire ? new Date(nextFire).toISOString() : "none"} · timeout=${seconds}s`,
+  );
+  return seconds;
+}
+
+async function exerciseOrder(session: SalesforceSession, prefix: string): Promise<void> {
+  const explicitKey = `${prefix}order-explicit`;
+  const equalKey = `${prefix}order-equal`;
+  const explicitId = await createRecord(session, PROBE_OBJECT, {
+    Name: "Order Explicit",
+    Stage__c: "order-pending",
+    CorrelationKey__c: explicitKey,
+    ExternalKey__c: `${prefix}order-explicit-source`,
+  });
+  await createRecord(session, PROBE_OBJECT, {
+    Name: "Order Explicit Evidence",
+    Stage__c: "order-after-evidence",
+    CorrelationKey__c: explicitKey,
+    ExternalKey__c: `${prefix}order-explicit-evidence`,
+    Parent__c: explicitId,
+  });
+  const equalId = await createRecord(session, PROBE_OBJECT, {
+    Name: "Order Equal",
+    Stage__c: "order-pending",
+    CorrelationKey__c: equalKey,
+    ExternalKey__c: `${prefix}order-equal-source`,
+  });
+  await updateRecord(session, PROBE_OBJECT, explicitId, { Stage__c: "order-explicit" });
+  await updateRecord(session, PROBE_OBJECT, equalId, { Stage__c: "order-equal" });
+
+  const explicit = await session.query<{ NullableText__c?: string }>({
+    soql: `SELECT NullableText__c FROM ${PROBE_OBJECT} WHERE Id = '${explicitId}'`,
+    api: "rest",
+    maxRows: 1,
+  });
+  if (explicit.records[0]?.NullableText__c !== "B10;B20") {
+    throw new Error(
+      `Explicit before-save order was ${explicit.records[0]?.NullableText__c ?? "missing"}.`,
+    );
+  }
+  const after = await session.query<{ NullableText__c?: string }>({
+    soql: `SELECT NullableText__c FROM ${PROBE_OBJECT} WHERE Parent__c = '${explicitId}' AND Stage__c = 'order-after-evidence'`,
+    api: "rest",
+    maxRows: 5,
+  });
+  if (after.records.length !== 1 || after.records[0]?.NullableText__c !== "A10;A20") {
+    throw new Error(
+      `Explicit after-save order was ${after.records.map((row) => row.NullableText__c).join(",") || "missing"}.`,
+    );
+  }
+  const equal = await session.query<{ NullableText__c?: string }>({
+    soql: `SELECT NullableText__c FROM ${PROBE_OBJECT} WHERE Id = '${equalId}'`,
+    api: "rest",
+    maxRows: 1,
+  });
+  if (!hasSameTokens(equal.records[0]?.NullableText__c, UNORDERED_BEFORE_TOKENS)) {
+    throw new Error(
+      `Equal or omitted before-save tokens were ${equal.records[0]?.NullableText__c ?? "missing"}.`,
+    );
+  }
+  const equalAfter = await session.query<{ NullableText__c?: string }>({
+    soql: `SELECT NullableText__c FROM ${PROBE_OBJECT} WHERE Parent__c = '${equalId}' AND Stage__c = 'order-equal-evidence'`,
+    api: "rest",
+    maxRows: 5,
+  });
+  const afterTokens = equalAfter.records.map((row) => row.NullableText__c ?? "").join(";");
+  if (!hasSameTokens(afterTokens, UNORDERED_AFTER_TOKENS)) {
+    throw new Error(`Equal after-save tokens were ${afterTokens || "missing"}.`);
+  }
+  console.log(
+    "✅ order runtime: explicit B10;B20 and A10;A20 · equal/omitted tokens present without an order assertion",
+  );
+}
+
+function flowOutput(result: FlowActionResult, name: string): string | undefined {
+  const value = result.outputValues?.[name] ?? result[name as keyof FlowActionResult];
+  return typeof value === "string" ? value : undefined;
+}
+
+async function invokeFlow(
+  session: SalesforceSession,
+  name: string,
+  input: Record<string, unknown>,
+): Promise<{ status: number; result: FlowActionResult }> {
+  const response = await session.request<FlowActionResult[] | FlowActionResult>({
+    method: "POST",
+    path: `/actions/custom/flow/${name}`,
+    body: { inputs: [input] },
+  });
+  const result = Array.isArray(response.body) ? (response.body[0] ?? {}) : (response.body ?? {});
+  return { status: response.status, result };
+}
+
+async function markerCount(session: SalesforceSession, correlationKey: string): Promise<number> {
+  const rows = await session.query<{ Id?: string }>({
+    soql: `SELECT Id FROM ${PROBE_OBJECT} WHERE CorrelationKey__c = '${correlationKey}' AND Stage__c = 'subflow-marker'`,
+    api: "rest",
+    maxRows: 5,
+  });
+  return rows.totalSize ?? rows.records.length;
+}
+
+async function exerciseSubflowChain(session: SalesforceSession, prefix: string): Promise<void> {
+  const successKey = `${prefix}subflow-success`;
+  const handledKey = `${prefix}subflow-handled`;
+  const unhandledKey = `${prefix}subflow-unhandled`;
+  const noneKey = `${prefix}subflow-none`;
+  const success = await invokeFlow(session, "SfPi_Advanced_Subflow_Chain_Parent", {
+    inputText: "chain",
+    faultMode: "success",
+    correlationKey: successKey,
+    externalKey: successKey,
+  });
+  if (
+    success.result.isSuccess !== true ||
+    flowOutput(success.result, "outputText") !== SUCCESS_CHAIN_OUTPUT
+  ) {
+    throw new Error(`Success chain returned ${JSON.stringify(success.result)}.`);
+  }
+  if ((await markerCount(session, successKey)) !== 1) {
+    throw new Error("Success chain did not commit its marker.");
+  }
+
+  const handled = await invokeFlow(session, "SfPi_Advanced_Subflow_Chain_Parent", {
+    inputText: "chain",
+    faultMode: "handled",
+    correlationKey: handledKey,
+    externalKey: handledKey,
+  });
+  if (
+    handled.result.isSuccess !== true ||
+    flowOutput(handled.result, "outputText") !== HANDLED_CHAIN_OUTPUT
+  ) {
+    throw new Error(`Handled chain returned ${JSON.stringify(handled.result)}.`);
+  }
+  if ((await markerCount(session, handledKey)) !== 1) {
+    throw new Error("Handled child fault did not commit the parent marker.");
+  }
+
+  const unhandled = await invokeFlow(session, "SfPi_Advanced_Subflow_Chain_Parent", {
+    inputText: "chain",
+    faultMode: "unhandled",
+    correlationKey: unhandledKey,
+    externalKey: unhandledKey,
+  });
+  if (unhandled.result.isSuccess === true) {
+    throw new Error(`Unhandled chain unexpectedly succeeded: ${JSON.stringify(unhandled.result)}.`);
+  }
+  if ((await markerCount(session, unhandledKey)) !== 0) {
+    throw new Error("Unhandled child fault did not roll back the parent marker.");
+  }
+
+  const none = await invokeFlow(session, "SfPi_Advanced_Subflow_Chain_Parent", {
+    inputText: "chain",
+    faultMode: "none",
+    correlationKey: noneKey,
+    externalKey: noneKey,
+  });
+  const noneResult = {
+    isSuccess: none.result.isSuccess,
+    outputText: flowOutput(none.result, "outputText"),
+    faultMessage: flowOutput(none.result, "faultMessage"),
+  };
+  if (!noneTriggerSubflowRejected(noneResult)) {
+    throw new Error(
+      `triggerType None child ran as a normal subflow: ${JSON.stringify(none.result)}.`,
+    );
+  }
+  console.log(
+    `✅ subflow runtime: success output propagated · handled fault committed · unhandled fault rolled back · None trigger rejected (${noneResult.faultMessage || noneResult.outputText || none.status})`,
+  );
+}
+
+async function deleteQueryIds(
+  session: SalesforceSession,
+  object: string,
+  soql: string,
+): Promise<number> {
+  const rows = await session.query<{ Id?: string }>({ soql, api: "rest", maxRows: 500 });
+  const ids = rows.records.flatMap((row) => (row.Id ? [row.Id] : []));
+  for (const id of ids) await deleteRecord(session, object, id);
+  return ids.length;
+}
+
+async function cleanupKnownResidue(session: SalesforceSession): Promise<void> {
+  await deleteProbePrefix(session, DEPTH_CORRELATION_PREFIX);
+  const tasks = await deleteQueryIds(
+    session,
+    "Task",
+    "SELECT Id FROM Task WHERE Subject LIKE 'SF Pi related review:%' OR Subject LIKE 'SFPI Delete %' OR Subject LIKE 'SFPI Schedule %' OR Subject LIKE 'prior=%;current=%' OR Subject = 'SFPI async-after-commit evidence'",
+  );
+  const contacts = await deleteQueryIds(
+    session,
+    "Contact",
+    "SELECT Id FROM Contact WHERE Email LIKE 'schedule-%@example.test' OR LastName = 'SFPI Async Path Contact'",
+  );
+  const accounts = await deleteQueryIds(
+    session,
+    "Account",
+    "SELECT Id FROM Account WHERE AccountNumber IN ('SFPI-ADVANCED-BULK','SFPI-ADVANCED-PRIOR','SFPI-ADVANCED-PIPELINE','SFPI-ADVANCED-PRIOR-AFTER','SFPI-ADVANCED-DELETE','SFPI-ADVANCED-SCHEDULE','SFPI-ADVANCED-BEFORE-COLLECTION','SFPI-ADVANCED-CREATE-UPDATE','SFPI-ADVANCED-PATHS','SFPI-ADVANCED-CUSTOM-ERROR','SFPI-ADVANCED-DATA-OPS')",
+  );
+  const opportunities = await deleteQueryIds(
+    session,
+    "Opportunity",
+    "SELECT Id FROM Opportunity WHERE Name LIKE 'SFPI AND%' OR Name LIKE 'SFPI OR%' OR Name LIKE 'SFPI CUSTOM%' OR Name LIKE 'SFPI FORMULA%'",
+  );
+  const waitProbes = await deleteQueryIds(
+    session,
+    PROBE_OBJECT,
+    "SELECT Id FROM SfPi_Flow_Probe__c WHERE Stage__c IN ('resumed','wait-fault') OR CorrelationKey__c LIKE 'SFPI-ADVANCED-WAIT-%'",
+  );
+  console.log(
+    `✅ residue cleanup: probes · tasks=${tasks} · contacts=${contacts} · accounts=${accounts} · opportunities=${opportunities} · wait=${waitProbes}`,
   );
 }
 
@@ -746,7 +1237,7 @@ async function main(): Promise<void> {
   const args = parseAdvancedArgs(process.argv.slice(2));
   if (!args.org) {
     throw new Error(
-      "Usage: npm run e2e:sf-flow-advanced -- --org <non-production-alias> [--deploy | --runtime]",
+      "Usage: npm run e2e:sf-flow-advanced -- --org <non-production-alias> [--deploy | --runtime | --cleanup]",
     );
   }
   await diagnoseFixtures();
@@ -759,8 +1250,20 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Target: ${args.org} · type=${session.target.orgType} · API ${session.target.apiVersion} · mode=${args.runtime ? "runtime" : args.deploy ? "check+deploy" : "check-only"}`,
+    `Target: ${args.org} · type=${session.target.orgType} · API ${session.target.apiVersion} · mode=${args.runtime ? "runtime" : args.cleanup ? "cleanup" : args.deploy ? "check+deploy" : "check-only"}`,
   );
+  if (args.cleanup) {
+    const assignmentId = await assignProbePermissionSet(session);
+    try {
+      await deactivateFixtures(session);
+      await cleanupKnownResidue(session);
+      await verifyInactiveAndClean(session);
+    } finally {
+      await removeProbePermissionSetAssignment(session, assignmentId);
+    }
+    console.log("Advanced Flow fixture cleanup passed.");
+    return;
+  }
   await deployComponents(session, FORCE_APP, { checkOnly: true });
   if (!args.deploy) {
     console.log("Advanced Flow sweep plan complete. Re-run with --deploy or --runtime.");
@@ -780,9 +1283,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  const scheduleStart = await resolveScheduleStart(session);
+  const farScheduleStart = await resolveScheduleStart(session, 30);
   console.log(
-    `Schedule: ${scheduleStart.date} ${scheduleStart.time} · activating user timezone=${scheduleStart.timeZone}`,
+    `Schedule hold: ${farScheduleStart.date} ${farScheduleStart.time} · activating user timezone=${farScheduleStart.timeZone}`,
   );
   const scheduleFixture: ScheduleFixture = { accountIds: [], contactIds: [] };
   const asyncPathFixture: AsyncPathFixture = {};
@@ -791,38 +1294,81 @@ async function main(): Promise<void> {
     interviewLabel: "",
   };
   waitResumeFixture.interviewLabel = `SF Pi Wait ${waitResumeFixture.key}`;
+  const depthPrefix = `${DEPTH_CORRELATION_PREFIX}${Date.now()}-`;
+  let depthSources: DepthSources | undefined;
   let stagedRoot: string | undefined;
   let probePermissionSetAssignmentId: string | undefined;
+  let primaryError: unknown;
+  const cleanupErrors: string[] = [];
   try {
     probePermissionSetAssignmentId = await assignProbePermissionSet(session);
+    await deleteProbePrefix(session, DEPTH_CORRELATION_PREFIX);
+    await assertProbeIsolation(session, false);
     await populateScheduleFixture(session, scheduleFixture);
-    stagedRoot = await stageRuntimeSource(scheduleStart);
+    depthSources = await populateDepthSources(session, depthPrefix);
+    stagedRoot = await stageRuntimeSource(farScheduleStart);
     await deployComponents(session, path.join(stagedRoot, "force-app"), {
       checkOnly: true,
       tests: APEX_TEST_CLASSES,
     });
+    const nearScheduleStart = await resolveScheduleStart(session, 20);
+    await restageScheduledStarts(stagedRoot, nearScheduleStart);
+    console.log(`Schedule fire: ${nearScheduleStart.date} ${nearScheduleStart.time}`);
     await deployComponents(session, path.join(stagedRoot, "force-app"), {
       checkOnly: false,
       tests: APEX_TEST_CLASSES,
     });
+    await assertProbeIsolation(session, true);
+    await exerciseAsyncBulk(session, depthSources);
+    await exerciseOrder(session, depthPrefix);
+    await exerciseSubflowChain(session, depthPrefix);
     await startWaitResume(session, waitResumeFixture);
     await exerciseAsyncPath(session, asyncPathFixture);
-    await waitForScheduleEvidence(session, scheduleFixture);
+    await waitForProbeEvidence(session, {
+      correlationKey: depthSources.scheduleKey,
+      stage: "schedule-bulk-evidence",
+      expectedKeys: depthSources.scheduleKeys,
+      expectedParents: depthSources.scheduleIds,
+      timeoutSeconds: await scheduleWaitSeconds(session, "SfPi_Advanced_Scheduled_Bulk"),
+    });
+    console.log(
+      "✅ schedule runtime: 201 records once · no partition-size or global-index assertion",
+    );
+    await waitForScheduleEvidence(
+      session,
+      scheduleFixture,
+      await scheduleWaitSeconds(session, "SfPi_Advanced_Scheduled_Pipeline"),
+    );
     await waitForWaitResume(session, waitResumeFixture);
+  } catch (error) {
+    primaryError = error;
   } finally {
-    try {
-      await deactivateFixtures(session);
-      await cleanupAsyncPathFixture(session, asyncPathFixture);
-      await cleanupWaitResumeFixture(session, waitResumeFixture);
-      await cleanupScheduleFixture(session, scheduleFixture);
-      await verifyInactiveAndClean(session);
-    } finally {
+    const cleanup = async (label: string, action: () => Promise<void>): Promise<void> => {
       try {
-        await removeProbePermissionSetAssignment(session, probePermissionSetAssignmentId);
-      } finally {
-        if (stagedRoot) await rm(stagedRoot, { recursive: true, force: true });
+        await action();
+      } catch (error) {
+        cleanupErrors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
       }
-    }
+    };
+    await cleanup("deactivate", () => deactivateFixtures(session));
+    await cleanup("async path", () => cleanupAsyncPathFixture(session, asyncPathFixture));
+    await cleanup("wait", () => cleanupWaitResumeFixture(session, waitResumeFixture));
+    await cleanup("schedule", () => cleanupScheduleFixture(session, scheduleFixture));
+    await cleanup("depth probes", () => cleanupKnownResidue(session));
+    await cleanup("verify", () => verifyInactiveAndClean(session));
+    await cleanup("permission", () =>
+      removeProbePermissionSetAssignment(session, probePermissionSetAssignmentId),
+    );
+    if (stagedRoot) await rm(stagedRoot, { recursive: true, force: true });
+  }
+  if (primaryError) {
+    const primary = primaryError instanceof Error ? primaryError.message : String(primaryError);
+    throw new Error(
+      cleanupErrors.length ? `${primary} | cleanup: ${cleanupErrors.join(" | ")}` : primary,
+    );
+  }
+  if (cleanupErrors.length) {
+    throw new Error(`Advanced Flow cleanup failed: ${cleanupErrors.join(" | ")}`);
   }
   console.log("SF Flow advanced runtime sweep passed.");
 }

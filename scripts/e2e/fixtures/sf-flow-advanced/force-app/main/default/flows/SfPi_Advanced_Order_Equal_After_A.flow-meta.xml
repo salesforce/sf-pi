@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_Equal_After_Fault</name>
+        <label>Capture Equal After Fault</label>
+        <description>Captures a failure while creating equal-order after-save evidence.</description>
+        <locationX>350</locationX>
+        <locationY>300</locationY>
+        <assignmentItems>
+            <assignToReference>faultMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <description>After-save probe fixture that creates one equal-order evidence record.</description>
+    <formulas>
+        <name>Equal_After_Key</name>
+        <dataType>String</dataType>
+        <expression>&quot;ea-&quot; &amp; {!$Record.ExternalKey__c}</expression>
+    </formulas>
+    <label>SF Pi Advanced Order Equal After A</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Equal_After_Evidence</name>
+        <label>Create Equal After Evidence</label>
+        <description>Creates evidence whose token must exist regardless of equal trigger order.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <faultConnector><targetReference>Capture_Equal_After_Fault</targetReference></faultConnector>
+        <inputAssignments><field>Name</field><value><stringValue>Equal After Evidence A</stringValue></value></inputAssignments>
+        <inputAssignments><field>CorrelationKey__c</field><value><elementReference>$Record.CorrelationKey__c</elementReference></value></inputAssignments>
+        <inputAssignments><field>ExternalKey__c</field><value><elementReference>Equal_After_Key</elementReference></value></inputAssignments>
+        <inputAssignments><field>NullableText__c</field><value><stringValue>A1</stringValue></value></inputAssignments>
+        <inputAssignments><field>Parent__c</field><value><elementReference>$Record.Id</elementReference></value></inputAssignments>
+        <inputAssignments><field>Stage__c</field><value><stringValue>order-equal-evidence</stringValue></value></inputAssignments>
+        <object>SfPi_Flow_Probe__c</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Create_Equal_After_Evidence</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Stage__c</field><operator>EqualTo</operator><value><stringValue>order-equal</stringValue></value></filters>
+        <object>SfPi_Flow_Probe__c</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Draft</status>
+    <triggerOrder>50</triggerOrder>
+    <variables>
+        <name>faultMessage</name>
+        <dataType>String</dataType>
+        <description>Equal after-save evidence fault text.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

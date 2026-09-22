@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Append_Unspecified_Token</name>
+        <label>Append Unspecified Token</label>
+        <description>Appends a token from a before-save Flow that does not declare trigger order.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.NullableText__c</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Unspecified_Token</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <description>Before-save probe fixture that appends a token without declaring trigger order.</description>
+    <formulas>
+        <name>Unspecified_Token</name>
+        <dataType>String</dataType>
+        <expression>IF(ISBLANK({!$Record.NullableText__c}), &quot;E0&quot;, {!$Record.NullableText__c} &amp; &quot;;E0&quot;)</expression>
+    </formulas>
+    <label>SF Pi Advanced Order Unspecified Before</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Append_Unspecified_Token</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters><field>Stage__c</field><operator>EqualTo</operator><value><stringValue>order-equal</stringValue></value></filters>
+        <object>SfPi_Flow_Probe__c</object>
+        <recordTriggerType>Update</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Draft</status>
+</Flow>

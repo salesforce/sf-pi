@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Capture_Marker_Fault</name>
+        <label>Capture Marker Fault</label>
+        <description>Captures a failure while creating the rollback marker.</description>
+        <locationX>50</locationX>
+        <locationY>450</locationY>
+        <assignmentItems>
+            <assignToReference>faultMessage</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>$Flow.FaultMessage</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Mark_Unsupported_Mode</name>
+        <label>Mark Unsupported Mode</label>
+        <description>Records an unexpected parent mode.</description>
+        <locationX>1000</locationX>
+        <locationY>300</locationY>
+        <assignmentItems>
+            <assignToReference>outputText</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>unsupported-mode</stringValue></value>
+        </assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Select_Parent_Path</name>
+        <label>Select Parent Path</label>
+        <description>Chooses the nested-chain or None-trigger proof path.</description>
+        <locationX>176</locationX>
+        <locationY>300</locationY>
+        <defaultConnector><targetReference>Mark_Unsupported_Mode</targetReference></defaultConnector>
+        <defaultConnectorLabel>Unsupported</defaultConnectorLabel>
+        <rules>
+            <name>Success_Chain</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>faultMode</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>success</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>Call_Success_Child</targetReference></connector>
+            <label>Success Chain</label>
+        </rules>
+        <rules>
+            <name>Handled_Chain</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>faultMode</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>handled</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>Call_Handled_Child</targetReference></connector>
+            <label>Handled Chain</label>
+        </rules>
+        <rules>
+            <name>Unhandled_Chain</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>faultMode</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>unhandled</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>Call_Unhandled_Child</targetReference></connector>
+            <label>Unhandled Chain</label>
+        </rules>
+        <rules>
+            <name>None_Trigger_Child</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>faultMode</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><stringValue>none</stringValue></rightValue>
+            </conditions>
+            <connector><targetReference>Call_None_Child</targetReference></connector>
+            <label>None Trigger Child</label>
+        </rules>
+    </decisions>
+    <description>Autolaunched parent fixture for nested subflow output propagation, handled and unhandled faults, rollback, and a triggerType None child.</description>
+    <label>SF Pi Advanced Subflow Chain Parent</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Rollback_Marker</name>
+        <label>Create Rollback Marker</label>
+        <description>Creates a probe that must persist only when the interview commits.</description>
+        <locationX>176</locationX>
+        <locationY>158</locationY>
+        <connector><targetReference>Select_Parent_Path</targetReference></connector>
+        <faultConnector><targetReference>Capture_Marker_Fault</targetReference></faultConnector>
+        <inputAssignments><field>Name</field><value><stringValue>Subflow Rollback Marker</stringValue></value></inputAssignments>
+        <inputAssignments><field>CorrelationKey__c</field><value><elementReference>correlationKey</elementReference></value></inputAssignments>
+        <inputAssignments><field>ExternalKey__c</field><value><elementReference>externalKey</elementReference></value></inputAssignments>
+        <inputAssignments><field>Stage__c</field><value><stringValue>subflow-marker</stringValue></value></inputAssignments>
+        <object>SfPi_Flow_Probe__c</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector><targetReference>Create_Rollback_Marker</targetReference></connector>
+    </start>
+    <status>Draft</status>
+    <subflows>
+        <name>Call_Success_Child</name>
+        <label>Call Success Child</label>
+        <description>Propagates the child output through the successful nested chain.</description>
+        <locationX>50</locationX>
+        <locationY>450</locationY>
+        <flowName>SfPi_Advanced_Subflow_Chain_Child</flowName>
+        <inputAssignments><name>faultMode</name><value><stringValue>success</stringValue></value></inputAssignments>
+        <inputAssignments><name>inputText</name><value><elementReference>inputText</elementReference></value></inputAssignments>
+        <outputAssignments><assignToReference>outputText</assignToReference><name>outputText</name></outputAssignments>
+    </subflows>
+    <subflows>
+        <name>Call_Handled_Child</name>
+        <label>Call Handled Child</label>
+        <description>Receives the handled-fault sentinel instead of the grandchild output.</description>
+        <locationX>300</locationX>
+        <locationY>450</locationY>
+        <flowName>SfPi_Advanced_Subflow_Chain_Child</flowName>
+        <inputAssignments><name>faultMode</name><value><stringValue>handled</stringValue></value></inputAssignments>
+        <inputAssignments><name>inputText</name><value><elementReference>inputText</elementReference></value></inputAssignments>
+        <outputAssignments><assignToReference>outputText</assignToReference><name>outputText</name></outputAssignments>
+    </subflows>
+    <subflows>
+        <name>Call_Unhandled_Child</name>
+        <label>Call Unhandled Child</label>
+        <description>Leaves the child fault unhandled so the parent interview fails and rolls back.</description>
+        <locationX>550</locationX>
+        <locationY>450</locationY>
+        <flowName>SfPi_Advanced_Subflow_Chain_Child</flowName>
+        <inputAssignments><name>faultMode</name><value><stringValue>unhandled</stringValue></value></inputAssignments>
+        <inputAssignments><name>inputText</name><value><elementReference>inputText</elementReference></value></inputAssignments>
+    </subflows>
+    <subflows>
+        <name>Call_None_Child</name>
+        <label>Call None Child</label>
+        <description>Calls the explicit triggerType None child and captures either runtime rejection or unexpected success.</description>
+        <locationX>800</locationX>
+        <locationY>300</locationY>
+        <flowName>SfPi_Advanced_Subflow_None_Child</flowName>
+        <inputAssignments><name>inputText</name><value><elementReference>inputText</elementReference></value></inputAssignments>
+        <outputAssignments><assignToReference>outputText</assignToReference><name>outputText</name></outputAssignments>
+    </subflows>
+    <variables>
+        <name>inputText</name>
+        <dataType>String</dataType>
+        <description>Text forwarded into the nested chain.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>faultMode</name>
+        <dataType>String</dataType>
+        <description>Selects success, handled, unhandled, or none-trigger proof.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>correlationKey</name>
+        <dataType>String</dataType>
+        <description>Run-scoped key copied onto the rollback marker.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>externalKey</name>
+        <dataType>String</dataType>
+        <description>Unique key copied onto the rollback marker.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>outputText</name>
+        <dataType>String</dataType>
+        <description>Propagated output, handled sentinel, or none-trigger fault sentinel.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <name>faultMessage</name>
+        <dataType>String</dataType>
+        <description>Fault text captured by a handled path.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>
