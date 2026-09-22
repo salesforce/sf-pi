@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.293.0](https://github.com/salesforce/sf-pi/compare/v0.292.0...v0.293.0) (2026-09-22)
+
+
+### Features
+
+* **sf-flow:** prove bulk async, schedule, order, and subflow runtime ([8863de2](https://github.com/salesforce/sf-pi/commit/8863de2dbe3273b892fd043c2749beb1f1a9fcac))
+
 ## [0.292.0](https://github.com/salesforce/sf-pi/compare/v0.291.3...v0.292.0) (2026-09-21)
 
 
