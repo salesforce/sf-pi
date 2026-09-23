@@ -4,7 +4,7 @@ Use `sf_flow` for the Flow-specific lifecycle. Normal Pi file tools own `.flow-m
 
 ## Behavior-proof-first loop
 
-1. Use `project.scan` to locate checked-in Flows or `author.plan` to select a Core Flow Family. Pass `target_org` only when object fields, action contracts, or subflow inputs/outputs must be grounded in that org. When `workspace` is supplied, file actions resolve paths relative to that explicit SFDX project instead of Pi's current directory.
+1. Use `project.scan` to locate checked-in Flows or `author.plan` to select a supported Flow family. Pass `target_org` only when object fields, action contracts, subflow inputs/outputs, or Omni-Channel routing choices must be grounded in that org. When `workspace` is supplied, file actions resolve paths relative to that explicit SFDX project instead of Pi's current directory.
 2. Use `flow.inspect` to understand an existing Flow’s family, trigger, elements, connectors, and Mermaid topology.
 3. Reproduce the intended behavior with a Flow test when one already exists and the defect is testable before editing.
 4. Edit source with normal Pi file tools. Fast local diagnostics run automatically after successful Flow writes/edits.
@@ -23,11 +23,15 @@ Use `sf_flow` for the Flow-specific lifecycle. Normal Pi file tools own `.flow-m
 - **Schedule-Triggered**: a global date/time schedule starts batches of matching records. Use selective criteria and idempotent processing.
 - **Platform Event-Triggered**: an event message starts the Flow. Filter carefully, handle duplicate delivery, prevent self-publishing loops, and do not plan a Subflow element.
 
-If intent does not establish a Core Flow Family or record transaction timing, call `author.plan` without guessing and use its clarification choices.
+## Supported specialized family selection
+
+- **Omni-Channel**: a service channel launches a `RoutingFlow` to route one work item. Define `recordId` as a scalar Text input, ground the service channel and destination in the target org, and use Omni action version 2.0.0 for new metadata. Supported destinations are queue, direct agent with a required fallback queue, and target-org skills-based routing rules. `omni_check_availability=true` adds a matching availability check, guarded fault/no-capacity path, and `reasonForNotRouting`; `omni_no_route=true` adds a caller-controlled intentional no-route branch. Generated source uses caller-supplied IDs so it remains public-safe and portable; bind them through the owning channel configuration rather than committing org-specific IDs.
+
+If intent does not establish a supported Flow family or record transaction timing, call `author.plan` without guessing and use its clarification choices. “Route a record to a queue” alone is ambiguous; choose Omni-Channel only when a service channel or Route Work owns the launch.
 
 ## Org-grounding boundary
 
-With `target_org`, `author.plan` reads only bounded object/event describe data, matching invocable action details, and matching autolaunched subflow variable contracts. Missing permissions or endpoint failures become explicit grounding gaps. Grounding never mutates the org and never runs automatically after file edits.
+With `target_org`, `author.plan` reads only bounded object/event describe data, matching invocable action details, matching autolaunched subflow variable contracts, or destination-relevant Omni-Channel service-channel, queue, routing-configuration, skill, and active-agent choices. Missing permissions or endpoint failures become explicit grounding gaps. Grounding never mutates the org and never runs automatically after file edits.
 
 Do not treat an unmatched action or subflow as proof that it is unavailable when coverage reports a gap or bounded truncation. Use the returned field/action/subflow contracts instead of inventing API names or inputs.
 
@@ -107,7 +111,8 @@ Verify fixture records, logs, trace flags, and other temporary runtime state sep
 - `validate.check` proves how the selected org validates the exact staged Flow at that time; it does not save the Flow.
 - `deploy.activate` and `lifecycle.activate` prove activation only after successful check-only, deployment, and REST resulting-state verification; they do not prove business behavior.
 - `lifecycle.deactivate` proves inactive Flow definition state and scheduled-job cleanup, not cleanup of business records or external side effects.
-- `test.run` proves only the explicitly selected org Flow tests.
+- `test.run` proves only the explicitly selected org Flow tests. Do not assume a Flow test can reproduce service-channel routing context.
+- Omni-Channel check-only validation proves metadata acceptance, not creation of `PendingServiceRouting` or `AgentWork`. A controlled non-production routing scenario is required for runtime proof. Assert PSR preferred-user/fallback behavior for direct routing and assert both a non-empty `reasonForNotRouting` and zero PSRs for an unavailable path. `AgentWork` requires an eligible online presence and must not be expected from an offline test user. Skills runtime is not green evidence when the target has no skills-based routing rules. Agentforce STDM is supplementary evidence only when an Agentforce session participates.
 - A Mermaid topology is a graph projection, not proof that Flow Builder accepts the metadata.
 - Use `code_analyzer` for broad Flow static analysis. Use `sf_apex` when Flow invokes Apex and Apex behavior needs proof. Use `sf_soql` for schema evidence not established by validation.
 

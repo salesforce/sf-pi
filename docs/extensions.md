@@ -51,7 +51,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-flow">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF Flow</strong>
-  <span>Lean Salesforce Flow lifecycle workflows for pi: core-five and org-grounded authoring plans, preventive quality, bounded repair guidance, safe quick fixes, Mermaid topology, check-only validation, guarded activation/deactivation, and targeted Flow tests.</span>
+  <span>Lean Salesforce Flow lifecycle workflows for pi: core-five plus queue, direct-agent, skills, availability, and no-route Omni-Channel authoring; org grounding; preventive quality; bounded repair; Mermaid topology; check-only validation; guarded lifecycle; and targeted Flow tests.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-flow</code></span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-lwc">

@@ -33,6 +33,10 @@ const FLOW_API_NAMES = [
   "SfPi_Hardening_Event_Handler",
   "SfPi_Hardening_Before_Delete",
   "SfPi_Hardening_After_Save_Task",
+  "SfPi_Hardening_Omni_Queue",
+  "SfPi_Hardening_Omni_Agent_Availability",
+  "SfPi_Hardening_Omni_Skills",
+  "SfPi_Hardening_Omni_No_Route",
 ] as const;
 const AFTER_SAVE_FLOW = "SfPi_Hardening_After_Save_Task";
 const AFTER_SAVE_TEST = "SfPi_Hardening_After_Save_Task_Happy_Path";

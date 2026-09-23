@@ -562,6 +562,20 @@ const nativeRules: FlowQualityRule[] = [
     profiles: allProfiles,
   }),
   nativeRule({
+    id: "omni-channel-contract",
+    label: "Omni-Channel Flow Contract",
+    message: "Provide the required work-item input and a reachable, configured Route Work action.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "stable",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    supported_families: ["omni-channel"],
+    authoring_constraint:
+      "Use processType RoutingFlow, scalar Text input recordId, and reachable Route Work v2 with grounded service-channel and destination inputs; direct agents require fallback queues, skills require routing configurations, and no-route paths assign reasonForNotRouting.",
+  }),
+  nativeRule({
     id: "duplicate-name",
     label: "Duplicate API Name",
     message: "Give every Flow element and resource a unique API name.",

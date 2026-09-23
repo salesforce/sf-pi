@@ -77,7 +77,7 @@ Current intentional SF Pi-broader cases are:
 - `duplicate-dml`: treats DML before a back-enabled downstream screen as repeatable.
 - `missing-auto-layout`: reports absent CanvasMode on minimal new source.
 - `missing-start-reference`: reports executable nodes without a Start edge and empty caller-launched or screen Flows that cannot run.
-- `record-id-as-string`: reports an input String named like a record ID without requiring additional downstream shape.
+- `record-id-as-string`: reports an input String named like a record ID without requiring additional downstream shape, except for Omni-Channel Flows whose platform contract intentionally uses Text ID inputs.
 - `inactive-flow`: audits Draft legacy Workflow metadata even though the pinned oracle excludes that process type from this rule.
 
 These differences are independent SF Pi policy, not claims of strict upstream parity. Exact messages are never compared.
@@ -90,6 +90,7 @@ These rules are independent SF Flow lifecycle checks rather than Lightning Flow 
 - `flow-root`
 - `required-core-metadata`
 - `core-flow-family`
+- `omni-channel-contract`
 - `duplicate-name`
 - `dangling-target`
 - `unresolved-reference`

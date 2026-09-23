@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <description>Route Work to Skills using caller-supplied, target-org-grounded inputs.</description>
+        <name>Route_Work</name>
+        <label>Route Work to Skills</label>
+        <locationX>176</locationX>
+        <locationY>374</locationY>
+        <actionName>routeWork</actionName>
+        <actionType>routeWork</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>recordId</name>
+            <value><elementReference>recordId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>serviceChannelId</name>
+            <value><elementReference>serviceChannelId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>routingType</name>
+            <value><stringValue>SkillsBased</stringValue></value>
+        </inputParameters>
+        <inputParameters>
+            <name>routingConfigId</name>
+            <value><elementReference>routingConfigId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>isRoutingConfigVariable</name>
+            <value><booleanValue>true</booleanValue></value>
+        </inputParameters>
+        <inputParameters>
+            <name>skillOption</name>
+            <value><stringValue>RunSBRRules</stringValue></value>
+        </inputParameters>
+        <nameSegment>routeWork</nameSegment>
+        <offset>0</offset>
+        <versionString>2.0.0</versionString>
+    </actionCalls>
+    <apiVersion>67.0</apiVersion>
+    <description>Public-safe SfPi Hardening Omni Skills check-only fixture.</description>
+    <label>SfPi Hardening Omni Skills</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>RoutingFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector>
+            <targetReference>Route_Work</targetReference>
+        </connector>
+    </start>
+    <status>Draft</status>
+    <variables>
+        <name>recordId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>serviceChannelId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>routingConfigId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

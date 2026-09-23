@@ -165,7 +165,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-flow",
     name: "SF Flow",
-    description: "Lean Salesforce Flow lifecycle workflows for pi: core-five and org-grounded authoring plans, preventive quality, bounded repair guidance, safe quick fixes, Mermaid topology, check-only validation, guarded activation/deactivation, and targeted Flow tests.",
+    description: "Lean Salesforce Flow lifecycle workflows for pi: core-five plus queue, direct-agent, skills, availability, and no-route Omni-Channel authoring; org grounding; preventive quality; bounded repair; Mermaid topology; check-only validation; guarded lifecycle; and targeted Flow tests.",
     file: "extensions/sf-flow/index.ts",
     category: "agent-tool",
     maturity: "experimental",

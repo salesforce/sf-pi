@@ -2,7 +2,7 @@
 
 ## What It Does
 
-SF Flow is a lean lifecycle extension for Salesforce Flow metadata. It helps agents choose a general-purpose Flow family, inspect and diagnose local source, validate one exact Flow without saving it, explicitly activate or deactivate one Flow with resulting-state verification, run targeted Flow tests, and present graph structure as Mermaid-backed terminal diagrams.
+SF Flow is a lean lifecycle extension for Salesforce Flow metadata. It helps agents choose a supported Flow family, including Omni-Channel Flow, inspect and diagnose local source, validate one exact Flow without saving it, explicitly activate or deactivate one Flow with resulting-state verification, run targeted Flow tests, and present graph structure as Mermaid-backed terminal diagrams.
 
 Normal Pi `read`, `write`, and `edit` tools own source changes. SF Flow owns only the explicit one-Flow lifecycle operations below; it is not a general metadata deployment surface.
 
@@ -15,6 +15,10 @@ V1 provides authoring blueprints for:
 3. Record-Triggered Flow, including before-save, after-save, and before-delete timing
 4. Schedule-Triggered Flow
 5. Platform Event-Triggered Flow
+
+## Supported Specialized Flow Family
+
+SF Flow also authors and diagnoses **Omni-Channel Flow** metadata (`processType=RoutingFlow`). Authoring supports portable queue routing, direct-agent routing with a fallback queue, and target-org skills-based routing rules. Optional Check Availability adds a guarded no-capacity path, and an explicit no-route option returns `reasonForNotRouting`. New Omni actions use version 2.0.0 and generated source contains caller-supplied inputs instead of org-specific IDs. With `target_org`, authoring grounding reads only destination-relevant service channels, queues, routing configurations, skills, and active-agent choices without mutating the org.
 
 Other Metadata API process and trigger values are reported as specialized. SF Flow can inspect their common graph shape but does not claim type-specific authoring proficiency for them.
 
@@ -51,7 +55,8 @@ Lifecycle mutations require an explicit target org and `allow_mutation=true`, re
 
 - the requested object or platform event and intent-relevant fields;
 - matching standard, Apex, Flow, external-service, and quick actions with input/output contracts;
-- matching active or latest autolaunched subflows with input/output variables.
+- matching active or latest autolaunched subflows with input/output variables;
+- for Omni-Channel, bounded destination-relevant service channels, queues, routing configurations, skills, and active-agent choices, plus explicit readiness gaps.
 
 Each plan discloses API calls and grounding gaps. Results are bounded to prevent full-schema or full-action dumps, and no grounding occurs at startup or after ordinary file edits.
 
@@ -61,6 +66,7 @@ The small V1 analyzer reports source-located findings for:
 
 - malformed XML or a non-Flow root;
 - missing core metadata and inconsistent core family/trigger configuration;
+- invalid Omni-Channel `recordId`, Route Work, service-channel, queue, direct-agent fallback, skills-routing, matching availability target, no-route output, reachability, or action-version contracts;
 - duplicate element or resource names;
 - missing or dangling connector targets and unreachable elements;
 - unresolved local references and invalid record context;
@@ -125,9 +131,11 @@ The E2E harness has passed against a connected non-production org at API 67.0: o
 
 A dedicated public-safe draft autolaunched Flow and FlowTest fixture is available under `scripts/e2e/fixtures/sf-flow/`. Provisioning always performs check-only first and requires an explicit `--deploy` flag. The fixture creates no data records and requires no activation.
 
-The same project also contains public-safe Screen, schedule-triggered, platform-event-triggered, before-delete, and after-save fixtures plus one non-committing after-save FlowTest. Run `npm run e2e:sf-flow-families -- --org <non-production-alias>` for local diagnosis and combined check-only validation. Add `--deploy` to deploy Draft fixtures, deactivate any fixture left active through `FlowDefinition.activeVersionNumber=0`, run and rerun the after-save FlowTest, and verify inactive state, scheduled-job cleanup, and zero Account/Task residue.
+The same project also contains public-safe Screen, schedule-triggered, platform-event-triggered, before-delete, after-save, and Omni-Channel queue, direct-agent availability, rules-based skills, and intentional no-route fixtures plus one non-committing after-save FlowTest. Run `npm run e2e:sf-flow-families -- --org <non-production-alias>` for local diagnosis and combined check-only validation. Add `--deploy` to deploy Draft fixtures, deactivate any fixture left active through `FlowDefinition.activeVersionNumber=0`, run and rerun the after-save FlowTest, and verify inactive state, scheduled-job cleanup, and zero Account/Task residue.
 
 Advanced public-safe fixtures live under `scripts/e2e/fixtures/sf-flow-advanced/`. Run `npm run e2e:sf-flow-advanced -- --org <dedicated-non-production-alias>` for local diagnosis and combined check-only validation, `--deploy` to retain inactive Draft Flow and Apex fixtures, or `--runtime` to check-only validate the exact staged Active package, temporarily activate the Flow fixtures, and run targeted Apex integration tests. The runtime sweep covers Create, Update, Create or Update, and Delete trigger configurations; AND, OR, custom, and formula entry criteria; every `FlowRecordFilter` operator, collectively spanning string, currency, date, picklist, boolean, and reference fields; before-save, immediate after-save, related-record, and asynchronous-after-commit paths; and 1- and 200-record transactions. Element proofs include Assignment, Decision, Loop, Custom Error, real action and database fault connectors, Apex and standard Send Email actions, Subflow, Collection Filter, three-field Collection Sort with nulls first and last, related-record deletion, record-collection Create/Update/Delete operations, filter-based Get/Create/Update/Delete Records, and Create Records upsert. Upsert proofs cover create-then-update identity, complete rollback with `doesUpsertAllOrNone=true`, and partial persistence with `doesUpsertAllOrNone=false`; partial mode still enters the fault connector when any member fails. Transform proofs cover direct mapping, Count and Sum including empty input, a real `InnerJoin` with matched and unmatched keys, and two-level Apex-defined nested collections. It also proves `$Record__Prior`, invocable Apex cardinality/order, primitive and record-collection Subflow contracts, a 200-record committed asynchronous-after-commit fan-out, a 201-record schedule batch without partition assertions, explicit and unspecified `triggerOrder`, nested subflow output propagation and rollback, schedule-triggered batches, 200-event platform-event execution, and a committed one-minute `WaitDuration` interview that is observed as Paused, automatically resumes, creates one evidence record, and leaves no `FlowInterview`. An isolated private custom object plus a temporarily assigned fixture permission set keeps the new data-operation proofs independent from standard-object automation. Runtime paths cover no-trigger autolaunched, before-save, after-save, before-delete, schedule-triggered, and platform-event Flows. A Roll Back Records Screen Flow is locally diagnosed, API 67 check-only validated, activated, and deterministically deactivated; interactive Screen runtime remains outside the headless sweep because `Flow.Interview` refuses Screen Flows. The harness uses real committed transactions and bounded polls for asynchronous-after-commit and Wait evidence because Apex tests do not establish those paths. Cleanup runs in `finally`, deactivates every Flow with `activeVersionNumber=0`, removes bounded fixture data, paused interviews, schedules, and temporary permission assignments, and verifies zero Account, Contact, Opportunity, Task, custom probe, `FlowInterview`, and CronTrigger residue.
+
+A bounded non-production Omni-Channel runtime proof activated temporary direct-agent, rules-based skills, and availability-aware Flows against a disposable Case service channel and queue. Direct-agent execution created one `PendingServiceRouting` with the expected preferred user and fallback queue. With no online agent presence, availability execution returned a non-empty `reasonForNotRouting` and created no PSR. Rules-based skills source passed check-only and activation; runtime remained correctly blocked when the target org had no skills-based routing rules. Temporary data, setup records, Flow versions, and Flow definitions were removed, with zero matching residue verified afterward.
 
 Action-specific fixtures live under `scripts/e2e/fixtures/sf-flow-actions/`. Run `npm run e2e:sf-flow-actions -- --org <dedicated-non-production-alias>` for local diagnosis and combined check-only validation or add `--runtime` for targeted Apex tests plus real Flow invocations. The sweep proves a complex bulk-safe Invocable Apex contract, a Named Credential-backed Apex callout, an OpenAPI External Service callout, an object-specific Quick Action, a workflow Email Alert, and a dynamically grounded Run Agent action. The committed Run Agent template contains no org-specific action name; the harness discovers or accepts one through `--agent-action`, validates the `userMessage`/`agentResponse`/`sessionId` contract, stages it only in a temporary directory, and removes that directory afterward. Cleanup deactivates all action Flows and verifies zero fixture Account and Task residue.
 
@@ -152,6 +160,10 @@ The exact upstream core package is pinned as a dev-only parity oracle. Fresh SF 
 - [Workflow Alert Tooling API](https://developer.salesforce.com/docs/atlas.en-us.api_tooling.meta/api_tooling/tooling_api_objects_workflowalert.htm)
 - [Flow Builder best practices](https://help.salesforce.com/s/articleView?id=platform.flow_prep_bestpractices.htm&type=5)
 - [Before-save record-triggered flows](https://help.salesforce.com/s/articleView?id=platform.flow_concepts_trigger_record.htm&type=5)
+- [Create an Omni-Channel Flow](https://help.salesforce.com/s/articleView?id=service.omnichannel_create_a_flow.htm&type=5)
+- [Omni-Channel Flow considerations](https://help.salesforce.com/s/articleView?id=service.omnichannel_flow_considerations.htm&type=5)
+- [Check Availability for Routing](https://help.salesforce.com/s/articleView?id=service.omnichannel_check_availability_for_routing.htm&type=5)
+- [Create the reasonForNotRouting output](https://help.salesforce.com/s/articleView?id=service.omnichannel_create_reasonfornotrouting.htm&type=5)
 - [Scheduled paths](https://help.salesforce.com/s/articleView?id=platform.flow_concepts_trigger_scheduled_path.htm&type=5)
 - [Run Flow tests](https://developer.salesforce.com/docs/platform/salesforce-cli-reference/guide/cli_reference_flow_run_test.html)
 - [Get Flow test results](https://developer.salesforce.com/docs/platform/salesforce-cli-reference/guide/cli_reference_flow_get_test.html)

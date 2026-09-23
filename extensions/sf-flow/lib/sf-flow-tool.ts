@@ -90,9 +90,27 @@ const Params = Type.Object({
         "record-triggered",
         "schedule-triggered",
         "platform-event-triggered",
+        "omni-channel",
       ] as const,
-      { description: "Explicit core Flow family when intent alone is ambiguous." },
+      { description: "Explicit supported Flow family when intent alone is ambiguous." },
     ),
+  ),
+  omni_destination: Type.Optional(
+    StringEnum(["queue", "agent", "skills"] as const, {
+      description: "Omni-Channel Route Work destination for author.plan.",
+    }),
+  ),
+  omni_check_availability: Type.Optional(
+    Type.Boolean({
+      description:
+        "Add Check Availability and an intentional no-route branch to an Omni-Channel authoring plan.",
+    }),
+  ),
+  omni_no_route: Type.Optional(
+    Type.Boolean({
+      description:
+        "Add an explicit no-route branch with reasonForNotRouting to an Omni-Channel authoring plan.",
+    }),
   ),
   object: Type.Optional(Type.String({ description: "Triggering Salesforce object API name." })),
   event: Type.Optional(Type.String({ description: "Triggering platform event API name." })),
@@ -154,7 +172,7 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
     name: SF_FLOW_TOOL_NAME,
     label: "SF Flow",
     description:
-      "Lean Salesforce Flow lifecycle tool: core-five authoring plans, project scan, local diagnostics and Mermaid topology, source-bound safe quick fixes, check-only validation, explicit guarded activation/deactivation, and targeted Flow tests.",
+      "Lean Salesforce Flow lifecycle tool: core-five plus queue, direct-agent, skills, availability, and no-route Omni-Channel authoring; project scan; local diagnostics and Mermaid topology; source-bound quick fixes; check-only validation; guarded lifecycle; and targeted Flow tests.",
     promptSnippet:
       "Plan, inspect, diagnose, validate, safely activate/deactivate, and test Salesforce Flow metadata with compact evidence and resulting-state verification.",
     promptGuidelines: [

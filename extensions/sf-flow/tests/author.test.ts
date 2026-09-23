@@ -9,6 +9,7 @@ const cases = [
   ["Update the triggering record before it is saved", "record-triggered"],
   ["Run every day at midnight", "schedule-triggered"],
   ["Handle a platform event message", "platform-event-triggered"],
+  ["Use an Omni-Channel flow to route work to a queue", "omni-channel"],
 ] as const;
 
 describe("SF Flow authoring plans", () => {
@@ -34,6 +35,91 @@ describe("SF Flow authoring plans", () => {
     expect(String(result.details.skeleton)).toContain(
       "<targetReference>TODO_Screen</targetReference>",
     );
+  });
+
+  it("returns a queue-routing Omni-Channel blueprint and metadata skeleton", async () => {
+    const result = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        intent: "Route an Omni-Channel work item to a queue",
+        flow_type: "omni-channel",
+      },
+      process.cwd(),
+    );
+
+    expect(result.details.blueprint).toMatchObject({
+      family: "omni-channel",
+      process_type: "RoutingFlow",
+      destination: "queue",
+    });
+    expect(String(result.details.skeleton)).toContain("<processType>RoutingFlow</processType>");
+    expect(String(result.details.skeleton)).toContain("<actionName>routeWork</actionName>");
+    expect(String(result.details.skeleton)).toContain("<versionString>2.0.0</versionString>");
+    expect(String(result.details.skeleton)).toContain("<name>recordId</name>");
+  });
+
+  it("authors direct-agent routing with availability and a fallback queue", async () => {
+    const result = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        intent: "Check availability and route Omni-Channel work directly to an agent",
+        flow_type: "omni-channel",
+        omni_destination: "agent",
+        omni_check_availability: true,
+      },
+      process.cwd(),
+    );
+    const skeleton = String(result.details.skeleton);
+
+    expect(result.details.blueprint).toMatchObject({
+      family: "omni-channel",
+      destination: "agent",
+      check_availability: true,
+    });
+    expect(skeleton).toContain("<actionName>checkAvailabilityForRouting</actionName>");
+    expect(skeleton).toContain("<stringValue>Agent</stringValue>");
+    expect(skeleton).toContain("<name>agentId</name>");
+    expect(skeleton).toContain("<name>fallbackQueueId</name>");
+    expect(skeleton).toContain("<name>reasonForNotRouting</name>");
+  });
+
+  it("authors skills routing with target-org skills-based routing rules", async () => {
+    const result = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        intent: "Route Omni-Channel work using explicitly defined skills",
+        flow_type: "omni-channel",
+        omni_destination: "skills",
+      },
+      process.cwd(),
+    );
+    const skeleton = String(result.details.skeleton);
+
+    expect(result.details.blueprint).toMatchObject({
+      family: "omni-channel",
+      destination: "skills",
+    });
+    expect(skeleton).not.toContain("<actionName>addSkillRequirements</actionName>");
+    expect(skeleton).toContain("<stringValue>SkillsBased</stringValue>");
+    expect(skeleton).toContain("<stringValue>RunSBRRules</stringValue>");
+    expect(skeleton).toContain("<name>routingConfigId</name>");
+  });
+
+  it("authors an intentional no-route path with a public output reason", async () => {
+    const result = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        intent: "Route an Omni-Channel work item or return a no-route reason",
+        flow_type: "omni-channel",
+        omni_no_route: true,
+      },
+      process.cwd(),
+    );
+    const skeleton = String(result.details.skeleton);
+
+    expect(skeleton).toContain("<name>reasonForNotRouting</name>");
+    expect(skeleton).toContain("<isOutput>true</isOutput>");
+    expect(skeleton).toContain("<name>Set_Reason_For_Not_Routing</name>");
   });
 
   it("ignores blank optional event values when an object is provided", async () => {

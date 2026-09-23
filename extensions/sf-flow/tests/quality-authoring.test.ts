@@ -4,6 +4,21 @@ import { describe, expect, it } from "vitest";
 import { buildAuthoringPlan } from "../lib/author.ts";
 
 describe("preventive Flow authoring constraints", () => {
+  it("includes the Omni-Channel authoring contract without the generic record ID warning", async () => {
+    const result = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        intent: "Route an Omni-Channel work item to a queue",
+        flow_type: "omni-channel",
+      },
+      process.cwd(),
+    );
+    const constraints = result.details.generation_constraints as Array<{ rule_id: string }>;
+    const ids = constraints.map((constraint) => constraint.rule_id);
+
+    expect(ids).toContain("omni-channel-contract");
+  });
+
   it("compiles family-aware generation rules into the initial blueprint", async () => {
     const result = await buildAuthoringPlan(
       {

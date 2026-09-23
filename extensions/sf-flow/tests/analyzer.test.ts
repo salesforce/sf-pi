@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { analyzeFlowSource } from "../lib/analyzer.ts";
+import { buildAuthoringPlan } from "../lib/author.ts";
 
 const fixture = (name: string) =>
   readFile(path.join(import.meta.dirname, "fixtures", name), "utf8");
@@ -15,6 +16,7 @@ describe("SF Flow local diagnostics", () => {
     ["Record_Triggered_Example.flow-meta.xml", "record-triggered"],
     ["Schedule_Triggered_Example.flow-meta.xml", "schedule-triggered"],
     ["Platform_Event_Triggered_Example.flow-meta.xml", "platform-event-triggered"],
+    ["Omni_Channel_Queue.flow-meta.xml", "omni-channel"],
   ])("recognizes a valid %s fixture", async (name, family) => {
     const result = analyzeFlowSource(await fixture(name), name);
 
@@ -141,9 +143,129 @@ describe("SF Flow local diagnostics", () => {
     );
   });
 
-  it("skips specialized record-context semantics instead of guessing", () => {
+  it("validates the Omni-Channel recordId and Route Work contracts", async () => {
     const result = analyzeFlowSource(
-      `<?xml version="1.0"?><Flow><apiVersion>68.0</apiVersion><assignments><name>Use_Record</name><assignmentItems><assignToReference>$Record.Name</assignToReference><operator>Assign</operator><value><stringValue>x</stringValue></value></assignmentItems></assignments><label>Specialized</label><processType>RoutingFlow</processType><start/><status>Draft</status></Flow>`,
+      await fixture("Omni_Channel_Queue.flow-meta.xml"),
+      "Omni_Channel_Queue.flow-meta.xml",
+      { profile: "review" },
+    );
+
+    expect(result.family).toBe("omni-channel");
+    expect(result.findings.filter((finding) => finding.severity === "high")).toEqual([]);
+    expect(result.findings.some((finding) => finding.rule_id === "record-id-as-string")).toBe(
+      false,
+    );
+    expect(result.findings.some((finding) => finding.rule_id === "missing-fault-path")).toBe(false);
+    expect(result.coverage.ran).toContain("omni-channel-contract");
+  });
+
+  it.each([
+    ["agent", true],
+    ["skills", false],
+  ] as const)(
+    "accepts the generated %s Omni-Channel contract",
+    async (destination, availability) => {
+      const plan = await buildAuthoringPlan(
+        {
+          action: "author.plan",
+          intent: `Route Omni-Channel work to ${destination}`,
+          flow_type: "omni-channel",
+          omni_destination: destination,
+          omni_check_availability: availability,
+        },
+        process.cwd(),
+      );
+      const result = analyzeFlowSource(
+        String(plan.details.skeleton),
+        `Omni_${destination}.flow-meta.xml`,
+        { profile: "review" },
+      );
+
+      expect(result.family).toBe("omni-channel");
+      expect(result.findings.filter((finding) => finding.severity === "high")).toEqual([]);
+      if (availability) {
+        expect(result.findings.some((finding) => finding.rule_id === "missing-fault-path")).toBe(
+          false,
+        );
+      }
+      expect(result.model?.elements).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: "actionCalls",
+            detail: expect.stringContaining(destination === "agent" ? "agent" : "skills"),
+          }),
+        ]),
+      );
+    },
+  );
+
+  it("reports an availability check that does not match downstream routing", async () => {
+    const plan = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        intent: "Check queue availability before Omni-Channel routing",
+        flow_type: "omni-channel",
+        omni_destination: "queue",
+        omni_check_availability: true,
+      },
+      process.cwd(),
+    );
+    const mismatched = String(plan.details.skeleton).replace(
+      "<name>routingType</name>\n            <value><stringValue>QueueBased</stringValue></value>",
+      "<name>routingType</name>\n            <value><stringValue>Agent</stringValue></value>",
+    );
+    const result = analyzeFlowSource(mismatched, "Omni_Mismatch.flow-meta.xml");
+
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        rule_id: "omni-channel-contract",
+        severity: "high",
+        message: expect.stringContaining("different routing types"),
+      }),
+    );
+  });
+
+  it("requires a fallback queue for direct-agent Route Work", () => {
+    const result = analyzeFlowSource(
+      `<?xml version="1.0"?><Flow><actionCalls><name>Route_Direct</name><label>Route Direct</label><actionName>routeWork</actionName><actionType>routeWork</actionType><inputParameters><name>recordId</name><value><elementReference>recordId</elementReference></value></inputParameters><inputParameters><name>serviceChannelId</name><value><elementReference>serviceChannelId</elementReference></value></inputParameters><inputParameters><name>routingType</name><value><stringValue>Agent</stringValue></value></inputParameters><inputParameters><name>agentId</name><value><elementReference>agentId</elementReference></value></inputParameters><versionString>2.0.0</versionString></actionCalls><apiVersion>68.0</apiVersion><description>Invalid direct-agent routing.</description><label>Invalid Direct</label><processType>RoutingFlow</processType><start><connector><targetReference>Route_Direct</targetReference></connector></start><status>Draft</status><variables><name>agentId</name><dataType>String</dataType><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables><variables><name>recordId</name><dataType>String</dataType><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables><variables><name>serviceChannelId</name><dataType>String</dataType><isCollection>false</isCollection><isInput>true</isInput><isOutput>false</isOutput></variables></Flow>`,
+      "Invalid_Direct.flow-meta.xml",
+    );
+
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        rule_id: "omni-channel-contract",
+        severity: "high",
+        message: expect.stringContaining("fallback queue"),
+      }),
+    );
+  });
+
+  it("reports missing Omni-Channel inputs and Route Work", () => {
+    const result = analyzeFlowSource(
+      `<?xml version="1.0"?><Flow><apiVersion>68.0</apiVersion><description>Invalid Omni fixture.</description><label>Invalid Omni</label><processType>RoutingFlow</processType><start/><status>Draft</status></Flow>`,
+      "Invalid_Omni.flow-meta.xml",
+    );
+
+    expect(result.family).toBe("omni-channel");
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "omni-channel-contract",
+          severity: "high",
+          message: expect.stringContaining("recordId"),
+        }),
+        expect.objectContaining({
+          rule_id: "omni-channel-contract",
+          severity: "high",
+          message: expect.stringContaining("Route Work"),
+        }),
+      ]),
+    );
+  });
+
+  it("keeps unknown specialized process types coverage-bounded", () => {
+    const result = analyzeFlowSource(
+      `<?xml version="1.0"?><Flow><apiVersion>68.0</apiVersion><assignments><name>Use_Record</name><assignmentItems><assignToReference>$Record.Name</assignToReference><operator>Assign</operator><value><stringValue>x</stringValue></value></assignmentItems></assignments><label>Specialized</label><processType>Orchestrator</processType><start/><status>Draft</status></Flow>`,
       "specialized.flow-meta.xml",
     );
 

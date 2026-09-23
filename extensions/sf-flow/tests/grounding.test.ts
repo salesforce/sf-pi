@@ -8,6 +8,31 @@ import {
   groundAuthoringContext,
   type AuthorGroundingAdapter,
 } from "../lib/grounding.ts";
+import { groundOmniAuthoringContext, type OmniGroundingAdapter } from "../lib/omni-grounding.ts";
+
+function omniAdapter(): OmniGroundingAdapter {
+  return {
+    listServiceChannels: vi.fn(async () => [
+      {
+        developer_name: "Messaging_Channel",
+        label: "Messaging",
+        detail: "MessagingSession",
+      },
+    ]),
+    listQueues: vi.fn(async () => [{ developer_name: "Support_Queue", label: "Support Queue" }]),
+    listRoutingConfigurations: vi.fn(async () => [
+      {
+        developer_name: "Support_Routing",
+        label: "Support Routing",
+        detail: "MostAvailable",
+      },
+    ]),
+    listSkills: vi.fn(async () => [{ developer_name: "Billing", label: "Billing" }]),
+    listAgents: vi.fn(async () => [
+      { developer_name: "routing.agent@example.invalid", label: "Routing Agent" },
+    ]),
+  };
+}
 
 function adapter(): AuthorGroundingAdapter {
   return {
@@ -64,6 +89,89 @@ function adapter(): AuthorGroundingAdapter {
 }
 
 describe("org-grounded Flow authoring", () => {
+  it("grounds bounded Omni-Channel service channels and routing choices", async () => {
+    const fake = omniAdapter();
+    const result = await groundOmniAuthoringContext(
+      {} as never,
+      {
+        action: "author.plan",
+        target_org: "test-org",
+        intent: "Route a messaging work item using skills",
+        flow_type: "omni-channel",
+        omni_destination: "skills",
+      },
+      { adapter: fake },
+    );
+
+    expect(result).toMatchObject({
+      target_org: "test-org",
+      service_channels: [expect.objectContaining({ developer_name: "Messaging_Channel" })],
+      queues: [],
+      routing_configurations: [expect.objectContaining({ developer_name: "Support_Routing" })],
+      skills: [expect.objectContaining({ developer_name: "Billing" })],
+      agents: [],
+      coverage: { gaps: [] },
+    });
+  });
+
+  it("reports destination-specific Omni-Channel readiness gaps", async () => {
+    const empty: OmniGroundingAdapter = {
+      listServiceChannels: vi.fn(async () => []),
+      listQueues: vi.fn(async () => []),
+      listRoutingConfigurations: vi.fn(async () => []),
+      listSkills: vi.fn(async () => []),
+      listAgents: vi.fn(async () => []),
+    };
+    const result = await groundOmniAuthoringContext(
+      {} as never,
+      {
+        action: "author.plan",
+        target_org: "test-org",
+        intent: "Route work using skills",
+        flow_type: "omni-channel",
+        omni_destination: "skills",
+      },
+      { adapter: empty },
+    );
+
+    expect(result.coverage.gaps.map((gap) => gap.area)).toEqual(
+      expect.arrayContaining(["service_channels", "skills", "routing_configurations"]),
+    );
+  });
+
+  it("adds Omni-Channel grounding choices to author.plan", async () => {
+    const result = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        target_org: "test-org",
+        intent: "Route a messaging work item directly to an agent with Omni-Channel",
+        flow_type: "omni-channel",
+        omni_destination: "agent",
+      },
+      process.cwd(),
+      {} as never,
+      { omniAdapter: omniAdapter() },
+    );
+
+    expect(result.details.grounding).toMatchObject({
+      target_org: "test-org",
+      service_channels: [expect.objectContaining({ label: "Messaging" })],
+    });
+    expect(result.details.digest).toMatchObject({
+      sections: expect.arrayContaining([
+        expect.objectContaining({ title: "Grounded Omni-Channel" }),
+        expect.objectContaining({
+          title: "Queue Choices",
+          rows: [expect.objectContaining({ label: "Support Queue" })],
+        }),
+        expect.objectContaining({
+          title: "Agent Choices",
+          rows: [expect.objectContaining({ label: "Routing Agent" })],
+        }),
+      ]),
+    });
+  });
+
   it("walks hierarchical Quick Action and Email Alert action indexes", async () => {
     const responses = new Map<string, unknown>([
       ["/actions/custom/quickAction", { Account: "/actions/custom/quickAction/Account" }],

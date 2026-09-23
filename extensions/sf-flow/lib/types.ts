@@ -27,10 +27,12 @@ export type FlowFamily =
   | "record-triggered"
   | "schedule-triggered"
   | "platform-event-triggered"
+  | "omni-channel"
   | "specialized"
   | "unknown";
 
 export type TriggerTiming = "before-save" | "after-save" | "before-delete";
+export type OmniDestination = "queue" | "agent" | "skills";
 export type FlowSeverity = "high" | "moderate" | "low" | "info";
 
 export interface SfFlowParams {
@@ -43,6 +45,9 @@ export interface SfFlowParams {
   allow_mutation?: boolean;
   intent?: string;
   flow_type?: Exclude<FlowFamily, "specialized" | "unknown">;
+  omni_destination?: OmniDestination;
+  omni_check_availability?: boolean;
+  omni_no_route?: boolean;
   object?: string;
   event?: string;
   trigger_timing?: TriggerTiming;

@@ -14,6 +14,7 @@ import type {
   FlowSeverity,
 } from "./types.ts";
 import { findFlowConfigurationIssues, FLOW_CONFIGURATION_RULE_IDS } from "./configuration.ts";
+import { omniActionInputValue, omniRoutingLabel, runOmniChannelChecks } from "./omni-analyzer.ts";
 import { child, childText, descendants, parseFlowXml, type XmlNode } from "./xml.ts";
 import { FLOW_QUALITY_RULES, type FlowQualityProfile } from "./quality/catalog.ts";
 import { buildFlowQualityFacts } from "./quality/facts.ts";
@@ -26,6 +27,7 @@ const RULES = [
   "flow-root",
   "required-core-metadata",
   "core-flow-family",
+  "omni-channel-contract",
   "duplicate-name",
   "dangling-target",
   "unreachable-element",
@@ -177,6 +179,7 @@ export function analyzeFlowSource(
   ran.push("required-core-metadata");
   runFamilyChecks(root, model, report, skipped);
   ran.push("core-flow-family");
+  if (model.family === "omni-channel") ran.push("omni-channel-contract");
   runDuplicateNames(model, report);
   ran.push("duplicate-name");
   runConnectorChecks(model, report);
@@ -482,7 +485,12 @@ function elementDetail(node: XmlNode): string | undefined {
     return `${outcomes} outcomes`;
   }
   if (node.name === "actionCalls") {
-    return childText(node, "actionName") ?? childText(node, "actionType");
+    const action = childText(node, "actionName") ?? childText(node, "actionType");
+    if (action === "routeWork") {
+      const routingType = omniActionInputValue(node, "routingType");
+      return [action, omniRoutingLabel(routingType)].filter(Boolean).join(" · ");
+    }
+    return action;
   }
   if (node.name === "subflows") return childText(node, "flowName");
   if (node.name === "screens") {
@@ -531,6 +539,7 @@ function operatorWord(operator: string | undefined): string | undefined {
 
 function flowFamily(processType?: string, triggerType?: string): FlowFamily {
   if (processType === "Flow") return "screen";
+  if (processType === "RoutingFlow") return "omni-channel";
   if (processType !== "AutoLaunchedFlow") return processType ? "specialized" : "unknown";
   if (["RecordBeforeSave", "RecordBeforeDelete", "RecordAfterSave"].includes(triggerType ?? "")) {
     return "record-triggered";
@@ -641,6 +650,7 @@ function runFamilyChecks(
       start,
     );
   }
+  if (model.family === "omni-channel") runOmniChannelChecks(root, model, report);
 }
 
 function runDuplicateNames(model: FlowModel, report: Report): void {
@@ -787,6 +797,13 @@ function runLoopChecks(model: FlowModel, report: Report): void {
 
 function runFaultChecks(model: FlowModel, report: Report): void {
   for (const element of model.elements) {
+    if (
+      model.family === "omni-channel" &&
+      element.kind === "actionCalls" &&
+      element.detail?.startsWith("routeWork")
+    ) {
+      continue;
+    }
     const severity =
       element.kind === "recordLookups"
         ? "low"

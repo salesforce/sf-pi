@@ -288,6 +288,7 @@ export const QUALITY_EVALUATORS: Record<string, QualityEvaluator> = {
   },
 
   "record-id-as-string": (facts, report) => {
+    if (facts.model.family === "omni-channel") return;
     for (const variable of facts.model.resources.filter(
       (resource) => resource.kind === "variables" && resource.input,
     )) {

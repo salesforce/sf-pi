@@ -1,16 +1,16 @@
 ---
 title: "SF Flow"
-description: "Lean Salesforce Flow lifecycle workflows for pi: core-five and org-grounded authoring plans, preventive quality, bounded repair guidance, safe quick fixes, Mermaid topology, check-only validation, guarded activation/deactivation, and targeted Flow tests."
+description: "Lean Salesforce Flow lifecycle workflows for pi: core-five plus queue, direct-agent, skills, availability, and no-route Omni-Channel authoring; org grounding; preventive quality; bounded repair; Mermaid topology; check-only validation; guarded lifecycle; and targeted Flow tests."
 editLink: false
 ---
 
 # SF Flow
 
-<p class="sfpi-page-lead">Lean Salesforce Flow lifecycle workflows for pi: core-five and org-grounded authoring plans, preventive quality, bounded repair guidance, safe quick fixes, Mermaid topology, check-only validation, guarded activation/deactivation, and targeted Flow tests.</p>
+<p class="sfpi-page-lead">Lean Salesforce Flow lifecycle workflows for pi: core-five plus queue, direct-agent, skills, availability, and no-route Omni-Channel authoring; org grounding; preventive quality; bounded repair; Mermaid topology; check-only validation; guarded lifecycle; and targeted Flow tests.</p>
 
 ## What it does
 
-Owns the lean Flow lifecycle loop in pi: core-five Flow authoring blueprints with optional bounded org grounding for fields/actions/subflows, preventive data-first quality rules, bounded progress-gated repair guidance, three source-bound safe quick fixes, SFDX project discovery, source-located diagnostics, Mermaid topology, API-native one-file Metadata API check-only validation, explicit one-Flow activation/deactivation with resulting-state verification, targeted Flow test discovery/execution, compact Flow Result Cards, and persisted Flow Artifacts. Normal Pi file tools own business-logic edits; project-wide static analysis remains with Code Analyzer; general metadata deployment remains out of scope.
+Owns the lean Flow lifecycle loop in pi: core-five plus Omni-Channel queue, direct-agent fallback, target-org skills rules, availability, and intentional no-route authoring with optional bounded org grounding for fields/actions/subflows and destination-relevant routing choices; preventive data-first quality rules; bounded progress-gated repair guidance; three source-bound safe quick fixes; SFDX project discovery; source-located diagnostics; Mermaid topology; API-native one-file Metadata API check-only validation; explicit one-Flow activation/deactivation with resulting-state verification; targeted Flow test discovery/execution; compact Flow Result Cards; and persisted Flow Artifacts. Normal Pi file tools own business-logic edits; project-wide static analysis remains with Code Analyzer; general metadata deployment remains out of scope.
 
 ## Start
 

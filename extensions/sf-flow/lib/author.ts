@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Type-aware, non-mutating Flow authoring plans for the core five families. */
+/** Type-aware, non-mutating Flow authoring plans for supported Flow families. */
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -7,6 +7,16 @@ import { buildFlowDigest, row, section, toolResultFromDigest } from "./digest.ts
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import { groundAuthoringContext, type AuthorGroundingAdapter } from "./grounding.ts";
 import { generationConstraintsForFamily } from "./quality/catalog.ts";
+import {
+  buildOmniChannelMetadataSkeleton,
+  inferOmniDestination,
+  type OmniAuthoringOptions,
+} from "./omni-author.ts";
+import {
+  groundOmniAuthoringContext,
+  type OmniAuthorGroundingResult,
+  type OmniGroundingAdapter,
+} from "./omni-grounding.ts";
 import type { FlowFamily, SfFlowParams, ToolResult, TriggerTiming } from "./types.ts";
 
 export interface InferredFlowFamily {
@@ -17,6 +27,9 @@ export interface InferredFlowFamily {
 
 export function inferFlowFamily(intent: string): InferredFlowFamily {
   const text = intent.toLowerCase();
+  if (/omni[- ]channel|\broute work\b|\brouting flow\b|\bservice channel\b/.test(text)) {
+    return { family: "omni-channel", ambiguous: false };
+  }
   if (/platform event|event message|__e\b/.test(text)) {
     return { family: "platform-event-triggered", ambiguous: false };
   }
@@ -51,6 +64,7 @@ export function inferFlowFamily(intent: string): InferredFlowFamily {
       "record-triggered",
       "schedule-triggered",
       "platform-event-triggered",
+      "omni-channel",
     ],
   };
 }
@@ -59,7 +73,10 @@ export async function buildAuthoringPlan(
   params: SfFlowParams,
   cwd: string,
   session?: SalesforceSession,
-  groundingDependencies: { adapter?: AuthorGroundingAdapter } = {},
+  groundingDependencies: {
+    adapter?: AuthorGroundingAdapter;
+    omniAdapter?: OmniGroundingAdapter;
+  } = {},
 ): Promise<ToolResult> {
   const intent = params.intent?.trim();
   if (!intent) throw new Error("intent is required for author.plan");
@@ -127,19 +144,37 @@ export async function buildAuthoringPlan(
   }
 
   const apiVersion = await projectApiVersion(cwd);
+  const omniOptions: OmniAuthoringOptions | undefined =
+    family === "omni-channel"
+      ? {
+          destination: params.omni_destination ?? inferOmniDestination(intent),
+          check_availability: params.omni_check_availability === true,
+          no_route: params.omni_no_route === true,
+        }
+      : undefined;
   const generationConstraints = generationConstraintsForFamily(family);
-  const grounding = session
-    ? await groundAuthoringContext(session, params, groundingDependencies)
-    : undefined;
-  const blueprint = blueprintFor(family, timing, recordEvent, params.object, params.event);
-  const skeleton = metadataSkeleton(
+  const grounding =
+    session && family !== "omni-channel"
+      ? await groundAuthoringContext(session, params, groundingDependencies)
+      : undefined;
+  const omniGrounding =
+    session && family === "omni-channel"
+      ? await groundOmniAuthoringContext(session, params, {
+          adapter: groundingDependencies.omniAdapter,
+        })
+      : undefined;
+  const blueprint = blueprintFor(
     family,
     timing,
     recordEvent,
     params.object,
     params.event,
-    apiVersion,
+    omniOptions,
   );
+  const skeleton =
+    family === "omni-channel"
+      ? buildOmniChannelMetadataSkeleton(apiVersion, omniOptions as OmniAuthoringOptions)
+      : metadataSkeleton(family, timing, recordEvent, params.object, params.event, apiVersion);
   const digest = buildFlowDigest({
     action: "author.plan",
     kind: "flow_authoring_plan",
@@ -148,14 +183,28 @@ export async function buildAuthoringPlan(
     title: "Flow Authoring Plan · ready",
     meta: [family, ...(timing ? [timing] : [])],
     rail: [
-      { kind: "Local", target: "core-five blueprint", detail: `API ${apiVersion}` },
+      { kind: "Local", target: "supported-family blueprint", detail: `API ${apiVersion}` },
       ...(grounding ? grounding.coverage.calls.map((call) => ({ kind: "API", target: call })) : []),
+      ...(omniGrounding
+        ? omniGrounding.coverage.calls.map((call) => ({ kind: "API", target: call }))
+        : []),
     ],
     sections: [
       section("🎯", "Selection", [
         row("🧩", "Family", family),
         row("⏱️", "Trigger", blueprint.trigger_type ?? "launched by caller"),
         row("📦", "Object/Event", params.event || params.object || "define before authoring"),
+        ...(omniOptions
+          ? [
+              row("🎯", "Destination", omniOptions.destination),
+              row("📊", "Availability check", omniOptions.check_availability ? "yes" : "no"),
+              row(
+                "↩️",
+                "Intentional no-route",
+                omniOptions.no_route || omniOptions.check_availability ? "yes" : "no",
+              ),
+            ]
+          : []),
         row("💡", "Why", selectionReason(family, timing)),
       ]),
       ...(grounding
@@ -192,6 +241,24 @@ export async function buildAuthoringPlan(
                   ),
                 ]
               : []),
+          ]
+        : []),
+      ...(omniGrounding
+        ? [
+            section("🌐", "Grounded Omni-Channel", [
+              row(
+                "🌐",
+                "Grounded Org",
+                `${omniGrounding.target_org} · API ${omniGrounding.api_version ?? "unknown"}`,
+              ),
+              row("📡", "Service channels", omniGrounding.service_channels.length),
+              row("📥", "Queues", omniGrounding.queues.length),
+              row("🧭", "Routing configurations", omniGrounding.routing_configurations.length),
+              row("🎯", "Skills", omniGrounding.skills.length),
+              row("👤", "Agents", omniGrounding.agents.length),
+              row("⚠️", "Gaps", omniGrounding.coverage.gaps.length),
+            ]),
+            ...omniChoiceSections(omniGrounding),
           ]
         : []),
       section("🛡️", "Generation Guardrails", [
@@ -240,8 +307,42 @@ export async function buildAuthoringPlan(
     skeleton,
     inference: inferred,
     generation_constraints: generationConstraints,
-    grounding,
+    grounding: grounding ?? omniGrounding,
   });
+}
+
+function omniChoiceSections(grounding: OmniAuthorGroundingResult) {
+  return [
+    section(
+      "📡",
+      "Service Channel Choices",
+      grounding.service_channels.map((choice) =>
+        row("📡", choice.label, [choice.developer_name, choice.detail].filter(Boolean).join(" · ")),
+      ),
+    ),
+    section(
+      "📥",
+      "Queue Choices",
+      grounding.queues.map((choice) => row("📥", choice.label, choice.developer_name)),
+    ),
+    section(
+      "🧭",
+      "Routing Configuration Choices",
+      grounding.routing_configurations.map((choice) =>
+        row("🧭", choice.label, [choice.developer_name, choice.detail].filter(Boolean).join(" · ")),
+      ),
+    ),
+    section(
+      "🎯",
+      "Skill Choices",
+      grounding.skills.map((choice) => row("🎯", choice.label, choice.developer_name)),
+    ),
+    section(
+      "👤",
+      "Agent Choices",
+      grounding.agents.map((choice) => row("👤", choice.label, choice.developer_name)),
+    ),
+  ].filter((value) => value.rows.length > 0);
 }
 
 function resolveTiming(
@@ -265,6 +366,7 @@ function blueprintFor(
   recordEvent: SfFlowParams["record_event"] | undefined,
   objectName?: string,
   eventName?: string,
+  omniOptions?: OmniAuthoringOptions,
 ) {
   const common = ["Use descriptive labels, API names, and descriptions."];
   const byFamily: Record<
@@ -329,16 +431,44 @@ function blueprintFor(
       ],
       tests: ["matching event", "filtered event", "duplicate delivery", "self-publish guard"],
     },
+    "omni-channel": {
+      process_type: "RoutingFlow",
+      contract: [
+        ...common,
+        "Define recordId as a scalar Text input and pass it to every Route Work action.",
+        "Ground the service channel and destination in the target org before replacing placeholders.",
+        "Use Omni-Channel action version 2.0.0 for portable new metadata.",
+        "End each successful routing branch with Route Work and define fallback or no-route behavior.",
+        ...(omniOptions?.destination === "agent"
+          ? ["Provide a fallback queue for direct-agent routing."]
+          : []),
+        ...(omniOptions?.destination === "skills"
+          ? ["Ground the queue routing configuration and target-org skills-based routing rules."]
+          : []),
+        ...(omniOptions?.check_availability
+          ? [
+              "Route only after a matching Check Availability result; send action faults to the no-route path.",
+            ]
+          : []),
+      ],
+      tests: [
+        "work item reaches the intended destination",
+        "destination unavailable",
+        "fallback routing",
+        "intentional no-route path",
+      ],
+    },
   };
   return {
     family,
     ...byFamily[family],
+    ...(family === "omni-channel" && omniOptions ? omniOptions : {}),
     ...(recordEvent ? { record_trigger_type: recordTriggerType(recordEvent) } : {}),
   };
 }
 
 function metadataSkeleton(
-  family: Exclude<FlowFamily, "specialized" | "unknown">,
+  family: Exclude<FlowFamily, "specialized" | "unknown" | "omni-channel">,
   timing: TriggerTiming | undefined,
   recordEvent: SfFlowParams["record_event"] | undefined,
   objectName: string | undefined,
@@ -446,6 +576,7 @@ function selectionReason(family: FlowFamily, timing?: TriggerTiming): string {
   if (family === "screen") return "interactive user journey";
   if (family === "autolaunched") return "reusable caller-invoked automation";
   if (family === "schedule-triggered") return "global recurring schedule";
+  if (family === "omni-channel") return "service-channel work routing";
   return "event message subscriber";
 }
 

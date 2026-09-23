@@ -117,17 +117,32 @@ function startLabel(model: FlowModel): string {
     return `START · ${model.object ?? "platform event"} · event`;
   }
   if (model.family === "screen") return "START · screen";
+  if (model.family === "omni-channel") return "START · Omni-Channel routing";
   return "START · caller";
 }
 
 function elementLabel(element: FlowModel["elements"][number]): string {
   const title = element.label ?? element.name;
+  const action = routingActionPresentation(element);
   const verb =
-    element.kind === "scheduledPaths" && element.detail !== "after commit"
+    action?.verb ??
+    (element.kind === "scheduledPaths" && element.detail !== "after commit"
       ? "SCHEDULED"
-      : elementVerb(element.kind);
+      : elementVerb(element.kind));
   const displayTitle = element.kind === "decisions" && !/[?]$/.test(title) ? `${title}?` : title;
-  return [verb, displayTitle, element.detail].filter(Boolean).join(" · ");
+  return [verb, displayTitle, action?.detail ?? element.detail].filter(Boolean).join(" · ");
+}
+
+function routingActionPresentation(
+  element: FlowModel["elements"][number],
+): { verb: string; detail?: string } | undefined {
+  if (element.kind !== "actionCalls" || !element.detail) return undefined;
+  const [action, detail] = element.detail.split(" · ", 2);
+  if (action === "routeWork") return { verb: "ROUTE", detail };
+  if (action === "addSkillRequirements") return { verb: "ADD SKILLS" };
+  if (/checkAvailability/i.test(action)) return { verb: "CHECK AVAILABILITY" };
+  if (/addScreenPop/i.test(action)) return { verb: "SCREEN POP" };
+  return undefined;
 }
 
 function elementVerb(kind: string): string {

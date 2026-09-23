@@ -97,9 +97,10 @@ describe("SF Flow quality catalog", () => {
         implementation: "independent SF Pi white-room reimplementation",
       },
     });
-    expect(result.details.implemented).toBe(34);
+    expect(result.details.implemented).toBe(35);
     expect(result.details.rules).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ id: "omni-channel-contract", engine: "core" }),
         expect.objectContaining({ id: "conflicting-create-output-storage", engine: "core" }),
         expect.objectContaining({ id: "invalid-async-path-configuration", engine: "core" }),
         expect.objectContaining({ id: "missing-async-path-entry-guard", engine: "core" }),

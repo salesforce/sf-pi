@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { analyzeFlowSource } from "../lib/analyzer.ts";
+import { buildAuthoringPlan } from "../lib/author.ts";
 import { buildMermaidTopology, buildTopologyEvidence } from "../lib/topology.ts";
 
 const fixture = (name: string) =>
@@ -179,5 +180,36 @@ describe("SF Flow Mermaid topology", () => {
       "SET · Normalize Description · $Record.Description = Reviewed",
     );
     expect(topology.source).not.toContain('missingEmailCount["');
+  });
+
+  it("renders Omni-Channel Route Work as a routing decision instead of a generic action", async () => {
+    const result = analyzeFlowSource(
+      await fixture("Omni_Channel_Queue.flow-meta.xml"),
+      "Omni_Channel_Queue.flow-meta.xml",
+    );
+    const topology = buildMermaidTopology(result.model!, 20);
+
+    expect(topology.source).toContain("START · Omni-Channel routing");
+    expect(topology.source).toContain("ROUTE · Route Work to Queue · queue");
+    expect(topology.source).not.toContain("ACTION · Route Work to Queue");
+  });
+
+  it("renders skills and availability-aware Omni-Channel actions", async () => {
+    const plan = await buildAuthoringPlan(
+      {
+        action: "author.plan",
+        intent: "Check availability and route Omni-Channel work using skills",
+        flow_type: "omni-channel",
+        omni_destination: "skills",
+        omni_check_availability: true,
+      },
+      process.cwd(),
+    );
+    const result = analyzeFlowSource(String(plan.details.skeleton), "Omni_Skills.flow-meta.xml");
+    const topology = buildMermaidTopology(result.model!, 20);
+
+    expect(topology.source).toContain("CHECK AVAILABILITY");
+    expect(topology.source).toContain("ROUTE · Route Work to Skills · skills");
+    expect(topology.source).toContain("SET · Set Reason For Not Routing");
   });
 });

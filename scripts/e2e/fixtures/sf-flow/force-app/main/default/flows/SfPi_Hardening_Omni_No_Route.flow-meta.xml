@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <description>Route Work to Queue using caller-supplied, target-org-grounded inputs.</description>
+        <name>Route_Work</name>
+        <label>Route Work to Queue</label>
+        <locationX>176</locationX>
+        <locationY>374</locationY>
+        <actionName>routeWork</actionName>
+        <actionType>routeWork</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>recordId</name>
+            <value><elementReference>recordId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>serviceChannelId</name>
+            <value><elementReference>serviceChannelId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>routingType</name>
+            <value><stringValue>QueueBased</stringValue></value>
+        </inputParameters>
+        <inputParameters>
+            <name>queueId</name>
+            <value><elementReference>queueId</elementReference></value>
+        </inputParameters>
+        <inputParameters>
+            <name>isQueueVariable</name>
+            <value><booleanValue>true</booleanValue></value>
+        </inputParameters>
+        <nameSegment>routeWork</nameSegment>
+        <offset>0</offset>
+        <versionString>2.0.0</versionString>
+    </actionCalls>
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Set_Reason_For_Not_Routing</name>
+        <label>Set Reason For Not Routing</label>
+        <locationX>314</locationX>
+        <locationY>374</locationY>
+        <assignmentItems>
+            <assignToReference>reasonForNotRouting</assignToReference>
+            <operator>Assign</operator>
+            <value><stringValue>No routing capacity is currently available.</stringValue></value>
+        </assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Should_Route_Work</name>
+        <label>Should Route Work</label>
+        <locationX>176</locationX>
+        <locationY>104</locationY>
+        <defaultConnector>
+            <targetReference>Set_Reason_For_Not_Routing</targetReference>
+        </defaultConnector>
+        <defaultConnectorLabel>Do Not Route</defaultConnectorLabel>
+        <rules>
+            <name>Route_Work_Item</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>routeWorkItem</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Route_Work</targetReference>
+            </connector>
+            <label>Route Work Item</label>
+        </rules>
+    </decisions>
+    <description>Public-safe SfPi Hardening Omni No Route check-only fixture.</description>
+    <label>SfPi Hardening Omni No Route</label>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>RoutingFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector>
+            <targetReference>Should_Route_Work</targetReference>
+        </connector>
+    </start>
+    <status>Draft</status>
+    <variables>
+        <name>recordId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>serviceChannelId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>queueId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>routeWorkItem</name>
+        <dataType>Boolean</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>reasonForNotRouting</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

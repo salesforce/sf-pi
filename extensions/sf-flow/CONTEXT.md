@@ -12,8 +12,12 @@ _Avoid_: process type, Flow kind
 One of the five general-purpose families SF Flow authors: Screen, Autolaunched, Record-Triggered, Schedule-Triggered, or Platform Event-Triggered.
 _Avoid_: every Metadata API process type, universal Flow support
 
+**Supported Specialized Flow Family**:
+A product-specific family that SF Flow supports through its own grounded authoring and diagnostic contract without redefining the general-purpose **Core Flow Families**. Omni-Channel is the first supported specialized family and maps to `processType=RoutingFlow`.
+_Avoid_: sixth core family, generic autolaunched Flow
+
 **Specialized Flow Family**:
-A product-, industry-, orchestration-, approval-, routing-, login-, survey-, marketing-, or Data 360-specific Flow family that SF Flow can identify without claiming general authoring support.
+A product-, industry-, orchestration-, approval-, login-, survey-, marketing-, Data 360-, or otherwise specialized Flow family that SF Flow can identify without claiming type-specific authoring support. Supported specialized families are named explicitly rather than implied by this category.
 _Avoid_: unsupported Flow, invalid Flow
 
 **Flow Transaction Timing**:
