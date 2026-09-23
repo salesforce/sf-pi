@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.294.0](https://github.com/salesforce/sf-pi/compare/v0.293.0...v0.294.0) (2026-09-23)
+
+
+### Features
+
+* **sf-flow:** support Omni-Channel routing plans ([11fcc45](https://github.com/salesforce/sf-pi/commit/11fcc4538ef40df26d07126ede290d0ee5870046))
+
 ## [0.293.0](https://github.com/salesforce/sf-pi/compare/v0.292.0...v0.293.0) (2026-09-22)
 
 
