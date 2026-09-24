@@ -38,7 +38,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice[0]).toContain("loads stable Pi >=0.87.0 <1.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.0 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1 --force",
     );
   });
 
@@ -51,7 +51,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice[0]).toContain("loads stable Pi >=0.87.0 <1.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.0 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1 --force",
     );
   });
 
@@ -64,7 +64,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice[0]).toContain("loads stable Pi >=0.87.0 <1.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.0 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1 --force",
     );
   });
 
@@ -79,7 +79,7 @@ describe("buildRuntimeUpdateAdvice", () => {
     expect(advice.join("\n")).toContain("npm release-age policy detected");
     expect(advice.join("\n")).toContain("min-release-age=1440");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.0 --force --min-release-age=0",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1 --force --min-release-age=0",
     );
   });
 
@@ -93,7 +93,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice.join("\n")).toContain("before=2026-05-18T00:00:00.000Z");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.0 --force --before=null --min-release-age=0",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1 --force --before=null --min-release-age=0",
     );
   });
 });

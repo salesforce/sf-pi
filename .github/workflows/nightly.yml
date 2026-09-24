@@ -67,6 +67,8 @@ jobs:
         include:
           - pi-version: "0.87.0"
             experimental: false
+          - pi-version: "0.87.1"
+            experimental: false
           - pi-version: "latest"
             experimental: true
 

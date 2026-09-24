@@ -109,6 +109,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0117: SF Flow authoring grounding and live fixtures are bounded](./0117-sf-flow-authoring-grounding-and-live-fixtures-are-bounded.md) — 2026-09-19
 - [0119: Pi 0.87 Runtime Floor and Actionable Settlement](./0119-pi-087-runtime-floor-and-actionable-settlement.md) — 2026-09-21
 - [0120: SF Flow supports Omni-Channel as a specialized family](./0120-sf-flow-supports-omni-channel-as-a-specialized-family.md) — 2026-09-23
+- [0121: Pi 0.87.1 Audit Edge](./0121-pi-0871-audit-edge.md) — 2026-09-24
 
 ## Proposed
 
