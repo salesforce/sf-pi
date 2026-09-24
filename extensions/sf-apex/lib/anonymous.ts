@@ -4,13 +4,17 @@
 import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion } from "./api.ts";
 import { executeAnonymousSoap } from "./anonymous-soap.ts";
-import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
+import { artifactTimestamp, type ApexArtifactWriter } from "./artifact-writer.ts";
 import { buildApexDigest } from "./digest.ts";
 import { parseApexLog } from "./log-parser.ts";
 import { fail, ok } from "./result.ts";
 import type { ApexLogDigest, SfApexParams, ToolResult } from "./types.ts";
 
-export async function runAnonymous(conn: Connection, params: SfApexParams): Promise<ToolResult> {
+export async function runAnonymous(
+  conn: Connection,
+  params: SfApexParams,
+  artifactWriter: ApexArtifactWriter,
+): Promise<ToolResult> {
   if (!params.body) return fail("body is required for anon.run.", { kind: "anonymous_apex" });
   const risk = classifyAnonymousApex(params.body);
   if (risk.mutating && !params.allow_mutation) {
@@ -27,17 +31,17 @@ export async function runAnonymous(conn: Connection, params: SfApexParams): Prom
   const v = apiVersion(conn);
   const result = await executeAnonymousSoap(conn, params.body);
   const stamp = artifactTimestamp();
-  const sourceArtifact = await writeApexArtifact("anonymous", `${stamp}.apex`, params.body);
-  const resultArtifact = await writeApexArtifact("anonymous", `${stamp}.result.json`, result);
+  const sourceArtifact = await artifactWriter.write("anonymous", `${stamp}.apex`, params.body);
+  const resultArtifact = await artifactWriter.write("anonymous", `${stamp}.result.json`, result);
   const artifacts = [sourceArtifact, resultArtifact];
   let logDigest: ApexLogDigest | undefined;
   if (result.logs) {
-    const logArtifact = await writeApexArtifact("logs", `${stamp}.log`, result.logs);
+    const logArtifact = await artifactWriter.write("logs", `${stamp}.log`, result.logs);
     logDigest = parseApexLog(result.logs, {
       operation: "Anonymous Apex",
       status: result.success ? "Success" : "Failed",
     });
-    const digestArtifact = await writeApexArtifact("logs", `${stamp}.digest.json`, logDigest);
+    const digestArtifact = await artifactWriter.write("logs", `${stamp}.digest.json`, logDigest);
     artifacts.push(logArtifact, digestArtifact);
   }
 

@@ -293,6 +293,59 @@ agents and humans can follow the behavior without reading every file.
 - The directory name must match the manifest `id`
 - The entry point is always `index.ts`
 
+### Programmatic extension APIs
+
+Expose an extension incrementally through `extensions/<id>/public.ts`. Keep
+`index.ts` as the Pi lifecycle entry point. Apex is the first implementation;
+apply this convention when another extension gains a programmatic API.
+
+Public symbols include the domain: `Apex`, later `Lwc`, `Soql`, or `Flow` for
+types, and `apex`, `lwc`, `soql`, or `flow` for schema values. Avoid generic
+exports such as `Params`, `Context`, or `ToolResult`. Existing internal names
+can remain behind explicit public aliases.
+
+| Responsibility                                           | Apex convention                                            |
+| -------------------------------------------------------- | ---------------------------------------------------------- |
+| Typed call with validation and invocation policy         | `callApex(input, options)`                                 |
+| Unknown JSON input with the same validation and policy   | `invokeApex(input, options)`                               |
+| Configured typed caller                                  | `createApexClient(options): ApexClient`                    |
+| Core dispatcher with caller-provided services            | `executeApex(input, context)` / `ApexExecutionContext`     |
+| Validated action input                                   | `ApexInput<Action>`, `apexInputSchema`, `apexInputSchemas` |
+| Native tool input contract                               | `ApexToolInput`, `apexToolSchema`                          |
+| Native evidence in `result.details`                      | `ApexDetails<Action>`, `apexDetailsSchemas`                |
+| Native `content` / `details` result                      | `ApexToolResult<Action>`                                   |
+| Outer invocation response with `ok`, `result` or `error` | `ApexCallResult<Action>`, `ApexCallErrorCode`              |
+| Filesystem evidence writer                               | `createApexArtifactWriter`, `ApexArtifactWriter`           |
+| Owned, disposable diagnostics resource                   | `createApexDiagnosticsClient`, `ApexDiagnosticsClient`     |
+| Injected diagnostics callback                            | `ApexDiagnosticsProvider`                                  |
+
+Use `<Domain><Role>Options` for factory/call settings. A `Client` exposes
+operations; a client that owns resources also exposes `dispose()`. A `Provider`
+is an injected capability. A `Writer` writes evidence files; reserve `Store` for
+state storage. Add these services only when the extension needs them.
+
+Keep concrete roles in extension-local modules: `lib/client.ts` owns invocation
+policy, `lib/execute.ts` owns dispatch, `lib/contracts.ts` owns action schemas and
+inferred types, and `lib/schema.ts` retains native tool registration metadata.
+Names such as `artifact-writer.ts` and `diagnostics-client.ts` describe optional
+services. An existing `lib/api.ts` may contain Salesforce transport helpers;
+it is not the curated consumer entry point.
+
+Each published domain has `packages/<domain>/package.json`, named `@sf-pi/<domain>`.
+Its build starts at the extension's `public.ts` and emits JavaScript and declarations.
+The implementation stays in the extension. The CLI imports these packages and owns
+argument parsing, terminal output and exit codes; its build leaves API imports
+external. npm workspaces link packages for repository development. Consumers import
+`@sf-pi/apex`; add other domain packages only when implemented. Imports and client
+construction must not connect to Salesforce or start language servers.
+
+Preserve native tool names, action identifiers, input fields, result JSON and
+Pi behavior when exposing an existing extension. New TypeScript options use
+camelCase; CLI flags use kebab-case. Infer action types from runtime schemas
+rather than maintaining a separate SDK type model. Prove native compatibility
+and test the installed package's imports and declarations. Keep implementation
+local until a second owner demonstrates a concrete shared responsibility.
+
 ### Behavior contracts
 
 Keep public registration and lifecycle behavior easy to locate from `index.ts`.

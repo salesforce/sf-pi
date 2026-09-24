@@ -105,7 +105,7 @@ validation.
 This complete inventory is generated from `package.json`; edit that file and run `npm run generate-catalog`.
 
 <details>
-<summary>Show all 61 package scripts</summary>
+<summary>Show all 65 package scripts</summary>
 
 **Generated sources**
 
@@ -157,6 +157,7 @@ This complete inventory is generated from `package.json`; edit that file and run
 **Tests**
 
 - `npm run test`
+- `npm run test:cli-package`
 - `npm run test:coverage`
 - `npm run test:runtime-surface`
 - `npm run test:watch`
@@ -194,6 +195,12 @@ This complete inventory is generated from `package.json`; edit that file and run
 
 - `npm run preinstall`
 - `npm run prepare`
+
+**Other**
+
+- `npm run build:apex`
+- `npm run build:cli`
+- `npm run cli`
 
 </details>
 

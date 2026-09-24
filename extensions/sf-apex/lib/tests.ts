@@ -5,7 +5,7 @@ import type { ApexConnection as Connection } from "./api.ts";
 import { Duration } from "@salesforce/kit";
 import { ResultFormat, TestLevel, TestService } from "@salesforce/apex-node";
 import { apiVersion, toolingQuery } from "./api.ts";
-import { apexArtifactDir, artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
+import { artifactTimestamp, type ApexArtifactWriter } from "./artifact-writer.ts";
 import { buildApexDigest, formatMs, plural } from "./digest.ts";
 import { fail, ok } from "./result.ts";
 import { escapeSoql } from "./soql.ts";
@@ -24,8 +24,11 @@ type ApexNodeRunIdResult = { testRunId: string };
 export async function runTest(
   conn: Connection,
   params: SfApexParams,
-  state?: SfApexSessionState,
+  state: SfApexSessionState | undefined,
+  artifactWriter: ApexArtifactWriter,
+  signal?: AbortSignal,
 ): Promise<ToolResult> {
+  signal?.throwIfAborted();
   const tests = params.tests ?? [];
   const classNames = params.class_names ?? [];
   const suiteNames = params.suite_names ?? [];
@@ -48,6 +51,8 @@ export async function runTest(
     suiteNames,
     includeCoverage,
   );
+  // Payload preparation can outlive the caller's deadline; never submit new work afterward.
+  signal?.throwIfAborted();
   if (state)
     state.lastTestSpec = {
       tests: params.tests,
@@ -85,13 +90,15 @@ export async function runTest(
     result,
     includeCoverage,
     true,
+    artifactWriter,
   );
 }
 
 export async function testResult(
   conn: Connection,
   params: SfApexParams,
-  state?: SfApexSessionState,
+  state: SfApexSessionState | undefined,
+  artifactWriter: ApexArtifactWriter,
 ): Promise<ToolResult> {
   const runId = params.run_id ?? state?.lastTestRunId;
   if (!runId) return fail("run_id is required for test.result.", { kind: "apex_test" });
@@ -131,6 +138,7 @@ export async function testResult(
     result,
     includeCoverage,
     false,
+    artifactWriter,
   );
 }
 
@@ -138,9 +146,17 @@ export async function rerunTest(
   conn: Connection,
   params: SfApexParams,
   state: SfApexSessionState,
+  artifactWriter: ApexArtifactWriter,
+  signal?: AbortSignal,
 ): Promise<ToolResult> {
   if (!state.lastTestSpec) return fail("No prior test.run in this session.", { kind: "apex_test" });
-  return runTest(conn, { ...params, ...state.lastTestSpec, action: "test.rerun" }, state);
+  return runTest(
+    conn,
+    { ...params, ...state.lastTestSpec, action: "test.rerun" },
+    state,
+    artifactWriter,
+    signal,
+  );
 }
 
 async function buildApexNodePayload(
@@ -188,10 +204,11 @@ async function formatApexNodeTestResult(
   result: ApexNodeTestResult,
   includeCoverage: boolean,
   includesStartCall: boolean,
+  artifactWriter: ApexArtifactWriter,
 ): Promise<ToolResult> {
   const summary = summarizeTestResults(result.tests ?? [], result.summary);
   const stamp = artifactTimestamp();
-  const artifact = await writeApexArtifact("tests", `${stamp}-${runId}.json`, {
+  const artifact = await artifactWriter.write("tests", `${stamp}-${runId}.json`, {
     payload,
     result,
   });
@@ -201,6 +218,7 @@ async function formatApexNodeTestResult(
     result,
     params.report_formats,
     includeCoverage,
+    artifactWriter,
   );
   const artifacts = [artifact, ...reportArtifacts];
   const text = renderTestSummary(summary, result.tests ?? []);
@@ -291,10 +309,11 @@ async function writeReporterArtifacts(
   result: ApexNodeTestResult,
   formats: string[] | undefined,
   includeCoverage: boolean,
+  artifactWriter: ApexArtifactWriter,
 ): Promise<ApexArtifact[]> {
   const resultFormats = normalizeReportFormats(formats);
   if (!resultFormats.length) return [];
-  const dir = await apexArtifactDir("test-reports", `${artifactTimestamp()}-${runId}`);
+  const dir = await artifactWriter.directory("test-reports", `${artifactTimestamp()}-${runId}`);
   const files = await service.writeResultFiles(
     result as Parameters<TestService["writeResultFiles"]>[0],
     { dirPath: dir, resultFormats },

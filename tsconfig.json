@@ -12,8 +12,11 @@
     "allowSyntheticDefaultImports": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@sf-pi/apex": ["./extensions/sf-apex/public.ts"]
+    }
   },
-  "include": ["extensions/**/*.ts", "catalog/**/*.ts"],
+  "include": ["extensions/**/*.ts", "catalog/**/*.ts", "lib/cli/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

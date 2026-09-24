@@ -19,6 +19,8 @@ export default tseslint.config(
     ignores: [
       "node_modules/**",
       "dist/**",
+      "packages/*/dist/**",
+      ".zcc/**",
       "coverage/**",
       "docs/.vitepress/cache/**",
       "docs/.vitepress/dist/**",

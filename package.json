@@ -118,7 +118,11 @@
     "e2e:sf-flow-families": "node --experimental-strip-types scripts/e2e/sf-flow-family-sweep.ts",
     "e2e:sf-flow-provision": "node --experimental-strip-types scripts/e2e/sf-flow-provision-test-fixture.ts",
     "instruction-surface:report": "node scripts/instruction-surface-report.mjs",
-    "e2e:instruction-behavior": "node --experimental-strip-types scripts/e2e/instruction-behavior/run.ts"
+    "e2e:instruction-behavior": "node --experimental-strip-types scripts/e2e/instruction-behavior/run.ts",
+    "build:apex": "node scripts/build-apex.mjs",
+    "build:cli": "node scripts/build-cli.mjs",
+    "cli": "node packages/cli/dist/sf-pi.js",
+    "test:cli-package": "node scripts/test-cli-package.mjs"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
@@ -148,7 +152,8 @@
     "typescript-eslint": "^8.70.0",
     "vite": "7.3.6",
     "vitepress": "^1.6.4",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "esbuild": "^0.28.1"
   },
   "dependencies": {
     "@dagrejs/dagre": "3.1.1",
@@ -194,5 +199,9 @@
     },
     "esbuild": "^0.28.1",
     "minimatch": "^10.2.5"
-  }
+  },
+  "workspaces": [
+    "packages/apex",
+    "packages/cli"
+  ]
 }

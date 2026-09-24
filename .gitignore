@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Copied from the repository license when building the standalone package.
+packages/*/LICENSE.txt
 .DS_Store
 **/.DS_Store
 *.js
@@ -52,3 +54,6 @@ coverage/
 
 # Security scan reports
 gitleaks.json
+
+# Local command-center state, reports, and experiments.
+/.zcc/

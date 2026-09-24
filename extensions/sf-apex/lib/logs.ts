@@ -4,7 +4,7 @@
 import { readFile } from "node:fs/promises";
 import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, currentUserId, requestText, toolingQuery } from "./api.ts";
-import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
+import { artifactTimestamp, type ApexArtifactWriter } from "./artifact-writer.ts";
 import { parseApexLog, summarizeLogDigest } from "./log-parser.ts";
 import { buildApexDigest, formatMs } from "./digest.ts";
 import { fail, ok } from "./result.ts";
@@ -21,18 +21,20 @@ import type {
 export async function latestLog(
   conn: Connection,
   params: SfApexParams,
-  state?: SfApexSessionState,
+  state: SfApexSessionState | undefined,
+  artifactWriter: ApexArtifactWriter,
 ): Promise<ToolResult> {
   const userId = params.user_id ?? (await currentUserId(conn));
   const logs = await queryLogs(conn, userId, undefined, 1);
   if (!logs[0]) return fail("No Apex logs found for the selected user.", { kind: "apex_log" });
-  return fetchAndAnalyzeLog(conn, logs[0], state, params);
+  return fetchAndAnalyzeLog(conn, logs[0], state, artifactWriter, params);
 }
 
 export async function getLog(
   conn: Connection,
   params: SfApexParams,
-  state?: SfApexSessionState,
+  state: SfApexSessionState | undefined,
+  artifactWriter: ApexArtifactWriter,
 ): Promise<ToolResult> {
   if (!params.log_id) return fail("log_id is required for log.get.", { kind: "apex_log" });
   const logs = await toolingQuery<Record<string, unknown>>(
@@ -40,15 +42,18 @@ export async function getLog(
     `SELECT Id, LogLength, StartTime, Operation, Request, Status, DurationMilliseconds, Location, RequestIdentifier FROM ApexLog WHERE Id = '${escapeSoql(params.log_id)}' LIMIT 1`,
   );
   if (!logs.records[0]) return fail(`Apex log not found: ${params.log_id}`, { kind: "apex_log" });
-  return fetchAndAnalyzeLog(conn, logs.records[0], state, params);
+  return fetchAndAnalyzeLog(conn, logs.records[0], state, artifactWriter, params);
 }
 
-export async function analyzeLog(params: SfApexParams): Promise<ToolResult> {
+export async function analyzeLog(
+  params: SfApexParams,
+  artifactWriter: ApexArtifactWriter,
+): Promise<ToolResult> {
   const body = params.body ?? (params.file ? await readFile(params.file, "utf8") : undefined);
   if (!body) return fail("Provide body or file for log.analyze.", { kind: "apex_log" });
   const digest = parseApexLog(body);
   const stamp = artifactTimestamp();
-  const digestArtifact = await writeApexArtifact("logs", `${stamp}.digest.json`, digest);
+  const digestArtifact = await artifactWriter.write("logs", `${stamp}.digest.json`, digest);
   return ok(summarizeLogDigest(digest), {
     kind: "apex_log",
     log_digest: digest,
@@ -60,7 +65,8 @@ export async function analyzeLog(params: SfApexParams): Promise<ToolResult> {
 export async function watchLog(
   conn: Connection,
   params: SfApexParams,
-  state?: SfApexSessionState,
+  state: SfApexSessionState | undefined,
+  artifactWriter: ApexArtifactWriter,
 ): Promise<ToolResult> {
   await startTrace(conn, params, state);
   const userId = params.user_id ?? (await currentUserId(conn));
@@ -71,7 +77,7 @@ export async function watchLog(
 
   while (Date.now() <= deadline) {
     const logs = await queryLogs(conn, userId, startedAt, 1);
-    if (logs[0]) return fetchAndAnalyzeLog(conn, logs[0], state, params);
+    if (logs[0]) return fetchAndAnalyzeLog(conn, logs[0], state, artifactWriter, params);
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
   return fail(`No Apex log appeared within ${Math.round(waitMs / 1000)} second(s).`, {
@@ -315,7 +321,8 @@ function artifactSummary(artifacts: ApexArtifact[]): string {
 export async function fetchAndAnalyzeLog(
   conn: Connection,
   row: Record<string, unknown>,
-  state?: SfApexSessionState,
+  state: SfApexSessionState | undefined,
+  artifactWriter: ApexArtifactWriter,
   params?: SfApexParams,
 ): Promise<ToolResult> {
   const logId = String(row.Id);
@@ -330,8 +337,12 @@ export async function fetchAndAnalyzeLog(
     log_length: typeof row.LogLength === "number" ? row.LogLength : undefined,
   });
   const stamp = artifactTimestamp();
-  const logArtifact = await writeApexArtifact("logs", `${stamp}-${logId}.log`, body);
-  const digestArtifact = await writeApexArtifact("logs", `${stamp}-${logId}.digest.json`, digest);
+  const logArtifact = await artifactWriter.write("logs", `${stamp}-${logId}.log`, body);
+  const digestArtifact = await artifactWriter.write(
+    "logs",
+    `${stamp}-${logId}.digest.json`,
+    digest,
+  );
   if (state) state.lastLogId = logId;
   const artifacts = [logArtifact, digestArtifact];
   return ok(summarizeLogDigest(digest), {

@@ -4,7 +4,7 @@
 import path from "node:path";
 import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, toolingQueryAll } from "./api.ts";
-import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
+import { artifactTimestamp, type ApexArtifactWriter } from "./artifact-writer.ts";
 import { buildApexDigest, plural } from "./digest.ts";
 import { ok } from "./result.ts";
 import { escapeSoql, quoteSoql } from "./soql.ts";
@@ -40,7 +40,11 @@ interface SourceEvidence {
 
 const APEX_ID = /^(01p|01q)[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?$/;
 
-export async function getApexSource(conn: Connection, params: SfApexParams): Promise<ToolResult> {
+export async function getApexSource(
+  conn: Connection,
+  params: SfApexParams,
+  artifactWriter: ApexArtifactWriter,
+): Promise<ToolResult> {
   const targets = sourceTargets(params);
   const rows = targets.length ? await querySourceRows(conn, targets) : [];
   const evidence: SourceEvidence[] = [];
@@ -54,7 +58,11 @@ export async function getApexSource(conn: Connection, params: SfApexParams): Pro
     const fullName = row.NamespacePrefix ? `${row.NamespacePrefix}.${row.Name}` : row.Name;
     let artifact: ApexArtifact | undefined;
     if (!hidden && !empty && row.Body) {
-      artifact = await writeApexArtifact("source", `${stamp}-${fullName}.${extension}`, row.Body);
+      artifact = await artifactWriter.write(
+        "source",
+        `${stamp}-${fullName}.${extension}`,
+        row.Body,
+      );
       sourceArtifacts.push(artifact);
     }
     evidence.push({
@@ -70,7 +78,7 @@ export async function getApexSource(conn: Connection, params: SfApexParams): Pro
     });
   }
 
-  const summaryArtifact = await writeApexArtifact("source", `${stamp}-source-summary.json`, {
+  const summaryArtifact = await artifactWriter.write("source", `${stamp}-source-summary.json`, {
     targets: targets.map((target) => target.raw),
     found: evidence,
   });

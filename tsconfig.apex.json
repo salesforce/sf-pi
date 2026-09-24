@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": "packages/apex/dist/types"
+  },
+  "include": ["extensions/sf-apex/public.ts"],
+  "exclude": ["node_modules"]
+}

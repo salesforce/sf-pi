@@ -14,6 +14,7 @@
     "primaryFiles": [
       "index.ts",
       "lib/lsp-client.ts",
+      "lib/client-engine.ts",
       "lib/feedback.ts",
       "lib/activity.ts",
       "lib/config-panel.ts"

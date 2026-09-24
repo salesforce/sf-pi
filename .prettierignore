@@ -35,3 +35,6 @@ extensions/sf-brain/SF_CONSTITUTION.md
 CODE_OF_CONDUCT.md
 how_to_license.md
 LICENSE.txt
+
+.zcc/
+packages/*/dist/

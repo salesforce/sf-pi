@@ -130,6 +130,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - `sf_apex` cannot resolve the org
 - No log appears during `log.watch`
 - Anonymous Apex is refused as mutating
+- Local diagnostics are unavailable
 
 **[SF Browser](./extensions/sf-browser.md#troubleshooting)**
 

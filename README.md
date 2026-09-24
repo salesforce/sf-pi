@@ -15,6 +15,8 @@ settings and extension enablement.
 
 ![SF Pi terminal interface showing Salesforce environment and extension status](https://github.com/user-attachments/assets/cbf2db6b-939c-4c66-8dab-fc505749fc77)
 
+Use the [Apex API package](./packages/apex/README.md) or [standalone CLI](./packages/cli/README.md) to call Apex lifecycle operations from other coding harnesses and scripts.
+
 ## Get started
 
 Install Node.js 22.19 or newer, the latest supported Pi coding agent, and

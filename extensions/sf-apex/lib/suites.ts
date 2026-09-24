@@ -4,7 +4,7 @@
 import type { ApexConnection as Connection } from "./api.ts";
 import { TestService } from "@salesforce/apex-node";
 import { apiVersion, toolingQueryAll } from "./api.ts";
-import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
+import { artifactTimestamp, type ApexArtifactWriter } from "./artifact-writer.ts";
 import { buildApexDigest, plural } from "./digest.ts";
 import { ok } from "./result.ts";
 import { quoteSoql } from "./soql.ts";
@@ -22,7 +22,11 @@ interface SuiteMemberRow extends Record<string, unknown> {
   ApexClass?: { Name?: string; NamespacePrefix?: string | null };
 }
 
-export async function testSuites(conn: Connection, params: SfApexParams): Promise<ToolResult> {
+export async function testSuites(
+  conn: Connection,
+  params: SfApexParams,
+  artifactWriter: ApexArtifactWriter,
+): Promise<ToolResult> {
   const service = new TestService(conn.connection);
   const suites = (await service.retrieveAllSuites()).map((suite) => ({
     id: suite.id,
@@ -32,7 +36,7 @@ export async function testSuites(conn: Connection, params: SfApexParams): Promis
     params.include_members && suites.length
       ? await attachSuiteMembers(conn, suites)
       : suites.map((suite) => ({ ...suite, members: undefined }));
-  const artifact = await writeApexArtifact("tests", `${artifactTimestamp()}-test-suites.json`, {
+  const artifact = await artifactWriter.write("tests", `${artifactTimestamp()}-test-suites.json`, {
     include_members: params.include_members === true,
     suites: withMembers,
   });

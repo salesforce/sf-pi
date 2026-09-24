@@ -1,0 +1,27 @@
+{
+  "name": "@sf-pi/cli",
+  "version": "0.292.0",
+  "description": "SF Pi CLI for Apex lifecycle operations",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "bin": {
+    "sf-pi": "dist/sf-pi.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.txt"
+  ],
+  "dependencies": {
+    "@sf-pi/apex": "0.292.0"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

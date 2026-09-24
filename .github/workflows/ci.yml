@@ -73,6 +73,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Check standalone Apex packages
+        run: npm run test:cli-package
+
       - name: LLM artifact check
         # Fails on unresolved conflict markers, prompt-template tokens,
         # and unresolved TODO(llm|agent|claude|gpt|pi) markers.

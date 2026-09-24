@@ -3,139 +3,14 @@
 
 import { Text } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { StringEnum } from "@earendil-works/pi-ai";
-import { Type } from "typebox";
 import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
-import { apexErrorResult } from "./errors.ts";
 import { renderApexResultMarkdown } from "./render.ts";
 import type { SfApexParams, SfApexSessionState, ToolResult } from "./types.ts";
-import {
-  analyzeLog,
-  apexSearch,
-  authorPlan,
-  coverageSummary,
-  diagnoseFile,
-  getApexSource,
-  getLog,
-  latestLog,
-  orgPreflight,
-  rerunTest,
-  runAnonymous,
-  runTest,
-  startTrace,
-  status,
-  stopTrace,
-  testDiscover,
-  testPlan,
-  testSuites,
-  testResult,
-  traceStatus,
-  watchLog,
-} from "./operations.ts";
-
+import { Params } from "./schema.ts";
+import { executeApex } from "./execute.ts";
+import { nativeApexArtifacts } from "./artifacts.ts";
+import { nativeApexDiagnostics } from "./diagnostics.ts";
 export const SF_APEX_TOOL_NAME = "sf_apex";
-
-const Action = StringEnum(
-  [
-    "status",
-    "org.preflight",
-    "apex.search",
-    "test.discover",
-    "test.plan",
-    "test.suites",
-    "coverage.summary",
-    "author.plan",
-    "diagnose.file",
-    "apex.source.get",
-    "trace.start",
-    "trace.stop",
-    "trace.status",
-    "log.latest",
-    "log.get",
-    "log.analyze",
-    "log.watch",
-    "anon.run",
-    "test.run",
-    "test.result",
-    "test.rerun",
-  ] as const,
-  { description: "SF Apex lifecycle action." },
-);
-
-const Params = Type.Object({
-  action: Action,
-  target_org: Type.Optional(Type.String({ description: "Salesforce org alias or username." })),
-  target: Type.Optional(Type.String({ description: "Primary Apex file/class target." })),
-  targets: Type.Optional(Type.Array(Type.String(), { description: "Apex file/class targets." })),
-  query: Type.Optional(Type.String({ description: "Search query for apex.search/test.discover." })),
-  test_only: Type.Optional(
-    Type.Boolean({ description: "Restrict apex.search to likely test classes." }),
-  ),
-  limit: Type.Optional(
-    Type.Number({ description: "Discovery result limit. Default 25, max 100." }),
-  ),
-  intent: Type.Optional(Type.String({ description: "Authoring intent for author.plan." })),
-  file: Type.Optional(
-    Type.String({ description: "Local file path for diagnose.file or log.analyze." }),
-  ),
-  body: Type.Optional(Type.String({ description: "Anonymous Apex body or raw Apex log body." })),
-  log_id: Type.Optional(Type.String({ description: "ApexLog Id for log.get." })),
-  user_id: Type.Optional(Type.String({ description: "Tooling User Id to trace/read logs for." })),
-  duration_minutes: Type.Optional(
-    Type.Number({ description: "Trace duration. Default 30, max 120." }),
-  ),
-  wait_seconds: Type.Optional(
-    Type.Number({ description: "Wait window for log.watch/test polling." }),
-  ),
-  poll_interval_seconds: Type.Optional(
-    Type.Number({ description: "Polling interval for log.watch." }),
-  ),
-  allow_mutation: Type.Optional(
-    Type.Boolean({ description: "Required for mutation-like Anonymous Apex." }),
-  ),
-  include_coverage: Type.Optional(
-    Type.Boolean({ description: "Collect Apex coverage evidence with test.run/test.result." }),
-  ),
-  include_uncovered_lines: Type.Optional(
-    Type.Boolean({
-      description: "Include covered/uncovered line arrays in coverage.summary artifacts.",
-    }),
-  ),
-  include_members: Type.Optional(
-    Type.Boolean({ description: "Include suite membership rows in test.suites." }),
-  ),
-  org_wide: Type.Optional(
-    Type.Boolean({ description: "Include org-wide Apex coverage in coverage.summary." }),
-  ),
-  threshold_percent: Type.Optional(
-    Type.Number({ description: "Coverage threshold signal only; does not fail runs." }),
-  ),
-  tests: Type.Optional(
-    Type.Array(Type.String(), {
-      description: "Targeted tests as ClassName or ClassName.methodName.",
-    }),
-  ),
-  class_names: Type.Optional(
-    Type.Array(Type.String(), { description: "Targeted Apex test class names." }),
-  ),
-  suite_names: Type.Optional(
-    Type.Array(Type.String(), { description: "Existing Apex test suite names to run." }),
-  ),
-  apex_ids: Type.Optional(
-    Type.Array(Type.String(), { description: "ApexClass/ApexTrigger ids for apex.source.get." }),
-  ),
-  report_formats: Type.Optional(
-    Type.Array(StringEnum(["markdown", "junit", "tap", "text", "json"] as const), {
-      description: "Optional Apex test report artifact formats.",
-    }),
-  ),
-  run_id: Type.Optional(Type.String({ description: "AsyncApexJob id from test.run." })),
-  output_mode: Type.Optional(
-    StringEnum(["summary", "inline", "file_only"] as const, {
-      description: "Reserved output mode for future richer output.",
-    }),
-  ),
-});
 
 export function registerSfApexTool(pi: ExtensionAPI): void {
   const state: SfApexSessionState = {};
@@ -156,62 +31,14 @@ export function registerSfApexTool(pi: ExtensionAPI): void {
     renderResult: (result, opts, theme) => renderResult(result as ToolResult, opts, theme),
     async execute(_id, rawParams, signal, _onUpdate, ctx) {
       const params = rawParams as SfApexParams;
-      try {
-        if (params.action === "author.plan") return authorPlan(params);
-        if (params.action === "diagnose.file") return diagnoseFile(params, ctx.cwd);
-        if (params.action === "log.analyze") return analyzeLog(params);
-
-        const conn = await connectSalesforce({
-          cwd: ctx.cwd,
-          targetOrg: params.target_org,
-          signal,
-        });
-        switch (params.action) {
-          case "status":
-            return status(conn, params);
-          case "org.preflight":
-            return orgPreflight(conn, params);
-          case "apex.search":
-            return apexSearch(conn, params);
-          case "test.discover":
-            return testDiscover(conn, params);
-          case "test.plan":
-            return testPlan(conn, params);
-          case "test.suites":
-            return testSuites(conn, params);
-          case "coverage.summary":
-            return coverageSummary(conn, params);
-          case "apex.source.get":
-            return getApexSource(conn, params);
-          case "trace.start":
-            return startTrace(conn, params, state);
-          case "trace.stop":
-            return stopTrace(conn, params, state);
-          case "trace.status":
-            return traceStatus(conn, params);
-          case "log.latest":
-            return latestLog(conn, params, state);
-          case "log.get":
-            return getLog(conn, params, state);
-          case "log.watch":
-            return watchLog(conn, params, state);
-          case "anon.run":
-            return runAnonymous(conn, params);
-          case "test.run":
-            return runTest(conn, params, state);
-          case "test.result":
-            return testResult(conn, params, state);
-          case "test.rerun":
-            return rerunTest(conn, params, state);
-          default:
-            return {
-              content: [{ type: "text", text: `Unsupported sf_apex action: ${params.action}` }],
-              details: { ok: false, action: params.action },
-            };
-        }
-      } catch (error) {
-        return apexErrorResult(params, error);
-      }
+      return executeApex(params, {
+        cwd: ctx.cwd,
+        signal,
+        state,
+        artifacts: nativeApexArtifacts,
+        connect: connectSalesforce,
+        diagnostics: nativeApexDiagnostics,
+      });
     },
   });
 }

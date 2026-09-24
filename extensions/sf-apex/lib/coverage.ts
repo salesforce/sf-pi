@@ -4,7 +4,7 @@
 import path from "node:path";
 import type { ApexConnection as Connection } from "./api.ts";
 import { apiVersion, toolingQuery, toolingQueryAll } from "./api.ts";
-import { artifactTimestamp, writeApexArtifact } from "./artifacts.ts";
+import { artifactTimestamp, type ApexArtifactWriter } from "./artifact-writer.ts";
 import { buildApexDigest, plural } from "./digest.ts";
 import { ok } from "./result.ts";
 import { quoteSoql } from "./soql.ts";
@@ -39,7 +39,11 @@ interface NormalizedCoverageRow {
   uncovered_lines?: number[];
 }
 
-export async function coverageSummary(conn: Connection, params: SfApexParams): Promise<ToolResult> {
+export async function coverageSummary(
+  conn: Connection,
+  params: SfApexParams,
+  artifactWriter: ApexArtifactWriter,
+): Promise<ToolResult> {
   const names = coverageTargetNames(params);
   const threshold = boundedThreshold(params.threshold_percent);
   const includeLines = params.include_uncovered_lines === true;
@@ -57,7 +61,7 @@ export async function coverageSummary(conn: Connection, params: SfApexParams): P
     coverage: normalized,
     raw_coverage: coverageRows,
   };
-  const artifact = await writeApexArtifact(
+  const artifact = await artifactWriter.write(
     "coverage",
     `${artifactTimestamp()}-coverage-summary.json`,
     artifactPayload,

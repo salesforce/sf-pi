@@ -14,10 +14,13 @@
     "summary": "Owns the lean Apex lifecycle loop in pi: native Apex discovery/preflight, authoring plan hints, Apex-owned diagnostics handoff, API-native trace flags, log fetch/watch/analyze, Anonymous Apex probes, coverage summaries, and targeted test runs. Source edits remain normal Pi file operations; full evidence is persisted as Apex Artifacts while tool output stays compact.",
     "primaryFiles": [
       "index.ts",
-      "lib/sf-apex-tool.ts",
-      "lib/operations.ts",
-      "lib/api.ts",
-      "lib/artifacts.ts"
+      "public.ts",
+      "lib/client.ts",
+      "lib/execute.ts",
+      "lib/contracts.ts",
+      "lib/artifact-writer.ts",
+      "lib/diagnostics-client.ts",
+      "lib/sf-apex-tool.ts"
     ],
     "stateFiles": [
       "<globalAgentDir>/sf-pi/sf-apex/logs/*",
