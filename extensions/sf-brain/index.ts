@@ -30,6 +30,7 @@ import {
 import {
   CONSTITUTION_ENTRY_TYPE,
   loadConstitution,
+  resolveDisplayCapabilities,
   shouldInjectConstitution,
 } from "./lib/constitution.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
@@ -71,7 +72,10 @@ export default function (pi: ExtensionAPI) {
       env = await getSharedSfEnvironment(exec, ctx.cwd);
     }
 
-    const constitution = loadConstitution({ cliInstalled: env.cli.installed });
+    const constitution = loadConstitution({
+      cliInstalled: env.cli.installed,
+      ...resolveDisplayCapabilities(ctx.cwd),
+    });
 
     return {
       message: {

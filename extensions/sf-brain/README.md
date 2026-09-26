@@ -11,8 +11,14 @@ SF Brain adds two compact hidden context messages:
 
 The constitution establishes Salesforce-first interpretation, source authority,
 Behavior-Proof-First Development, minimal change, Guardrail authority, raw CLI
-fallback rules, and context discipline. Detailed recipes remain progressively
-disclosed through extension operating guides.
+fallback rules, context discipline, and simple, visual chat communication
+(answer first, small Mermaid diagrams, and a consistent emoji legend). Detailed
+recipes remain progressively disclosed through extension operating guides.
+
+The visual style applies to chat responses only and adapts to existing
+settings: Pi `markdown.mermaid: "off"` switches to text flows, and
+`sfPi.asciiIcons` / `SF_PI_ASCII_ICONS=1` (auto-on in macOS Terminal.app)
+switches to text markers such as `[OK]` and `[WARN]`.
 
 User guidance can extend—but never replace—the bundled constitution through
 `<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md`. Empty or unreadable files

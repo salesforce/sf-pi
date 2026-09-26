@@ -4,7 +4,13 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveGlyphMode } from "../../../lib/common/glyph-policy.ts";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import {
+  globalSettingsPath,
+  projectSettingsPath,
+  readJsonFile,
+} from "../../../lib/common/sf-pi-settings.ts";
 import {
   type ActiveContextSession,
   shouldInjectOnce,
@@ -30,7 +36,30 @@ export function readBundledConstitution(): string {
   return `${readFileSync(BUNDLED_CONSTITUTION_PATH, "utf8").trimEnd()}\n`;
 }
 
-export function loadConstitution(options: { cliInstalled: boolean }): string {
+/** Terminal rendering capabilities that shape the visual-communication section. */
+export interface DisplayCapabilities {
+  mermaid: boolean;
+  emoji: boolean;
+}
+
+/**
+ * Resolve display capabilities from existing settings only:
+ * Pi `markdown.mermaid` (project over global) and the SF Pi glyph policy
+ * (`SF_PI_ASCII_ICONS`, `sfPi.asciiIcons`, Terminal.app auto-detect).
+ */
+export function resolveDisplayCapabilities(
+  cwd: string,
+  env: NodeJS.ProcessEnv = process.env,
+): DisplayCapabilities {
+  return {
+    mermaid: readMermaidMode(cwd) !== "off",
+    emoji: resolveGlyphMode({ cwd, env }) === "emoji",
+  };
+}
+
+export function loadConstitution(
+  options: { cliInstalled: boolean } & Partial<DisplayCapabilities>,
+): string {
   let content = readBundledConstitution().replaceAll(PACKAGE_ROOT_TOKEN, SF_PI_PACKAGE_ROOT);
   if (!options.cliInstalled) {
     content += [
@@ -39,6 +68,21 @@ export function loadConstitution(options: { cliInstalled: boolean }): string {
       "</sf_cli_status>",
       "",
     ].join("\n");
+  }
+
+  const fallbacks: string[] = [];
+  if (options.mermaid === false) {
+    fallbacks.push(
+      "Mermaid rendering is off in this terminal. Show flows as indented bullets or `A → B → C` text instead of Mermaid blocks.",
+    );
+  }
+  if (options.emoji === false) {
+    fallbacks.push(
+      "Emoji may not render in this terminal. Use text markers such as [OK], [FAIL], [WARN], [TIP], and [NEXT] instead of emoji.",
+    );
+  }
+  if (fallbacks.length > 0) {
+    content += ["<sf_display_fallback>", ...fallbacks, "</sf_display_fallback>", ""].join("\n");
   }
 
   const addendum = readAddendum();
@@ -56,6 +100,17 @@ export function loadConstitution(options: { cliInstalled: boolean }): string {
 
 export function shouldInjectConstitution(sessionManager: ActiveContextSession): boolean {
   return shouldInjectOnce(sessionManager, CONSTITUTION_ENTRY_TYPE);
+}
+
+function readMermaidMode(cwd: string): unknown {
+  // Project settings override global settings, matching Pi's precedence.
+  for (const file of [projectSettingsPath(cwd), globalSettingsPath()]) {
+    const markdown = readJsonFile(file).markdown;
+    if (markdown && typeof markdown === "object" && "mermaid" in markdown) {
+      return (markdown as Record<string, unknown>).mermaid;
+    }
+  }
+  return undefined;
 }
 
 function readAddendum(): string | undefined {

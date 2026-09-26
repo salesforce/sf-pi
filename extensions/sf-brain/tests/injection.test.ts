@@ -38,6 +38,10 @@ describe("sf-brain before_agent_start handler", () => {
     expect(brainSource.match(/display: false/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("passes the session's display capabilities into the constitution", () => {
+    expect(brainSource).toContain("resolveDisplayCapabilities(ctx.cwd)");
+  });
+
   it("reuses the shared sf-environment cache before running detection", () => {
     expect(brainSource).toContain("getCachedSfEnvironment");
     expect(brainSource).toContain("getSharedSfEnvironment");
