@@ -169,6 +169,7 @@ async function createCompactionSession(
     authController: configuredAuthController(),
     fetchers,
     streams,
+    isCatalogBackedModelId: () => true,
   });
   const credentials = new InMemoryCredentialStore();
   await credentials.modify(PROVIDER_NAME, async () => ({

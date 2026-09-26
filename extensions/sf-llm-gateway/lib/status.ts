@@ -129,6 +129,7 @@ export function buildStatusReport(
       : []),
     `Model discovery: ${discovery?.source ?? "not run"}${discovery?.error ? ` ⚠ ${discovery.error}` : ""}`,
     `Discovered models: ${discovery?.modelIds.length ?? 0}`,
+    `Filtered discovery IDs: ${discovery?.filteredModelIds?.length ?? 0}`,
     ...(discovery?.error
       ? [
           `Catalog fallback: ${

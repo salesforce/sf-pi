@@ -70,7 +70,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0074: SF Guardrail mediates native high-value durable mutations](./0074-sf-guardrail-mediates-native-high-value-mutations.md) — 2026-07-05
 - [0075: SF Guardrail adds persisted Power Tool Mode](./0075-sf-guardrail-adds-persisted-power-tool-mode.md) — 2026-07-06
 - [0076: Pi 0.80.6 runtime delegation](./0076-pi-0806-runtime-delegation.md) — 2026-07-12
-- [0077: Dynamic Gateway Model Catalog](./0077-dynamic-gateway-model-catalog.md) — 2026-08-05
 - [0078: Pi-Native Credential Ownership](./0078-pi-native-credential-ownership.md) — 2026-07-22
 - [0079: Pi Runtime Forward-Compatibility Policy](./0079-audited-pi-runtime-support-window.md) — 2026-07-22
 - [0080: Active-Branch Latest Context Projection](./0080-active-branch-latest-context-projection.md) — 2026-07-22
@@ -110,6 +109,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0119: Pi 0.87 Runtime Floor and Actionable Settlement](./0119-pi-087-runtime-floor-and-actionable-settlement.md) — 2026-09-21
 - [0120: SF Flow supports Omni-Channel as a specialized family](./0120-sf-flow-supports-omni-channel-as-a-specialized-family.md) — 2026-09-23
 - [0121: Pi 0.87.1 Audit Edge](./0121-pi-0871-audit-edge.md) — 2026-09-24
+- [0122: Gateway Catalog Requires Pi-Backed IDs](./0122-gateway-catalog-requires-pi-backed-ids.md) — 2026-09-26
 
 ## Proposed
 
@@ -131,6 +131,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0060: SF Docs uses Pi auth store for its docs credential](./0060-sf-docs-uses-pi-auth-store.md) — 2026-06-23 — superseded by [ADR 0111](./0111-sf-docs-uses-endpoint-only-pi-login.md)
 - [0066: Pi 0.80.2 runtime floor](./0066-pi-0802-runtime-floor.md) — 2026-06-23 — superseded by [ADR 0076](./0076-pi-0806-runtime-delegation.md)
 - [0073: SF Docs routes Developer reference lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md) — 2026-07-04 — superseded by [ADR 0113](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md)
+- [0077: Dynamic Gateway Model Catalog](./0077-dynamic-gateway-model-catalog.md) — 2026-08-05 — superseded by [ADR 0122](./0122-gateway-catalog-requires-pi-backed-ids.md)
 - [0088: Pi 0.82.0 Runtime Floor](./0088-pi-082-runtime-floor.md) — 2026-07-27 — superseded by [ADR 0109](./0109-pi-084-runtime-floor.md)
 - [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25 — superseded by [ADR 0118](./0118-pi-086-runtime-floor.md)
 - [0118: Pi 0.86.0 Runtime Floor](./0118-pi-086-runtime-floor.md) — 2026-09-21 — superseded by [ADR 0119](./0119-pi-087-runtime-floor-and-actionable-settlement.md)

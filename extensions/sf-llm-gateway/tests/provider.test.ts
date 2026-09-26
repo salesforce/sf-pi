@@ -30,6 +30,7 @@ import {
   createGatewayProviderRuntime,
   type GatewayApi,
   type GatewayFetchers,
+  type GatewayProviderDependencies,
   type GatewayStreamImplementations,
 } from "../lib/provider.ts";
 
@@ -155,6 +156,15 @@ function call(
   };
 }
 
+function createTestGatewayProviderRuntime(
+  dependencies: GatewayProviderDependencies = {},
+): ReturnType<typeof createGatewayProviderRuntime> {
+  return createGatewayProviderRuntime({
+    isCatalogBackedModelId: () => true,
+    ...dependencies,
+  });
+}
+
 async function configuredModels(runtime: ReturnType<typeof createGatewayProviderRuntime>) {
   const credentials = new InMemoryCredentialStore();
   await credentials.modify(PROVIDER_NAME, async () => ({ type: "api_key", key: "native-key" }));
@@ -183,7 +193,7 @@ describe("complete native Gateway Provider", () => {
   it("starts with an empty catalog and performs no construction network", () => {
     const network = fetchers();
     const controller = authController();
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: controller,
       fetchers: network,
       now: () => new Date("2026-07-23T00:00:00.000Z"),
@@ -207,7 +217,7 @@ describe("complete native Gateway Provider", () => {
   });
 
   it("keeps models.json overrides above the cached dynamic Provider catalog", async () => {
-    const gateway = createGatewayProviderRuntime({ authController: authController() });
+    const gateway = createTestGatewayProviderRuntime({ authController: authController() });
     const cached = cachedModel("example-discovered-model");
     const modelsStore = new InMemoryModelsStore();
     await modelsStore.write(PROVIDER_NAME, { models: [cached], checkedAt: 1 });
@@ -247,7 +257,7 @@ describe("complete native Gateway Provider", () => {
 
   it("dispatches real API tags with family-correct endpoints and native auth for simple and full streams", async () => {
     const calls: StreamCall[] = [];
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController("https://active.example.test/v1"),
       fetchers: fetchers(),
       streams: streams(calls),
@@ -281,7 +291,7 @@ describe("complete native Gateway Provider", () => {
       ids: ["example-responses-model", "fresh-chat", "no-default-models"],
       filteredIds: ["no-default-models"],
     });
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: network,
       now: () => new Date("2026-07-23T01:02:03.000Z"),
@@ -385,7 +395,7 @@ describe("complete native Gateway Provider", () => {
           );
         }),
     );
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: network,
     });
@@ -412,7 +422,7 @@ describe("complete native Gateway Provider", () => {
     "uses Pi 0.84 provider-scoped refresh without touching unrelated catalogs",
     async () => {
       const network = fetchers({ ids: ["gateway-only"], filteredIds: [] });
-      const runtime = createGatewayProviderRuntime({
+      const runtime = createTestGatewayProviderRuntime({
         authController: authController(),
         fetchers: network,
       });
@@ -473,7 +483,7 @@ describe("complete native Gateway Provider", () => {
       ids: ["callable-peer", "no-default-models"],
       filteredIds: ["no-default-models"],
     });
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: network,
     });
@@ -489,7 +499,7 @@ describe("complete native Gateway Provider", () => {
 
   it("publishes sentinel-only access as an empty catalog and later restores granted models", async () => {
     const network = fetchers({ ids: [], filteredIds: ["no-default-models"] });
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: network,
       now: () => new Date("2026-07-23T04:05:06.000Z"),
@@ -535,7 +545,7 @@ describe("complete native Gateway Provider", () => {
 
   it("retains a cached catalog for an ambiguous empty discovery without the access sentinel", async () => {
     const network = fetchers({ ids: [], filteredIds: [] });
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: network,
     });
@@ -559,7 +569,7 @@ describe("complete native Gateway Provider", () => {
 
   it("rejects missing refresh inputs and an ambiguous fresh empty catalog", async () => {
     const zero = fetchers({ ids: [], filteredIds: [] });
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: zero,
     });
@@ -604,7 +614,7 @@ describe("complete native Gateway Provider", () => {
 
   it("resets discovery diagnostics on a new binding and on clear", async () => {
     const network = fetchers({ ids: ["fresh-chat"], filteredIds: [] });
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: network,
     });
@@ -628,8 +638,82 @@ describe("complete native Gateway Provider", () => {
     expect(runtime.getLastDiscovery()).not.toHaveProperty("error");
   });
 
+  it("hides unmatched IDs restored from the offline provider cache", async () => {
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      isCatalogBackedModelId: (id) => id === "catalog-backed",
+    });
+    const { models, modelsStore } = await configuredModels(runtime);
+    await modelsStore.write(PROVIDER_NAME, {
+      models: [cachedModel("catalog-backed"), cachedModel("stale-unmatched-deployment")],
+      checkedAt: 1,
+    });
+
+    await models.refresh({ allowNetwork: false });
+
+    expect(models.getModels(PROVIDER_NAME).map((model) => model.id)).toEqual(["catalog-backed"]);
+    expect(runtime.provider.getModels().map((model) => model.id)).toEqual(["catalog-backed"]);
+    expect(runtime.getLastDiscovery()).toEqual({
+      source: "cache",
+      modelIds: ["catalog-backed"],
+    });
+  });
+
+  it("publishes only exact Pi-backed discovery IDs and reports unmatched deployments", async () => {
+    const network = fetchers({
+      ids: ["catalog-backed", "unmatched-deployment"],
+      filteredIds: [],
+    });
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: network,
+      isCatalogBackedModelId: (id) => id === "catalog-backed",
+      now: () => new Date("2026-09-26T17:00:00.000Z"),
+    });
+    const { models } = await configuredModels(runtime);
+
+    const result = await models.refresh({ allowNetwork: true });
+
+    expect(result.errors.size).toBe(0);
+    expect(models.getModels(PROVIDER_NAME).map((model) => model.id)).toEqual(["catalog-backed"]);
+    expect(runtime.getLastDiscovery()).toEqual({
+      modelIds: ["catalog-backed"],
+      source: "gateway",
+      discoveredAt: "2026-09-26T17:00:00.000Z",
+      filteredModelIds: ["unmatched-deployment"],
+    });
+  });
+
+  it("publishes an empty catalog when every callable discovery ID lacks a Pi reference", async () => {
+    const network = fetchers({ ids: ["unmatched-deployment"], filteredIds: [] });
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: network,
+      isCatalogBackedModelId: () => false,
+      now: () => new Date("2026-09-26T17:01:00.000Z"),
+    });
+    const { models, modelsStore } = await configuredModels(runtime);
+    await modelsStore.write(PROVIDER_NAME, {
+      models: [cachedModel("stale-unmatched-deployment")],
+      checkedAt: 1,
+    });
+    await models.refresh({ allowNetwork: false });
+
+    const result = await models.refresh({ allowNetwork: true });
+
+    expect(result.errors.size).toBe(0);
+    expect(models.getModels(PROVIDER_NAME)).toEqual([]);
+    expect((await modelsStore.read(PROVIDER_NAME))?.models).toEqual([]);
+    expect(runtime.getLastDiscovery()).toEqual({
+      modelIds: [],
+      source: "gateway",
+      discoveredAt: "2026-09-26T17:01:00.000Z",
+      filteredModelIds: ["unmatched-deployment"],
+    });
+  });
+
   it("returns a stream error for an unmapped API instead of guessing from the model id", async () => {
-    const runtime = createGatewayProviderRuntime({
+    const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
       fetchers: fetchers(),
       streams: streams([]),

@@ -5,19 +5,22 @@
 
 ## What It Does
 
-SF LLM Gateway registers one complete Pi Provider whose discovered models retain
-their real API mode: Chat Completions, Responses, or Messages. Pi owns protocol
+SF LLM Gateway registers one complete Pi Provider whose authenticated discovery
+IDs are published only when an exact public Pi catalog entry supplies a reusable
+Chat Completions, Responses, or Messages API. Unmatched deployment IDs are
+filtered without interpreting suffixes or backend routing. Pi owns protocol
 streaming, retries, cancellation, thinking selection, credential persistence,
 provider-scoped model caching, and API dispatch. SF Pi owns gateway-root
-normalization, conservative discovered-model metadata, diagnostics, usage, and
-bounded terminal error guidance.
+normalization, catalog admission, diagnostics, usage, and bounded terminal error
+guidance.
 
 Startup performs no model-discovery request. Pi restores the last successful
-provider catalog; a fresh uncached installation exposes no models until login or
+provider catalog, and SF Pi applies the same exact-match admission policy to the
+restored entries. A fresh uncached installation exposes no models until login or
 an explicit refresh succeeds. Network failures and ambiguous empty discovery
-responses retain that catalog. A sentinel-only `no-default-models` result is an
-explicit access-empty state instead: SF Pi clears stale Gateway entries from the
-selector until a later refresh returns callable models.
+responses retain the admitted catalog. A sentinel-only `no-default-models`
+result is an explicit access-empty state instead: SF Pi clears stale Gateway
+entries from the selector until a later refresh returns admitted models.
 
 ## Connecting
 
@@ -124,6 +127,8 @@ cached numbers look surprising.
   policy, or secret ships in source.
 - Provider setup performs no hidden model selection, enable/disable, discovery,
   usage probe, or update beyond the explicitly chosen action.
+- Discovery publishes only exact IDs backed by a reusable public Pi catalog API;
+  unmatched deployment IDs are excluded without model-specific routing rules.
 - Recognized access and configuration failures are replaced with bounded,
   protocol-neutral guidance; raw provider response bodies are not repeated.
 - CA installation/download steps are explicit and human-confirmed.
@@ -153,9 +158,10 @@ administrator.
 run setup for the endpoint, or authenticate with `/login sf-llm-gateway`; then
 refresh the catalog.
 
-**A discovered model shows conservative metadata:** Refresh the catalog. Exact
-public Pi catalog matches can contribute portable metadata, but provider
-identity, headers, cost, and provider-specific compatibility are never copied.
+**A Gateway model is absent after refresh:** SF Pi publishes only exact model IDs
+with a reusable public Pi catalog API. Ask the Gateway administrator to expose a
+canonical public ID, then refresh after the Pi catalog includes that ID. SF Pi
+does not infer deployment aliases from model names.
 
 **Requests fail while `curl` works on macOS:** Node may not trust a private CA
 from the system keychain. Use the confirmed `fix-ca-bundle` action with an

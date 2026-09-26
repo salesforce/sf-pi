@@ -23,8 +23,8 @@ const cliPath = path.join(
 );
 const extensionPath = path.join(repoRoot, "extensions", "sf-llm-gateway", "index.ts");
 
-const DISCOVERED_MESSAGES_MODEL = "a-example-claude-model";
-const DISCOVERED_CHAT_MODEL = "b-example-chat-model";
+const DISCOVERED_PRIMARY_MODEL = "gpt-4";
+const DISCOVERED_SECONDARY_MODEL = "gpt-4o";
 
 interface RuntimeHarness {
   client: RpcClient;
@@ -71,7 +71,7 @@ async function startRuntime(
     if (request.url === "/v1/models") {
       response.end(
         JSON.stringify({
-          data: [{ id: DISCOVERED_MESSAGES_MODEL }, { id: DISCOVERED_CHAT_MODEL }],
+          data: [{ id: DISCOVERED_PRIMARY_MODEL }, { id: DISCOVERED_SECONDARY_MODEL }],
         }),
       );
       return;
@@ -81,17 +81,17 @@ async function startRuntime(
         JSON.stringify({
           data: [
             {
-              model_name: DISCOVERED_MESSAGES_MODEL,
+              model_name: DISCOVERED_PRIMARY_MODEL,
               model_info: {
-                supports_reasoning: true,
+                supports_reasoning: false,
                 max_input_tokens: 200_000,
                 max_output_tokens: 64_000,
               },
             },
             {
-              model_name: DISCOVERED_CHAT_MODEL,
+              model_name: DISCOVERED_SECONDARY_MODEL,
               model_info: {
-                supports_reasoning: true,
+                supports_reasoning: false,
                 max_input_tokens: 128_000,
                 max_output_tokens: 32_000,
               },
@@ -114,7 +114,7 @@ async function startRuntime(
     })}\n`,
     "utf8",
   );
-  const cachedModels = [DISCOVERED_MESSAGES_MODEL, DISCOVERED_CHAT_MODEL].map((id) => {
+  const cachedModels = [DISCOVERED_PRIMARY_MODEL, DISCOVERED_SECONDARY_MODEL].map((id) => {
     const model = toProviderModelConfig(id);
     return {
       ...model,
@@ -195,10 +195,10 @@ describe("Gateway thinking ownership through real Pi", () => {
       expect((await client.getState()).thinkingLevel).toBe("off");
       expect(await client.getAvailableThinkingLevels()).toEqual(["off"]);
 
-      await client.setModel(PROVIDER_NAME, DISCOVERED_CHAT_MODEL);
+      await client.setModel(PROVIDER_NAME, DISCOVERED_SECONDARY_MODEL);
       expect((await client.getState()).thinkingLevel).toBe("off");
 
-      await client.setModel(PROVIDER_NAME, DISCOVERED_MESSAGES_MODEL);
+      await client.setModel(PROVIDER_NAME, DISCOVERED_PRIMARY_MODEL);
       expect((await client.getState()).thinkingLevel).toBe("off");
       expect(await client.getAvailableThinkingLevels()).toEqual(["off"]);
     } finally {
@@ -242,7 +242,7 @@ describe("Gateway thinking ownership through real Pi", () => {
       const onState = await client.getState();
       expect(onState.model).toMatchObject({
         provider: PROVIDER_NAME,
-        id: DISCOVERED_MESSAGES_MODEL,
+        id: DISCOVERED_PRIMARY_MODEL,
       });
       expect(onState.thinkingLevel).toBe("off");
 

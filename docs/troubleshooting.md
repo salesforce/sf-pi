@@ -109,7 +109,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Refresh reports no assigned models
 - A request reports `team_model_access_denied`
 - A request says the provider is not configured
-- A discovered model shows conservative metadata
+- A Gateway model is absent after refresh
 - Requests fail while `curl` works on macOS
 - Usage or throttle status is stale
 - Thinking changes after a model switch

@@ -663,6 +663,7 @@ async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
   const lines = [
     `Model discovery: ${state?.source ?? "not run"}${state?.error ? ` ⚠ ${state.error}` : ""}`,
     `Discovered at: ${state?.discoveredAt ?? "never"}`,
+    `Filtered discovery IDs: ${state.filteredModelIds?.length ?? 0}`,
     "",
     "Registered models:",
     ...(state.modelIds.length > 0

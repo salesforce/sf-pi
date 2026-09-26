@@ -1,7 +1,8 @@
 ---
 id: "0077"
-status: accepted
+status: superseded
 date: 2026-08-05
+supersededBy: ["0122"]
 ---
 
 # ADR 0077: Dynamic Gateway Model Catalog

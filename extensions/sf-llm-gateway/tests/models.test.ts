@@ -8,6 +8,7 @@ import {
   getActiveModelDefinition,
   getModelFamily,
   inferModelDefinition,
+  isPiCatalogBackedGatewayModelId,
   resolvePreferredModelId,
   toProviderModelConfig,
   type PiModelReference,
@@ -168,6 +169,19 @@ describe("conservative model inference", () => {
 });
 
 describe("discovered catalog", () => {
+  it("recognizes only exact Pi catalog IDs with a reusable Gateway API", () => {
+    const reference = getBuiltinProviders()
+      .flatMap((provider) => getBuiltinModels(provider))
+      .find((model) =>
+        ["openai-completions", "openai-responses", "anthropic-messages"].includes(model.api),
+      );
+    expect(reference).toBeDefined();
+    if (!reference) return;
+
+    expect(isPiCatalogBackedGatewayModelId(reference.id)).toBe(true);
+    expect(isPiCatalogBackedGatewayModelId("example-unregistered-deployment")).toBe(false);
+  });
+
   it("contains only unique authenticated IDs in stable order", () => {
     const models = buildDiscoveredModelList([
       "example-model-b",

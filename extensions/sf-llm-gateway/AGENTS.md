@@ -62,12 +62,13 @@ copy.
    Pi's Provider API map dispatches to the matching provider-neutral full/simple
    adapter. Request-time auth materializes root versus `/v1` endpoints. Do not
    add an ID-based dispatcher.
-2. **Dynamic catalog with Pi-owned cache.** The Provider registers with no
-   static models. Authenticated discovery supplies callable IDs, and Pi restores
-   and persists the last successful catalog through its provider-scoped
-   ModelsStore. Exact discovered IDs may inherit portable metadata from Pi's
-   public built-in catalog; never copy provider identity, cost, headers, or
-   provider-specific compatibility. Startup is network-free; refresh is explicit.
+2. **Dynamic catalog with exact Pi-backed admission.** The Provider registers
+   with no static models. Authenticated discovery supplies candidate IDs, but SF Pi
+   publishes only exact IDs with a reusable API in Pi's public built-in catalog.
+   Apply the same filter to Pi-restored cache entries so offline startup cannot
+   resurrect unmatched deployments. Never infer aliases from suffixes or copy
+   provider identity, cost, headers, or provider-specific compatibility. Startup
+   is network-free; refresh is explicit.
 3. **Pi owns credentials.** `/login` stores the API key and default URL in
    Pi's credential store. SF Pi's custom component masks key input; extension
    config contains only non-secret settings. Never copy, print, or delete Pi
@@ -89,10 +90,12 @@ copy.
 8. **Dedicated compaction is opt-in and bounded.** `active` leaves Pi's compaction untouched.
    Explicit selections must come from the authenticated Gateway catalog, never change the chat
    model, preserve summary usage/file context, and fall back to Pi without exposing provider errors.
-9. **Access state beats stale availability.** A sentinel-only `no-default-models` discovery result
-   publishes an empty catalog so revoked models cannot remain selectable; mixed callable results
-   keep their peers, while ambiguous empty/network failures retain the last-known catalog. Normalize
-   recognized request failures through `message_end` without changing models, credentials, or settings.
+9. **Access and catalog admission beat stale availability.** A sentinel-only
+   `no-default-models` discovery result publishes an empty catalog so revoked models cannot remain
+   selectable. Exact Pi-backed peers survive mixed results; unmatched deployment IDs are filtered and
+   recorded in discovery diagnostics. Ambiguous empty/network failures retain the last admitted catalog.
+   Normalize recognized request failures through `message_end` without changing models, credentials,
+   or settings.
 
 ## Command handler pattern
 

@@ -217,6 +217,7 @@ describe("buildStatusReport", () => {
         discovery: {
           modelIds: ["example-native-message-model", "example-model"],
           source: "gateway",
+          filteredModelIds: ["example-unmatched-deployment"],
           discoveredAt: new Date().toISOString(),
         },
         monthlyUsage: null,
@@ -234,6 +235,7 @@ describe("buildStatusReport", () => {
     expect(report).toContain("Compaction model: sf-llm-gateway/claude-sonnet-5 (project)");
     expect(report).toContain("Model discovery: gateway");
     expect(report).toContain("Discovered models: 2");
+    expect(report).toContain("Filtered discovery IDs: 1");
   });
 
   it("shows an authoritative no-default-models access state without cache-fallback wording", () => {

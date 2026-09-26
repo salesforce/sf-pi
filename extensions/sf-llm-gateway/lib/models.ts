@@ -3,9 +3,10 @@
  * Model catalog, discovery, inference, and formatting for the SF LLM Gateway.
  *
  * Authenticated discovery supplies model IDs and neutral capability metadata.
- * Broad public family inference selects a generic protocol only when discovery
- * does not provide an explicit API mode. Exact route aliases, backend placement,
- * and deployment-specific capability policy do not belong in this module.
+ * The provider publishes only exact IDs with a reusable public Pi catalog API;
+ * unknown deployment IDs are filtered rather than guessed from naming. Exact
+ * route aliases, backend placement, and deployment-specific capability policy
+ * do not belong in this module.
  *
  * The only module state is a process-local cache of Pi's immutable built-in catalog.
  */
@@ -121,6 +122,14 @@ function selectReference(models: readonly PiModelReference[]): PiModelReference 
 
 function isGatewayApi(api: string): api is TaggedGatewayModel["api"] {
   return GATEWAY_APIS.has(api);
+}
+
+/**
+ * Return whether an authenticated discovery ID has an exact Pi catalog entry
+ * whose public API transport can be reused by the Gateway provider.
+ */
+export function isPiCatalogBackedGatewayModelId(id: string): boolean {
+  return getPiModelReferences(id).some((model) => isGatewayApi(model.api));
 }
 
 /**

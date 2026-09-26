@@ -19,6 +19,7 @@ import {
   buildDiscoveredModelList,
   fetchGatewayModelIdDiscovery,
   fetchGatewayModelInfoMap,
+  isPiCatalogBackedGatewayModelId,
   type GatewayModelInfoMap,
   type TaggedGatewayModel,
 } from "./models.ts";
@@ -76,6 +77,7 @@ export interface GatewayProviderDependencies {
   authController?: GatewayProviderAuthController;
   fetchers?: GatewayFetchers;
   streams?: GatewayStreamImplementations;
+  isCatalogBackedModelId?: (id: string) => boolean;
   now?: () => Date;
   placeholderRoot?: string;
 }
@@ -203,6 +205,8 @@ export function createGatewayProviderRuntime(
   const authController = dependencies.authController ?? createGatewayProviderAuth();
   const fetchers = dependencies.fetchers ?? defaultFetchers();
   const streams = dependencies.streams ?? defaultStreams();
+  const isCatalogBackedModelId =
+    dependencies.isCatalogBackedModelId ?? isPiCatalogBackedGatewayModelId;
   const now = dependencies.now ?? (() => new Date());
   const placeholderRoot = toGatewayRootBaseUrl(dependencies.placeholderRoot ?? PLACEHOLDER_ROOT);
   const baseline: Model<GatewayApi>[] = [];
@@ -222,10 +226,12 @@ export function createGatewayProviderRuntime(
       ]);
       if (context.signal?.aborted) throw new Error("Gateway model refresh aborted.");
       const callableIds = filterCallableDiscoveredModelIds(modelIdDiscovery.ids);
+      const catalogBackedIds = callableIds.filter(isCatalogBackedModelId);
       const filteredIds = [
         ...new Set([
           ...modelIdDiscovery.filteredIds,
           ...modelIdDiscovery.ids.filter((id) => !callableIds.includes(id)),
+          ...callableIds.filter((id) => !catalogBackedIds.includes(id)),
         ]),
       ];
       if (isNoDefaultModelsAccessState(callableIds, filteredIds)) {
@@ -245,7 +251,7 @@ export function createGatewayProviderRuntime(
         throw new Error("Gateway returned zero callable models.");
       }
 
-      const models = buildDiscoveredModelList(callableIds, modelInfo).map((model) =>
+      const models = buildDiscoveredModelList(catalogBackedIds, modelInfo).map((model) =>
         nativeModel(model, placeholderRoot),
       );
       lastDiscovery = {
@@ -276,7 +282,15 @@ export function createGatewayProviderRuntime(
     fetchModels,
     api: createApiMap(streams),
   });
-  const provider: Provider<GatewayApi> = nativeProvider;
+  const provider: Provider<GatewayApi> = {
+    ...nativeProvider,
+    // Pi restores the last persisted dynamic catalog before network refresh.
+    // Apply the same admission policy to restored entries so retired or
+    // deployment-only IDs disappear immediately, including offline startup.
+    getModels() {
+      return nativeProvider.getModels().filter((model) => isCatalogBackedModelId(model.id));
+    },
+  };
 
   const resetSessionDiagnostics = () => {
     const currentIds = provider.getModels().map((model) => model.id);

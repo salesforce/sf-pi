@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with offline cache restore, provider-neutral mixed-API dispatch, optional dedicated-model compaction, explicit refresh, diagnostics, and usage status.
+Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission and offline cache filtering, provider-neutral mixed-API dispatch, optional dedicated-model compaction, explicit refresh, diagnostics, and usage status.
 
 ## Start
 
@@ -34,6 +34,7 @@ Open its Manager detail or change its package state with:
 - Pi alone persists/removes active credentials; setup and import paths write no secrets.
 - Extension config stores only non-secret settings; credentials remain Pi-owned.
 - Dedicated compaction accepts only authenticated sf-llm-gateway models, never changes the chat model, and falls back to Pi.
+- Discovery and restored cache entries publish only exact IDs backed by a reusable public Pi catalog API.
 - Sentinel-only empty access clears stale selectable models; ambiguous discovery failures retain the last-known catalog.
 - Recognized request failures are replaced with bounded guidance without echoing raw provider bodies.
 - Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads.
