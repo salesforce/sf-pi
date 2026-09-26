@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.296.0](https://github.com/salesforce/sf-pi/compare/v0.295.0...v0.296.0) (2026-09-26)
+
+
+### Features
+
+* **sf-brain:** make simple, visual chat communication part of the constitution ([77a3ead](https://github.com/salesforce/sf-pi/commit/77a3ead6ecbb51a1354926c21bc39350b8b47a25))
+
 ## [0.295.0](https://github.com/salesforce/sf-pi/compare/v0.294.1...v0.295.0) (2026-09-26)
 
 
