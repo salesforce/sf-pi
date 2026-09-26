@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.295.0](https://github.com/salesforce/sf-pi/compare/v0.294.1...v0.295.0) (2026-09-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sf-llm-gateway:** Gateway IDs without an exact reusable Pi catalog API are no longer selectable.
+
+### Features
+
+* **sf-llm-gateway:** require Pi-backed discovered models ([ac10cdc](https://github.com/salesforce/sf-pi/commit/ac10cdcc8c149cf0e1d1adf7b1a86d2e456fbb70))
+
 ## [0.294.1](https://github.com/salesforce/sf-pi/compare/v0.294.0...v0.294.1) (2026-09-24)
 
 

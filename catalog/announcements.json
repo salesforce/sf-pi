@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.294.1-2026-09-24",
-  "latestVersion": "0.294.1",
+  "revision": "release-0.295.0-2026-09-26",
+  "latestVersion": "0.295.0",
   "announcements": [
     {
-      "id": "release-0.294.1",
+      "id": "release-0.295.0",
       "kind": "update",
-      "title": "sf-pi v0.294.1 — runtime: recommend Pi 0.87.1 as the audited runtime",
-      "publishedAt": "2026-09-24T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.294.1",
+      "title": "sf-pi v0.295.0 — sf-llm-gateway: Gateway IDs without an exact reusable Pi catalog API are no longer selecta…",
+      "publishedAt": "2026-09-26T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.295.0",
       "severity": "info",
-      "body": "runtime: recommend Pi 0.87.1 as the audited runtime"
+      "body": "sf-llm-gateway: Gateway IDs without an exact reusable Pi catalog API are no longer selectable. — sf-llm-gateway: require Pi-backed discovered models"
     }
   ]
 }
