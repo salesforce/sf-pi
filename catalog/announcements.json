@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.296.1-2026-09-27",
-  "latestVersion": "0.296.1",
+  "revision": "release-0.297.0-2026-09-27",
+  "latestVersion": "0.297.0",
   "announcements": [
     {
-      "id": "release-0.296.1",
+      "id": "release-0.297.0",
       "kind": "update",
-      "title": "sf-pi v0.296.1 — sf-llm-gateway: preserve adaptive thinking metadata",
+      "title": "sf-pi v0.297.0 — sf-llm-gateway: add bounded stream health probes",
       "publishedAt": "2026-09-27T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.296.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.297.0",
       "severity": "info",
-      "body": "sf-llm-gateway: preserve adaptive thinking metadata"
+      "body": "sf-llm-gateway: add bounded stream health probes"
     }
   ]
 }
