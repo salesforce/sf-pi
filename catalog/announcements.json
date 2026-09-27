@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.300.0-2026-09-27",
-  "latestVersion": "0.300.0",
+  "revision": "release-0.300.1-2026-09-27",
+  "latestVersion": "0.300.1",
   "announcements": [
     {
-      "id": "release-0.300.0",
+      "id": "release-0.300.1",
       "kind": "update",
-      "title": "sf-pi v0.300.0 — sf-brain: ground material Salesforce architecture decisions",
+      "title": "sf-pi v0.300.1 — sf-brain: refresh architecture guidance and handle missing docs",
       "publishedAt": "2026-09-27T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.300.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.300.1",
       "severity": "info",
-      "body": "sf-brain: ground material Salesforce architecture decisions"
+      "body": "sf-brain: refresh architecture guidance and handle missing docs"
     }
   ]
 }
