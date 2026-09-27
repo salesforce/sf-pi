@@ -153,6 +153,47 @@ describe("conservative model inference", () => {
     expect("supportsStrictMode" in (config.compat ?? {})).toBe(false);
   });
 
+  it("preserves only consensus adaptive-thinking flags for Messages models", () => {
+    const references: PiModelReference[] = [
+      {
+        id: "example-adaptive-claude-model",
+        name: "Example Adaptive Claude Model",
+        api: "anthropic-messages",
+        reasoning: true,
+        input: ["text"],
+        contextWindow: 1_000_000,
+        maxTokens: 128_000,
+        thinkingLevelMap: { high: "high", xhigh: "xhigh", max: "max" },
+        compat: {
+          forceAdaptiveThinking: true,
+          supportsTemperature: false,
+          sendSessionAffinityHeaders: true,
+        },
+      },
+      {
+        id: "example-adaptive-claude-model",
+        name: "Example Adaptive Claude Model",
+        api: "anthropic-messages",
+        reasoning: true,
+        input: ["text"],
+        contextWindow: 1_000_000,
+        maxTokens: 128_000,
+        thinkingLevelMap: { high: "high", xhigh: "xhigh", max: "max" },
+        compat: {
+          forceAdaptiveThinking: true,
+          supportsTemperature: false,
+        },
+      },
+    ];
+
+    const config = toProviderModelConfig(references[0].id, undefined, references);
+
+    expect(config.compat).toEqual({
+      forceAdaptiveThinking: true,
+      supportsTemperature: false,
+    });
+  });
+
   it("uses broad public family inference only to select Messages", () => {
     const config = toProviderModelConfig("example-claude-model");
     expect(config.api).toBe("anthropic-messages");

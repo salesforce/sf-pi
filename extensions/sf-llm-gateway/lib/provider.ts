@@ -19,6 +19,7 @@ import {
   buildDiscoveredModelList,
   fetchGatewayModelIdDiscovery,
   fetchGatewayModelInfoMap,
+  getPortableGatewayModelCompat,
   isPiCatalogBackedGatewayModelId,
   type GatewayModelInfoMap,
   type TaggedGatewayModel,
@@ -288,7 +289,15 @@ export function createGatewayProviderRuntime(
     // Apply the same admission policy to restored entries so retired or
     // deployment-only IDs disappear immediately, including offline startup.
     getModels() {
-      return nativeProvider.getModels().filter((model) => isCatalogBackedModelId(model.id));
+      return nativeProvider
+        .getModels()
+        .filter((model) => isCatalogBackedModelId(model.id))
+        .map((model) => {
+          const portableCompat = getPortableGatewayModelCompat(model.id, model.api);
+          return portableCompat
+            ? { ...model, compat: { ...model.compat, ...portableCompat } }
+            : model;
+        });
     },
   };
 

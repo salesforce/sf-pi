@@ -10,7 +10,8 @@ import {
   type Model,
   type TranscriptContext,
 } from "@earendil-works/pi-ai";
-import { streamSfGatewayAnthropicFull } from "../lib/transport.ts";
+import { toProviderModelConfig } from "../lib/models.ts";
+import { streamSfGatewayAnthropic, streamSfGatewayAnthropicFull } from "../lib/transport.ts";
 
 const MODEL: Model<"anthropic-messages"> = {
   id: "example-native-message-model",
@@ -86,6 +87,36 @@ describe("Gateway Anthropic transport Adapter", () => {
     await drain(streamSfGatewayAnthropicFull(MODEL, CONTEXT, { maxRetries: 5 }, { streamer }));
 
     expect(observed).toEqual([undefined, 0, 5]);
+  });
+
+  it("sends adaptive thinking for catalog-backed Opus 5.5 metadata", async () => {
+    const model = {
+      ...toProviderModelConfig("claude-opus-5-5"),
+      provider: "sf-llm-gateway",
+      baseUrl: "https://gateway.test",
+    } as Model<"anthropic-messages">;
+    let payload: Record<string, unknown> | undefined;
+
+    await drain(
+      streamSfGatewayAnthropic(model, CONTEXT, {
+        apiKey: "test-key",
+        reasoning: "xhigh",
+        maxRetries: 0,
+        onPayload(value) {
+          payload = value as Record<string, unknown>;
+          return value;
+        },
+        fetch: async () => {
+          throw new Error("stop after payload capture");
+        },
+      }),
+    );
+
+    expect(payload).toMatchObject({
+      thinking: { type: "adaptive", display: "summarized" },
+      output_config: { effort: "xhigh" },
+    });
+    expect(payload?.thinking).not.toHaveProperty("budget_tokens");
   });
 
   it("sanitizes one terminal Gateway envelope and leaves retry attempts to Pi", async () => {

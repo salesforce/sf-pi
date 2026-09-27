@@ -61,7 +61,15 @@ export type GatewayModelDefinition = {
 
 export type PiModelReference = Pick<
   Model<Api>,
-  "id" | "name" | "api" | "reasoning" | "input" | "contextWindow" | "maxTokens" | "thinkingLevelMap"
+  | "id"
+  | "name"
+  | "api"
+  | "reasoning"
+  | "input"
+  | "contextWindow"
+  | "maxTokens"
+  | "thinkingLevelMap"
+  | "compat"
 >;
 
 /**
@@ -124,6 +132,50 @@ function isGatewayApi(api: string): api is TaggedGatewayModel["api"] {
   return GATEWAY_APIS.has(api);
 }
 
+function consensusBooleanCompat(
+  references: readonly PiModelReference[],
+  key: "forceAdaptiveThinking" | "supportsTemperature",
+): boolean | undefined {
+  if (references.length === 0) return undefined;
+  const values = references.map((reference) => reference.compat?.[key]);
+  if (values.some((value) => typeof value !== "boolean")) return undefined;
+  return values.every((value) => value === values[0]) ? values[0] : undefined;
+}
+
+/**
+ * Preserve only model-semantic adaptive-thinking flags that every reusable
+ * Messages reference agrees on. Provider routing, headers, and beta policy
+ * remain owned by the Gateway adapter.
+ */
+function portableAnthropicCompat(
+  references: readonly PiModelReference[],
+): ProviderModelConfig["compat"] | undefined {
+  const forceAdaptiveThinking = consensusBooleanCompat(references, "forceAdaptiveThinking");
+  if (forceAdaptiveThinking !== true) return undefined;
+
+  const supportsTemperature = consensusBooleanCompat(references, "supportsTemperature");
+  return {
+    forceAdaptiveThinking: true,
+    ...(supportsTemperature === false ? { supportsTemperature: false } : {}),
+  };
+}
+
+/**
+ * Return model-semantic compatibility shared by every reusable public reference.
+ * This is also applied to Pi-restored Gateway catalogs so an offline startup does
+ * not retain stale thinking behavior after SF Pi adds a portable compatibility fix.
+ */
+export function getPortableGatewayModelCompat(
+  id: string,
+  api: TaggedGatewayModel["api"],
+  references: readonly PiModelReference[] = getPiModelReferences(id),
+): ProviderModelConfig["compat"] | undefined {
+  if (api !== "anthropic-messages") return undefined;
+  return portableAnthropicCompat(
+    references.filter((reference) => reference.api === "anthropic-messages"),
+  );
+}
+
 /**
  * Return whether an authenticated discovery ID has an exact Pi catalog entry
  * whose public API transport can be reused by the Gateway provider.
@@ -157,9 +209,8 @@ export function toProviderModelConfig(
 ): TaggedGatewayModel {
   const def = inferModelDefinition(id);
   const reference = selectReference(references);
-  const apiReference = selectReference(
-    references.filter((candidate) => isGatewayApi(candidate.api)),
-  );
+  const apiReferences = references.filter((candidate) => isGatewayApi(candidate.api));
+  const apiReference = selectReference(apiReferences);
 
   if (reference) {
     def.name = `[SF LLM Gateway] ${reference.name}`;
@@ -200,6 +251,9 @@ export function toProviderModelConfig(
             : "openai-completions";
 
   const thinkingLevelMap = def.reasoning ? reference?.thinkingLevelMap : undefined;
+  const compat =
+    getPortableGatewayModelCompat(id, api, references) ??
+    (api === "openai-completions" || api === "openai-responses" ? COMMON_OPENAI_COMPAT : undefined);
 
   return {
     id: def.id,
@@ -211,9 +265,7 @@ export function toProviderModelConfig(
     contextWindow: def.contextWindow,
     maxTokens: def.maxTokens,
     ...(thinkingLevelMap ? { thinkingLevelMap: { ...thinkingLevelMap } } : {}),
-    ...(api === "openai-completions" || api === "openai-responses"
-      ? { compat: COMMON_OPENAI_COMPAT }
-      : {}),
+    ...(compat ? { compat } : {}),
   };
 }
 

@@ -67,7 +67,9 @@ copy.
    publishes only exact IDs with a reusable API in Pi's public built-in catalog.
    Apply the same filter to Pi-restored cache entries so offline startup cannot
    resurrect unmatched deployments. Never infer aliases from suffixes or copy
-   provider identity, cost, headers, or provider-specific compatibility. Startup
+   provider identity, cost, headers, or provider-specific compatibility. Preserve
+   model-semantic compatibility only when every reusable public transport reference
+   explicitly agrees, and apply that projection to restored cache entries. Startup
    is network-free; refresh is explicit.
 3. **Pi owns credentials.** `/login` stores the API key and default URL in
    Pi's credential store. SF Pi's custom component masks key input; extension

@@ -189,6 +189,21 @@ function cachedModel(id = "cached-only"): Model<"openai-completions"> {
   };
 }
 
+function cachedAnthropicModel(id: string): Model<"anthropic-messages"> {
+  return {
+    id,
+    name: id,
+    provider: PROVIDER_NAME,
+    api: "anthropic-messages",
+    baseUrl: "https://cached.example.test",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 1_000_000,
+    maxTokens: 128_000,
+  };
+}
+
 describe("complete native Gateway Provider", () => {
   it("starts with an empty catalog and performs no construction network", () => {
     const network = fetchers();
@@ -636,6 +651,24 @@ describe("complete native Gateway Provider", () => {
 
     runtime.clear();
     expect(runtime.getLastDiscovery()).not.toHaveProperty("error");
+  });
+
+  it("rehydrates portable adaptive-thinking flags on the restored offline catalog", async () => {
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+    });
+    const { models, modelsStore } = await configuredModels(runtime);
+    await modelsStore.write(PROVIDER_NAME, {
+      models: [cachedAnthropicModel("claude-opus-5-5")],
+      checkedAt: 1,
+    });
+
+    await models.refresh({ allowNetwork: false });
+
+    expect(models.getModel(PROVIDER_NAME, "claude-opus-5-5")?.compat).toMatchObject({
+      forceAdaptiveThinking: true,
+      supportsTemperature: false,
+    });
   });
 
   it("hides unmatched IDs restored from the offline provider cache", async () => {
