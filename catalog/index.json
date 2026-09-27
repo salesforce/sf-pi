@@ -160,7 +160,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 979
+    "srcLoc": 985
   },
   {
     "id": "sf-browser",

@@ -11,6 +11,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 
 import {
   CONSTITUTION_ENTRY_TYPE,
@@ -19,6 +20,7 @@ import {
   loadConstitution,
   readBundledConstitution,
   resolveDisplayCapabilities,
+  shouldInjectConstitution,
 } from "../lib/constitution.ts";
 
 let tempAgentDir: string;
@@ -76,6 +78,35 @@ describe("Salesforce Engineering Constitution", () => {
     expect(constitution).not.toContain("SF_REFERENCE_MAP.md");
   });
 
+  it("refreshes stale bundled guidance after reload without reinjecting unchanged or addendum-only content", () => {
+    const current = loadConstitution({ cliInstalled: true });
+    const session = (content?: string) => ({
+      buildContextEntries: (): SessionEntry[] =>
+        content === undefined
+          ? []
+          : [
+              {
+                id: "existing",
+                parentId: null,
+                timestamp: new Date().toISOString(),
+                type: "custom_message",
+                customType: CONSTITUTION_ENTRY_TYPE,
+                content,
+                display: false,
+              },
+            ],
+    });
+
+    expect(shouldInjectConstitution(session(current))).toBe(false);
+    expect(shouldInjectConstitution(session(`${current}user addendum`))).toBe(false);
+    expect(
+      shouldInjectConstitution(
+        session(current.replace("material Salesforce solution design", "prior bundled guidance")),
+      ),
+    ).toBe(true);
+    expect(shouldInjectConstitution(session())).toBe(true);
+  });
+
   it("always keeps the bundled constitution and appends user guidance", () => {
     const dir = path.dirname(constitutionAddendumPath());
     mkdirSync(dir, { recursive: true });
@@ -98,6 +129,13 @@ describe("Salesforce Engineering Constitution", () => {
     expect(content).toContain("Salesforce Docs guide for source selection");
     expect(content).toContain("Skip routine edits");
     expect(content).toContain("installed Pi documentation");
+    expect(content).toContain("If `sf_docs` is unavailable or retrieval fails");
+    expect(content).toContain(
+      "official architect.salesforce.com pages through available web access",
+    );
+    expect(content).toContain("Stop once the relevant evidence answers the decision");
+    expect(content).toContain("If neither works, report the evidence gap");
+    expect(content).toContain("silently enable a disabled capability");
   });
 
   it("makes simple, visual chat communication part of the bundled baseline", () => {

@@ -99,7 +99,13 @@ export function loadConstitution(
 }
 
 export function shouldInjectConstitution(sessionManager: ActiveContextSession): boolean {
-  return shouldInjectOnce(sessionManager, CONSTITUTION_ENTRY_TYPE);
+  const bundled = readBundledConstitution().replaceAll(PACKAGE_ROOT_TOKEN, SF_PI_PACKAGE_ROOT);
+  // Refresh a changed bundle after reload; keep session-dependent addenda stable.
+  return shouldInjectOnce(
+    sessionManager,
+    CONSTITUTION_ENTRY_TYPE,
+    (entry) => typeof entry.content === "string" && entry.content.startsWith(bundled),
+  );
 }
 
 function readMermaidMode(cwd: string): unknown {

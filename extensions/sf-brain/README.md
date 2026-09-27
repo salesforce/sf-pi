@@ -30,6 +30,8 @@ This guidance does not change reasoning effort or API text verbosity.
 User guidance can extend—but never replace—the bundled constitution through
 `<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md`. Empty or unreadable files
 are ignored; legacy replacement-style `SF_KERNEL.md` files are not loaded.
+Bundled constitution updates take effect on the next turn after `/reload`;
+addendum changes still require a new session.
 
 ## Instruction Surface diagnostics
 
