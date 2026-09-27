@@ -90,6 +90,16 @@ describe("Salesforce Engineering Constitution", () => {
     expect(content).toContain("Prefer project-specific test suites.");
   });
 
+  it("routes material Salesforce architecture through current docs without forcing routine or Pi-only work", () => {
+    const content = loadConstitution({ cliInstalled: true });
+
+    expect(content).toContain("material Salesforce solution design or architecture review");
+    expect(content).toContain("`sf_docs` in the `architect` collection (`current`)");
+    expect(content).toContain("Salesforce Docs guide for source selection");
+    expect(content).toContain("Skip routine edits");
+    expect(content).toContain("installed Pi documentation");
+  });
+
   it("makes simple, visual chat communication part of the bundled baseline", () => {
     const content = loadConstitution({ cliInstalled: true });
 

@@ -61,6 +61,24 @@
     "forbidden_tools": ["web_search"]
   },
   {
+    "id": "salesforce-architecture-choice",
+    "prompt": "Design an outbound Salesforce integration that must tolerate delivery spikes. Before recommending synchronous callouts or event delivery, invoke the SF Pi tool for current architecture decision guidance. Do not inspect or change an org.",
+    "expected_first_tools": ["sf_docs"],
+    "forbidden_tools": ["web_search"]
+  },
+  {
+    "id": "salesforce-architecture-review",
+    "prompt": "Review the architecture of an Agentforce action that can modify records. Before assessing its permission boundaries, invoke the SF Pi tool for official architecture patterns and anti-patterns. Do not inspect or change an org.",
+    "expected_first_tools": ["sf_docs"],
+    "forbidden_tools": ["web_search"]
+  },
+  {
+    "id": "pi-runtime-architecture",
+    "prompt": "Decide which Pi extension lifecycle hook should add persistent context. Invoke a local tool to inspect installed Pi documentation or this repository first; this is not a Salesforce solution-design decision.",
+    "expected_first_tools": ["read", "grep", "find", "ls", "bash"],
+    "forbidden_tools": ["sf_docs"]
+  },
+  {
     "id": "explicit-typescript-refactor",
     "prompt": "Refactor a generic TypeScript parser in this repository. Invoke a local inspection tool first; do not force Salesforce runtime tools into this explicit general-engineering task.",
     "expected_first_tools": ["read", "grep", "find", "ls", "bash", "subagent"],
