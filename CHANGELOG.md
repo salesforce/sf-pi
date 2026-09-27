@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.299.0](https://github.com/salesforce/sf-pi/compare/v0.298.0...v0.299.0) (2026-09-27)
+
+
+### Features
+
+* **sf-llm-gateway:** request priority tier for GPT Sol models ([f6ac8c3](https://github.com/salesforce/sf-pi/commit/f6ac8c314c03884cc23ff0e308783b2a27de6618))
+
 ## [0.298.0](https://github.com/salesforce/sf-pi/compare/v0.297.0...v0.298.0) (2026-09-27)
 
 
