@@ -20,6 +20,13 @@ settings: Pi `markdown.mermaid: "off"` switches to text flows, and
 `sfPi.asciiIcons` / `SF_PI_ASCII_ICONS=1` (auto-on in macOS Terminal.app)
 switches to text markers such as `[OK]` and `[WARN]`.
 
+When the selected model is `sf-llm-gateway/gpt-6-sol`, SF Brain adds a small,
+model-scoped system prompt section asking for a developed explanation with an
+example and relevant trade-offs on substantive questions. It keeps simple
+answers short and honors explicit requests for brevity. Pi removes the section
+when another model is selected; the persistent constitution is unchanged.
+This guidance does not change reasoning effort or API text verbosity.
+
 User guidance can extend—but never replace—the bundled constitution through
 `<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md`. Empty or unreadable files
 are ignored; legacy replacement-style `SF_KERNEL.md` files are not loaded.

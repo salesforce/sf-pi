@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Injects the Salesforce Engineering Constitution and tiny disabled-capability routing summary, and provides a content-safe advisory report of model-visible SF Pi instructions, tools, and external Salesforce skill metadata.
+Injects the Salesforce Engineering Constitution, a tiny disabled-capability routing summary, and Gateway GPT-6 Sol-only response guidance; provides a content-safe advisory report of model-visible SF Pi instructions, tools, and external Salesforce skill metadata.
 
 ## Start
 

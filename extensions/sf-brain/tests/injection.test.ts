@@ -47,6 +47,12 @@ describe("sf-brain before_agent_start handler", () => {
     expect(brainSource).toContain("getSharedSfEnvironment");
   });
 
+  it("injects model-scoped response guidance through the structured system prompt", () => {
+    expect(brainSource).toContain(
+      "applyGatewayGpt6ResponseStyle(event.systemPromptOptions, ctx.model)",
+    );
+  });
+
   it("injects the compact SF Pi Routing Summary without tool or skill catalogs", () => {
     expect(brainSource).toContain("formatSfPiRoutingSummary");
     expect(brainSource).toContain("shouldInjectSfPiRoutingSummary");

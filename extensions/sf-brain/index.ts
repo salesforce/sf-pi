@@ -9,6 +9,7 @@
  * - Appends optional user guidance from SF_CONSTITUTION_APPEND.md without
  *   allowing replacement of the bundled baseline.
  * - Re-injects after compaction removes the live constitution entry.
+ * - Adds response-depth guidance only while Gateway GPT-6 Sol is selected.
  *
  * Detection reuses the shared sf-environment cache populated by sf-devbar /
  * sf-welcome during startup. The constitution bytes remain stable across turns
@@ -40,6 +41,7 @@ import {
   shouldInjectSfPiRoutingSummary,
 } from "./lib/routing-summary.ts";
 import { buildSfBrainManagerActions } from "./lib/instruction-surface-manager.ts";
+import { applyGatewayGpt6ResponseStyle } from "./lib/response-style.ts";
 
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SF_PI_VERSION = readPackageVersion();
@@ -60,6 +62,10 @@ export default function (pi: ExtensionAPI) {
   );
   registerLatestContextProjection(pi, [CONSTITUTION_ENTRY_TYPE, SF_PI_ROUTING_ENTRY_TYPE]);
   const exec = buildExecFn(pi);
+
+  pi.on("before_agent_start", (event, ctx) => {
+    applyGatewayGpt6ResponseStyle(event.systemPromptOptions, ctx.model);
+  });
 
   pi.on("before_agent_start", async (_event, ctx) => {
     if (!shouldInjectConstitution(ctx.sessionManager)) return;
