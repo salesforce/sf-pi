@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Provider telemetry for the SF LLM Gateway.
+ * Ephemeral provider response signals for the SF LLM Gateway.
  *
- * Captures the HTTP status + headers emitted by Pi's `after_provider_response`
+ * This is session-memory UI state, not telemetry collection: nothing is uploaded
+ * or persisted. It captures the HTTP status + headers emitted by Pi's `after_provider_response`
  * event for gateway requests and exposes a short-lived signal that the footer
  * status builder can render as a throttle / upstream warning badge.
  *

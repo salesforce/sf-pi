@@ -137,7 +137,7 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     id: "refresh",
     label: "Refresh models + usage",
     usage: "refresh",
-    description: "Re-run model discovery and force-refresh monthly usage and health telemetry.",
+    description: "Re-run model discovery and force-refresh monthly usage and health status.",
     section: "Discovery & diagnostics",
   },
   {
@@ -151,8 +151,10 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
   {
     id: "doctor",
     label: "Run doctor",
-    usage: "doctor",
-    description: "Diagnose URL, auth, model discovery, and gateway health with repair guidance.",
+    usage:
+      "doctor [--stream <modelId> [--thinking <level>] [--count 1..3] [--tool] | --stream-canaries [--count 1..3]]",
+    description:
+      "Diagnose URL, auth, discovery, and health. Opt-in stream flags run bounded billable model probes and return content-free local results.",
     section: "Discovery & diagnostics",
     aliases: ["dr"],
   },
@@ -221,6 +223,26 @@ export function getGatewayArgumentCompletions(prefix: string): SfPiArgumentCompl
   );
   if (surface?.acceptsScope && context.tokenIndex === 1) {
     return completeArgumentTail(scopeCompletions(), context, [surface.id]);
+  }
+  if (surface?.id === "doctor" && context.tokenIndex === 1) {
+    return completeArgumentTail(
+      [
+        {
+          value: "--stream",
+          label: "--stream",
+          description: "Run one bounded model-stream probe (real billable request)",
+          appendSpace: true,
+        },
+        {
+          value: "--stream-canaries",
+          label: "--stream-canaries",
+          description: "Run the bounded exact-model live canary matrix",
+          appendSpace: true,
+        },
+      ],
+      context,
+      [surface.id],
+    );
   }
 
   return null;

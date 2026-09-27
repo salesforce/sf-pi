@@ -196,7 +196,14 @@ describe("gateway extension lifecycle", () => {
     expect(pi.handlers.before_provider_headers).toBeUndefined();
   });
 
-  it("refreshes usage after turn completion, not before response consumption", async () => {
+  it("starts usage refresh after turn completion without blocking settlement", async () => {
+    let finishRefresh: (() => void) | undefined;
+    monthlyUsageMock.refreshMonthlyUsage.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRefresh = resolve;
+        }),
+    );
     const { default: extension } = await import("../index.ts");
     const pi = makeFakePi();
     extension(pi as never);
@@ -216,10 +223,20 @@ describe("gateway extension lifecycle", () => {
     expect(monthlyUsageMock.refreshMonthlyUsage).not.toHaveBeenCalled();
     expect(ctx.ui.setStatus).toHaveBeenCalled();
 
-    await pi.handlers.turn_end?.[0]?.({ type: "turn_end" }, ctx);
+    let boundarySettled = false;
+    const boundary = Promise.resolve(pi.handlers.turn_end?.[0]?.({ type: "turn_end" }, ctx)).then(
+      () => {
+        boundarySettled = true;
+      },
+    );
+    await Promise.resolve();
 
     expect(monthlyUsageMock.refreshMonthlyUsage).toHaveBeenCalledOnce();
     expect(monthlyUsageMock.refreshMonthlyUsage).toHaveBeenCalledWith(false, cwd);
+    expect(boundarySettled).toBe(true);
+
+    finishRefresh?.();
+    await boundary;
   });
 
   it("repaints cached usage at startup without consuming the first post-turn refresh", async () => {

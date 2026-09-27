@@ -145,11 +145,11 @@ export function buildStatusReport(
 }
 
 /**
- * Build the provider-telemetry lines for the status report.
+ * Build ephemeral provider-signal lines for the status report.
  *
- * Shows a short summary of the most recent warning signal (if still live)
- * plus when it was recorded. When no warning is active we emit a single
- * "healthy" line so operators know the telemetry hook is wired up.
+ * Shows a short summary of the most recent session-memory warning (if still live)
+ * plus when it was observed. When no warning is active we emit a single healthy line.
+ * Nothing in this path is persisted or uploaded.
  */
 function buildProviderTelemetryReport(): string[] {
   const signal = getActiveProviderSignal();

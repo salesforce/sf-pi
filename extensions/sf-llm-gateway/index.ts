@@ -42,6 +42,7 @@
  * - /sf-llm-gateway refresh               refresh models + monthly usage
  * - /sf-llm-gateway set-default [global|project]
  * - /sf-llm-gateway models                list discovered models
+ * - /sf-llm-gateway doctor --stream <modelId> [...] | --stream-canaries [...] (explicit billable probes)
  * - /sf-llm-gateway usage-probe [--trace] classify user/key usage scope (--trace prints per-endpoint timings)
  * - /sf-llm-gateway tokens <modelId> [prompt]
  * - /sf-llm-gateway onboard
@@ -52,7 +53,7 @@
  *   ----------------------------|------------------------------------|-------------------------------
  *   Extension load              | —                                  | Register one complete Provider; restore Pi catalog cache offline
  *   session_start               | —                                  | Bind cwd/UI/model registry; sync local defaults; no model-discovery network
- *   turn_end                    | model is gateway model             | Refresh monthly usage after completion; first turn also kicks refreshUsageDetails
+ *   turn_end                    | model is gateway model             | Schedule monthly usage refresh without blocking settlement; first turn also kicks refreshUsageDetails
  *   turn_end                    | model is NOT gateway model         | Clear footer status
  *   model_select                | model changes                       | Repaint cached footer without mutating thinking
  *   after_provider_response     | model is gateway model + 2xx       | Clear warning and repaint cached usage without a pre-stream probe
@@ -68,6 +69,7 @@
  *   /command on                 | credentials present                | Set defaults and explicitly refresh Pi models
  *   /command off                | —                                  | Disable, remove pattern, switch to off-default
  *   /command refresh            | —                                  | Re-discover, refresh monthly usage
+ *   /command doctor --stream    | explicit model/level/count         | Run bounded content-free live stream probe(s)
  *   /command usage-probe        | —                                  | Force read-only usage probe
  *   Monthly usage fetch         | cached < 60 s old                  | Use cache
  *   Monthly usage fetch         | stale or forced                    | Fetch /v2/user/info, retry with key user_id if needed, fallback /user/info
@@ -146,6 +148,13 @@ import { handleGatewayCompaction } from "./lib/compaction.ts";
 import { handleGatewayRequestDiagnostics } from "./lib/request-diagnostics.ts";
 import { buildGatewayCompactionModelOptions } from "./lib/compaction-settings.ts";
 import { fetchGatewayDoctorReport, formatGatewayDoctorReport } from "./lib/doctor.ts";
+import {
+  formatGatewayStreamCanaryReports,
+  formatGatewayStreamProbeReport,
+  parseGatewayDoctorStreamPlan,
+  runGatewayStreamCanaries,
+  runGatewayStreamProbe,
+} from "./lib/stream-probe.ts";
 import { countTokens, estimateSpend, formatTokenReport } from "./lib/token-counter.ts";
 import { buildOnboardingUrl } from "./lib/onboarding.ts";
 import { openUrlInBrowser } from "./lib/open-url.ts";
@@ -391,12 +400,13 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   // stays fast (Phase 1.4 + 2.1).
   let detailsKickedOff = false;
   pi.on("turn_end", async (_event, ctx) => {
-    // Refresh monthly Gateway spend after the assistant turn completes so
-    // accounting for that request can be reflected. The refresh is throttled
-    // by MONTHLY_USAGE_TTL_MS inside refreshMonthlyUsage(), so back-to-back
-    // turns do not hammer the gateway — the network call only fires once
-    // per TTL window.
-    await updateFooterStatus(ctx, false);
+    // Refresh monthly Gateway spend after the assistant turn completes without
+    // holding Pi's actionable turn boundary open. The refresh is throttled by
+    // MONTHLY_USAGE_TTL_MS inside refreshMonthlyUsage(), so back-to-back turns
+    // do not hammer the gateway — the network call only fires once per TTL window.
+    // A reload can invalidate ctx while this detached refresh is in flight;
+    // updateFooterStatus therefore treats the repaint as best-effort.
+    void updateFooterStatus(ctx, false).catch(() => undefined);
 
     // Phase 1.4: details (daily activity, key list) are not on the splash
     // hot path. Kick them off after the first turn_end so they land before
@@ -508,7 +518,7 @@ async function handleCommand(
     case "models":
       return handleModelsCommand(pi, ctx);
     case "doctor":
-      return handleDoctorCommand(pi, ctx);
+      return handleDoctorCommand(pi, ctx, parsed.positional ?? []);
     case "usage-probe":
       return handleUsageProbeCommand(pi, ctx, parsed.positional ?? []);
     case "tokens":
@@ -565,7 +575,7 @@ async function handlePanelAction(
     case "models":
       return handleModelsCommand(pi, ctx);
     case "doctor":
-      return handleDoctorCommand(pi, ctx);
+      return handleDoctorCommand(pi, ctx, []);
     case "usage-probe":
       return handleUsageProbeCommand(pi, ctx, []);
     case "tokens":
@@ -681,15 +691,64 @@ async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContex
   await emitCommandOutput(pi, ctx, "SF LLM Gateway models.", lines.join("\n"), "info");
 }
 
-async function handleDoctorCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
+async function handleDoctorCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  positional: string[],
+): Promise<void> {
+  const streamPlan = parseGatewayDoctorStreamPlan(positional, pi.getThinkingLevel());
+  if (streamPlan.mode === "invalid") {
+    await emitCommandOutput(
+      pi,
+      ctx,
+      "SF LLM Gateway doctor options are invalid.",
+      [
+        streamPlan.error,
+        "",
+        `Usage: /${FRIENDLY_COMMAND_NAME} doctor --stream <modelId> [--thinking <level>] [--count 1..3] [--tool]`,
+        `Canaries: /${FRIENDLY_COMMAND_NAME} doctor --stream-canaries [--count 1..3]`,
+      ].join("\n"),
+      "warning",
+    );
+    return;
+  }
+
   try {
     const report = await fetchGatewayDoctorReport(ctx.cwd);
+    let streamReport = "";
+    let streamPassed = true;
+
+    if (streamPlan.mode === "single") {
+      const result = await runGatewayStreamProbe(
+        ctx.modelRegistry,
+        {
+          modelId: streamPlan.modelId,
+          thinkingLevel: streamPlan.thinkingLevel,
+          count: streamPlan.count,
+          exerciseToolRoundTrip: streamPlan.exerciseToolRoundTrip,
+        },
+        ctx.signal,
+      );
+      streamReport = formatGatewayStreamProbeReport(result);
+      streamPassed = result.attempts.every((attempt) => attempt.status === "ok");
+    } else if (streamPlan.mode === "canaries") {
+      const results = await runGatewayStreamCanaries(
+        ctx.modelRegistry,
+        streamPlan.count,
+        ctx.signal,
+      );
+      streamReport = formatGatewayStreamCanaryReports(results);
+      streamPassed = results.every((result) =>
+        result.attempts.every((attempt) => attempt.status === "ok"),
+      );
+    }
+
     await emitCommandOutput(
       pi,
       ctx,
       "SF LLM Gateway doctor.",
-      formatGatewayDoctorReport(report),
-      report.checks.some((check) => !check.ok) ? "warning" : "info",
+      [formatGatewayDoctorReport(report), ...(streamReport ? ["", streamReport] : [])].join("\n"),
+      report.checks.some((check) => !check.ok) || !streamPassed ? "warning" : "info",
     );
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -1535,7 +1594,7 @@ export function parseCommandArgs(args: string): CommandArgs {
     return { subcommand: "models", scope };
   }
   if (sub === "doctor" || sub === "dr") {
-    return { subcommand: "doctor", scope };
+    return { subcommand: "doctor", scope, positional: tokens.slice(1) };
   }
   if (sub === "usage-probe" || sub === "usage") {
     return { subcommand: "usage-probe", scope, positional: tokens.slice(1) };
@@ -2125,7 +2184,12 @@ async function updateFooterStatus(
 
   await refreshMonthlyUsage(forceRefreshUsage, ctx.cwd);
   const state = getRuntimeStatusState();
-  paintFooterStatus(ctx);
+  try {
+    paintFooterStatus(ctx);
+  } catch {
+    // Detached post-turn refreshes can finish after reload invalidates ctx.
+    // The shared usage state is still current; only the stale repaint is skipped.
+  }
 
   if (!forceRefreshUsage) {
     maybeAutoRefreshStaleUsage({

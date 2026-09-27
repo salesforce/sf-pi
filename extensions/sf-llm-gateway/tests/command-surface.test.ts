@@ -54,6 +54,13 @@ describe("gateway command surface", () => {
     ]);
   });
 
+  it("completes explicit doctor stream modes without implying a default model call", () => {
+    expect(getGatewayArgumentCompletions("doctor ")?.map((item) => item.value)).toEqual([
+      "doctor --stream ",
+      "doctor --stream-canaries ",
+    ]);
+  });
+
   it("returns full argument-tail values for scoped commands", () => {
     expect(getGatewayArgumentCompletions("setup g")?.map((item) => item.value)).toEqual([
       "setup global",

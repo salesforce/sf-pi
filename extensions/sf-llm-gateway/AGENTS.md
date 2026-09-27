@@ -36,10 +36,11 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Standalone slash-command setup overlay         | `lib/setup-overlay.ts`             |
 | Manager settings/setup action panel content    | `lib/config-panel.ts`              |
 | `/sf-llm-gateway doctor` diagnostics           | `lib/doctor.ts`                    |
+| Explicit bounded model-stream probes           | `lib/stream-probe.ts`              |
 | `/sf-llm-gateway tokens` counter               | `lib/token-counter.ts`             |
 | `/sf-llm-gateway onboard` SSO link             | `lib/onboarding.ts`                |
 | Existing setup discovery (Claude/DevBar/CA)    | `lib/onboarding-sources.ts`        |
-| Provider-telemetry (429/5xx footer badge)      | `lib/provider-telemetry.ts`        |
+| In-memory provider signals (429/5xx badge)     | `lib/provider-telemetry.ts`        |
 | Anthropic terminal error normalization         | `lib/transport-internal/shared.ts` |
 
 The masked input implementation is shared at
@@ -98,6 +99,10 @@ copy.
    recorded in discovery diagnostics. Ambiguous empty/network failures retain the last admitted catalog.
    Normalize recognized request failures through `message_end` without changing models, credentials,
    or settings.
+10. **Model-stream probes are explicit and content-free.** Ordinary doctor runs never invoke a model.
+    Opt-in probes use authenticated Gateway models, hard request/count bounds, and fixed prompts/tools.
+    Return only local status/timing summaries; never persist or upload prompt content, response content,
+    credentials, endpoints, or session identifiers.
 
 ## Command handler pattern
 

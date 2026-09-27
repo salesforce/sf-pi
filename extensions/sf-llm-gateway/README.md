@@ -112,9 +112,23 @@ models.
 ## Diagnostics
 
 `/sf-llm-gateway doctor` checks URL shape, credential readiness, model discovery,
-health, redirects, TLS, and common authentication/routing failures.
-`usage-probe` performs a fresh read-only usage lookup after key rotation or when
-cached numbers look surprising.
+health, redirects, TLS, and common authentication/routing failures. Ordinary doctor
+runs never invoke a model. Explicit stream modes make real, billable, bounded requests:
+
+```text
+/sf-llm-gateway doctor --stream <modelId> [--thinking <level>] [--count 1..3] [--tool]
+/sf-llm-gateway doctor --stream-canaries [--count 1..3]
+```
+
+The single-model probe checks plain response closure by default; `--tool` also checks a
+fixed tool-call and tool-result round trip. The canary matrix covers authenticated Opus
+5.5 and GPT-6 Sol deployments at `high` and `xhigh`. Each request has a 15-second bound.
+Results report only status and bounded timings. SF Pi does not upload, persist, or log
+probe prompts, responses, credentials, URLs, or session identifiers; no telemetry is
+collected.
+
+`usage-probe` performs a fresh read-only usage lookup after key rotation or when cached
+numbers look surprising.
 
 ## Safety and Data Boundaries
 
@@ -167,8 +181,8 @@ does not infer deployment aliases from model names.
 from the system keychain. Use the confirmed `fix-ca-bundle` action with an
 explicit local candidate or configured source, then rerun the doctor.
 
-**Usage or throttle status is stale:** Run `refresh` or `usage-probe`. Runtime
-telemetry clears after a successful response and usage caches are bounded.
+**Usage or throttle status is stale:** Run `refresh` or `usage-probe`. The
+session-memory warning clears after a successful response and usage caches are bounded.
 
 **Thinking changes after a model switch:** SF Pi never writes the active thinking
 level. Review Pi's `/thinking` choice and `defaultThinkingLevel` setting.

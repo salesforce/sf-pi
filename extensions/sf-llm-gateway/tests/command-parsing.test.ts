@@ -86,6 +86,18 @@ describe("parseCommandArgs", () => {
   it("parses 'doctor'", () => {
     const result = parseCommandArgs("doctor");
     expect(result.subcommand).toBe("doctor");
+    expect(result.positional).toEqual([]);
+  });
+
+  it("preserves opt-in doctor stream arguments", () => {
+    expect(
+      parseCommandArgs("doctor --stream gpt-6-sol --thinking xhigh --count 2 --tool").positional,
+    ).toEqual(["--stream", "gpt-6-sol", "--thinking", "xhigh", "--count", "2", "--tool"]);
+    expect(parseCommandArgs("dr --stream-canaries --count 3").positional).toEqual([
+      "--stream-canaries",
+      "--count",
+      "3",
+    ]);
   });
 
   it("parses 'usage-probe'", () => {
