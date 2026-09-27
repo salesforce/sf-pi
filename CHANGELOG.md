@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.300.1](https://github.com/salesforce/sf-pi/compare/v0.300.0...v0.300.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* **sf-brain:** refresh architecture guidance and handle missing docs ([a03f27a](https://github.com/salesforce/sf-pi/commit/a03f27ad583459d0ac9aeab99647d0c93c184586))
+
 ## [0.300.0](https://github.com/salesforce/sf-pi/compare/v0.299.0...v0.300.0) (2026-09-27)
 
 
