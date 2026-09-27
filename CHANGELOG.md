@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.298.0](https://github.com/salesforce/sf-pi/compare/v0.297.0...v0.298.0) (2026-09-27)
+
+
+### Features
+
+* **sf-brain:** scope deeper answers to gateway GPT-6 Sol ([5bca143](https://github.com/salesforce/sf-pi/commit/5bca14382b620af5fd20837580cb45ab8e8f92ca))
+
 ## [0.297.0](https://github.com/salesforce/sf-pi/compare/v0.296.1...v0.297.0) (2026-09-27)
 
 
