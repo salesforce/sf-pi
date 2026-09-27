@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.297.0](https://github.com/salesforce/sf-pi/compare/v0.296.1...v0.297.0) (2026-09-27)
+
+
+### Features
+
+* **sf-llm-gateway:** add bounded stream health probes ([48f429d](https://github.com/salesforce/sf-pi/commit/48f429dfba8c326bfe70555a7986677abc9ea098))
+
 ## [0.296.1](https://github.com/salesforce/sf-pi/compare/v0.296.0...v0.296.1) (2026-09-27)
 
 
