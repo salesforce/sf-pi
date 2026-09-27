@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.296.1](https://github.com/salesforce/sf-pi/compare/v0.296.0...v0.296.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** preserve adaptive thinking metadata ([bbca486](https://github.com/salesforce/sf-pi/commit/bbca486bc30cc40130a610fb60963b7e6c12d3f1))
+
 ## [0.296.0](https://github.com/salesforce/sf-pi/compare/v0.295.0...v0.296.0) (2026-09-26)
 
 
