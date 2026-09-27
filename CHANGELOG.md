@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.300.0](https://github.com/salesforce/sf-pi/compare/v0.299.0...v0.300.0) (2026-09-27)
+
+
+### Features
+
+* **sf-brain:** ground material Salesforce architecture decisions ([23c8bea](https://github.com/salesforce/sf-pi/commit/23c8bea621d33227527d8b08ff095a70265b06c6))
+
 ## [0.299.0](https://github.com/salesforce/sf-pi/compare/v0.298.0...v0.299.0) (2026-09-27)
 
 

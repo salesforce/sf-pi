@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.299.0-2026-09-27",
-  "latestVersion": "0.299.0",
+  "revision": "release-0.300.0-2026-09-27",
+  "latestVersion": "0.300.0",
   "announcements": [
     {
-      "id": "release-0.299.0",
+      "id": "release-0.300.0",
       "kind": "update",
-      "title": "sf-pi v0.299.0 — sf-llm-gateway: request priority tier for GPT Sol models",
+      "title": "sf-pi v0.300.0 — sf-brain: ground material Salesforce architecture decisions",
       "publishedAt": "2026-09-27T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.299.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.300.0",
       "severity": "info",
-      "body": "sf-llm-gateway: request priority tier for GPT Sol models"
+      "body": "sf-brain: ground material Salesforce architecture decisions"
     }
   ]
 }
