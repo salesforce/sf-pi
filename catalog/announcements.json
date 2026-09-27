@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.296.0-2026-09-26",
-  "latestVersion": "0.296.0",
+  "revision": "release-0.296.1-2026-09-27",
+  "latestVersion": "0.296.1",
   "announcements": [
     {
-      "id": "release-0.296.0",
+      "id": "release-0.296.1",
       "kind": "update",
-      "title": "sf-pi v0.296.0 — sf-brain: make simple, visual chat communication part of the constitution",
-      "publishedAt": "2026-09-26T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.296.0",
+      "title": "sf-pi v0.296.1 — sf-llm-gateway: preserve adaptive thinking metadata",
+      "publishedAt": "2026-09-27T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.296.1",
       "severity": "info",
-      "body": "sf-brain: make simple, visual chat communication part of the constitution"
+      "body": "sf-llm-gateway: preserve adaptive thinking metadata"
     }
   ]
 }
