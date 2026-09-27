@@ -11,8 +11,8 @@ Chat Completions, Responses, or Messages API. Unmatched deployment IDs are
 filtered without interpreting suffixes or backend routing. Pi owns protocol
 streaming, retries, cancellation, thinking selection, credential persistence,
 provider-scoped model caching, and API dispatch. SF Pi owns gateway-root
-normalization, catalog admission, diagnostics, usage, and bounded terminal error
-guidance.
+normalization, catalog admission, diagnostics, usage, bounded terminal error
+guidance, and the exact-model priority request described below.
 
 Startup performs no model-discovery request. Pi restores the last successful
 provider catalog, and SF Pi applies the same exact-match admission policy to the
@@ -76,6 +76,11 @@ All gateway model costs are reported as zero because provider billing is handled
 outside Pi. Usage status uses the available user/key information endpoints and
 does not claim a lifetime counter when the service cannot prove one.
 
+For Gateway Responses requests using exactly `gpt-5.6-sol` or `gpt-6-sol`, SF Pi
+sends `service_tier: "priority"` automatically, including simple and full streams.
+Other models and providers are unchanged. The request does not prove that the
+Gateway honored the tier; SF Pi does not inspect or enforce the effective tier.
+
 ## Compaction Model Preference
 
 Pi's native `compaction.enabled` setting remains the only switch for automatic
@@ -137,8 +142,9 @@ numbers look surprising.
 - Setup and import paths store only non-secret settings and never print, copy, or
   delete credentials.
 - Settings updates use the shared race-aware Pi settings helpers.
-- No default URL, private hostname, certificate source, route alias, traffic
-  policy, or secret ships in source.
+- No default URL, private hostname, certificate source, route alias, or secret
+  ships in source. The only client traffic-tier policy is the exact Gateway GPT
+  Sol Responses priority request described above.
 - Provider setup performs no hidden model selection, enable/disable, discovery,
   usage probe, or update beyond the explicitly chosen action.
 - Discovery publishes only exact IDs backed by a reusable public Pi catalog API;

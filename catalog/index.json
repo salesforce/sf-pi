@@ -732,7 +732,7 @@
     "docs": {
       "intentGroup": "Personalize pi",
       "editingRules": "AGENTS.md",
-      "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission and offline cache filtering, provider-neutral mixed-API dispatch, optional dedicated-model compaction, explicit refresh, connectivity diagnostics, opt-in bounded model-stream probes, and usage status.",
+      "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission and offline cache filtering, mixed-API dispatch, exact GPT Sol Responses priority requests, optional dedicated-model compaction, explicit refresh, connectivity diagnostics, opt-in bounded model-stream probes, and usage status.",
       "primaryFiles": [
         "index.ts",
         "lib/provider.ts",
@@ -755,6 +755,7 @@
         "Extension config stores only non-secret settings; credentials remain Pi-owned.",
         "Dedicated compaction accepts only authenticated sf-llm-gateway models, never changes the chat model, and falls back to Pi.",
         "Discovery and restored cache entries publish only exact IDs backed by a reusable public Pi catalog API.",
+        "Only exact Gateway GPT-5.6 Sol and GPT-6 Sol Responses requests ask for priority; the effective tier is not asserted.",
         "Sentinel-only empty access clears stale selectable models; ambiguous discovery failures retain the last-known catalog.",
         "Recognized request failures are replaced with bounded guidance without echoing raw provider bodies.",
         "Ordinary doctor runs never invoke models; opt-in stream probes are bounded, billable, content-free, local-only, and never persisted or uploaded.",
@@ -764,7 +765,7 @@
     "entry": "extensions/sf-llm-gateway/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 10087
+    "srcLoc": 10108
   },
   {
     "id": "sf-lsp",

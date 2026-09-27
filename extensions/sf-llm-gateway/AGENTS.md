@@ -103,6 +103,10 @@ copy.
     Opt-in probes use authenticated Gateway models, hard request/count bounds, and fixed prompts/tools.
     Return only local status/timing summaries; never persist or upload prompt content, response content,
     credentials, endpoints, or session identifiers.
+11. **Priority is an exact Responses request policy.** For only `gpt-5.6-sol` and `gpt-6-sol`
+    on the Gateway provider, send `service_tier: "priority"` through both simple and full
+    Responses streams. Do not infer eligibility from a family or suffix, mutate other providers,
+    or claim the Gateway honored the requested tier without response evidence.
 
 ## Command handler pattern
 
@@ -144,5 +148,5 @@ When adding a subcommand:
   one via the setup wizard. `SF_LLM_GATEWAY_BASE_URL` remains an automation
   fallback when saved config is blank.
 - No secret materials in source, config, or tests.
-- No exact route aliases, backend placement, traffic-tier policy, or
-  model-specific payload mutations in source, tests, or docs.
+- No exact route aliases, backend placement, or model-specific payload mutations
+  beyond the exact Responses priority request above.
