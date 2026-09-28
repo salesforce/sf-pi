@@ -293,7 +293,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "experimental",
     defaultEnabled: true,
     commands: ["/sf-planreview"],
-    events: ["session_shutdown","input"],
+    events: ["session_start","session_shutdown","input"],
   },
   {
     id: "sf-skills",

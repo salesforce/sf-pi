@@ -20,6 +20,7 @@ import {
   cleanupReviewSnapshot,
   createReviewSnapshot,
   fileReviewSnapshot,
+  getAssistantReviews,
   getLastAssistantReview,
   listReviewDataDirs,
   reviewSourceChanged,
@@ -27,11 +28,22 @@ import {
 import { buildPlanReviewDoctor, renderPlanReviewDoctor } from "./lib/doctor.ts";
 import { formatHerdrReviewFeedback, REVIEW_ENTRY_TYPE } from "./lib/feedback.ts";
 import { installManagedTui } from "./lib/installer.ts";
+import {
+  cleanupClosedReviews,
+  deliveredReviewsOnBranch,
+  REVIEW_DELIVERED_TYPE,
+  type DeliveredReview,
+} from "./lib/retention.ts";
 import { managedTuiPath, TUI_VERSION } from "../../lib/common/plannotator-release.ts";
 
 const NAME = "sf-planreview";
 const ACTIONS = [
   { value: "last", label: "Review last reply", description: "Annotate the last Pi reply." },
+  {
+    value: "history",
+    label: "Review earlier reply",
+    description: "Choose from the ten most recent Pi replies on this branch.",
+  },
   { value: "status", label: "Show status", description: "Show TUI and Herdr readiness." },
   { value: "doctor", label: "Run doctor", description: "Check which review route is available." },
   {
@@ -62,10 +74,44 @@ export default function sfPlannotator(pi: ExtensionAPI): void {
     };
     return buildPlanReviewDoctor(await detectPlannotatorRuntime(exec), listReviewDataDirs().length);
   });
-  pi.on("session_shutdown", unregisterDoctor);
+  const delivered = new Map<string, DeliveredReview>();
+  let cleanupTimer: NodeJS.Timeout | undefined;
+  let stopped = false;
+  const scheduleCleanup = () => {
+    if (cleanupTimer || !delivered.size || stopped) return;
+    cleanupTimer = setTimeout(async () => {
+      cleanupTimer = undefined;
+      if (stopped) return;
+      await cleanupClosedReviews(
+        (command, args, options) => pi.exec(command, args, options),
+        delivered,
+      );
+      scheduleCleanup();
+    }, 5_000);
+    cleanupTimer.unref();
+  };
+  pi.on("session_start", (_event, ctx) => {
+    delivered.clear();
+    for (const review of deliveredReviewsOnBranch(ctx.sessionManager.getBranch())) {
+      delivered.set(review.reviewFile, review);
+    }
+    scheduleCleanup();
+  });
+  pi.on("session_shutdown", () => {
+    stopped = true;
+    if (cleanupTimer) clearTimeout(cleanupTimer);
+    unregisterDoctor();
+  });
   pi.on("input", (event, ctx) => {
     const feedback = formatHerdrReviewFeedback(event.text, ctx.sessionManager.getBranch());
-    if (feedback) return { action: "transform", text: feedback };
+    if (!feedback) return;
+    if (feedback.deliveredReview) {
+      const review = feedback.deliveredReview;
+      pi.appendEntry(REVIEW_DELIVERED_TYPE, review);
+      delivered.set(review.reviewFile, review);
+      scheduleCleanup();
+    }
+    return { action: "transform", text: feedback.text };
   });
 
   pi.registerCommand(NAME, {
@@ -86,6 +132,7 @@ export default function sfPlannotator(pi: ExtensionAPI): void {
               closeBeforeRun:
                 item.value === "setup" ||
                 item.value === "last" ||
+                item.value === "history" ||
                 item.value === "cleanup" ||
                 item.value === "doctor",
             })),
@@ -109,6 +156,7 @@ export default function sfPlannotator(pi: ExtensionAPI): void {
       closeBeforeRun:
         item.value === "setup" ||
         item.value === "last" ||
+        item.value === "history" ||
         item.value === "cleanup" ||
         item.value === "doctor",
     })),
@@ -124,12 +172,13 @@ async function handleAction(
   if (action === "help") {
     emit(
       ctx,
-      "Usage: /sf-planreview [last|file <path>|status|doctor|setup [tui|herdr]|cleanup|help]. Hunk owns code diffs.",
+      "Usage: /sf-planreview [last|history|file <path>|status|doctor|setup [tui|herdr]|cleanup|help]. Hunk owns code diffs.",
     );
     return;
   }
   if (
     action !== "last" &&
+    action !== "history" &&
     action !== "file" &&
     action !== "status" &&
     action !== "doctor" &&
@@ -161,7 +210,13 @@ async function handleAction(
     emit(ctx, `Cleared ${dirs.length} private review(s).`);
     return;
   }
-  const answer = action === "last" ? getLastAssistantReview(ctx.sessionManager.getBranch()) : null;
+  const answer =
+    action === "last"
+      ? getLastAssistantReview(ctx.sessionManager.getBranch())
+      : action === "history"
+        ? await pickAssistantReview(ctx)
+        : null;
+  if (action === "history" && !answer) return;
   if (action === "last" && !answer) {
     emit(
       ctx,
@@ -269,7 +324,9 @@ async function handleAction(
     const opened = JSON.parse(result.stdout) as {
       result?: { plugin_pane?: { pane?: { pane_id?: string } } };
     };
-    if (!opened.result?.plugin_pane?.pane?.pane_id) {
+    const paneId = opened.result?.plugin_pane?.pane?.pane_id;
+    if (!paneId) {
+      cleanupReviewSnapshot(source);
       throw new Error("Herdr did not confirm that the review pane opened.");
     }
     pi.appendEntry(REVIEW_ENTRY_TYPE, {
@@ -277,6 +334,8 @@ async function handleAction(
       sourcePath: source.sourcePath,
       sourceDigest: source.sourceDigest,
       label: source.label,
+      paneId,
+      dataDir: source.dataDir,
     });
     emit(
       ctx,
@@ -326,6 +385,23 @@ async function handleAction(
     { deliverAs: "followUp" },
   );
   cleanupReviewSnapshot(source);
+}
+
+async function pickAssistantReview(ctx: ExtensionCommandContext) {
+  if (!ctx.hasUI || ctx.mode !== "tui") {
+    emit(ctx, "Choosing an earlier reply requires an interactive Pi terminal.");
+    return null;
+  }
+  const reviews = getAssistantReviews(ctx.sessionManager.getBranch());
+  if (!reviews.length) {
+    emit(ctx, "No Pi replies to review yet. Draft a plan or reply first.");
+    return null;
+  }
+  const options = reviews.map(
+    (review, index) => `${index + 1}. ${review.text.replace(/\s+/g, " ").trim().slice(0, 72)}`,
+  );
+  const selected = await ctx.ui.select("Review a recent Pi reply", options);
+  return reviews[options.indexOf(selected ?? "")] ?? null;
 }
 
 function renderStatus(status: PlannotatorRuntimeStatus): string {

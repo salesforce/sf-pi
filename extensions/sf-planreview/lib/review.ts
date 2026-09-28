@@ -20,8 +20,10 @@ export interface AssistantReview {
   text: string;
 }
 
-export function getLastAssistantReview(branch: readonly unknown[]): AssistantReview | null {
-  for (let i = branch.length - 1; i >= 0; i--) {
+export function getAssistantReviews(branch: readonly unknown[], limit = 10): AssistantReview[] {
+  const reviews: AssistantReview[] = [];
+  const max = Math.min(10, Math.max(0, limit));
+  for (let i = branch.length - 1; i >= 0 && reviews.length < max; i--) {
     const entry = branch[i] as
       { id?: unknown; type?: unknown; message?: { role?: unknown; content?: unknown } } | undefined;
     if (entry?.type !== "message" || entry.message?.role !== "assistant") continue;
@@ -33,9 +35,13 @@ export function getLastAssistantReview(branch: readonly unknown[]): AssistantRev
       )
       .map((block) => block.text)
       .join("\n");
-    if (text.trim() && typeof entry.id === "string") return { entryId: entry.id, text };
+    if (text.trim() && typeof entry.id === "string") reviews.push({ entryId: entry.id, text });
   }
-  return null;
+  return reviews;
+}
+
+export function getLastAssistantReview(branch: readonly unknown[]): AssistantReview | null {
+  return getAssistantReviews(branch, 1)[0] ?? null;
 }
 
 export function prepareFileReview(cwd: string, requested: string): string {

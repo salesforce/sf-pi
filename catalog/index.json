@@ -957,16 +957,18 @@
     "providers": [],
     "tools": [],
     "events": [
+      "session_start",
       "session_shutdown",
       "input"
     ],
     "docs": {
       "intentGroup": "Work safely",
-      "summary": "TUI-first reviews of Pi replies and named local text files, with a pinned managed TUI installer, explicit Herdr Full setup, read-only doctor checks, and private review cleanup. Herdr delivers its own feedback; outside Herdr, Pi confirms exported annotations before sending. Hunk owns code diffs.",
+      "summary": "TUI-first reviews of the latest or a selected recent Pi reply and named local text files, with pinned managed TUI setup, explicit Herdr Full setup, read-only doctor checks, and private review cleanup. Herdr delivers feedback and closed, delivered reviews are cleared; outside Herdr, Pi confirms exported annotations before sending. Hunk owns code diffs.",
       "primaryFiles": [
         "index.ts",
         "lib/review.ts",
         "lib/feedback.ts",
+        "lib/retention.ts",
         "lib/doctor.ts",
         "lib/installer.ts"
       ],
@@ -986,7 +988,7 @@
     "entry": "extensions/sf-planreview/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 827
+    "srcLoc": 972
   },
   {
     "id": "sf-skills",

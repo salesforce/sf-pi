@@ -12,6 +12,7 @@ import {
   cleanupReviewSnapshot,
   createReviewSnapshot,
   fileReviewSnapshot,
+  getAssistantReviews,
   getLastAssistantReview,
   listReviewDataDirs,
   prepareFileReview,
@@ -116,6 +117,68 @@ describe("sf-planreview review", () => {
       },
     ]);
     expect(review).toEqual({ entryId: "last", text: "Latest plan" });
+  });
+
+  it("bounds the reply picker to ten text replies on the active branch", () => {
+    const branch = Array.from({ length: 12 }, (_, i) => ({
+      id: `reply-${i}`,
+      type: "message",
+      message: { role: "assistant", content: [{ type: "text", text: `Reply ${i}` }] },
+    }));
+    branch.push({
+      id: "tool",
+      type: "message",
+      message: { role: "toolResult", content: [{ type: "text", text: "Tool output" }] },
+    });
+    expect(getAssistantReviews(branch).map((entry) => entry.entryId)).toEqual(
+      Array.from({ length: 10 }, (_, i) => `reply-${11 - i}`),
+    );
+  });
+
+  it("lets the reviewer pick a prior reply, and does nothing on cancel", async () => {
+    const prev = { HERDR_ENV: process.env.HERDR_ENV, HERDR_PANE_ID: process.env.HERDR_PANE_ID };
+    process.env.HERDR_ENV = "1";
+    process.env.HERDR_PANE_ID = "test-origin";
+    try {
+      const { pi } = mockPi();
+      const { default: factory } = await import("../index.ts");
+      factory(pi as never);
+      const command = pi.registerCommand.mock.calls.find(([name]) => name === "sf-planreview")?.[1];
+      const context = ctx([
+        {
+          id: "older",
+          type: "message",
+          message: { role: "assistant", content: [{ type: "text", text: "Older plan" }] },
+        },
+        {
+          id: "newer",
+          type: "message",
+          message: { role: "assistant", content: [{ type: "text", text: "Newer plan" }] },
+        },
+      ]);
+      const select = vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockImplementationOnce(async (_title: string, options: string[]) => options[1]);
+      (context.ui as Record<string, unknown>).select = select;
+      await command.handler("history", context as never);
+      expect(pi.exec).not.toHaveBeenCalled();
+      await command.handler("history", context as never);
+      expect(select.mock.calls[1]?.[1]).toHaveLength(2);
+      const open = pi.exec.mock.calls.find(
+        ([name, args]) => name === "herdr" && args.includes("open"),
+      );
+      const fileArg = open?.[1].find((arg: string) => arg.startsWith("PLANNOTATOR_TUI_FILE="));
+      expect(fileArg).toBeTruthy();
+      expect(readFileSync(fileArg!.slice("PLANNOTATOR_TUI_FILE=".length), "utf8")).toContain(
+        "Older plan",
+      );
+    } finally {
+      if (prev.HERDR_ENV === undefined) delete process.env.HERDR_ENV;
+      else process.env.HERDR_ENV = prev.HERDR_ENV;
+      if (prev.HERDR_PANE_ID === undefined) delete process.env.HERDR_PANE_ID;
+      else process.env.HERDR_PANE_ID = prev.HERDR_PANE_ID;
+    }
   });
 
   it("prepares an exact file and refuses a secret-like or oversized file", () => {
@@ -342,6 +405,110 @@ describe("sf-planreview review", () => {
       else process.env.HERDR_ENV = prev.HERDR_ENV;
       if (prev.HERDR_PANE_ID === undefined) delete process.env.HERDR_PANE_ID;
       else process.env.HERDR_PANE_ID = prev.HERDR_PANE_ID;
+    }
+  });
+
+  it("removes a new snapshot if Herdr does not confirm the review pane opened", async () => {
+    writeFileSync(path.join(cwd, "unopened.md"), "# Review fixture\n");
+    const { pi } = mockPi();
+    const fallback = pi.exec.getMockImplementation();
+    pi.exec.mockImplementation(async (command: string, args: string[]) => {
+      if (command === "herdr" && args.includes("open")) {
+        return { stdout: '{"result":{}}', stderr: "", code: 0 };
+      }
+      return fallback!(command, args);
+    });
+    const prev = { HERDR_ENV: process.env.HERDR_ENV, HERDR_PANE_ID: process.env.HERDR_PANE_ID };
+    process.env.HERDR_ENV = "1";
+    process.env.HERDR_PANE_ID = "test-origin";
+    try {
+      const { default: factory } = await import("../index.ts");
+      factory(pi as never);
+      const command = pi.registerCommand.mock.calls.find(([name]) => name === "sf-planreview")?.[1];
+      await command.handler("file unopened.md", ctx() as never);
+      expect(listReviewDataDirs()).toEqual([]);
+      expect(pi.appendEntry).not.toHaveBeenCalled();
+    } finally {
+      if (prev.HERDR_ENV === undefined) delete process.env.HERDR_ENV;
+      else process.env.HERDR_ENV = prev.HERDR_ENV;
+      if (prev.HERDR_PANE_ID === undefined) delete process.env.HERDR_PANE_ID;
+      else process.env.HERDR_PANE_ID = prev.HERDR_PANE_ID;
+    }
+  });
+
+  it("resumes cleanup of a delivered review on the active branch", async () => {
+    vi.useFakeTimers();
+    const snapshot = createReviewSnapshot("# Example review", "plan.md");
+    const data = {
+      reviewFile: path.basename(snapshot.file),
+      paneId: "closed-review",
+      dataDir: snapshot.dataDir,
+    };
+    try {
+      const { pi } = mockPi();
+      const fallback = pi.exec.getMockImplementation();
+      pi.exec.mockImplementation(async (command: string, args: string[]) => {
+        if (command === "herdr" && args[0] === "pane" && args[1] === "list") {
+          return { stdout: '{"result":{"panes":[]}}', stderr: "", code: 0 };
+        }
+        return fallback!(command, args);
+      });
+      const { default: factory } = await import("../index.ts");
+      factory(pi as never);
+      const branch = [{ type: "custom", customType: "sf-planreview-delivered", data }];
+      const sessionStart = pi.on.mock.calls.find(([name]) => name === "session_start")?.[1];
+      sessionStart?.({ reason: "resume" }, ctx(branch));
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(() => readFileSync(snapshot.file)).toThrow();
+      pi.on.mock.calls.find(([name]) => name === "session_shutdown")?.[1]?.();
+    } finally {
+      cleanupReviewSnapshot(snapshot);
+      vi.useRealTimers();
+    }
+  });
+
+  it("retains a sent Herdr review while open and clears it only after the pane closes", async () => {
+    vi.useFakeTimers();
+    const snapshot = createReviewSnapshot("# Example review", "plan.md");
+    const reviewFile = path.basename(snapshot.file);
+    const data = {
+      reviewFile,
+      paneId: "test-review",
+      dataDir: snapshot.dataDir,
+      label: "plan.md",
+    };
+    try {
+      const { pi } = mockPi();
+      const fallback = pi.exec.getMockImplementation();
+      let open = true;
+      pi.exec.mockImplementation(async (command: string, args: string[]) => {
+        if (command === "herdr" && args[0] === "pane" && args[1] === "list") {
+          return {
+            stdout: JSON.stringify({ result: { panes: open ? [{ pane_id: data.paneId }] : [] } }),
+            stderr: "",
+            code: 0,
+          };
+        }
+        return fallback!(command, args);
+      });
+      const { default: factory } = await import("../index.ts");
+      factory(pi as never);
+      const inputHandler = pi.on.mock.calls.find(([name]) => name === "input")?.[1];
+      const branch = [{ type: "custom", customType: "sf-planreview-source", data }];
+      inputHandler?.({ text: `# Annotations on ${reviewFile}\n\nA comment.` }, ctx(branch));
+      expect(pi.appendEntry).toHaveBeenCalledWith(
+        "sf-planreview-delivered",
+        expect.objectContaining({ reviewFile, paneId: data.paneId }),
+      );
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(readFileSync(snapshot.file, "utf8")).toContain("Example review");
+      open = false;
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(() => readFileSync(snapshot.file)).toThrow();
+      pi.on.mock.calls.find(([name]) => name === "session_shutdown")?.[1]?.();
+    } finally {
+      cleanupReviewSnapshot(snapshot);
+      vi.useRealTimers();
     }
   });
 

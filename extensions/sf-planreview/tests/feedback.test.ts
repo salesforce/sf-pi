@@ -31,18 +31,26 @@ describe("Herdr review provenance", () => {
             sourcePath: review.sourcePath,
             sourceDigest: review.sourceDigest,
             label: "plan.md",
+            paneId: "review-pane",
+            dataDir: review.dataDir,
           },
         },
       ];
-      expect(formatHerdrReviewFeedback(feedback, branch)).toContain("Review of plan.md:");
+      expect(formatHerdrReviewFeedback(feedback, branch)?.text).toContain("Review of plan.md:");
+      expect(formatHerdrReviewFeedback(feedback, branch)?.deliveredReview).toEqual({
+        reviewFile: path.basename(review.file),
+        paneId: "review-pane",
+        dataDir: review.dataDir,
+      });
       writeFileSync(original, "# Updated plan\n");
-      expect(formatHerdrReviewFeedback(feedback, branch)).toContain(
+      expect(formatHerdrReviewFeedback(feedback, branch)?.text).toContain(
         "source changed since review began",
       );
       expect(formatHerdrReviewFeedback("an unrelated user message", branch)).toBeUndefined();
-      expect(formatHerdrReviewFeedback(feedback, [])).toContain(
+      expect(formatHerdrReviewFeedback(feedback, [])?.text).toContain(
         "could not be matched to this Pi branch",
       );
+      expect(formatHerdrReviewFeedback(feedback, [])?.deliveredReview).toBeUndefined();
     } finally {
       if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
       else process.env.PI_CODING_AGENT_DIR = previous;
