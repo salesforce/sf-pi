@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.302.2](https://github.com/salesforce/sf-pi/compare/v0.302.1...v0.302.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* **agentscript:** retry eval 401 with named-user auth ([1a995e0](https://github.com/salesforce/sf-pi/commit/1a995e052f02b836369c75ae7b32699ccb38d446))
+
 ## [0.302.1](https://github.com/salesforce/sf-pi/compare/v0.302.0...v0.302.1) (2026-09-28)
 
 
