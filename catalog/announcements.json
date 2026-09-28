@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.301.0-2026-09-28",
-  "latestVersion": "0.301.0",
+  "revision": "release-0.302.0-2026-09-28",
+  "latestVersion": "0.302.0",
   "announcements": [
     {
-      "id": "release-0.301.0",
+      "id": "release-0.302.0",
       "kind": "update",
-      "title": "sf-pi v0.301.0 — planreview: add TUI-first plan reviews and managed setup",
+      "title": "sf-pi v0.302.0 — planreview: add reply picker and closure-aware cleanup",
       "publishedAt": "2026-09-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.301.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.302.0",
       "severity": "info",
-      "body": "planreview: add TUI-first plan reviews and managed setup"
+      "body": "planreview: add reply picker and closure-aware cleanup"
     }
   ]
 }
