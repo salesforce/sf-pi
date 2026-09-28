@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.302.1](https://github.com/salesforce/sf-pi/compare/v0.302.0...v0.302.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* **llm-gateway:** omit unsupported prompt cache key ([35347ca](https://github.com/salesforce/sf-pi/commit/35347ca4e91072c234640d51db0a2012c570e236))
+
 ## [0.302.0](https://github.com/salesforce/sf-pi/compare/v0.301.0...v0.302.0) (2026-09-28)
 
 
