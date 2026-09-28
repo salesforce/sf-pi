@@ -34,7 +34,7 @@ Open its Manager detail or change its package state with:
 - Deferred quality repair uses Pi's actionable pre-settlement boundary after retries and queued user work finish.
 - Global per-rule quality toggles dynamically control reporting, repair, metrics, and local-file publication gating without a reload.
 - Quality cards show every finding header by default; overlong variable descriptions gate publication, while official instruction-template diagnostics remain pre-activation recommendations.
-- Eval, trace, preview, and lifecycle calls reuse @salesforce/core / SF CLI auth context; timeout-sensitive HTTP may use bounded native fetch and never logs or persists tokens.
+- Eval batches retry a rejected org credential once with Agentforce named-user auth; org reads retain the normal @salesforce/core connection and tokens are never logged or persisted.
 - Local-first: compile and validate run via official @sf-agentscript packages before any network call.
 - Diagnostics and code actions use deterministic source-bound identities; stale, missing, or ambiguous quick fixes are refused, and official provider availability is explicit.
 - Structure, quality, and review are agent-type-aware: ordinary agents use start_agent, while GoalBasedAgent uses its orchestrator and projects workflows, triggers, bundles, and local actions.

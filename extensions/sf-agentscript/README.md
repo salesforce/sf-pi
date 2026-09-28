@@ -66,6 +66,9 @@ Resolved values stay masked on Studio/source previews and remain confined to
 restricted executed/raw artifacts.
 
 Eval runs persist immutable source/executed snapshots and terminal evidence.
+If the Evaluation API rejects the org credential with HTTP 401, the batch is
+retried once with an Agentforce named-user token; other HTTP failures are not
+retried for auth. Org lookups and seed queries keep the normal connection.
 Incomplete batches, evaluator failures, step errors, missing state evidence, and
 non-2xx batch failures can never become a green empty run. Voice release suites
 require strict one-customer-facing-completion evidence per turn.

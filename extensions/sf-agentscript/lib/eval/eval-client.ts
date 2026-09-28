@@ -10,6 +10,7 @@
  *
  * Transport: `sfapRequest` reuses @salesforce/core auth and bounded native fetch,
  * with sandbox-safe SFAP host fallback (api → test.api → dev.api on 404).
+ * The orchestrator retries a rejected org credential once with named-user auth.
  */
 
 import type { Connection } from "@salesforce/core";

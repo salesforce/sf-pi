@@ -59,6 +59,8 @@ Heavy artifacts remain on disk:
 - eval run status/failures/synthesized traces under `.pi/state/sf-agentscript/**`
 - optional review reports at `output_path`
 
+Evaluation API batches use org auth first and retry an HTTP 401 once with Agentforce named-user auth. This does not change the org connection used for version lookup or seed SOQL, and incomplete batches still block release evidence.
+
 ## Production observability handoff
 
 When the user asks why a production agent behaved incorrectly, start with `sf-data360` observability data, then reproduce locally with `agentscript_preview`, fix via `agentscript_authoring`, verify with `agentscript_eval`, and ship with `agentscript_lifecycle`.

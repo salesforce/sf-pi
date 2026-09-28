@@ -10,6 +10,8 @@ New Suite, New Scenario, Edit, and Diagnose actions create a compact authoring b
 
 Use `generate_spec` to bootstrap a starter regression spec from a `.agent` file. Use `run` with `agent_api_name` so the runner resolves/injects Active BotVersion ids safely by default.
 
+The runner resolves org identity, version IDs, and seed SOQL with the normal org connection. If an Evaluation API batch returns HTTP 401, it retries that rejected batch once with a shared Agentforce named-user JWT. Non-401 failures remain unchanged; a second 401 is incomplete evidence, never a green run. This auth fallback is independent of the project REST API version.
+
 Use EvalSpec `seed_profiles` when scenarios need org-specific IDs or state. Each profile runs one read-only SOQL query against the selected eval org, requires exactly one row, and maps scalar fields/constants into the existing `context_variables` shape. Scenarios reference one profile with `seed_profile`; reused profiles execute once per Run. Resolution is preflight-only and fails closed before Run creation/API POST for unsafe queries, missing/ambiguous rows, null fields, type mismatches, duplicate IDs, or unknown profiles. Do not select arbitrary customer data—query dedicated test fixtures through stable predicates.
 
 A designated release Suite can provide `generated_baseline.default_seed_profile`, exact test-id `overrides`, and `skip_tests` when a generated one-turn probe is replaced by designated multi-turn coverage. `run_release` copies only referenced profile declarations into the regenerated baseline before pinning the exact pending BotVersion. Dynamic seed values appear only in restricted executed/raw artifacts and are masked on human-facing Studio/report surfaces.

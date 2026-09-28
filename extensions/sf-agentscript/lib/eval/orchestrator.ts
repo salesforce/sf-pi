@@ -22,6 +22,7 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Connection } from "@salesforce/core";
+import { connForAgentApi } from "../agent-api-auth.ts";
 import { callEval, type EvalApiHeaders, splitIntoBatches } from "./eval-client.ts";
 import { collectPlanKeys, fetchTracesConcurrent, type PlanKey } from "./trace-client.ts";
 import { synthesizeTracesFromMerged } from "./synthesize-trace.ts";
@@ -81,7 +82,7 @@ import { hashEvalSpec } from "../release-contract.ts";
 // -------------------------------------------------------------------------------------------------
 
 export interface RunEvalOptions {
-  /** Caller-resolved Connection for Evaluation API + SOQL. Required. */
+  /** Caller-resolved org connection for metadata, seed SOQL, and the initial Eval request. */
   conn: Connection;
   /** Optional named-user JWT connection for `/einstein/ai-agent/*` trace fetches. */
   traceConn?: Connection;
@@ -223,6 +224,7 @@ function errorPayload(err: unknown): { name?: string; message: string } {
 
 interface RunEvalBatchesOptions {
   conn: Connection;
+  targetOrg: string;
   batches: EvalTest[][];
   headers: EvalApiHeaders;
   concurrency: number;
@@ -243,6 +245,7 @@ async function runEvalBatches(options: RunEvalBatchesOptions): Promise<RunEvalBa
   const results: Array<EvalApiResponse["results"]> = new Array(batches.length).fill(null);
   const batchFailures: EvalBatchFailure[] = [];
   const sema = makeSemaphore(options.concurrency);
+  let namedUserConn: Promise<Connection> | undefined;
   let stopped = false;
   let firstError: unknown;
   const execute = async (): Promise<void> => {
@@ -253,10 +256,22 @@ async function runEvalBatches(options: RunEvalBatchesOptions): Promise<RunEvalBa
           try {
             log(`  batch ${index + 1}/${batches.length}: started (${batch.length} test(s))`);
             throwIfAborted(options.signal);
-            const response = await callEval(options.conn, batch, options.headers, {
-              timeoutMs: options.batchTimeoutMs,
-              signal: options.signal,
-            });
+            const requestOptions = { timeoutMs: options.batchTimeoutMs, signal: options.signal };
+            const conn = namedUserConn ? await namedUserConn : options.conn;
+            let response = await callEval(conn, batch, options.headers, requestOptions);
+            if (conn === options.conn && response.status === 401) {
+              // The rejected credential did not execute the batch. Retry once with
+              // the named-user JWT; leave other HTTP failures unchanged.
+              namedUserConn ??= connForAgentApi(options.targetOrg, { signal: options.signal }).then(
+                (auth) => auth.conn,
+              );
+              response = await callEval(
+                await namedUserConn,
+                batch,
+                options.headers,
+                requestOptions,
+              );
+            }
             // Another concurrent batch may already have failed while this
             // request was in flight. Do not emit timings, logs, results, or
             // progress after the Run has started terminalization.
@@ -660,6 +675,7 @@ export async function runEval(opts: RunEvalOptions): Promise<RunEvalResult> {
     };
     const { results, batchFailures } = await runEvalBatches({
       conn: opts.conn,
+      targetOrg: opts.targetOrg,
       batches,
       headers,
       concurrency,

@@ -2,9 +2,10 @@
 /**
  * Named-user JWT bootstrap for Einstein AI Agent SFAP endpoints.
  *
- * The normal sf CLI org token is sufficient for instance REST, SOQL, Connect,
- * and the Evaluation API, but `/einstein/ai-agent/*` routes require a JWT
- * minted by the org-local Agentforce bootstrap endpoint:
+ * The normal sf CLI org token is used for instance REST, SOQL, and Connect.
+ * Some SFAP Evaluation API routes reject it, so eval can retry with the JWT
+ * minted by the org-local Agentforce bootstrap endpoint. The same JWT is
+ * required for `/einstein/ai-agent/*` routes:
  *
  *   GET {instanceUrl}/agentforce/bootstrap/nameduser
  *   Cookie: sid={orgAccessToken}
