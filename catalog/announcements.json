@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.300.1-2026-09-27",
-  "latestVersion": "0.300.1",
+  "revision": "release-0.301.0-2026-09-28",
+  "latestVersion": "0.301.0",
   "announcements": [
     {
-      "id": "release-0.300.1",
+      "id": "release-0.301.0",
       "kind": "update",
-      "title": "sf-pi v0.300.1 — sf-brain: refresh architecture guidance and handle missing docs",
-      "publishedAt": "2026-09-27T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.300.1",
+      "title": "sf-pi v0.301.0 — planreview: add TUI-first plan reviews and managed setup",
+      "publishedAt": "2026-09-28T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.301.0",
       "severity": "info",
-      "body": "sf-brain: refresh architecture guidance and handle missing docs"
+      "body": "planreview: add TUI-first plan reviews and managed setup"
     }
   ]
 }
