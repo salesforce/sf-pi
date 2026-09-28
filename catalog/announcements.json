@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.302.0-2026-09-28",
-  "latestVersion": "0.302.0",
+  "revision": "release-0.302.1-2026-09-28",
+  "latestVersion": "0.302.1",
   "announcements": [
     {
-      "id": "release-0.302.0",
+      "id": "release-0.302.1",
       "kind": "update",
-      "title": "sf-pi v0.302.0 — planreview: add reply picker and closure-aware cleanup",
+      "title": "sf-pi v0.302.1 — llm-gateway: omit unsupported prompt cache key",
       "publishedAt": "2026-09-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.302.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.302.1",
       "severity": "info",
-      "body": "planreview: add reply picker and closure-aware cleanup"
+      "body": "llm-gateway: omit unsupported prompt cache key"
     }
   ]
 }
