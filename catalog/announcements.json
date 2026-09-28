@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.302.1-2026-09-28",
-  "latestVersion": "0.302.1",
+  "revision": "release-0.302.2-2026-09-28",
+  "latestVersion": "0.302.2",
   "announcements": [
     {
-      "id": "release-0.302.1",
+      "id": "release-0.302.2",
       "kind": "update",
-      "title": "sf-pi v0.302.1 — llm-gateway: omit unsupported prompt cache key",
+      "title": "sf-pi v0.302.2 — agentscript: retry eval 401 with named-user auth",
       "publishedAt": "2026-09-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.302.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.302.2",
       "severity": "info",
-      "body": "llm-gateway: omit unsupported prompt cache key"
+      "body": "agentscript: retry eval 401 with named-user auth"
     }
   ]
 }
