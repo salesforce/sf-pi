@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.302.0](https://github.com/salesforce/sf-pi/compare/v0.301.0...v0.302.0) (2026-09-28)
+
+
+### Features
+
+* **planreview:** add reply picker and closure-aware cleanup ([cd04b26](https://github.com/salesforce/sf-pi/commit/cd04b26cb594763723723359fe36bd5073fc64c4))
+
 ## [0.301.0](https://github.com/salesforce/sf-pi/compare/v0.300.1...v0.301.0) (2026-09-28)
 
 
