@@ -59,6 +59,21 @@ describe("normalizeGatewayRequestError", () => {
     expect(normalized).not.toContain("Tip: Agent retries");
   });
 
+  it("normalizes unsupported cache-key errors without echoing upstream details", () => {
+    const raw =
+      "Gateway API error (400): UnsupportedParamsError: prompt_cache_key unsupported on example-route";
+    const normalized = normalizeGatewayRequestError(raw, READY);
+
+    expect(normalized).toBe(
+      [
+        "SF LLM Gateway rejected an unsupported prompt_cache_key parameter.",
+        "SF Pi omits this field on Gateway requests; update SF Pi and retry.",
+        "If it persists, ask your Gateway administrator to review the selected model's route.",
+      ].join("\n"),
+    );
+    expect(normalized).not.toContain("example-route");
+  });
+
   it("does not echo an unsafe model identifier into access guidance", () => {
     const normalized = normalizeGatewayRequestError("team_model_access_denied", {
       ...READY,
@@ -116,6 +131,9 @@ describe("normalizeGatewayRequestError", () => {
     expect(
       normalizeGatewayRequestError("Provider is not configured: another-provider", READY),
     ).toBe(undefined);
+    expect(normalizeGatewayRequestError("UnsupportedParamsError: another_param", READY)).toBe(
+      undefined,
+    );
   });
 });
 
@@ -140,6 +158,26 @@ describe("handleGatewayRequestDiagnostics", () => {
         "SF LLM Gateway has no usable credential.\nRun /login sf-llm-gateway, then /sf-llm-gateway refresh.",
     });
     expect(message.errorMessage).toBe("Provider is not configured: sf-llm-gateway");
+  });
+
+  it("replaces only Gateway unsupported cache-key failures", async () => {
+    const raw = "UnsupportedParamsError: prompt_cache_key unsupported on example-route";
+    const ctx = { cwd: "/workspace" } as ExtensionContext;
+    const result = await handleGatewayRequestDiagnostics(
+      { type: "message_end", message: errorMessage("sf-llm-gateway", raw) },
+      ctx,
+    );
+
+    expect(result?.message).toMatchObject({
+      errorMessage: expect.stringContaining("update SF Pi and retry"),
+    });
+    expect(JSON.stringify(result?.message)).not.toContain("example-route");
+    await expect(
+      handleGatewayRequestDiagnostics(
+        { type: "message_end", message: errorMessage("another-provider", raw) },
+        ctx,
+      ),
+    ).resolves.toBeUndefined();
   });
 
   it("leaves successful, non-Gateway, and unrecognized errors unchanged", async () => {

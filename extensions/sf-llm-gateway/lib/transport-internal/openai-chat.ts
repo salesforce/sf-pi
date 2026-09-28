@@ -11,6 +11,7 @@ import {
   streamOpenAICompletions,
   streamSimpleOpenAICompletions,
 } from "@earendil-works/pi-ai/compat";
+import { omitGatewayPromptCacheKey } from "./prompt-cache-key.ts";
 
 export interface GatewayOpenAIFullTestHooks {
   streamer?: typeof streamOpenAICompletions;
@@ -22,7 +23,11 @@ export function streamSfGatewayOpenAIFull(
   options?: OpenAICompletionsOptions,
   hooks?: GatewayOpenAIFullTestHooks,
 ): AssistantMessageEventStream {
-  return (hooks?.streamer ?? streamOpenAICompletions)(model, context, options);
+  return (hooks?.streamer ?? streamOpenAICompletions)(
+    model,
+    context,
+    omitGatewayPromptCacheKey(model, options),
+  );
 }
 
 export function streamSfGatewayOpenAI(
@@ -30,5 +35,5 @@ export function streamSfGatewayOpenAI(
   context: TranscriptContext,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
-  return streamSimpleOpenAICompletions(model, context, options);
+  return streamSimpleOpenAICompletions(model, context, omitGatewayPromptCacheKey(model, options));
 }

@@ -10,6 +10,7 @@ import {
 } from "@earendil-works/pi-ai";
 import {
   formatAnthropicStreamError,
+  streamSfGatewayOpenAI,
   streamSfGatewayOpenAIFull,
   streamSfGatewayResponses,
   streamSfGatewayResponsesFull,
@@ -50,7 +51,7 @@ function responsesModel(): Model<"openai-responses"> {
 
 async function captureResponsesPayload(
   model: Model<"openai-responses">,
-  options: Pick<SimpleStreamOptions, "samplingParams" | "onPayload"> = {},
+  options: Pick<SimpleStreamOptions, "samplingParams" | "onPayload" | "sessionId"> = {},
   full = false,
 ): Promise<Record<string, unknown> | undefined> {
   let payload: Record<string, unknown> | undefined;
@@ -73,9 +74,34 @@ async function captureResponsesPayload(
   return payload;
 }
 
+async function captureChatPayload(
+  model: Model<"openai-completions">,
+  options: Pick<SimpleStreamOptions, "cacheRetention" | "onPayload" | "sessionId"> = {},
+  full = false,
+): Promise<Record<string, unknown> | undefined> {
+  let payload: Record<string, unknown> | undefined;
+  const requestOptions = {
+    apiKey: "test-key",
+    maxRetries: 0,
+    ...options,
+    fetch: async (_input: RequestInfo | URL, init?: RequestInit) => {
+      payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response(JSON.stringify({ error: { message: "mock response" } }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  };
+  const stream = full
+    ? streamSfGatewayOpenAIFull(model, CONTEXT, requestOptions)
+    : streamSfGatewayOpenAI(model, CONTEXT, requestOptions);
+  await stream.result();
+  return payload;
+}
+
 describe("generic Chat Completions adapter", () => {
-  it("passes the model and options through without route-specific payload mutation", () => {
-    const model = chatModel();
+  it("passes non-Gateway models and options through", () => {
+    const model = { ...chatModel(), provider: "openai" };
     const options: OpenAICompletionsOptions = {
       apiKey: "test-key",
       onPayload: vi.fn((payload) => payload),
@@ -86,12 +112,68 @@ describe("generic Chat Completions adapter", () => {
 
     expect(streamer).toHaveBeenCalledWith(model, CONTEXT, options);
   });
+
+  it.each([false, true])("omits Gateway long-retention cache key (full=%s)", async (full) => {
+    const onPayload = vi.fn((payload: unknown) => ({
+      ...(payload as object),
+      prompt_cache_key: "caller-added",
+      metadata: { test: true },
+    }));
+    const options = { sessionId: "test-session", cacheRetention: "long" as const, onPayload };
+    const gateway = await captureChatPayload(chatModel(), options, full);
+    const otherProvider = await captureChatPayload(
+      { ...chatModel(), provider: "openai" },
+      options,
+      full,
+    );
+
+    expect(gateway).not.toHaveProperty("prompt_cache_key");
+    expect(gateway).toMatchObject({ metadata: { test: true } });
+    expect(otherProvider).toHaveProperty("prompt_cache_key", "caller-added");
+    expect(onPayload).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps Gateway Chat Completions without a cache key by default", async () => {
+    const payload = await captureChatPayload(chatModel(), { sessionId: "test-session" });
+    expect(payload).not.toHaveProperty("prompt_cache_key");
+  });
 });
 
 describe("generic Responses adapter", () => {
   it.each(["gpt-5.6-sol", "gpt-6-sol"])("requests priority traffic for Gateway %s", async (id) => {
     const payload = await captureResponsesPayload({ ...responsesModel(), id });
     expect(payload).toMatchObject({ model: id, service_tier: "priority" });
+  });
+
+  it.each([false, true])("omits the Gateway cache key on Responses (full=%s)", async (full) => {
+    const onPayload = vi.fn((payload: unknown) => ({
+      ...(payload as object),
+      prompt_cache_key: "caller-added",
+      metadata: { test: true },
+    }));
+    const gateway = await captureResponsesPayload(
+      { ...responsesModel(), id: "gpt-6-sol" },
+      { sessionId: "test-session", onPayload },
+      full,
+    );
+    const otherProvider = await captureResponsesPayload(
+      { ...responsesModel(), provider: "openai" },
+      { sessionId: "test-session" },
+      full,
+    );
+
+    expect(gateway).not.toHaveProperty("prompt_cache_key");
+    expect(gateway).toMatchObject({ service_tier: "priority", metadata: { test: true } });
+    expect(otherProvider).toHaveProperty("prompt_cache_key", "test-session");
+    expect(onPayload).toHaveBeenCalledOnce();
+  });
+
+  it("omits the key for any Gateway Responses model, not just priority models", async () => {
+    const payload = await captureResponsesPayload(responsesModel(), {
+      sessionId: "test-session",
+    });
+    expect(payload).not.toHaveProperty("prompt_cache_key");
+    expect(payload).not.toHaveProperty("service_tier");
   });
 
   it("keeps priority when sampling parameters or a payload hook are provided", async () => {
@@ -140,7 +222,12 @@ describe("generic Responses adapter", () => {
 
     streamSfGatewayResponses(model, CONTEXT, options, { responsesStreamer });
 
-    expect(responsesStreamer).toHaveBeenCalledWith(model, CONTEXT, options);
+    expect(responsesStreamer).toHaveBeenCalledOnce();
+    expect(responsesStreamer).toHaveBeenCalledWith(
+      model,
+      CONTEXT,
+      expect.objectContaining(options),
+    );
   });
 });
 

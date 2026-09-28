@@ -107,6 +107,10 @@ copy.
     on the Gateway provider, send `service_tier: "priority"` through both simple and full
     Responses streams. Do not infer eligibility from a family or suffix, mutate other providers,
     or claim the Gateway honored the requested tier without response evidence.
+12. **Gateway cache-key compatibility is model-neutral.** Omit the optional
+    `prompt_cache_key` field from Gateway Responses and Chat Completions payloads after
+    preserving any caller payload hook. Never infer backend support from a model ID,
+    change other providers, or retry a failed request in the adapter.
 
 ## Command handler pattern
 

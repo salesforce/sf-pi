@@ -301,6 +301,37 @@ describe("complete native Gateway Provider", () => {
     }
   });
 
+  it("omits the cache key on a published Gateway model through the native Provider", async () => {
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: fetchers(
+        { ids: ["gpt-6-sol"], filteredIds: [] },
+        { "gpt-6-sol": { id: "gpt-6-sol", mode: "responses" } },
+      ),
+    });
+    const { models } = await configuredModels(runtime);
+    await models.refresh({ allowNetwork: true });
+    const model = models.getModel(PROVIDER_NAME, "gpt-6-sol");
+    expect(model).toBeDefined();
+    if (!model) return;
+
+    let payload: Record<string, unknown> | undefined;
+    await models.completeSimple(model, EMPTY_CONTEXT, {
+      sessionId: "test-session",
+      maxRetries: 0,
+      fetch: async (_input, init) => {
+        payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response(JSON.stringify({ error: { message: "mock response" } }), {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+
+    expect(payload).toMatchObject({ model: "gpt-6-sol", service_tier: "priority" });
+    expect(payload).not.toHaveProperty("prompt_cache_key");
+  });
+
   it("restores Pi's cached catalog, replaces it on discovery, and retains it on failure", async () => {
     const network = fetchers({
       ids: ["example-responses-model", "fresh-chat", "no-default-models"],

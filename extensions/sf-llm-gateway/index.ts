@@ -18,6 +18,7 @@
  * - Footer status includes chosen model, current context usage, and monthly gateway usage
  * - Advertises model-specific thinking capabilities while Pi/user settings choose the active level
  * - Repairs retired gateway enabledModels entries before startup validation
+ * - Omits the optional prompt_cache_key field from Gateway OpenAI-compatible requests
  * - Requests priority traffic for exact GPT-5.6 Sol and GPT-6 Sol Gateway Responses models
  * - No SF Pi-owned model-specific headers or deployment-routing policy
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/

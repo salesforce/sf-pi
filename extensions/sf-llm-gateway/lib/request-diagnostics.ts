@@ -24,6 +24,12 @@ export function isGatewayModelAccessDeniedError(errorMessage: string): boolean {
   return errorMessage.includes(MODEL_ACCESS_DENIED_CODE);
 }
 
+function isUnsupportedGatewayCacheKeyError(errorMessage: string): boolean {
+  return (
+    errorMessage.includes("UnsupportedParamsError") && errorMessage.includes("prompt_cache_key")
+  );
+}
+
 export function normalizeGatewayRequestError(
   errorMessage: string,
   readiness: GatewayRequestReadiness,
@@ -40,6 +46,14 @@ export function normalizeGatewayRequestError(
       `${MODEL_ACCESS_DENIED_PREFIX}${model} (${MODEL_ACCESS_DENIED_CODE}).`,
       `Run /${PROVIDER_NAME} refresh, then choose an available model with /model.`,
       "If refresh returns no models, request model access from your Gateway administrator.",
+    ].join("\n");
+  }
+
+  if (isUnsupportedGatewayCacheKeyError(errorMessage)) {
+    return [
+      "SF LLM Gateway rejected an unsupported prompt_cache_key parameter.",
+      "SF Pi omits this field on Gateway requests; update SF Pi and retry.",
+      "If it persists, ask your Gateway administrator to review the selected model's route.",
     ].join("\n");
   }
 
@@ -87,9 +101,10 @@ export async function handleGatewayRequestDiagnostics(
   const rawError = message.errorMessage;
   const isModelAccessDenied = isGatewayModelAccessDeniedError(rawError);
   const isGenericUnconfigured = rawError.includes(GENERIC_UNCONFIGURED_ERROR);
+  const isUnsupportedCacheKey = isUnsupportedGatewayCacheKeyError(rawError);
   if (
     rawError.startsWith(MODEL_ACCESS_DENIED_PREFIX) ||
-    (!isModelAccessDenied && !isGenericUnconfigured)
+    (!isModelAccessDenied && !isGenericUnconfigured && !isUnsupportedCacheKey)
   ) {
     return undefined;
   }

@@ -81,6 +81,13 @@ sends `service_tier: "priority"` automatically, including simple and full stream
 Other models and providers are unchanged. The request does not prove that the
 Gateway honored the tier; SF Pi does not inspect or enforce the effective tier.
 
+For Gateway Responses and Chat Completions requests, SF Pi omits the optional
+`prompt_cache_key` request field. A Gateway model ID does not reveal which
+backend will handle a request, and some backends reject this OpenAI cache-affinity
+hint. The omission is Gateway-only and model-neutral; it may reduce cache
+locality on compatible routes but does not disable other prompt caching or alter
+other request fields.
+
 ## Compaction Model Preference
 
 Pi's native `compaction.enabled` setting remains the only switch for automatic
@@ -200,6 +207,10 @@ native login to replace it or remove the stale environment fallback.
 Gateway catalog and reopen the setup panel. Confirm that the saved model is
 still available to the current credential and has enough context capacity for
 the session being compacted.
+
+**A request reports an unsupported `prompt_cache_key`:** Update SF Pi and retry.
+Current SF Pi omits this field on Gateway requests. If the error persists, ask
+the Gateway administrator to check the selected model's parameter handling.
 
 ## File Structure
 
