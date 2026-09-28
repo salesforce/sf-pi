@@ -1,0 +1,35 @@
+{
+  "id": "sf-planreview",
+  "name": "SF Plannotator",
+  "description": "TUI-first review of Pi replies and local text artifacts through Herdr Annotate or Plannotator TUI",
+  "category": "ui",
+  "maturity": "experimental",
+  "defaultEnabled": true,
+  "configurable": false,
+  "commands": ["/sf-planreview"],
+  "tools": [],
+  "events": ["session_shutdown", "input"],
+  "docs": {
+    "intentGroup": "Work safely",
+    "summary": "TUI-first reviews of Pi replies and named local text files, with a pinned managed TUI installer, explicit Herdr Full setup, read-only doctor checks, and private review cleanup. Herdr delivers its own feedback; outside Herdr, Pi confirms exported annotations before sending. Hunk owns code diffs.",
+    "primaryFiles": [
+      "index.ts",
+      "lib/review.ts",
+      "lib/feedback.ts",
+      "lib/doctor.ts",
+      "lib/installer.ts"
+    ],
+    "stateFiles": [
+      "session entries: review source identity and digest (no content)",
+      "<globalAgentDir>/sf-pi/sf-planreview/status.json",
+      "<globalAgentDir>/sf-pi/sf-planreview/bin/",
+      "<globalAgentDir>/sf-pi/sf-planreview/reviews/"
+    ],
+    "safety": [
+      "Third-party installation is explicit and human-confirmed; managed binaries must match a pinned SHA-256.",
+      "No review automatically approves a Salesforce mutation or replaces SF Guardrail.",
+      "Herdr Annotate owns delivery in Herdr; SF Pi never reposts the feedback.",
+      "Browser review and code-diff review are out of scope for this first slice."
+    ]
+  }
+}

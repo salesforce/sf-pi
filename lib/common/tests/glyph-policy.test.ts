@@ -142,6 +142,8 @@ describe("glyph", () => {
     expect(glyph("lifetime", "emoji")).toBe("🌐");
     expect(glyph("cli", "emoji")).toBe("🧰");
     expect(glyph("loaded", "emoji")).toBe("📦");
+    expect(glyph("plannotator", "emoji")).toBe("📋");
+    expect(glyph("plannotator", "emoji")).not.toBe(glyph("hunk", "emoji"));
   });
 
   it("returns the ASCII form in ascii mode", () => {
@@ -149,6 +151,7 @@ describe("glyph", () => {
     expect(glyph("lifetime", "ascii")).toBe("@");
     expect(glyph("cli", "ascii")).toBe(">");
     expect(glyph("loaded", "ascii")).toBe("[]");
+    expect(glyph("plannotator", "ascii")).toBe("pl");
   });
 
   it("every glyph has both emoji and ascii variants", () => {

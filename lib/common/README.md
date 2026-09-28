@@ -64,6 +64,8 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `pi-auth-status.ts`            | module    |                     1 |               0 |
 | `pi-compat.ts`                 | module    |                     1 |               0 |
 | `pi-paths.ts`                  | module    |                     1 |               0 |
+| `plannotator-release.ts`       | module    |                     1 |               0 |
+| `plannotator-runtime.ts`       | module    |                     1 |               0 |
 | `privacy/`                     | directory |                     2 |               2 |
 | `redaction.ts`                 | module    |                     1 |               0 |
 | `runtime-floor.ts`             | module    |                     1 |               0 |
@@ -84,7 +86,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `slack-status/`                | directory |                     1 |               0 |
 | `state-store.ts`               | module    |                     1 |               0 |
 | `test-fixtures.ts`             | module    |                     1 |               0 |
-| `tests/`                       | directory |                     0 |              41 |
+| `tests/`                       | directory |                     0 |              42 |
 | `tldraw-status/`               | directory |                     1 |               0 |
 | `ui-glyphs.ts`                 | module    |                     1 |               0 |
 

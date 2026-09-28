@@ -46,6 +46,10 @@ import {
 } from "../../../lib/common/browser-runtime-status/store.ts";
 import { defaultFontRuntimeStatus, readCachedFontRuntimeStatus } from "./font-status-cache.ts";
 import { defaultHunkStatus, readCachedHunkStatus } from "./hunk-status.ts";
+import {
+  defaultPlannotatorRuntime,
+  readCachedPlannotatorRuntime,
+} from "../../../lib/common/plannotator-runtime.ts";
 import { defaultHomebrewStatus, readCachedHomebrewStatus } from "./homebrew-status.ts";
 import { collectHerdrRuntimeStatus } from "./herdr-runtime-status.ts";
 import {
@@ -409,6 +413,7 @@ export function collectInitialSplashData(
     }),
     fontRuntime: readCachedFontRuntimeStatus() ?? defaultFontRuntimeStatus(),
     hunk: readCachedHunkStatus() ?? defaultHunkStatus(),
+    plannotator: readCachedPlannotatorRuntime() ?? defaultPlannotatorRuntime(),
     homebrew: readCachedHomebrewStatus() ?? defaultHomebrewStatus(),
     autoUpdate: collectAutoUpdateStatus(),
     browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),
@@ -525,6 +530,7 @@ export function collectSplashData(
     }),
     fontRuntime: readCachedFontRuntimeStatus() ?? defaultFontRuntimeStatus(),
     hunk: readCachedHunkStatus() ?? defaultHunkStatus(),
+    plannotator: readCachedPlannotatorRuntime() ?? defaultPlannotatorRuntime(),
     homebrew: readCachedHomebrewStatus() ?? defaultHomebrewStatus(),
     autoUpdate: collectAutoUpdateStatus(),
     browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),

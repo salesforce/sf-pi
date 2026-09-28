@@ -69,6 +69,11 @@ import {
 import { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./lib/node-cert-cache.ts";
 import { writeCachedFontRuntimeStatus } from "./lib/font-status-cache.ts";
 import { detectHunkStatus, writeCachedHunkStatus } from "./lib/hunk-status.ts";
+import {
+  defaultPlannotatorRuntime,
+  detectPlannotatorRuntime,
+  writeCachedPlannotatorRuntime,
+} from "../../lib/common/plannotator-runtime.ts";
 import { detectHomebrewStatus, writeCachedHomebrewStatus } from "./lib/homebrew-status.ts";
 import { detectHerdrClientStatus } from "./lib/herdr-runtime-status.ts";
 import {
@@ -654,6 +659,28 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }, 4_500);
     hunkTimer.unref?.();
 
+    // Optional document-review TUI, detected after first paint without installing anything.
+    const plannotatorTimer = setTimeout(() => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      void markBootStep("sf-welcome.plannotator-detect", () => detectPlannotatorRuntime(exec))
+        .then((status) => {
+          writeCachedPlannotatorRuntime(status);
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.plannotator = status;
+          scheduleSplashRepaint(ctx, generation);
+        })
+        .catch(() => {
+          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+          data.plannotator = {
+            ...defaultPlannotatorRuntime(),
+            herdrState: "unavailable",
+            loading: false,
+          };
+          scheduleSplashRepaint(ctx, generation);
+        });
+    }, 4_750);
+    plannotatorTimer.unref?.();
+
     // Background Homebrew readiness: bounded local package-manager status only.
     // Do not run brew update/outdated/doctor from the splash.
     const homebrewTimer = setTimeout(() => {
@@ -1074,6 +1101,15 @@ export default function sfWelcome(pi: ExtensionAPI) {
       : data.hunk?.loading
         ? "checking"
         : "optional · not installed";
+    const plannotatorStatus = data.plannotator?.installed
+      ? `installed${data.plannotator.version ? ` v${data.plannotator.version}` : ""}`
+      : data.plannotator?.loading
+        ? "checking"
+        : data.plannotator?.managedState === "damaged" ||
+            data.plannotator?.herdrState === "broken" ||
+            data.plannotator?.herdrState === "unverified"
+          ? "needs repair · /sf-planreview doctor"
+          : "not installed · /sf-planreview setup";
     const homebrewStatus = data.homebrew
       ? data.homebrew.kind === "installed"
         ? `installed${data.homebrew.version ? ` v${data.homebrew.version}` : ""}`
@@ -1104,6 +1140,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `Herdr (Multiplexer): ${herdrRuntimeStatus}`,
       `Fonts: ${fontRuntimeStatus}`,
       `Hunk (Code Review): ${hunkStatus}`,
+      `Plannotator (Plan): ${plannotatorStatus}`,
       `Homebrew: ${homebrewStatus}`,
       `SF Browser: ${browserRuntimeStatus}`,
       `Auto Update: ${autoUpdateStatus}`,

@@ -658,6 +658,39 @@ function formatHunkStatusValue(data: SplashData, mode: GlyphMode): string {
   return `${MUTED("○")} ${MUTED("Optional · not installed")}`;
 }
 
+function formatPlannotatorStatusValue(data: SplashData, mode: GlyphMode): string {
+  const status = data.plannotator;
+  if (!status || status.loading) return MUTED(`${glyph("hourglass", mode)} Checking`);
+  if (!status.installed) {
+    if (
+      status.managedState === "damaged" ||
+      status.herdrState === "broken" ||
+      status.herdrState === "unverified"
+    ) {
+      return `${SF_ORANGE("!")} ${SF_ORANGE("Needs repair")} ${MUTED("· /sf-planreview doctor")}`;
+    }
+    if (status.herdrState === "lite" || status.herdrState === "disabled") {
+      return `${SF_ORANGE("!")} ${SF_ORANGE("Herdr review unavailable")} ${MUTED("· /sf-planreview doctor")}`;
+    }
+    return `${MUTED("○")} ${MUTED("Not installed · /sf-planreview setup")}`;
+  }
+  const version = status.version ? ` ${MUTED(`(v${status.version})`)}` : "";
+  const inHerdr = process.env.HERDR_ENV === "1" && !!process.env.HERDR_PANE_ID;
+  const surface =
+    status.herdrReady && inHerdr
+      ? "Herdr TUI"
+      : status.managedState === "verified"
+        ? "Managed TUI"
+        : status.standaloneReady
+          ? "Standalone TUI"
+          : "Herdr TUI";
+  const needsDoctor =
+    status.managedState === "damaged" ||
+    status.herdrState === "broken" ||
+    status.herdrState === "unverified";
+  return `${SF_GREEN("✓")} ${SF_GREEN("Installed")}${version} ${MUTED(`· ${surface}`)}${needsDoctor ? ` ${SF_ORANGE("· check doctor")}` : ""}`;
+}
+
 function shouldRenderHomebrewStatus(data: SplashData): boolean {
   const homebrew = data.homebrew;
   if (!homebrew) return false;
@@ -1018,6 +1051,14 @@ function buildLeftColumn(
 
   lines.push(
     formatGlyphInfoRow("hunk", mode, "Hunk (Code Review)", formatHunkStatusValue(data, mode)),
+  );
+  lines.push(
+    formatGlyphInfoRow(
+      "plannotator",
+      mode,
+      "Plannotator (Plan)",
+      formatPlannotatorStatusValue(data, mode),
+    ),
   );
 
   lines.push(

@@ -13,6 +13,7 @@ import type { TldrawStatusSnapshot } from "../../../lib/common/tldraw-status/sto
 import type { CodeAnalyzerReadinessState } from "../../../lib/common/code-analyzer-status/store.ts";
 import type { AutoUpdateStatus } from "../../../lib/common/auto-update/store.ts";
 import type { BrowserRuntimeStatusInfo } from "../../../lib/common/browser-runtime-status/store.ts";
+import type { PlannotatorRuntimeStatus } from "../../../lib/common/plannotator-runtime.ts";
 import type { GlyphMode } from "../../../lib/common/glyph-policy.ts";
 import type { SfLspHealthSnapshot } from "../../../lib/common/sf-lsp-health/index.ts";
 
@@ -340,6 +341,8 @@ export interface SplashData {
   fontRuntime?: FontRuntimeStatusInfo;
   /** Optional Hunk diff-review tool readiness. Cache-first; no integration implied. */
   hunk?: HunkStatusInfo;
+  /** Optional Plannotator document-review TUI readiness. */
+  plannotator?: PlannotatorRuntimeStatus;
   /** Optional Homebrew package-manager readiness. Cache-first; no update/doctor runs. */
   homebrew?: HomebrewStatusInfo;
   /** Native Auto Update setting/status. Cache-only in the splash. */

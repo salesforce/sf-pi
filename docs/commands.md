@@ -193,6 +193,13 @@ _Short Salesforce waiting messages in Pi's working indicator_
 - Default: **on**
 - Commands: _none_
 
+### [SF Plannotator](./extensions/sf-planreview)
+
+_TUI-first review of Pi replies and local text artifacts through Herdr Annotate or Plannotator TUI_
+
+- Default: **on**
+- Commands: `/sf-planreview`
+
 ### [SF Skills](./extensions/sf-skills)
 
 _Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Toggle managed-library invocation via disable-model-invocation stamps on an effective tree. Plus a passive live-context HUD, an expandable first-turn warning with source and setup guidance for unconfigured MCP services declared by agent-invocable managed skills, forcedotcom/sf-skills install, per-skill usage counters, and prune._

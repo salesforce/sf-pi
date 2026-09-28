@@ -134,6 +134,12 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
   <span>Non-mutating Salesforce workflow plans for the current split Herdr tools.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-herdr</code></span>
 </a>
+<a class="sfpi-extension-card" href="./extensions/sf-planreview">
+  <span class="sfpi-card-kicker">UI · on</span>
+  <strong>SF Plannotator</strong>
+  <span>TUI-first review of Pi replies and local text artifacts through Herdr Annotate or Plannotator TUI</span>
+  <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-planreview</code></span>
+</a>
 </div>
 
 ## Collaborate and improve

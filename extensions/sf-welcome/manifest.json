@@ -24,6 +24,7 @@
       "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json",
       "<globalAgentDir>/sf-pi/sf-welcome/font-status.json",
       "<globalAgentDir>/sf-pi/sf-welcome/hunk-status.json",
+      "<globalAgentDir>/sf-pi/sf-planreview/status.json",
       "<globalAgentDir>/sf-pi/sf-welcome/homebrew-status.json",
       "<globalAgentDir>/sf-pi/auto-update/status.json"
     ]

@@ -637,6 +637,7 @@ describe("sf-welcome", () => {
 
     expect(plain).toContain("Hunk (Code Review)");
     expect(plain).toContain("Optional · not installed");
+    expect(plain).toContain("Plannotator (Plan)");
     expect(plain).toContain("Auto Update");
     expect(plain).toContain("Off · optional");
     expect(plain).toContain("Code Analyzer");
@@ -644,6 +645,105 @@ describe("sf-welcome", () => {
     expect(plain).not.toContain("Install recommended");
     expect(plain).not.toContain("/sf-pi auto-update on");
     expect(plain).not.toContain("/sf-code-analyzer doctor");
+  });
+
+  it("distinguishes missing and damaged Plannotator installs in the welcome row", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const base = {
+      modelName: "Test model",
+      providerName: "test",
+      loadedCounts: { extensions: 3, skills: 0, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 100,
+    };
+    const row = (managedState: "missing" | "damaged", herdrState: "missing" | "broken") =>
+      stripAnsi(
+        new SfWelcomeOverlay({
+          ...base,
+          plannotator: {
+            installed: false,
+            standaloneReady: false,
+            herdrReady: false,
+            managedState,
+            herdrState,
+            loading: false,
+          },
+        })
+          .render(160)
+          .join("\n"),
+      )
+        .split("\n")
+        .find((line) => line.includes("Plannotator (Plan)"));
+    expect(row("missing", "missing")).toContain("Not installed · /sf-planreview setup");
+    expect(row("damaged", "broken")).toContain("Needs repair · /sf-planreview doctor");
+  });
+
+  it("shows Plannotator TUI readiness without replacing Hunk", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Test model",
+      providerName: "test",
+      loadedCounts: { extensions: 3, skills: 0, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 100,
+      hunk: { installed: true, installedVersion: "0.22.0", loading: false },
+      plannotator: {
+        installed: true,
+        herdrReady: true,
+        standaloneReady: false,
+        managedState: "missing" as const,
+        herdrState: "ready" as const,
+        version: "0.9.4",
+        loading: false,
+      },
+    };
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(160).join("\n"));
+    expect(plain).toContain("Hunk (Code Review)");
+    expect(plain).toContain("📋 Plannotator (Plan)");
+    expect(plain).toContain("Installed (v0.9.4) · Herdr TUI");
+  });
+
+  it("shows managed TUI as the route outside Herdr even when the plugin is installed", async () => {
+    const previous = process.env.HERDR_ENV;
+    process.env.HERDR_ENV = "0";
+    try {
+      const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+      const plain = stripAnsi(
+        new SfWelcomeOverlay({
+          modelName: "Test model",
+          providerName: "test",
+          loadedCounts: { extensions: 1, skills: 0, promptTemplates: 0 },
+          recentSessions: [],
+          extensionHealth: [],
+          slackConnected: false,
+          monthlyCost: 0,
+          monthlyBudget: 100,
+          plannotator: {
+            installed: true,
+            standaloneReady: true,
+            herdrReady: true,
+            managedState: "verified",
+            herdrState: "ready",
+            loading: false,
+            version: "0.9.4",
+          },
+        })
+          .render(160)
+          .join("\n"),
+      );
+      expect(plain.split("\n").find((line) => line.includes("Plannotator (Plan)"))).toContain(
+        "Managed TUI",
+      );
+    } finally {
+      if (previous === undefined) delete process.env.HERDR_ENV;
+      else process.env.HERDR_ENV = previous;
+    }
   });
 
   it("renders pending and package-update coordinator states truthfully", async () => {

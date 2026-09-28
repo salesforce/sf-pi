@@ -167,6 +167,7 @@ export const GLYPH_TABLE = {
   herdr: { emoji: "🪟", ascii: "mx" },
   fonts: { emoji: "🔤", ascii: "Aa" },
   hunk: { emoji: "📝", ascii: "+-" },
+  plannotator: { emoji: "📋", ascii: "pl" },
   homebrew: { emoji: "🍺", ascii: "bw" },
   autoUpdate: { emoji: "🔄", ascii: "up" },
   browser: { emoji: "🌐", ascii: "br" },

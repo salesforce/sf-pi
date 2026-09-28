@@ -285,6 +285,17 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
+    id: "sf-planreview",
+    name: "SF Plannotator",
+    description: "TUI-first review of Pi replies and local text artifacts through Herdr Annotate or Plannotator TUI",
+    file: "extensions/sf-planreview/index.ts",
+    category: "ui",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-planreview"],
+    events: ["session_shutdown","input"],
+  },
+  {
     id: "sf-skills",
     name: "SF Skills",
     description: "Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Toggle managed-library invocation via disable-model-invocation stamps on an effective tree. Plus a passive live-context HUD, an expandable first-turn warning with source and setup guidance for unconfigured MCP services declared by agent-invocable managed skills, forcedotcom/sf-skills install, per-skill usage counters, and prune.",
