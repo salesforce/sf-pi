@@ -11,6 +11,7 @@ import {
   type BrowserSnapshotRefLookup,
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
+import { classifySfMcpRisk } from "./mcp-tool-risk.ts";
 import type { SafetySubjectContext } from "./safety-subject.ts";
 import type { NativeToolSafetySubject } from "./types.ts";
 
@@ -33,6 +34,7 @@ export function classifyNativeToolRisk(
     classifyData360(toolName, input) ??
     classifySfSoql(toolName, input) ??
     classifySlackCanvas(toolName, input) ??
+    classifySfMcpRisk(toolName, input, context) ??
     classifySfBrowserCommit(toolName, input, context)
   );
 }

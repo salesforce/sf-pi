@@ -6,6 +6,7 @@
  * gates. It is intentionally narrow: only file-path tools, bash commands, and
  * current `herdr_pane` run commands are safety subjects today.
  */
+import { resolveMcpTargetType, type McpTargetType } from "./mcp-target-context.ts";
 import { classifyNativeToolRisk } from "./native-tool-risk-registry.ts";
 import type { SafetySubject } from "./types.ts";
 
@@ -13,6 +14,9 @@ const FILE_PATH_TOOLS = new Set(["read", "write", "edit", "grep", "find", "ls"])
 
 export interface SafetySubjectContext {
   sessionId?: string;
+  cwd?: string;
+  projectTrusted?: boolean;
+  mcpTargetType?: McpTargetType;
 }
 
 export function normalizeSafetySubject(
@@ -32,5 +36,9 @@ export function normalizeSafetySubject(
     return { kind: "shellCommand", toolName, command: input.command };
   }
 
-  return classifyNativeToolRisk(toolName, input, context);
+  const serverName = toolName.match(/^mcp__([A-Za-z0-9_-]+)__/i)?.[1];
+  const mcpTargetType = serverName
+    ? resolveMcpTargetType(context.cwd, serverName, context.projectTrusted)
+    : context.mcpTargetType;
+  return classifyNativeToolRisk(toolName, input, { ...context, mcpTargetType });
 }

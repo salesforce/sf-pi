@@ -630,6 +630,8 @@
         "index.ts",
         "lib/safety-kernel.ts",
         "lib/native-tool-risk-registry.ts",
+        "lib/mcp-tool-risk.ts",
+        "lib/mcp-target-context.ts",
         "lib/command-gate.ts",
         "lib/org-aware-gate.ts",
         "lib/config.ts"
@@ -646,14 +648,14 @@
         "Every block / allow / confirm decision is persisted as an audit entry.",
         "Power Tool Mode can persistently auto-approve selected confirm-class decisions; production/unknown org auto-approve is a separate opt-in and hard blocks are never bypassed.",
         "Operator auto-approve env mode is process-scoped, audited, and does not bypass hard blocks.",
-        "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice Agent Script lifecycle, SF Flow activation/deactivation, Data 360, Apex, Slack Canvas, and SF Browser commit surfaces.",
+        "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice Agent Script lifecycle, SF Flow activation/deactivation, Data 360, Apex, Slack Canvas, SF Browser commit surfaces, Salesforce MCP record writes/deletes, DX mutations, hosted Data 360 execution, and managed external MCP operations.",
         "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."
       ]
     },
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5742
+    "srcLoc": 6005
   },
   {
     "id": "sf-herdr",
@@ -858,6 +860,61 @@
     "hasReadme": true,
     "hasTests": true,
     "srcLoc": 2418
+  },
+  {
+    "id": "sf-mcp",
+    "name": "SF MCP",
+    "description": "Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime",
+    "category": "assistive",
+    "maturity": "experimental",
+    "defaultEnabled": true,
+    "alwaysActive": false,
+    "configurable": true,
+    "commands": [
+      "/sf-mcp"
+    ],
+    "providers": [],
+    "tools": [],
+    "events": [
+      "session_start",
+      "before_agent_start"
+    ],
+    "docs": {
+      "intentGroup": "Personalize pi",
+      "summary": "Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup fields, review, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, recommends complementary exposure profiles, preserves manual native configuration, keeps unknown custom tools quarantined, and writes no server entry until the user explicitly enables one.",
+      "primaryFiles": [
+        "index.ts",
+        "lib/config-panel.ts",
+        "lib/setup-form.ts",
+        "lib/presets.ts",
+        "lib/conflict-planner.ts",
+        "lib/service.ts",
+        "lib/mcp-config.ts",
+        "lib/managed-state.ts"
+      ],
+      "stateFiles": [
+        "~/.pi/agent/mcp.json or <cwd>/.pi/mcp.json (Pi-native MCP configuration)",
+        "<globalAgentDir>/sf-pi/sf-mcp/managed-presets.json",
+        "<cwd>/.pi/sf-mcp/managed-presets.json"
+      ],
+      "env": [
+        "ANYPOINT_CLIENT_ID",
+        "ANYPOINT_CLIENT_SECRET"
+      ],
+      "safety": [
+        "No Salesforce MCP server is configured, connected, launched, or exposed by default.",
+        "Pi's built-in MCP extension owns transport, OAuth, tokens, connections, exposure, resources, and readiness.",
+        "Direct capability overlaps default to native SF Pi owners; complementary profiles use hidden-by-default server exposure with exact approved tools.",
+        "Manual, malformed, or externally modified native MCP entries are never overwritten.",
+        "Custom MCP URLs start with hidden exposure so no tools are callable before review.",
+        "Hosted Salesforce record mutations are Guardrail-mediated and fail closed while their OAuth target remains unverified.",
+        "MuleSoft secrets are referenced through environment variables and are never stored in native MCP configuration or SF MCP state."
+      ]
+    },
+    "entry": "extensions/sf-mcp/index.ts",
+    "hasReadme": true,
+    "hasTests": true,
+    "srcLoc": 2521
   },
   {
     "id": "sf-ohana-spinner",

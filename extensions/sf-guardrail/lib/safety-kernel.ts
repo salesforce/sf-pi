@@ -23,6 +23,7 @@ export interface SafetyKernelInput {
   cwd: string;
   config: GuardrailConfig;
   sessionId?: string;
+  projectTrusted?: boolean;
 }
 export type GuardrailDecision = ClassifiedDecision;
 
@@ -31,6 +32,8 @@ export async function evaluateSafety(
 ): Promise<GuardrailDecision | undefined> {
   const subject = normalizeSafetySubject(input.toolName, input.input, {
     sessionId: input.sessionId,
+    cwd: input.cwd,
+    projectTrusted: input.projectTrusted,
   });
   if (!subject) return undefined;
 

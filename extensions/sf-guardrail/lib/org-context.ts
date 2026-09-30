@@ -20,7 +20,8 @@ import type { ConfigInfo, OrgInfo } from "../../../lib/common/sf-environment/typ
 import { extractTargetOrg, tokenize } from "./bash-ast.ts";
 import type { OrgTypeFilter } from "./types.ts";
 
-export type OrgResolutionSource = "cache" | "lookup" | "productionAliases" | "guessed";
+export type OrgResolutionSource =
+  "cache" | "lookup" | "productionAliases" | "mcpConfig" | "guessed";
 
 export interface OrgContext {
   /** Alias, username, or org id used on the command (or default if unflagged). */

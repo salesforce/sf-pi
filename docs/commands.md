@@ -170,6 +170,13 @@ _Real-time Salesforce LSP diagnostics on write/edit with a working indicator, tr
 - Default: **on**
 - Commands: `/sf-lsp`
 
+### [SF MCP](./extensions/sf-mcp)
+
+_Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime_
+
+- Default: **on**
+- Commands: `/sf-mcp`
+
 ## UI
 
 ### [SF Data Explorer](./extensions/sf-data-explorer)

@@ -157,6 +157,7 @@ export default function sfGuardrail(pi: ExtensionAPI) {
       cwd: ctx.cwd,
       config,
       sessionId: ctx.sessionManager.getSessionId(),
+      projectTrusted: ctx.isProjectTrusted(),
     });
     if (!decision) return undefined;
 

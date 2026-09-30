@@ -253,6 +253,22 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     events: ["session_start"],
   },
   {
+    id: "sf-mcp",
+    name: "SF MCP",
+    description: "Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime",
+    file: "extensions/sf-mcp/index.ts",
+    category: "assistive",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-mcp"],
+    events: ["session_start","before_agent_start"],
+    configurable: true,
+    getConfigPanel: async () => {
+      const mod = await import("../extensions/sf-mcp/lib/config-panel.ts");
+      return mod.createConfigPanel;
+    },
+  },
+  {
     id: "sf-ohana-spinner",
     name: "SF Ohana Spinner",
     description: "Short Salesforce waiting messages in Pi's working indicator",

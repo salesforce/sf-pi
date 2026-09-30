@@ -38,6 +38,7 @@ sf-pi/
 │   ├── sf-llm-gateway/
 │   ├── sf-lsp/
 │   ├── sf-lwc/
+│   ├── sf-mcp/
 │   ├── sf-ohana-spinner/
 │   ├── sf-pi-manager/
 │   ├── sf-planreview/

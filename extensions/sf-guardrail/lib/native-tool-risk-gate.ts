@@ -19,7 +19,11 @@ export function evaluateNativeToolRisk(
   config: GuardrailConfig,
 ): ClassifiedDecision {
   const org = subject.usesSalesforceOrg
-    ? resolveOrgContextForTarget(subject.targetOrg, cwd, config.productionAliases)
+    ? subject.targetOrgType
+      ? externalMcpOrg(subject.targetOrgType)
+      : subject.targetOrgUnverified
+        ? unverifiedExternalOrg()
+        : resolveOrgContextForTarget(subject.targetOrg, cwd, config.productionAliases)
     : undefined;
   return buildNativeToolDecision(subject, org);
 }
@@ -30,7 +34,12 @@ export async function evaluateNativeToolRiskWithOrgLookup(
   config: GuardrailConfig,
 ): Promise<ClassifiedDecision> {
   const fast = evaluateNativeToolRisk(subject, cwd, config);
-  if (!subject.usesSalesforceOrg || !fast.orgResolutionGuessed) {
+  if (
+    !subject.usesSalesforceOrg ||
+    subject.targetOrgType ||
+    subject.targetOrgUnverified ||
+    !fast.orgResolutionGuessed
+  ) {
     return fast;
   }
 
@@ -72,6 +81,26 @@ function buildNativeToolDecision(
     orgResolutionGuessed: org?.guessed,
     orgResolutionSource: org?.source,
     orgTargetExplicit: org?.explicit,
+  };
+}
+
+function externalMcpOrg(type: "production" | "sandbox"): OrgContext {
+  return {
+    alias: undefined,
+    type,
+    guessed: false,
+    explicit: false,
+    source: "mcpConfig",
+  };
+}
+
+function unverifiedExternalOrg(): OrgContext {
+  return {
+    alias: undefined,
+    type: "production",
+    guessed: true,
+    explicit: false,
+    source: "guessed",
   };
 }
 

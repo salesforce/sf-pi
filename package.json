@@ -50,6 +50,7 @@
       "./extensions/sf-planreview/index.ts",
       "./extensions/sf-lsp/index.ts",
       "./extensions/sf-agentscript/index.ts",
+      "./extensions/sf-mcp/index.ts",
       "./extensions/sf-skills/index.ts",
       "./extensions/sf-feedback/index.ts",
       "./extensions/sf-flow/index.ts"

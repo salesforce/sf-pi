@@ -23,6 +23,7 @@ export const extensionSidebarItems = [
   { text: "SF Feedback", link: "/extensions/sf-feedback" },
   { text: "SF Slack", link: "/extensions/sf-slack" },
   { text: "SF LLM Gateway", link: "/extensions/sf-llm-gateway" },
+  { text: "SF MCP", link: "/extensions/sf-mcp" },
   { text: "SF Ohana Spinner", link: "/extensions/sf-ohana-spinner" },
   { text: "SF Pi Manager", link: "/extensions/sf-pi-manager" },
   { text: "SF Skills", link: "/extensions/sf-skills" },
