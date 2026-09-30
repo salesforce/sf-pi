@@ -74,12 +74,12 @@ describe("detectPiReleaseStatus", () => {
       {} as NodeJS.ProcessEnv,
       {
         runNpm: noPolicyRunner,
-        installedVersion: "0.99.1",
+        installedVersion: "0.99.2",
       },
     );
 
     expect(status.freshness).toBe("latest");
-    expect(status.latestVersion).toBe("0.99.1");
+    expect(status.latestVersion).toBe("0.99.2");
     expect(status.absoluteLatestVersion).toBe("0.100.0-rc.1");
     expect(status.supportWindowLimited).toBe(true);
     expect(status.updateCommand).toBe("/sf-pi doctor runtime");
@@ -88,11 +88,11 @@ describe("detectPiReleaseStatus", () => {
   it("still blocks Pi 1.x pending a major-version audit", async () => {
     const status = await detectPiReleaseStatus(async () => "1.0.0", {} as NodeJS.ProcessEnv, {
       runNpm: noPolicyRunner,
-      installedVersion: "0.99.1",
+      installedVersion: "0.99.2",
     });
 
     expect(status.freshness).toBe("latest");
-    expect(status.latestVersion).toBe("0.99.1");
+    expect(status.latestVersion).toBe("0.99.2");
     expect(status.absoluteLatestVersion).toBe("1.0.0");
     expect(status.supportWindowLimited).toBe(true);
     expect(status.updateCommand).toBe("/sf-pi doctor runtime");

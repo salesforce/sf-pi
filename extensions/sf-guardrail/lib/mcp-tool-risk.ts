@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Normalize SF MCP managed tool calls into Guardrail native-tool subjects. */
 import { fingerprintText } from "./fingerprint.ts";
+import { parseMcpToolIdentity } from "./mcp-tool-identity.ts";
 import type { SafetySubjectContext } from "./safety-subject.ts";
 import type { NativeToolSafetySubject } from "./types.ts";
 
@@ -11,14 +12,14 @@ const RECORD_WRITE_TOOLS = new Set([
 ]);
 const RECORD_DELETE_TOOLS = new Set(["deleteSobjectRecord", "deleteRelatedRecord"]);
 const RECORD_SERVERS = new Set([
-  "salesforce-sobject-mutations",
-  "salesforce-sobject-deletes",
-  "salesforce-sobject-all",
+  "salesforce_sobject_mutations",
+  "salesforce_sobject_deletes",
+  "salesforce_sobject_all",
 ]);
 const EXTERNAL_SERVERS = new Set([
-  "salesforce-marketing-cloud",
-  "mulesoft-dx",
-  "salesforce-custom",
+  "salesforce_marketing_cloud",
+  "mulesoft_dx",
+  "salesforce_custom",
 ]);
 const DX_MUTATION_PATTERN =
   /^(deploy|create|delete|update|assign|unassign|publish|activate|deactivate|execute)[_-]/i;
@@ -28,11 +29,9 @@ export function classifySfMcpRisk(
   input: Record<string, unknown>,
   context: SafetySubjectContext,
 ): NativeToolSafetySubject | undefined {
-  const match = toolName.match(/^mcp__([A-Za-z0-9_-]+)__([A-Za-z0-9_-]+)$/);
-  if (!match) return undefined;
-  const serverName = match[1];
-  const mcpTool = match[2];
-  if (!serverName || !mcpTool) return undefined;
+  const identity = parseMcpToolIdentity(toolName);
+  if (!identity) return undefined;
+  const { serverName, toolName: mcpTool } = identity;
 
   const payloadFingerprint = fingerprintText(JSON.stringify({ serverName, mcpTool, input }));
   const targetOrgType =
@@ -54,7 +53,7 @@ export function classifySfMcpRisk(
     });
   }
 
-  if (serverName === "salesforce-data360" && mcpTool === "execute") {
+  if (serverName === "salesforce_data360" && mcpTool === "execute") {
     const dispatchedTool = stringValue(input.toolName) ?? "unknown Data 360 operation";
     return {
       kind: "nativeTool",
@@ -77,7 +76,7 @@ export function classifySfMcpRisk(
     };
   }
 
-  if (serverName === "salesforce-dx" && DX_MUTATION_PATTERN.test(mcpTool)) {
+  if (serverName === "salesforce_dx" && DX_MUTATION_PATTERN.test(mcpTool)) {
     const targetOrg =
       stringValue(input.target_org) ??
       stringValue(input.targetOrg) ??

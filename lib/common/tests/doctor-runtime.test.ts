@@ -6,12 +6,12 @@ import { buildRuntimeUpdateAdvice } from "../doctor/diagnostics.ts";
 describe("buildRuntimeUpdateAdvice", () => {
   it("reports the exact audited runtime without blocking future stable updates", () => {
     const advice = buildRuntimeUpdateAdvice({
-      piVersion: "0.99.1",
-      installedPiPackageVersion: "0.99.1",
+      piVersion: "0.99.2",
+      installedPiPackageVersion: "0.99.2",
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice.join("\n")).toContain("inside the audited >=0.99.1 <0.100.0 window");
+    expect(advice.join("\n")).toContain("inside the audited >=0.99.2 <0.99.3 window");
     expect(advice.join("\n")).toContain("newer stable pre-1.0 releases");
     expect(advice.join("\n")).not.toContain("No unbounded Pi update is recommended");
     expect(advice.join("\n")).not.toContain("npm install -g");
@@ -36,9 +36,9 @@ describe("buildRuntimeUpdateAdvice", () => {
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice[0]).toContain("loads stable Pi >=0.99.1 <1.0.0");
+    expect(advice[0]).toContain("loads stable Pi >=0.99.2 <1.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.1 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.2 --force",
     );
   });
 
@@ -49,29 +49,29 @@ describe("buildRuntimeUpdateAdvice", () => {
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice[0]).toContain("loads stable Pi >=0.99.1 <1.0.0");
+    expect(advice[0]).toContain("loads stable Pi >=0.99.2 <1.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.1 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.2 --force",
     );
   });
 
   it("directs too-old Pi runtimes to the audited stable patch", () => {
     const advice = buildRuntimeUpdateAdvice({
-      piVersion: "0.99.0",
-      installedPiPackageVersion: "0.99.0",
+      piVersion: "0.99.1",
+      installedPiPackageVersion: "0.99.1",
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice[0]).toContain("loads stable Pi >=0.99.1 <1.0.0");
+    expect(advice[0]).toContain("loads stable Pi >=0.99.2 <1.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.1 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.2 --force",
     );
   });
 
   it("keeps npm release-age policy details on the exact-version fallback", () => {
     const advice = buildRuntimeUpdateAdvice({
-      piVersion: "0.99.0",
-      installedPiPackageVersion: "0.99.0",
+      piVersion: "0.99.1",
+      installedPiPackageVersion: "0.99.1",
       allPiPaths: ["/tmp/bin/pi"],
       npmMinReleaseAge: "1440",
     });
@@ -79,21 +79,21 @@ describe("buildRuntimeUpdateAdvice", () => {
     expect(advice.join("\n")).toContain("npm release-age policy detected");
     expect(advice.join("\n")).toContain("min-release-age=1440");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.1 --force --min-release-age=0",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.2 --force --min-release-age=0",
     );
   });
 
   it("keeps npm before policy details on the exact-version fallback", () => {
     const advice = buildRuntimeUpdateAdvice({
-      piVersion: "0.99.0",
-      installedPiPackageVersion: "0.99.0",
+      piVersion: "0.99.1",
+      installedPiPackageVersion: "0.99.1",
       allPiPaths: ["/tmp/bin/pi"],
       npmBefore: "2026-05-18T00:00:00.000Z",
     });
 
     expect(advice.join("\n")).toContain("before=2026-05-18T00:00:00.000Z");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.1 --force --before=null --min-release-age=0",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.99.2 --force --before=null --min-release-age=0",
     );
   });
 });

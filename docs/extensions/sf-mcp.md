@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup fields, review, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, recommends complementary exposure profiles, preserves manual native configuration, keeps unknown custom tools quarantined, and writes no server entry until the user explicitly enables one.
+Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup fields, review, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, recommends complementary exposure profiles, publishes compact native server descriptions, preserves manual native configuration, keeps unknown custom tools quarantined, and writes no server entry until the user explicitly enables one.
 
 ## Start
 

@@ -7,6 +7,7 @@
  * current `herdr_pane` run commands are safety subjects today.
  */
 import { resolveMcpTargetType, type McpTargetType } from "./mcp-target-context.ts";
+import { parseMcpToolIdentity } from "./mcp-tool-identity.ts";
 import { classifyNativeToolRisk } from "./native-tool-risk-registry.ts";
 import type { SafetySubject } from "./types.ts";
 
@@ -36,7 +37,7 @@ export function normalizeSafetySubject(
     return { kind: "shellCommand", toolName, command: input.command };
   }
 
-  const serverName = toolName.match(/^mcp__([A-Za-z0-9_-]+)__/i)?.[1];
+  const serverName = parseMcpToolIdentity(toolName)?.serverName;
   const mcpTargetType = serverName
     ? resolveMcpTargetType(context.cwd, serverName, context.projectTrusted)
     : context.mcpTargetType;

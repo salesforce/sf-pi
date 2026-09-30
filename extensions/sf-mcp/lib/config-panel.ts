@@ -511,7 +511,7 @@ function conflictOptions(plan: ConflictPlan): ConflictOption[] {
       {
         label: "Enable SObject All side-by-side  · Advanced",
         description:
-          "Expose the complete MCP server through codemode-deferred and add explicit routing guidance.",
+          "Expose the complete MCP server through codemode and add explicit routing guidance.",
         resolution: "side-by-side",
       },
       { label: "Cancel", description: "Return to the Salesforce MCP catalog." },

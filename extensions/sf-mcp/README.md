@@ -8,6 +8,7 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 - Detects semantic overlap with enabled SF Pi family tools.
 - Recommends a complementary profile instead of silently duplicating capabilities.
 - Writes explicit, user-reviewed entries to Pi's native global or project `mcp.json`.
+- Publishes each preset's short description for Pi's MCP prompt summary, tool-search ranking, and namespace inspection.
 - Preserves unknown top-level configuration and unrelated servers.
 - Refuses to overwrite manual, malformed, or externally modified entries.
 - Uses `/mcp` for connection state, OAuth, errors, reconnects, and exposure review.

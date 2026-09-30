@@ -78,10 +78,11 @@ describe("SF MCP preset service", () => {
     const config = JSON.parse(readFileSync(mcpConfigPath(cwd, "project"), "utf8"));
     expect(config.mcpServers).not.toHaveProperty("salesforce-sobject-all");
     expect(config.mcpServers["salesforce-sobject-mutations"]).toMatchObject({
+      description: getPreset("sobject-mutations").description,
       exposure: "hidden",
       toolExposure: {
-        createSobjectRecord: "codemode-deferred",
-        updateSobjectRecord: "codemode-deferred",
+        createSobjectRecord: "codemode",
+        updateSobjectRecord: "codemode",
       },
     });
     expect(

@@ -42,7 +42,8 @@ describe("native Pi MCP configuration", () => {
         "--toolsets",
         "orgs,metadata,users",
       ],
-      exposure: "codemode-deferred",
+      description: "Salesforce DX metadata and org operations",
+      exposure: "codemode",
     };
 
     const result = upsertMcpServer(file, "salesforce-dx", config);

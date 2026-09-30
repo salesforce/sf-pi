@@ -359,7 +359,7 @@ function resolutionLabel(resolution: McpResolution): string {
 }
 
 function describeTransport(config: McpServerConfig): string {
-  if (config.url) return config.url;
+  if ("url" in config) return config.url;
   return [config.command, ...(config.args ?? [])].filter(Boolean).join(" ");
 }
 
