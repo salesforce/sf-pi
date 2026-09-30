@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.303.5](https://github.com/salesforce/sf-pi/compare/v0.303.4...v0.303.5) (2026-09-30)
+
+
+### Bug Fixes
+
+* **llm-gateway:** harden GPT-6 image and stream handling ([49656fc](https://github.com/salesforce/sf-pi/commit/49656fc26f4c127c6e2cbeebac6ea0a17f0b2c18))
+
 ## [0.303.4](https://github.com/salesforce/sf-pi/compare/v0.303.3...v0.303.4) (2026-09-30)
 
 
