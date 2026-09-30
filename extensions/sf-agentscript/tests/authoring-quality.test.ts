@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ExtensionContext, Theme, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { Theme, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
 import { registerAuthoringTool } from "../lib/authoring-tool.ts";
 import { AGENT_SCRIPT_QUALITY_RULES } from "../lib/quality/catalog.ts";
 import { validateAuthoringParams } from "../lib/authoring/params.ts";
@@ -23,8 +24,11 @@ function captureTool(): ToolDefinition {
   return tool;
 }
 
-function ctx(): ExtensionContext {
-  return { cwd: workDir, sessionManager: { getBranch: () => [] } } as unknown as ExtensionContext;
+function ctx() {
+  return createToolTestContext({
+    cwd: workDir,
+    sessionManager: { getBranch: () => [] },
+  });
 }
 
 const theme = {

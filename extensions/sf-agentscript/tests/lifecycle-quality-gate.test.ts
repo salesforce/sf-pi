@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
 import { registerLifecycleTool } from "../lib/lifecycle-tool.ts";
 import { resetSessionQualityOverrides } from "../lib/quality/publication-gate.ts";
 
@@ -23,8 +24,8 @@ function captureTool(): ToolDefinition {
   return tool;
 }
 
-function ctx(): ExtensionContext {
-  return { cwd, sessionManager: { getBranch: () => [] } } as unknown as ExtensionContext;
+function ctx() {
+  return createToolTestContext({ cwd, sessionManager: { getBranch: () => [] } });
 }
 
 describe("lifecycle High quality gate", () => {

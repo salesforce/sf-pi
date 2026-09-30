@@ -2,9 +2,10 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
 import { CODE_ANALYZER_DETAILS_KEY, registerCodeAnalyzerTool } from "../lib/code_analyzer-tool.ts";
 
 let cwd: string;
@@ -30,13 +31,13 @@ function captureTool(sendUserMessage = vi.fn()): ToolDefinition {
   return tool;
 }
 
-function ctx(branch: unknown[] = [], hasUI = false, confirm = vi.fn()): ExtensionContext {
-  return {
+function ctx(branch: unknown[] = [], hasUI = false, confirm = vi.fn()) {
+  return createToolTestContext({
     cwd,
     hasUI,
     ui: { confirm },
     sessionManager: { getBranch: () => branch },
-  } as unknown as ExtensionContext;
+  });
 }
 
 describe("code_analyzer tool actions", () => {

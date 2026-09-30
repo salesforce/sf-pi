@@ -4,7 +4,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
 import { registerAuthoringTool } from "../lib/authoring-tool.ts";
 
 let cwd: string;
@@ -26,8 +27,8 @@ function captureTool(): ToolDefinition {
   return tool;
 }
 
-function context(): ExtensionContext {
-  return { cwd, sessionManager: { getBranch: () => [] } } as unknown as ExtensionContext;
+function context() {
+  return createToolTestContext({ cwd, sessionManager: { getBranch: () => [] } });
 }
 
 async function writeAgent(name: string, source: string): Promise<string> {

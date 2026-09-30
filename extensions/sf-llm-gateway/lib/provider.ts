@@ -21,9 +21,11 @@ import {
   fetchGatewayModelInfoMap,
   getPortableGatewayModelCompat,
   isPiCatalogBackedGatewayModelId,
+  type GatewayApi,
   type GatewayModelInfoMap,
   type TaggedGatewayModel,
 } from "./models.ts";
+export type { GatewayApi } from "./models.ts";
 import {
   filterCallableDiscoveredModelIds,
   isNoDefaultModelsAccessState,
@@ -45,8 +47,6 @@ import {
   streamSfGatewayResponses,
   streamSfGatewayResponsesFull,
 } from "./transport.ts";
-
-export type GatewayApi = "anthropic-messages" | "openai-completions" | "openai-responses";
 
 const PLACEHOLDER_ROOT = "https://gateway.invalid";
 
@@ -122,7 +122,7 @@ function nativeModel(model: TaggedGatewayModel, root: string): Model<GatewayApi>
       model.api === "openai-completions"
         ? toGatewayOpenAiBaseUrl(root)
         : toGatewayRootBaseUrl(root),
-  } as Model<GatewayApi>;
+  };
 }
 
 function resolvedRoot(model: Model<GatewayApi>, options?: StreamOptions): string {

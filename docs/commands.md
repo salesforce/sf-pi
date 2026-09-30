@@ -202,7 +202,7 @@ _TUI-first review of Pi replies and local text artifacts through Herdr Annotate 
 
 ### [SF Skills](./extensions/sf-skills)
 
-_Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Toggle managed-library invocation via disable-model-invocation stamps on an effective tree. Plus a passive live-context HUD, an expandable first-turn warning with source and setup guidance for unconfigured MCP services declared by agent-invocable managed skills, forcedotcom/sf-skills install, per-skill usage counters, and prune._
+_Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Cursor/custom/managed) → gate sources → toggle skills per scope (global/project) → resolve name conflicts, all compiled to native settings.skills[]. Toggle managed-library invocation via disable-model-invocation stamps on an effective tree. Plus a passive live-context HUD, forcedotcom/sf-skills install, per-skill usage counters, and prune. Pi's built-in MCP extension owns MCP configuration and readiness._
 
 - Default: **on**
 - Commands: `/sf-skills`

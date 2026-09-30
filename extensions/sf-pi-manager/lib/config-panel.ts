@@ -95,7 +95,7 @@ class SfPiManagerConfigPanel implements Focusable {
       pad(` ${autoCursor} ${t.fg("accent", autoBox)} ${t.bold("Enable daily native auto-update")}`),
     );
     for (const line of wrapPlainText(
-      "When enabled, due work waits for the next agent-settled boundary. SF Pi retains the audited Pi 0.81 runtime, updates only declared-compatible unpinned global npm Pi packages through Pi (including Herdr when outdated), then runs sf update stable. It never restarts Pi automatically.",
+      "When enabled, due work waits for the next agent-settled boundary. SF Pi never updates or restarts the active Pi runtime. It updates only declared-compatible unpinned global npm Pi packages through Pi (including Herdr when outdated), then runs sf update stable.",
       Math.max(20, width - 5),
     )) {
       lines.push(pad(`    ${t.fg("dim", line)}`));

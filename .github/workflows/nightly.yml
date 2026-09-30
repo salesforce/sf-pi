@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Pi 0.86 requires Node >= 22.19. Keep this lane equal to the
+        # Pi 0.99.1 requires Node >= 22.19. Keep this lane equal to the
         # supported range until Pi advertises a higher floor.
         node: [22]
 
@@ -65,9 +65,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - pi-version: "0.87.0"
-            experimental: false
-          - pi-version: "0.87.1"
+          - pi-version: "0.99.1"
             experimental: false
           - pi-version: "latest"
             experimental: true
@@ -97,6 +95,15 @@ jobs:
 
       - name: Type check against Pi ${{ matrix.pi-version }}
         run: npm run check
+
+      - name: Smoke SF Pi with Pi-native MCP
+        env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/pi-agent
+          PI_OFFLINE: "1"
+        run: |
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          ./node_modules/.bin/pi --offline --approve --list-models --no-session -e "$GITHUB_WORKSPACE" >/dev/null
+          ./node_modules/.bin/pi mcp list
 
       - name: Run tests against Pi ${{ matrix.pi-version }}
         run: npm test

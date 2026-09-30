@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-09-12",
+  "revision": "2026-09-30",
   "bundles": [
     {
       "id": "default",
@@ -18,13 +18,6 @@
         "pi-subagents",
         "pi-herdr"
       ]
-    },
-    {
-      "id": "advanced-integrations",
-      "name": "Advanced integrations",
-      "description": "Optional bridges to external tool ecosystems that require an explicit install choice.",
-      "defaultOnFirstRun": false,
-      "items": ["pi-mcp-adapter"]
     }
   ],
   "items": {
@@ -106,16 +99,6 @@
       "homepage": "https://github.com/nicobailon/pi-subagents",
       "license": "MIT",
       "rationale": "Unlocks multi-agent workflows \u2014 advisory review, implementation handoffs, and parallel fan-out \u2014 that pair naturally with the sf-pi planning and skill surface.",
-      "scope": "global"
-    },
-    "pi-mcp-adapter": {
-      "id": "pi-mcp-adapter",
-      "name": "Pi MCP Adapter",
-      "description": "MCP adapter for pi with lazy server connections, proxy-first discovery, approval controls, OAuth support, and project or global configuration.",
-      "source": "npm:pi-mcp-adapter",
-      "homepage": "https://github.com/nicobailon/pi-mcp-adapter",
-      "license": "MIT",
-      "rationale": "An opt-in bridge for teams that need MCP servers while keeping connections lazy and direct tool registration disabled by default.",
       "scope": "global"
     },
     "pi-herdr": {

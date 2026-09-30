@@ -13,7 +13,8 @@
 
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
-import type { ProviderModelConfig } from "@earendil-works/pi-coding-agent";
+
+export type GatewayApi = "anthropic-messages" | "openai-completions" | "openai-responses";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -30,14 +31,14 @@ const GATEWAY_APIS = new Set(["openai-completions", "openai-responses", "anthrop
 // Conservative OpenAI-compatible defaults
 // -------------------------------------------------------------------------------------------------
 
-const BASE_OPENAI_COMPAT: ProviderModelConfig["compat"] = {
+const BASE_OPENAI_COMPAT: Model<Api>["compat"] = {
   supportsStore: false,
   supportsUsageInStreaming: true,
   maxTokensField: "max_tokens",
   supportsDeveloperRole: false,
 };
 
-const COMMON_OPENAI_COMPAT: ProviderModelConfig["compat"] = {
+const COMMON_OPENAI_COMPAT: Model<Api>["compat"] = {
   ...BASE_OPENAI_COMPAT,
   supportsReasoningEffort: false,
 };
@@ -105,9 +106,7 @@ export type GatewayModelInfoMap = Record<string, GatewayModelInfo>;
  * A gateway model tagged with the real API transport used by Pi's complete
  * Provider API map.
  */
-export type TaggedGatewayModel = ProviderModelConfig & {
-  api: "openai-completions" | "anthropic-messages" | "openai-responses";
-};
+export type TaggedGatewayModel = Omit<Model<GatewayApi>, "provider" | "baseUrl">;
 
 let piModelCatalog: PiModelReference[] | undefined;
 
@@ -149,7 +148,7 @@ function consensusBooleanCompat(
  */
 function portableAnthropicCompat(
   references: readonly PiModelReference[],
-): ProviderModelConfig["compat"] | undefined {
+): Model<Api>["compat"] | undefined {
   const forceAdaptiveThinking = consensusBooleanCompat(references, "forceAdaptiveThinking");
   if (forceAdaptiveThinking !== true) return undefined;
 
@@ -169,7 +168,7 @@ export function getPortableGatewayModelCompat(
   id: string,
   api: TaggedGatewayModel["api"],
   references: readonly PiModelReference[] = getPiModelReferences(id),
-): ProviderModelConfig["compat"] | undefined {
+): Model<Api>["compat"] | undefined {
   if (api !== "anthropic-messages") return undefined;
   return portableAnthropicCompat(
     references.filter((reference) => reference.api === "anthropic-messages"),

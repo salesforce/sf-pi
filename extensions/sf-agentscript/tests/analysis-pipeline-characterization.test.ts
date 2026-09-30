@@ -4,7 +4,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
 import { clearAgentScriptAnalysisCache } from "../lib/analysis-snapshot.ts";
 import { registerAuthoringTool } from "../lib/authoring-tool.ts";
 import { registerLifecycleTool } from "../lib/lifecycle-tool.ts";
@@ -107,8 +108,8 @@ function captureLifecycleTool(): ToolDefinition {
   return tool;
 }
 
-function context(cwd: string): ExtensionContext {
-  return { cwd, sessionManager: { getBranch: () => [] } } as unknown as ExtensionContext;
+function context(cwd: string) {
+  return createToolTestContext({ cwd, sessionManager: { getBranch: () => [] } });
 }
 
 async function countParserCalls(run: () => Promise<void>): Promise<number> {

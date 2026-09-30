@@ -54,7 +54,7 @@ describe("collectRecommendationsStatus", () => {
     });
 
     const summary = collectRecommendationsStatus(projectDir);
-    expect(summary.total).toBe(10);
+    expect(summary.total).toBe(9);
     expect(summary.items.map((item) => item.id)).not.toContain("pi-updater");
 
     const installed = summary.items.filter((item) => item.status === "installed").map((i) => i.id);
@@ -62,7 +62,7 @@ describe("collectRecommendationsStatus", () => {
     expect(installed).toContain("pi-subagents");
   });
 
-  it("detects versioned FFF and MCP Adapter npm recommendations", () => {
+  it("does not recommend an external MCP adapter when Pi provides native MCP", () => {
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
     process.env.HOME = homeDir;
@@ -74,7 +74,7 @@ describe("collectRecommendationsStatus", () => {
     const summary = collectRecommendationsStatus(projectDir);
     const installed = summary.items.filter((item) => item.status === "installed").map((i) => i.id);
     expect(installed).toContain("pi-fff");
-    expect(installed).toContain("pi-mcp-adapter");
+    expect(summary.items.map((item) => item.id)).not.toContain("pi-mcp-adapter");
   });
 
   it("falls back to the state file for declined markers only", () => {

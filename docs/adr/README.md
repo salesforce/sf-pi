@@ -110,6 +110,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0120: SF Flow supports Omni-Channel as a specialized family](./0120-sf-flow-supports-omni-channel-as-a-specialized-family.md) — 2026-09-23
 - [0121: Pi 0.87.1 Audit Edge](./0121-pi-0871-audit-edge.md) — 2026-09-24
 - [0122: Gateway Catalog Requires Pi-Backed IDs](./0122-gateway-catalog-requires-pi-backed-ids.md) — 2026-09-26
+- [0123: Pi 0.99.1 Runtime Floor and Native Ownership](./0123-pi-0991-runtime-floor-and-native-ownership.md) — 2026-09-30
 
 ## Proposed
 

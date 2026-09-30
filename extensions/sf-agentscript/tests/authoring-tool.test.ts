@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
 import { registerAuthoringTool } from "../lib/authoring-tool.ts";
 import { validateAuthoringParams } from "../lib/authoring/params.ts";
 import { AGENTSCRIPT_BRANCH_STATE_KEY } from "../lib/branch-state.ts";
@@ -26,13 +27,13 @@ function captureAuthoringTool(): ToolDefinition {
   return tool;
 }
 
-function ctxWithBranch(branch: unknown[] = []): ExtensionContext {
-  return {
+function ctxWithBranch(branch: unknown[] = []) {
+  return createToolTestContext({
     cwd: workDir,
     sessionManager: {
       getBranch: () => branch,
     },
-  } as unknown as ExtensionContext;
+  });
 }
 
 describe("agentscript_authoring", () => {

@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import type { ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
 import { registerAuthoringTool } from "../lib/authoring-tool.ts";
 
 let workDir: string;
@@ -23,8 +24,11 @@ function captureAuthoringTool(): ToolDefinition {
   return tool;
 }
 
-function ctx(): ExtensionContext {
-  return { cwd: workDir, sessionManager: { getBranch: () => [] } } as unknown as ExtensionContext;
+function ctx() {
+  return createToolTestContext({
+    cwd: workDir,
+    sessionManager: { getBranch: () => [] },
+  });
 }
 
 describe("agentscript_authoring inspect/review", () => {
