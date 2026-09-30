@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.303.0-2026-09-30",
-  "latestVersion": "0.303.0",
+  "revision": "release-0.303.1-2026-09-30",
+  "latestVersion": "0.303.1",
   "announcements": [
     {
-      "id": "release-0.303.0",
+      "id": "release-0.303.1",
       "kind": "update",
-      "title": "sf-pi v0.303.0 — pi: SF Pi now requires Pi 0.99.1 or newer.",
+      "title": "sf-pi v0.303.1 — deps: bump brace-expansion from 5.0.9 to 5.0.12",
       "publishedAt": "2026-09-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.303.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.303.1",
       "severity": "info",
-      "body": "pi: SF Pi now requires Pi 0.99.1 or newer. — pi: require Pi 0.99.1 and adopt native MCP"
+      "body": "deps: bump brace-expansion from 5.0.9 to 5.0.12"
     }
   ]
 }
