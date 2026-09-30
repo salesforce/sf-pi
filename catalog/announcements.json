@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.303.6-2026-09-30",
-  "latestVersion": "0.303.6",
+  "revision": "release-0.304.0-2026-09-30",
+  "latestVersion": "0.304.0",
   "announcements": [
     {
-      "id": "release-0.303.6",
+      "id": "release-0.304.0",
       "kind": "update",
-      "title": "sf-pi v0.303.6 — deps: scope temporary brace-expansion exceptions",
+      "title": "sf-pi v0.304.0 — add conflict-aware Salesforce MCP catalog",
       "publishedAt": "2026-09-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.303.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.304.0",
       "severity": "info",
-      "body": "deps: scope temporary brace-expansion exceptions"
+      "body": "add conflict-aware Salesforce MCP catalog"
     }
   ]
 }
