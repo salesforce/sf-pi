@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.303.0](https://github.com/salesforce/sf-pi/compare/v0.302.2...v0.303.0) (2026-09-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pi:** SF Pi now requires Pi 0.99.1 or newer.
+
+### Features
+
+* **pi:** require Pi 0.99.1 and adopt native MCP ([2169b6b](https://github.com/salesforce/sf-pi/commit/2169b6b96aa750b9c512affd177b4417fa863cd3))
+
+
+### Bug Fixes
+
+* **deps:** update vulnerable transitive packages ([2ce7bea](https://github.com/salesforce/sf-pi/commit/2ce7bea48951fc98d6f5b7819b67f3d7d3a26ff1))
+
 ## [0.302.2](https://github.com/salesforce/sf-pi/compare/v0.302.1...v0.302.2) (2026-09-28)
 
 

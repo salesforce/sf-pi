@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.302.2-2026-09-28",
-  "latestVersion": "0.302.2",
+  "revision": "release-0.303.0-2026-09-30",
+  "latestVersion": "0.303.0",
   "announcements": [
     {
-      "id": "release-0.302.2",
+      "id": "release-0.303.0",
       "kind": "update",
-      "title": "sf-pi v0.302.2 — agentscript: retry eval 401 with named-user auth",
-      "publishedAt": "2026-09-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.302.2",
+      "title": "sf-pi v0.303.0 — pi: SF Pi now requires Pi 0.99.1 or newer.",
+      "publishedAt": "2026-09-30T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.303.0",
       "severity": "info",
-      "body": "agentscript: retry eval 401 with named-user auth"
+      "body": "pi: SF Pi now requires Pi 0.99.1 or newer. — pi: require Pi 0.99.1 and adopt native MCP"
     }
   ]
 }
