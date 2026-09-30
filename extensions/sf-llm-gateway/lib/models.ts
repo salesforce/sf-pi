@@ -89,6 +89,31 @@ export interface GatewayModelInfo {
   maxOutputTokens?: number;
   supportsReasoning?: boolean;
   supportsVision?: boolean;
+  supportsFunctionCalling?: boolean;
+  supportsPromptCaching?: boolean;
+}
+
+export function hasCompleteGatewayModelInfo(
+  info: GatewayModelInfo | undefined,
+): info is GatewayModelInfo & {
+  mode: "chat" | "responses";
+  maxInputTokens: number;
+  maxOutputTokens: number;
+  supportsReasoning: boolean;
+  supportsVision: boolean;
+  supportsFunctionCalling: boolean;
+} {
+  return Boolean(
+    info &&
+    (info.mode === "chat" || info.mode === "responses") &&
+    typeof info.maxInputTokens === "number" &&
+    info.maxInputTokens > 0 &&
+    typeof info.maxOutputTokens === "number" &&
+    info.maxOutputTokens > 0 &&
+    typeof info.supportsReasoning === "boolean" &&
+    typeof info.supportsVision === "boolean" &&
+    typeof info.supportsFunctionCalling === "boolean",
+  );
 }
 
 /**

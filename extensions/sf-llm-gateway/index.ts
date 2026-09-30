@@ -13,6 +13,7 @@
  * - Authenticated model discovery via `/v1/models` supplies all callable model IDs
  * - Sentinel-only empty access clears stale selectable models; ambiguous failures retain cache
  * - Gateway metadata plus generic family-aware inference defines discovered models
+ * - Reports complete-versus-unverified route capability metadata without silently regressing cache
  * - Keeps `models.json` overrides above the registered Provider through Pi composition
  * - Shows an explicit SF LLM Gateway footer status when one of these models is active
  * - Footer status includes chosen model, current context usage, and monthly gateway usage
@@ -20,6 +21,7 @@
  * - Repairs retired gateway enabledModels entries before startup validation
  * - Omits the optional prompt_cache_key field from Gateway OpenAI-compatible requests
  * - Requests priority traffic for exact GPT-5.6 Sol and GPT-6 Sol Gateway Responses models
+ * - Recovers one fully completed Responses terminal event when Gateway HTTP EOF is late
  * - No SF Pi-owned model-specific headers or deployment-routing policy
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
  *
@@ -44,7 +46,7 @@
  * - /sf-llm-gateway refresh               refresh models + monthly usage
  * - /sf-llm-gateway set-default [global|project]
  * - /sf-llm-gateway models                list discovered models
- * - /sf-llm-gateway doctor --stream <modelId> [...] | --stream-canaries [...] (explicit billable probes)
+ * - /sf-llm-gateway doctor --stream <modelId> [... --tool|--image] | --stream-canaries [...] (explicit billable probes)
  * - /sf-llm-gateway usage-probe [--trace] classify user/key usage scope (--trace prints per-endpoint timings)
  * - /sf-llm-gateway tokens <modelId> [prompt]
  * - /sf-llm-gateway onboard
@@ -71,7 +73,7 @@
  *   /command on                 | credentials present                | Set defaults and explicitly refresh Pi models
  *   /command off                | —                                  | Disable, remove pattern, switch to off-default
  *   /command refresh            | —                                  | Re-discover, refresh monthly usage
- *   /command doctor --stream    | explicit model/level/count         | Run bounded content-free live stream probe(s)
+ *   /command doctor --stream    | explicit model/level/count         | Run bounded text/tool/generated-image live probe(s)
  *   /command usage-probe        | —                                  | Force read-only usage probe
  *   Monthly usage fetch         | cached < 60 s old                  | Use cache
  *   Monthly usage fetch         | stale or forced                    | Fetch /v2/user/info, retry with key user_id if needed, fallback /user/info
@@ -707,7 +709,7 @@ async function handleDoctorCommand(
       [
         streamPlan.error,
         "",
-        `Usage: /${FRIENDLY_COMMAND_NAME} doctor --stream <modelId> [--thinking <level>] [--count 1..3] [--tool]`,
+        `Usage: /${FRIENDLY_COMMAND_NAME} doctor --stream <modelId> [--thinking <level>] [--count 1..3] [--tool|--image]`,
         `Canaries: /${FRIENDLY_COMMAND_NAME} doctor --stream-canaries [--count 1..3]`,
       ].join("\n"),
       "warning",
@@ -728,6 +730,7 @@ async function handleDoctorCommand(
           thinkingLevel: streamPlan.thinkingLevel,
           count: streamPlan.count,
           exerciseToolRoundTrip: streamPlan.exerciseToolRoundTrip,
+          exerciseImageInput: streamPlan.exerciseImageInput,
         },
         ctx.signal,
       );

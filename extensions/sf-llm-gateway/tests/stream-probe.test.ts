@@ -136,6 +136,23 @@ describe("Gateway doctor stream-plan parsing", () => {
       thinkingLevel: "xhigh",
       count: 2,
       exerciseToolRoundTrip: true,
+      exerciseImageInput: false,
+    });
+  });
+
+  it("parses an explicit generated-image compatibility probe", () => {
+    expect(
+      parseGatewayDoctorStreamPlan(
+        ["--stream", "gpt-6-sol", "--thinking", "high", "--image"],
+        "medium",
+      ),
+    ).toEqual({
+      mode: "single",
+      modelId: "gpt-6-sol",
+      thinkingLevel: "high",
+      count: 1,
+      exerciseToolRoundTrip: false,
+      exerciseImageInput: true,
     });
   });
 
@@ -181,6 +198,72 @@ describe("Gateway model-stream probe", () => {
     ]);
     expect(JSON.stringify(report)).not.toContain(PRIVATE_RESPONSE_TEXT);
     expect(formatGatewayStreamProbeReport(report)).not.toContain(PRIVATE_RESPONSE_TEXT);
+  });
+
+  it("uses a generated non-private image for an explicit vision probe", async () => {
+    const selected = {
+      ...model("gpt-6-sol", "openai-responses"),
+      input: ["text", "image"] as Array<"text" | "image">,
+    };
+    const registry = registryFor(selected, [plainStream(selected)]);
+
+    const report = await runGatewayStreamProbe(registry, {
+      modelId: selected.id,
+      thinkingLevel: "high",
+      count: 1,
+      exerciseToolRoundTrip: false,
+      exerciseImageInput: true,
+      timeoutMs: 100,
+    });
+
+    const context = registry.calls.mock.calls[0]?.[1] as TranscriptContext;
+    const user = context.messages.find((message) => message.role === "user");
+    expect(user?.content).toEqual([
+      { type: "text", text: "Reply with exactly OK." },
+      expect.objectContaining({ type: "image", mimeType: "image/png" }),
+    ]);
+    expect(JSON.stringify(report)).not.toContain("image/png");
+    expect(report.attempts).toMatchObject([{ status: "ok" }]);
+  });
+
+  it("reports a recovered terminal-close defect instead of a healthy stream", async () => {
+    const selected = model("gpt-6-sol", "openai-responses");
+    const stream = plainStream(selected);
+    const originalResult = stream.result();
+    const recovered = createAssistantMessageEventStream();
+    queueMicrotask(async () => {
+      const message = await originalResult;
+      const withDiagnostic = {
+        ...message,
+        diagnostics: [
+          {
+            type: "sf-llm-gateway.terminal-close-recovered",
+            timestamp: Date.now(),
+            details: { graceMs: 1_000 },
+          },
+        ],
+      };
+      recovered.push({ type: "start", partial: withDiagnostic });
+      recovered.push({ type: "done", reason: "stop", message: withDiagnostic });
+      recovered.end();
+    });
+    const registry = registryFor(selected, [recovered]);
+
+    const report = await runGatewayStreamProbe(registry, {
+      modelId: selected.id,
+      thinkingLevel: "high",
+      count: 1,
+      exerciseToolRoundTrip: false,
+      timeoutMs: 100,
+    });
+
+    expect(report.attempts).toMatchObject([
+      {
+        status: "terminal-close-recovered",
+        streamClosed: true,
+        terminalEvent: "done",
+      },
+    ]);
   });
 
   it("proves an exact-model tool call and tool-result round trip", async () => {
@@ -269,27 +352,37 @@ describe("Gateway model-stream probe", () => {
 });
 
 describe("exact live canary catalog", () => {
-  it("covers Opus 5.5 and GPT-6 Sol at high/xhigh across plain and tool flows", () => {
+  it("covers plain, tool, reasoning, and generated-image compatibility", () => {
     expect(GATEWAY_STREAM_CANARY_SCENARIOS).toEqual([
       {
         modelId: "claude-opus-5-5",
         thinkingLevel: "high",
         exerciseToolRoundTrip: false,
+        exerciseImageInput: false,
       },
       {
         modelId: "claude-opus-5-5",
         thinkingLevel: "xhigh",
         exerciseToolRoundTrip: true,
+        exerciseImageInput: false,
       },
       {
         modelId: "gpt-6-sol",
         thinkingLevel: "high",
         exerciseToolRoundTrip: false,
+        exerciseImageInput: false,
       },
       {
         modelId: "gpt-6-sol",
         thinkingLevel: "xhigh",
         exerciseToolRoundTrip: true,
+        exerciseImageInput: false,
+      },
+      {
+        modelId: "gpt-6-sol",
+        thinkingLevel: "high",
+        exerciseToolRoundTrip: false,
+        exerciseImageInput: true,
       },
     ]);
   });

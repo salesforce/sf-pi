@@ -15,33 +15,34 @@ Repo-level rules still apply; see root `AGENTS.md`.
 
 ## File map (what lives where)
 
-| Responsibility                                 | File                               |
-| ---------------------------------------------- | ---------------------------------- |
-| Extension entry, lifecycle, command dispatch   | `index.ts`                         |
-| Env vars, constants, saved-config I/O          | `lib/config.ts`                    |
-| Gateway URL normalization                      | `lib/gateway-url.ts`               |
-| Discovery metadata + family inference          | `lib/models.ts`                    |
-| Complete Provider + model discovery            | `lib/provider.ts`                  |
-| Provider auth + session context                | `lib/provider-auth.ts`             |
-| Protocol-neutral request diagnostics           | `lib/request-diagnostics.ts`       |
-| Dedicated compaction policy                    | `lib/compaction.ts`                |
-| Scoped compaction preference                   | `lib/compaction-settings.ts`       |
-| Manager compaction model picker                | `lib/compaction-model-picker.ts`   |
-| Masked API-key input                           | `common secure credential prompt`  |
-| HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`                 |
-| Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`             |
-| Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`               |
-| Footer + status report formatting              | `lib/status.ts`                    |
-| Standard command metadata + completions        | `lib/command-surface.ts`           |
-| Standalone slash-command setup overlay         | `lib/setup-overlay.ts`             |
-| Manager settings/setup action panel content    | `lib/config-panel.ts`              |
-| `/sf-llm-gateway doctor` diagnostics           | `lib/doctor.ts`                    |
-| Explicit bounded model-stream probes           | `lib/stream-probe.ts`              |
-| `/sf-llm-gateway tokens` counter               | `lib/token-counter.ts`             |
-| `/sf-llm-gateway onboard` SSO link             | `lib/onboarding.ts`                |
-| Existing setup discovery (Claude/DevBar/CA)    | `lib/onboarding-sources.ts`        |
-| In-memory provider signals (429/5xx badge)     | `lib/provider-telemetry.ts`        |
-| Anthropic terminal error normalization         | `lib/transport-internal/shared.ts` |
+| Responsibility                                 | File                                                 |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| Extension entry, lifecycle, command dispatch   | `index.ts`                                           |
+| Env vars, constants, saved-config I/O          | `lib/config.ts`                                      |
+| Gateway URL normalization                      | `lib/gateway-url.ts`                                 |
+| Discovery metadata + family inference          | `lib/models.ts`                                      |
+| Complete Provider + model discovery            | `lib/provider.ts`                                    |
+| Provider auth + session context                | `lib/provider-auth.ts`                               |
+| Protocol-neutral request diagnostics           | `lib/request-diagnostics.ts`                         |
+| Dedicated compaction policy                    | `lib/compaction.ts`                                  |
+| Scoped compaction preference                   | `lib/compaction-settings.ts`                         |
+| Manager compaction model picker                | `lib/compaction-model-picker.ts`                     |
+| Masked API-key input                           | `common secure credential prompt`                    |
+| HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`                                   |
+| Responses terminal-close guard                 | `lib/transport-internal/responses-terminal-guard.ts` |
+| Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`                               |
+| Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`                                 |
+| Footer + status report formatting              | `lib/status.ts`                                      |
+| Standard command metadata + completions        | `lib/command-surface.ts`                             |
+| Standalone slash-command setup overlay         | `lib/setup-overlay.ts`                               |
+| Manager settings/setup action panel content    | `lib/config-panel.ts`                                |
+| `/sf-llm-gateway doctor` diagnostics           | `lib/doctor.ts`                                      |
+| Explicit bounded model-stream probes           | `lib/stream-probe.ts`                                |
+| `/sf-llm-gateway tokens` counter               | `lib/token-counter.ts`                               |
+| `/sf-llm-gateway onboard` SSO link             | `lib/onboarding.ts`                                  |
+| Existing setup discovery (Claude/DevBar/CA)    | `lib/onboarding-sources.ts`                          |
+| In-memory provider signals (429/5xx badge)     | `lib/provider-telemetry.ts`                          |
+| Anthropic terminal error normalization         | `lib/transport-internal/shared.ts`                   |
 
 The masked input implementation is shared at
 `lib/common/secure-credential-prompt.ts`; do not reintroduce an extension-local
@@ -100,9 +101,9 @@ copy.
    Normalize recognized request failures through `message_end` without changing models, credentials,
    or settings.
 10. **Model-stream probes are explicit and content-free.** Ordinary doctor runs never invoke a model.
-    Opt-in probes use authenticated Gateway models, hard request/count bounds, and fixed prompts/tools.
-    Return only local status/timing summaries; never persist or upload prompt content, response content,
-    credentials, endpoints, or session identifiers.
+    Opt-in probes use authenticated Gateway models, hard request/count bounds, fixed prompts/tools, and
+    a generated non-private image for explicit vision checks. Return only local status/timing summaries;
+    never persist or upload prompt content, response content, credentials, endpoints, or session identifiers.
 11. **Priority is an exact Responses request policy.** For only `gpt-5.6-sol` and `gpt-6-sol`
     on the Gateway provider, send `service_tier: "priority"` through both simple and full
     Responses streams. Do not infer eligibility from a family or suffix, mutate other providers,
@@ -111,6 +112,16 @@ copy.
     `prompt_cache_key` field from Gateway Responses and Chat Completions payloads after
     preserving any caller payload hook. Never infer backend support from a model ID,
     change other providers, or retry a failed request in the adapter.
+13. **A Responses terminal event is authoritative, but incomplete tool items are not.** Allow a short
+    grace period for normal HTTP EOF. If the Gateway leaves the body open, abort only the transport and
+    recover one completed/incomplete terminal response only when every observed output item finished.
+    Preserve caller cancellation, reject duplicate terminals, attach a bounded diagnostic, and never
+    execute a partial tool call.
+14. **Capability coverage is explicit but metadata absence is non-blocking.** A capability record counts
+    as declared only when it includes route mode, positive input/output limits, vision, reasoning, and
+    function-calling flags. Missing/partial records are informational and must not disable exact Pi-backed
+    image input; doctor flags explicit vision/reasoning contradictions. The generated-image probe verifies
+    deployed behavior without requiring end users to control Gateway metadata.
 
 ## Command handler pattern
 

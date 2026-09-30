@@ -9,7 +9,15 @@ import {
   type ConfigSource,
 } from "./config.ts";
 import { toGatewayOpenAiBaseUrl, toGatewayRootBaseUrl } from "./gateway-url.ts";
-import { fetchWithTimeout } from "./models.ts";
+import {
+  fetchGatewayModelIdDiscovery,
+  fetchGatewayModelInfoMap,
+  fetchWithTimeout,
+  hasCompleteGatewayModelInfo,
+  isPiCatalogBackedGatewayModelId,
+  toProviderModelConfig,
+  type GatewayModelInfoMap,
+} from "./models.ts";
 import { isNoDefaultModelsOnlyDiscoveryPayload } from "./models-internal/discovery-sentinels.ts";
 import { gatewayProviderRuntime } from "./provider.ts";
 import { isGatewayModelAccessDeniedError } from "./request-diagnostics.ts";
@@ -29,6 +37,7 @@ export type GatewayDoctorCheck = {
   url: string;
   status?: number;
   ok: boolean;
+  advisory?: boolean;
   interpretation: string;
   bodyPreview?: string;
   /**
@@ -135,6 +144,46 @@ export function aggregateFailureClass(
   return null;
 }
 
+export function buildGatewayCapabilityMetadataCheck(
+  modelIds: readonly string[],
+  modelInfo: GatewayModelInfoMap,
+  url: string,
+): GatewayDoctorCheck {
+  const uniqueIds = [...new Set(modelIds)].filter(isPiCatalogBackedGatewayModelId);
+  const reported = uniqueIds.filter((id) => hasCompleteGatewayModelInfo(modelInfo[id])).length;
+  const missing = uniqueIds.length - reported;
+  const mismatches = uniqueIds.flatMap((id) => {
+    const info = modelInfo[id];
+    if (!hasCompleteGatewayModelInfo(info)) return [];
+    const expected = toProviderModelConfig(id);
+    const fields: string[] = [];
+    if (expected.input.includes("image") !== info.supportsVision) fields.push("vision");
+    if (expected.reasoning !== info.supportsReasoning) fields.push("reasoning");
+    return fields.length > 0 ? [`${id} (${fields.join(", ")})`] : [];
+  });
+  const ok = uniqueIds.length > 0 && mismatches.length === 0;
+  const advisory = ok && missing > 0;
+  const mismatchSuffix =
+    missing > 0
+      ? ` ${missing} model${missing === 1 ? " uses" : "s use"} Pi catalog capabilities.`
+      : "";
+  return {
+    name: "Capability metadata",
+    url,
+    ok,
+    ...(advisory ? { advisory: true } : {}),
+    interpretation:
+      uniqueIds.length === 0
+        ? "No Pi-backed callable models were available for capability reconciliation."
+        : mismatches.length > 0
+          ? `Gateway metadata conflicts with Pi for ${mismatches.length} callable model${mismatches.length === 1 ? "" : "s"}: ${mismatches.join(", ")}.${mismatchSuffix}`
+          : missing === 0
+            ? `Gateway declared route capabilities for all ${uniqueIds.length} callable models.`
+            : `Gateway published complete route capabilities for ${reported}/${uniqueIds.length} callable models; ${missing} ${missing === 1 ? "uses" : "use"} Pi catalog capabilities and remain${missing === 1 ? "s" : ""} probe-verifiable.`,
+    failureClass: ok ? null : "other",
+  };
+}
+
 export function interpretGatewayHttpResult(status: number, bodyPreview: string): string {
   if (status >= 200 && status < 300 && isNoDefaultModelsOnlyDiscoveryPayload(bodyPreview)) {
     return `Authenticated, but the Gateway reported no default models for this credential. Request model access, then run /${FRIENDLY_COMMAND_NAME} refresh.`;
@@ -200,9 +249,21 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
     );
   }
   if (openAiBaseUrl) {
-    checks.push(
-      await runGatewayCheck("Model discovery", `${openAiBaseUrl}/models`, runtimeAuth?.apiKey),
+    const modelDiscoveryCheck = await runGatewayCheck(
+      "Model discovery",
+      `${openAiBaseUrl}/models`,
+      runtimeAuth?.apiKey,
     );
+    checks.push(modelDiscoveryCheck);
+    if (runtimeAuth && modelDiscoveryCheck.ok) {
+      checks.push(
+        await runGatewayCapabilityMetadataCheck(
+          anthropicRootUrl ?? openAiBaseUrl,
+          openAiBaseUrl,
+          runtimeAuth.apiKey,
+        ),
+      );
+    }
   }
   if (anthropicRootUrl) {
     checks.push(
@@ -231,6 +292,7 @@ export async function fetchGatewayDoctorReport(cwd: string): Promise<GatewayDoct
   }
   for (const check of checks) {
     if (!check.ok) recommendations.push(`${check.name}: ${check.interpretation}`);
+    else if (check.advisory) recommendations.push(`${check.name} note: ${check.interpretation}`);
   }
   recommendations.push(...buildDoctorKeySourceRecommendations(runtimeAuth?.source));
   recommendations.push(...buildTlsHintRecommendations(failureClass, discovery));
@@ -348,6 +410,35 @@ export async function pingGateway(
   }
 }
 
+async function runGatewayCapabilityMetadataCheck(
+  gatewayRoot: string,
+  openAiBaseUrl: string,
+  apiKey: string,
+): Promise<GatewayDoctorCheck> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DOCTOR_TIMEOUT_MS);
+  timeout.unref?.();
+  const url = `${openAiBaseUrl}/model/info`;
+  try {
+    const [modelDiscovery, modelInfo] = await Promise.all([
+      fetchGatewayModelIdDiscovery(gatewayRoot, apiKey, controller.signal),
+      fetchGatewayModelInfoMap(gatewayRoot, apiKey, controller.signal),
+    ]);
+    return buildGatewayCapabilityMetadataCheck(modelDiscovery.ids, modelInfo, url);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      name: "Capability metadata",
+      url,
+      ok: false,
+      interpretation: `Capability reconciliation failed. ${message}`,
+      failureClass: classifyThrownError(message),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function runGatewayCheck(
   name: string,
   url: string,
@@ -424,7 +515,7 @@ export function formatGatewayDoctorReport(report: GatewayDoctorReport): string {
   } else {
     for (const check of report.checks) {
       lines.push(
-        `- ${check.name}: ${check.ok ? "OK" : "WARN"}${check.status ? ` (${check.status})` : ""}`,
+        `- ${check.name}: ${check.advisory ? "INFO" : check.ok ? "OK" : "WARN"}${check.status ? ` (${check.status})` : ""}`,
         `  ${check.url}`,
         `  ${check.interpretation}`,
       );
@@ -474,7 +565,7 @@ export async function runExtensionDoctor(cwd: string): Promise<ExtensionDoctorRe
   for (const check of report.checks) {
     checks.push({
       id: `gateway.${check.name.toLowerCase().replace(/\s+/g, "-")}`,
-      severity: check.ok ? "ok" : "warn",
+      severity: check.advisory ? "info" : check.ok ? "ok" : "warn",
       title: `${check.name} ${check.status ? `(${check.status})` : ""}`.trim(),
       detail: `${check.url} — ${check.interpretation}`,
     });

@@ -23,6 +23,7 @@ import {
   parseInteger,
   parseRetryAfter,
   recordProviderResponse,
+  recordProviderStreamRecovery,
   resolveResetAt,
 } from "../lib/provider-telemetry.ts";
 
@@ -182,6 +183,20 @@ describe("recordProviderResponse", () => {
   it("ignores non-finite status values", () => {
     const result = recordProviderResponse(Number.NaN, {}, "example-native-message-model");
     expect(result).toBeNull();
+  });
+
+  it("records a recovered terminal-close defect after healthy response headers", () => {
+    recordProviderResponse(200, {}, "gpt-6-sol");
+
+    expect(recordProviderStreamRecovery("gpt-6-sol", 1234)).toEqual({
+      kind: "stream-recovered",
+      status: 200,
+      modelId: "gpt-6-sol",
+      at: 1234,
+    });
+    expect(formatProviderSignalBadge(getActiveProviderSignal(1234))).toBe(
+      "⚠ stream close recovered",
+    );
   });
 });
 

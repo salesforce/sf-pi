@@ -20,6 +20,8 @@ const MAX_STREAM_PROBE_COUNT = 3;
 const STREAM_PROBE_SYSTEM_PROMPT =
   "This is a bounded transport health check. Follow the user instruction exactly and keep the response minimal.";
 const PLAIN_PROBE_PROMPT = "Reply with exactly OK.";
+const GENERATED_PROBE_IMAGE_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 const TOOL_PROBE_PROMPT =
   "Call gateway_probe exactly once with value ok. Do not answer until the tool result is provided.";
 const MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/u;
@@ -61,11 +63,18 @@ export interface GatewayStreamProbeOptions {
   thinkingLevel: GatewayProbeThinkingLevel;
   count: number;
   exerciseToolRoundTrip: boolean;
+  exerciseImageInput?: boolean;
   timeoutMs?: number;
 }
 
 export type GatewayStreamProbeAttemptStatus =
-  "ok" | "unavailable" | "timeout" | "aborted" | "provider-error" | "protocol-error";
+  | "ok"
+  | "terminal-close-recovered"
+  | "unavailable"
+  | "timeout"
+  | "aborted"
+  | "provider-error"
+  | "protocol-error";
 
 export interface GatewayStreamProbeAttempt {
   attempt: number;
@@ -84,6 +93,7 @@ export interface GatewayStreamProbeReport {
   thinkingLevel: GatewayProbeThinkingLevel;
   count: number;
   exerciseToolRoundTrip: boolean;
+  exerciseImageInput: boolean;
   timeoutMs: number;
   attempts: GatewayStreamProbeAttempt[];
 }
@@ -92,6 +102,7 @@ export interface GatewayStreamCanaryScenario {
   modelId: string;
   thinkingLevel: GatewayProbeThinkingLevel;
   exerciseToolRoundTrip: boolean;
+  exerciseImageInput: boolean;
 }
 
 export const GATEWAY_STREAM_CANARY_SCENARIOS: readonly GatewayStreamCanaryScenario[] = [
@@ -99,21 +110,31 @@ export const GATEWAY_STREAM_CANARY_SCENARIOS: readonly GatewayStreamCanaryScenar
     modelId: "claude-opus-5-5",
     thinkingLevel: "high",
     exerciseToolRoundTrip: false,
+    exerciseImageInput: false,
   },
   {
     modelId: "claude-opus-5-5",
     thinkingLevel: "xhigh",
     exerciseToolRoundTrip: true,
+    exerciseImageInput: false,
   },
   {
     modelId: "gpt-6-sol",
     thinkingLevel: "high",
     exerciseToolRoundTrip: false,
+    exerciseImageInput: false,
   },
   {
     modelId: "gpt-6-sol",
     thinkingLevel: "xhigh",
     exerciseToolRoundTrip: true,
+    exerciseImageInput: false,
+  },
+  {
+    modelId: "gpt-6-sol",
+    thinkingLevel: "high",
+    exerciseToolRoundTrip: false,
+    exerciseImageInput: true,
   },
 ] as const;
 
@@ -125,6 +146,7 @@ export type GatewayDoctorStreamPlan =
       thinkingLevel: GatewayProbeThinkingLevel;
       count: number;
       exerciseToolRoundTrip: boolean;
+      exerciseImageInput: boolean;
     }
   | { mode: "canaries"; count: number }
   | { mode: "invalid"; error: string };
@@ -153,6 +175,7 @@ export function parseGatewayDoctorStreamPlan(
   let count = canaries ? MAX_STREAM_PROBE_COUNT : 1;
   let thinkingLevel = currentThinkingLevel;
   let exerciseToolRoundTrip = false;
+  let exerciseImageInput = false;
 
   while (index < args.length) {
     const token = args[index++];
@@ -180,9 +203,16 @@ export function parseGatewayDoctorStreamPlan(
       exerciseToolRoundTrip = true;
       continue;
     }
+    if (token === "--image" && single) {
+      exerciseImageInput = true;
+      continue;
+    }
     return { mode: "invalid", error: `Unknown doctor stream option: ${token ?? "missing"}.` };
   }
 
+  if (exerciseToolRoundTrip && exerciseImageInput) {
+    return { mode: "invalid", error: "Use separate --tool and --image probes." };
+  }
   if (canaries) return { mode: "canaries", count };
   if (!modelId) return { mode: "invalid", error: "doctor --stream requires a model ID." };
   return {
@@ -191,6 +221,7 @@ export function parseGatewayDoctorStreamPlan(
     thinkingLevel,
     count,
     exerciseToolRoundTrip,
+    exerciseImageInput,
   };
 }
 
@@ -248,6 +279,7 @@ export async function runGatewayStreamProbe(
             options.thinkingLevel,
             attempt,
             timeoutMs,
+            Boolean(options.exerciseImageInput),
             parentSignal,
           ),
     );
@@ -258,6 +290,7 @@ export async function runGatewayStreamProbe(
     thinkingLevel: options.thinkingLevel,
     count,
     exerciseToolRoundTrip: options.exerciseToolRoundTrip,
+    exerciseImageInput: Boolean(options.exerciseImageInput),
     timeoutMs,
     attempts,
   };
@@ -292,17 +325,26 @@ async function runPlainProbe(
   thinkingLevel: GatewayProbeThinkingLevel,
   attempt: number,
   timeoutMs: number,
+  exerciseImageInput: boolean,
   parentSignal?: AbortSignal,
 ): Promise<GatewayStreamProbeAttempt> {
   const observation = await runStreamLeg(
     registry,
     model,
-    plainContext(),
+    exerciseImageInput ? imageContext() : plainContext(),
     thinkingLevel,
     timeoutMs,
     parentSignal,
   );
-  return attemptFromObservation(attempt, observation, 1, false, observation.status === "done");
+  return attemptFromObservation(
+    attempt,
+    observation,
+    1,
+    false,
+    observation.status === "done",
+    undefined,
+    hasTerminalCloseRecovery(observation.message),
+  );
 }
 
 async function runToolRoundTrip(
@@ -339,13 +381,38 @@ async function runToolRoundTrip(
     parentSignal,
   );
   const succeeded = second.status === "done" && second.message?.stopReason === "stop";
-  return attemptFromObservation(attempt, second, 2, succeeded, succeeded, startedAt);
+  return attemptFromObservation(
+    attempt,
+    second,
+    2,
+    succeeded,
+    succeeded,
+    startedAt,
+    hasTerminalCloseRecovery(first.message) || hasTerminalCloseRecovery(second.message),
+  );
 }
 
 function plainContext(): TranscriptContext {
   return normalizeContext({
     systemPrompt: STREAM_PROBE_SYSTEM_PROMPT,
     messages: [userMessage(PLAIN_PROBE_PROMPT)],
+    tools: [],
+  });
+}
+
+function imageContext(): TranscriptContext {
+  return normalizeContext({
+    systemPrompt: STREAM_PROBE_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: PLAIN_PROBE_PROMPT },
+          { type: "image", data: GENERATED_PROBE_IMAGE_BASE64, mimeType: "image/png" },
+        ],
+        timestamp: Date.now(),
+      },
+    ],
     tools: [],
   });
 }
@@ -513,10 +580,15 @@ function attemptFromObservation(
   toolRoundTrip: boolean,
   succeeded: boolean,
   overallStartedAt?: number,
+  terminalCloseRecovered = false,
 ): GatewayStreamProbeAttempt {
   return {
     attempt,
-    status: succeeded ? "ok" : publicAttemptStatus(observation.status),
+    status: succeeded
+      ? terminalCloseRecovered
+        ? "terminal-close-recovered"
+        : "ok"
+      : publicAttemptStatus(observation.status),
     durationMs:
       overallStartedAt === undefined ? observation.durationMs : roundedDuration(overallStartedAt),
     timeToFirstContentMs: observation.timeToFirstContentMs,
@@ -526,6 +598,14 @@ function attemptFromObservation(
     requestCount,
     toolRoundTrip,
   };
+}
+
+function hasTerminalCloseRecovery(message: AssistantMessage | undefined): boolean {
+  return Boolean(
+    message?.diagnostics?.some(
+      (diagnostic) => diagnostic.type === "sf-llm-gateway.terminal-close-recovered",
+    ),
+  );
 }
 
 function publicAttemptStatus(
@@ -601,7 +681,11 @@ function elapsed(
 }
 
 export function formatGatewayStreamProbeReport(report: GatewayStreamProbeReport): string {
-  const flow = report.exerciseToolRoundTrip ? "tool round trip" : "plain response";
+  const flow = report.exerciseToolRoundTrip
+    ? "tool round trip"
+    : report.exerciseImageInput
+      ? "generated image"
+      : "plain response";
   const lines = [
     `Model stream: ${report.modelId} · thinking ${report.thinkingLevel} · ${flow}`,
     `Bound: ${report.count} attempt(s), ${report.timeoutMs} ms per request`,

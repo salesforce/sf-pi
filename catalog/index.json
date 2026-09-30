@@ -732,7 +732,7 @@
     "docs": {
       "intentGroup": "Personalize pi",
       "editingRules": "AGENTS.md",
-      "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission and offline cache filtering, mixed-API dispatch, Gateway-only prompt-cache-key omission, exact GPT Sol Responses priority requests, optional dedicated-model compaction, explicit refresh, connectivity diagnostics, opt-in bounded model-stream probes, and usage status.",
+      "summary": "Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission, capability-coverage diagnostics and offline cache filtering, mixed-API dispatch, guarded Responses terminal-close recovery, Gateway-only prompt-cache-key omission, exact GPT Sol Responses priority requests, optional dedicated-model compaction, explicit refresh, connectivity diagnostics, opt-in bounded text/tool/generated-image probes, and usage status.",
       "primaryFiles": [
         "index.ts",
         "lib/provider.ts",
@@ -758,15 +758,17 @@
         "Gateway OpenAI-compatible requests omit the optional prompt_cache_key field without changing other providers; this may reduce cache affinity.",
         "Only exact Gateway GPT-5.6 Sol and GPT-6 Sol Responses requests ask for priority; the effective tier is not asserted.",
         "Sentinel-only empty access clears stale selectable models; ambiguous discovery failures retain the last-known catalog.",
-        "Recognized request failures are replaced with bounded guidance without echoing raw provider bodies.",
-        "Ordinary doctor runs never invoke models; opt-in stream probes are bounded, billable, content-free, local-only, and never persisted or uploaded.",
+        "Recognized access, unsupported-image, transient-stream, and configuration failures are replaced with bounded guidance without echoing raw provider bodies.",
+        "Responses terminal-close recovery accepts one terminal event only after all observed output items finish, preserves caller cancellation, and records a bounded warning diagnostic.",
+        "Capability coverage counts only complete route records with mode, token limits, vision, reasoning, and function-calling declarations; missing or partial metadata is non-blocking for exact Pi-backed image input, while explicit contradictions warn in doctor.",
+        "Ordinary doctor runs never invoke models; opt-in text, tool, and generated non-private image probes are bounded, billable, content-free, local-only, and never persisted or uploaded.",
         "Pi's settings.json is mutated through pi-settings.ts helpers with race-aware reads."
       ]
     },
     "entry": "extensions/sf-llm-gateway/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 10149
+    "srcLoc": 10624
   },
   {
     "id": "sf-lsp",

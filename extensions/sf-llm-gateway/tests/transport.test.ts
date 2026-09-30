@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createAssistantMessageEventStream,
   normalizeContext,
+  type AssistantMessage,
   type Model,
   type OpenAICompletionsOptions,
   type SimpleStreamOptions,
@@ -47,6 +48,48 @@ function responsesModel(): Model<"openai-responses"> {
     name: "Example Responses Model",
     baseUrl: "https://gateway.invalid",
   };
+}
+
+function terminalButOpenResponsesStreamer(
+  model: Model<"openai-responses">,
+  completed: AssistantMessage,
+  providerEvents: unknown[],
+) {
+  return vi.fn(
+    (
+      _model: Model<"openai-responses">,
+      _context: typeof CONTEXT,
+      options?: SimpleStreamOptions,
+    ) => {
+      const stream = createAssistantMessageEventStream();
+      queueMicrotask(async () => {
+        stream.push({ type: "start", partial: completed });
+        for (const event of providerEvents) {
+          await options?.onProviderStreamEvent?.(event, model);
+        }
+        options?.signal?.addEventListener(
+          "abort",
+          () => {
+            stream.push({ type: "error", reason: "aborted", error: completed });
+            stream.end();
+          },
+          { once: true },
+        );
+      });
+      return stream;
+    },
+  );
+}
+
+async function resultAfterTerminalCloseGuard(
+  stream: ReturnType<typeof streamSfGatewayResponses>,
+): Promise<AssistantMessage | "still-open"> {
+  const outcome = Promise.race([
+    stream.result(),
+    new Promise<"still-open">((resolve) => setTimeout(() => resolve("still-open"), 2_000)),
+  ]);
+  await vi.advanceTimersByTimeAsync(2_000);
+  return outcome;
 }
 
 async function captureResponsesPayload(
@@ -228,6 +271,167 @@ describe("generic Responses adapter", () => {
       CONTEXT,
       expect.objectContaining(options),
     );
+  });
+
+  it("finishes a completed response when the provider leaves the stream open", async () => {
+    vi.useFakeTimers();
+    try {
+      const model = { ...responsesModel(), id: "gpt-6-sol" };
+      const completed = {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "ok" }],
+        api: model.api,
+        provider: model.provider,
+        model: model.id,
+        usage: {
+          input: 10,
+          output: 2,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 12,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "aborted" as const,
+        rawStopReason: "completed",
+        errorMessage: "Request aborted",
+        timestamp: Date.now(),
+      };
+      const responsesStreamer = terminalButOpenResponsesStreamer(model, completed, [
+        {
+          type: "response.completed",
+          response: { status: "completed", output: [], usage: { total_tokens: 12 } },
+        },
+      ]);
+
+      const stream = streamSfGatewayResponses(
+        model,
+        CONTEXT,
+        { apiKey: "test-key", maxRetries: 0 },
+        { responsesStreamer },
+      );
+      const outcome = resultAfterTerminalCloseGuard(stream);
+
+      await expect(outcome).resolves.toMatchObject({
+        stopReason: "stop",
+        rawStopReason: "completed",
+        usage: { totalTokens: 12 },
+        diagnostics: [
+          {
+            type: "sf-llm-gateway.terminal-close-recovered",
+            details: { graceMs: 1_000 },
+          },
+        ],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("recovers a fully completed tool call but never an unfinished one", async () => {
+    vi.useFakeTimers();
+    try {
+      const model = { ...responsesModel(), id: "gpt-6-sol" };
+      const toolCall = {
+        type: "toolCall" as const,
+        id: "call-1|fc-1",
+        name: "gateway_probe",
+        arguments: { value: "ok" },
+      };
+      const completed = {
+        role: "assistant" as const,
+        content: [toolCall],
+        api: model.api,
+        provider: model.provider,
+        model: model.id,
+        usage: {
+          input: 10,
+          output: 2,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 12,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "aborted" as const,
+        rawStopReason: "completed",
+        errorMessage: "Request aborted",
+        timestamp: Date.now(),
+      };
+      const completeEvents = [
+        { type: "response.output_item.added", output_index: 0 },
+        { type: "response.output_item.done", output_index: 0 },
+        { type: "response.completed", response: { status: "completed", output: [] } },
+      ];
+      const unfinishedEvents = [
+        { type: "response.output_item.added", output_index: 0 },
+        { type: "response.completed", response: { status: "completed", output: [] } },
+      ];
+      const missingLifecycleEvents = [
+        {
+          type: "response.completed",
+          response: { status: "completed", output: [{ type: "function_call" }] },
+        },
+      ];
+      const duplicateTerminalEvents = [
+        ...completeEvents,
+        { type: "response.completed", response: { status: "completed", output: [] } },
+      ];
+
+      const recovered = streamSfGatewayResponses(
+        model,
+        CONTEXT,
+        { apiKey: "test-key", maxRetries: 0 },
+        { responsesStreamer: terminalButOpenResponsesStreamer(model, completed, completeEvents) },
+      );
+      const refused = streamSfGatewayResponses(
+        model,
+        CONTEXT,
+        { apiKey: "test-key", maxRetries: 0 },
+        { responsesStreamer: terminalButOpenResponsesStreamer(model, completed, unfinishedEvents) },
+      );
+      const missingLifecycle = streamSfGatewayResponses(
+        model,
+        CONTEXT,
+        { apiKey: "test-key", maxRetries: 0 },
+        {
+          responsesStreamer: terminalButOpenResponsesStreamer(
+            model,
+            completed,
+            missingLifecycleEvents,
+          ),
+        },
+      );
+      const duplicateTerminal = streamSfGatewayResponses(
+        model,
+        CONTEXT,
+        { apiKey: "test-key", maxRetries: 0 },
+        {
+          responsesStreamer: terminalButOpenResponsesStreamer(
+            model,
+            completed,
+            duplicateTerminalEvents,
+          ),
+        },
+      );
+
+      await expect(resultAfterTerminalCloseGuard(recovered)).resolves.toMatchObject({
+        stopReason: "toolUse",
+        content: [toolCall],
+      });
+      await expect(resultAfterTerminalCloseGuard(refused)).resolves.toMatchObject({
+        stopReason: "aborted",
+        errorMessage: "Request aborted",
+      });
+      await expect(resultAfterTerminalCloseGuard(missingLifecycle)).resolves.toMatchObject({
+        stopReason: "aborted",
+        errorMessage: "Request aborted",
+      });
+      await expect(resultAfterTerminalCloseGuard(duplicateTerminal)).resolves.toMatchObject({
+        stopReason: "aborted",
+        errorMessage: "Request aborted",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

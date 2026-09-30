@@ -20,6 +20,7 @@ import {
   fetchGatewayModelIdDiscovery,
   fetchGatewayModelInfoMap,
   getPortableGatewayModelCompat,
+  hasCompleteGatewayModelInfo,
   isPiCatalogBackedGatewayModelId,
   type GatewayApi,
   type GatewayModelInfoMap,
@@ -56,6 +57,10 @@ export interface GatewayNativeDiscoveryState {
   discoveredAt?: string;
   error?: string;
   filteredModelIds?: string[];
+  capabilityMetadata?: {
+    reportedModelIds: string[];
+    missingModelIds: string[];
+  };
   /** Gateway-confirmed empty access; stale cached models were intentionally cleared. */
   accessState?: "no-default-models";
 }
@@ -255,10 +260,23 @@ export function createGatewayProviderRuntime(
       const models = buildDiscoveredModelList(catalogBackedIds, modelInfo).map((model) =>
         nativeModel(model, placeholderRoot),
       );
+      const publishedModelIds = models.map((model) => model.id);
       lastDiscovery = {
-        modelIds: models.map((model) => model.id),
+        modelIds: publishedModelIds,
         source: "gateway",
         discoveredAt: now().toISOString(),
+        ...(publishedModelIds.length > 0
+          ? {
+              capabilityMetadata: {
+                reportedModelIds: publishedModelIds.filter((id) =>
+                  hasCompleteGatewayModelInfo(modelInfo[id]),
+                ),
+                missingModelIds: publishedModelIds.filter(
+                  (id) => !hasCompleteGatewayModelInfo(modelInfo[id]),
+                ),
+              },
+            }
+          : {}),
         ...(filteredIds.length > 0 ? { filteredModelIds: filteredIds } : {}),
       };
       return models;
@@ -330,6 +348,14 @@ export function createGatewayProviderRuntime(
         modelIds: currentIds,
         ...(lastDiscovery.filteredModelIds
           ? { filteredModelIds: [...lastDiscovery.filteredModelIds] }
+          : {}),
+        ...(lastDiscovery.capabilityMetadata
+          ? {
+              capabilityMetadata: {
+                reportedModelIds: [...lastDiscovery.capabilityMetadata.reportedModelIds],
+                missingModelIds: [...lastDiscovery.capabilityMetadata.missingModelIds],
+              },
+            }
           : {}),
       };
     },

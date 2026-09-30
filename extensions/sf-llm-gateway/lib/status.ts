@@ -130,6 +130,7 @@ export function buildStatusReport(
     `Model discovery: ${discovery?.source ?? "not run"}${discovery?.error ? ` ⚠ ${discovery.error}` : ""}`,
     `Discovered models: ${discovery?.modelIds.length ?? 0}`,
     `Filtered discovery IDs: ${discovery?.filteredModelIds?.length ?? 0}`,
+    ...formatCapabilityMetadataLines(discovery),
     ...(discovery?.error
       ? [
           `Catalog fallback: ${
@@ -142,6 +143,24 @@ export function buildStatusReport(
     "",
     ...buildProviderTelemetryReport(),
   ].join("\n");
+}
+
+function formatCapabilityMetadataLines(
+  discovery: GatewayNativeDiscoveryState | null | undefined,
+): string[] {
+  const metadata = discovery?.capabilityMetadata;
+  if (!metadata) return ["Capability metadata: not checked for this catalog"];
+  const reported = metadata.reportedModelIds.length;
+  const missing = metadata.missingModelIds.length;
+  const total = reported + missing;
+  return [
+    `Capability metadata: ${reported}/${total} models declared`,
+    ...(missing > 0
+      ? [
+          `Capability note: ${missing} model${missing === 1 ? "" : "s"} ${missing === 1 ? "uses" : "use"} Pi catalog capabilities; verify route behavior with explicit probes`,
+        ]
+      : []),
+  ];
 }
 
 /**

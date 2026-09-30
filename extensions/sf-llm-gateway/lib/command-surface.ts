@@ -152,9 +152,9 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     id: "doctor",
     label: "Run doctor",
     usage:
-      "doctor [--stream <modelId> [--thinking <level>] [--count 1..3] [--tool] | --stream-canaries [--count 1..3]]",
+      "doctor [--stream <modelId> [--thinking <level>] [--count 1..3] [--tool|--image] | --stream-canaries [--count 1..3]]",
     description:
-      "Diagnose URL, auth, discovery, and health. Opt-in stream flags run bounded billable model probes and return content-free local results.",
+      "Diagnose URL, auth, discovery, capability coverage, and health. Opt-in stream flags run bounded billable text, tool, or generated-image probes and return content-free local results.",
     section: "Discovery & diagnostics",
     aliases: ["dr"],
   },

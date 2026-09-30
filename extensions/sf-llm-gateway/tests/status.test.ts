@@ -218,6 +218,10 @@ describe("buildStatusReport", () => {
           modelIds: ["example-native-message-model", "example-model"],
           source: "gateway",
           filteredModelIds: ["example-unmatched-deployment"],
+          capabilityMetadata: {
+            reportedModelIds: ["example-native-message-model"],
+            missingModelIds: ["example-model"],
+          },
           discoveredAt: new Date().toISOString(),
         },
         monthlyUsage: null,
@@ -236,6 +240,10 @@ describe("buildStatusReport", () => {
     expect(report).toContain("Model discovery: gateway");
     expect(report).toContain("Discovered models: 2");
     expect(report).toContain("Filtered discovery IDs: 1");
+    expect(report).toContain("Capability metadata: 1/2 models declared");
+    expect(report).toContain(
+      "Capability note: 1 model uses Pi catalog capabilities; verify route behavior with explicit probes",
+    );
   });
 
   it("shows an authoritative no-default-models access state without cache-fallback wording", () => {

@@ -93,7 +93,15 @@ function fetchers(
     filteredIds: [],
   },
   modelInfo: GatewayModelInfoMap = {
-    "example-responses-model": { id: "example-responses-model", mode: "responses" },
+    "example-responses-model": {
+      id: "example-responses-model",
+      mode: "responses",
+      maxInputTokens: 128_000,
+      maxOutputTokens: 4_096,
+      supportsReasoning: false,
+      supportsVision: false,
+      supportsFunctionCalling: true,
+    },
   },
 ): GatewayFetchers {
   return {
@@ -301,6 +309,34 @@ describe("complete native Gateway Provider", () => {
     }
   });
 
+  it("reports capability metadata coverage for every published model", async () => {
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: fetchers(
+        { ids: ["gpt-5.6-sol", "gpt-6-sol"], filteredIds: [] },
+        {
+          "gpt-5.6-sol": {
+            id: "gpt-5.6-sol",
+            mode: "responses",
+            maxInputTokens: 1_000_000,
+            maxOutputTokens: 128_000,
+            supportsReasoning: true,
+            supportsVision: true,
+            supportsFunctionCalling: true,
+          },
+        },
+      ),
+    });
+    const { models } = await configuredModels(runtime);
+
+    await models.refresh({ allowNetwork: true });
+
+    expect(runtime.getLastDiscovery().capabilityMetadata).toEqual({
+      reportedModelIds: ["gpt-5.6-sol"],
+      missingModelIds: ["gpt-6-sol"],
+    });
+  });
+
   it("omits the cache key on a published Gateway model through the native Provider", async () => {
     const runtime = createTestGatewayProviderRuntime({
       authController: authController(),
@@ -391,6 +427,10 @@ describe("complete native Gateway Provider", () => {
       source: "gateway",
       discoveredAt: "2026-07-23T01:02:03.000Z",
       filteredModelIds: ["no-default-models"],
+      capabilityMetadata: {
+        reportedModelIds: ["example-responses-model"],
+        missingModelIds: ["fresh-chat"],
+      },
     });
     const persisted = await modelsStore.read(PROVIDER_NAME);
     expect(persisted?.models.map((model) => model.id)).toEqual([
@@ -419,6 +459,10 @@ describe("complete native Gateway Provider", () => {
       modelIds: runtime.provider.getModels().map((model) => model.id),
       discoveredAt: "2026-07-23T01:02:03.000Z",
       filteredModelIds: ["no-default-models"],
+      capabilityMetadata: {
+        reportedModelIds: ["example-responses-model"],
+        missingModelIds: ["fresh-chat"],
+      },
       error: "Gateway model refresh failed. Run /sf-llm-gateway doctor.",
     });
     expect(JSON.stringify(runtime.getLastDiscovery())).not.toMatch(/active\.example|native-key/u);
@@ -745,6 +789,10 @@ describe("complete native Gateway Provider", () => {
       source: "gateway",
       discoveredAt: "2026-09-26T17:00:00.000Z",
       filteredModelIds: ["unmatched-deployment"],
+      capabilityMetadata: {
+        reportedModelIds: [],
+        missingModelIds: ["catalog-backed"],
+      },
     });
   });
 

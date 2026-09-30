@@ -10,16 +10,17 @@
  * Rules:
  * - Pure functions + a single in-memory slot; no I/O.
  * - Healthy (2xx) responses clear any active warning immediately.
- * - Access, throttle, and upstream warnings expire after `SIGNAL_TTL_MS` so stale badges don't linger.
+ * - Access, throttle, upstream, and recovered terminal-close warnings expire after `SIGNAL_TTL_MS`.
  * - Header availability is best-effort per Pi docs; all parsers are null-safe
  *   and degrade gracefully when a header is missing.
  */
 
 export const SIGNAL_TTL_MS = 60_000;
 
-export type ProviderSignalKind = "healthy" | "access" | "throttled" | "upstream";
+export type ProviderSignalKind =
+  "healthy" | "access" | "throttled" | "upstream" | "stream-recovered";
 
-/** Snapshot of the last provider response relevant to the gateway footer. */
+/** Snapshot of the last provider response or recovered stream defect relevant to the footer. */
 export interface ProviderSignal {
   kind: ProviderSignalKind;
   status: number;
@@ -89,6 +90,19 @@ export function recordProviderResponse(
  * Return the active provider signal, or `null` when no warning is live or the
  * stored warning is older than `SIGNAL_TTL_MS`.
  */
+export function recordProviderStreamRecovery(
+  modelId: string | undefined,
+  now: number = Date.now(),
+): ProviderSignal {
+  currentSignal = {
+    kind: "stream-recovered",
+    status: 200,
+    modelId,
+    at: now,
+  };
+  return currentSignal;
+}
+
 export function getActiveProviderSignal(now: number = Date.now()): ProviderSignal | null {
   if (!currentSignal) {
     return null;
@@ -114,6 +128,10 @@ export function clearProviderSignal(): void {
  */
 export function formatProviderSignalBadge(signal: ProviderSignal | null): string {
   if (!signal) return "";
+
+  if (signal.kind === "stream-recovered") {
+    return "⚠ stream close recovered";
+  }
 
   if (signal.kind === "throttled") {
     const retryPart =

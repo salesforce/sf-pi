@@ -134,6 +134,8 @@ describe("gateway discovery fetchers", () => {
                   max_output_tokens: 16_000,
                   supports_reasoning: true,
                   supports_vision: false,
+                  supports_function_calling: true,
+                  supports_prompt_caching: false,
                   litellm_provider: "unpublished-provider",
                 },
               },
@@ -152,6 +154,8 @@ describe("gateway discovery fetchers", () => {
         maxOutputTokens: 16_000,
         supportsReasoning: true,
         supportsVision: false,
+        supportsFunctionCalling: true,
+        supportsPromptCaching: false,
       },
     });
     expect(JSON.stringify(info)).not.toContain("unpublished-provider");

@@ -9,6 +9,7 @@ import {
 } from "@earendil-works/pi-ai";
 import { streamOpenAIResponses, streamSimpleOpenAIResponses } from "@earendil-works/pi-ai/compat";
 import { omitGatewayPromptCacheKey } from "./prompt-cache-key.ts";
+import { streamGatewayResponsesWithTerminalGuard } from "./responses-terminal-guard.ts";
 
 const PRIORITY_MODEL_IDS = new Set(["gpt-5.6-sol", "gpt-6-sol"]);
 
@@ -42,10 +43,11 @@ export function streamSfGatewayResponsesFull(
   options?: OpenAIResponsesOptions,
   hooks?: GatewayResponsesFullTestHooks,
 ): AssistantMessageEventStream {
-  return (hooks?.responsesStreamer ?? streamOpenAIResponses)(
+  return streamGatewayResponsesWithTerminalGuard(
     model,
     context,
     omitGatewayPromptCacheKey(model, withPriorityTraffic(model, options)),
+    hooks?.responsesStreamer ?? streamOpenAIResponses,
   );
 }
 
@@ -55,9 +57,10 @@ export function streamSfGatewayResponses(
   options?: SimpleStreamOptions,
   hooks?: GatewayResponsesSimpleTestHooks,
 ): AssistantMessageEventStream {
-  return (hooks?.responsesStreamer ?? streamSimpleOpenAIResponses)(
+  return streamGatewayResponsesWithTerminalGuard(
     model,
     context,
     omitGatewayPromptCacheKey(model, withPriorityTraffic(model, options)),
+    hooks?.responsesStreamer ?? streamSimpleOpenAIResponses,
   );
 }

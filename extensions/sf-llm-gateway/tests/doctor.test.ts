@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateFailureClass,
+  buildGatewayCapabilityMetadataCheck,
   classifyHttpResult,
   classifyThrownError,
   formatGatewayDoctorReport,
@@ -62,6 +63,83 @@ describe("interpretGatewayHttpResult", () => {
 
   it("treats ordinary 2xx as ok", () => {
     expect(interpretGatewayHttpResult(200, "{}")).toBe("OK");
+  });
+});
+
+describe("buildGatewayCapabilityMetadataCheck", () => {
+  it("reports missing capability records as a non-blocking advisory", () => {
+    expect(
+      buildGatewayCapabilityMetadataCheck(
+        ["gpt-5.6-sol", "gpt-6-sol"],
+        {
+          "gpt-5.6-sol": {
+            id: "gpt-5.6-sol",
+            mode: "responses",
+            maxInputTokens: 1_000_000,
+            maxOutputTokens: 128_000,
+            supportsReasoning: true,
+            supportsVision: true,
+            supportsFunctionCalling: true,
+          },
+        },
+        "https://gateway.example.test/v1/model/info",
+      ),
+    ).toEqual({
+      name: "Capability metadata",
+      url: "https://gateway.example.test/v1/model/info",
+      ok: true,
+      advisory: true,
+      interpretation:
+        "Gateway published complete route capabilities for 1/2 callable models; 1 uses Pi catalog capabilities and remains probe-verifiable.",
+      failureClass: null,
+    });
+  });
+
+  it("keeps a partial capability record non-blocking and probe-verifiable", () => {
+    expect(
+      buildGatewayCapabilityMetadataCheck(
+        ["gpt-6-sol"],
+        {
+          "gpt-6-sol": {
+            id: "gpt-6-sol",
+            mode: "responses",
+            supportsVision: true,
+          },
+        },
+        "https://gateway.example.test/v1/model/info",
+      ),
+    ).toMatchObject({
+      ok: true,
+      advisory: true,
+      interpretation:
+        "Gateway published complete route capabilities for 0/1 callable models; 1 uses Pi catalog capabilities and remains probe-verifiable.",
+      failureClass: null,
+    });
+  });
+
+  it("warns when a complete Gateway record contradicts Pi vision support", () => {
+    expect(
+      buildGatewayCapabilityMetadataCheck(
+        ["gpt-6-sol"],
+        {
+          "gpt-6-sol": {
+            id: "gpt-6-sol",
+            mode: "responses",
+            maxInputTokens: 1_000_000,
+            maxOutputTokens: 128_000,
+            supportsReasoning: true,
+            supportsVision: false,
+            supportsFunctionCalling: true,
+          },
+        },
+        "https://gateway.example.test/v1/model/info",
+      ),
+    ).toMatchObject({
+      ok: false,
+      interpretation:
+        "Gateway metadata conflicts with Pi for 1 callable model: gpt-6-sol (vision).",
+      failureClass: "other",
+    });
   });
 });
 

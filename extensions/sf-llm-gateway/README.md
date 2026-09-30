@@ -11,8 +11,9 @@ Chat Completions, Responses, or Messages API. Unmatched deployment IDs are
 filtered without interpreting suffixes or backend routing. Pi owns protocol
 streaming, retries, cancellation, thinking selection, credential persistence,
 provider-scoped model caching, and API dispatch. SF Pi owns gateway-root
-normalization, catalog admission, diagnostics, usage, bounded terminal error
-guidance, and the exact-model priority request described below.
+normalization, catalog admission, capability-coverage diagnostics, usage,
+bounded terminal error guidance, Gateway terminal-close recovery, and the
+exact-model priority request described below.
 
 Startup performs no model-discovery request. Pi restores the last successful
 provider catalog, and SF Pi applies the same exact-match admission policy to the
@@ -88,6 +89,22 @@ hint. The omission is Gateway-only and model-neutral; it may reduce cache
 locality on compatible routes but does not disable other prompt caching or alter
 other request fields.
 
+A Gateway capability record is considered complete only when it declares the
+route mode, positive input/output limits, vision support, reasoning support, and
+function-calling support. Refresh status shows declared-versus-Pi-catalog model
+counts. Missing or partial `/v1/model/info` is informational and does not disable
+image input from an exact Pi-backed model; users don't need to control Gateway
+metadata. Doctor warns only when an explicit Gateway vision/reasoning declaration
+contradicts Pi, while the explicit `--image` probe verifies the deployed route.
+
+For Responses routes, SF Pi gives the Gateway one second to close the HTTP body
+after a terminal `response.completed` or `response.incomplete` event. If EOF does
+not arrive, SF Pi aborts only that transport and recovers the already-completed
+response when exactly one terminal event arrived and every observed output item
+finished. Recovered responses carry a bounded diagnostic and warning badge.
+Caller cancellation, duplicate terminals, and unfinished tool calls are never
+recovered as success.
+
 ## Compaction Model Preference
 
 Pi's native `compaction.enabled` setting remains the only switch for automatic
@@ -128,14 +145,17 @@ health, redirects, TLS, and common authentication/routing failures. Ordinary doc
 runs never invoke a model. Explicit stream modes make real, billable, bounded requests:
 
 ```text
-/sf-llm-gateway doctor --stream <modelId> [--thinking <level>] [--count 1..3] [--tool]
+/sf-llm-gateway doctor --stream <modelId> [--thinking <level>] [--count 1..3] [--tool|--image]
 /sf-llm-gateway doctor --stream-canaries [--count 1..3]
 ```
 
-The single-model probe checks plain response closure by default; `--tool` also checks a
-fixed tool-call and tool-result round trip. The canary matrix covers authenticated Opus
-5.5 and GPT-6 Sol deployments at `high` and `xhigh`. Each request has a 15-second bound.
-Results report only status and bounded timings. SF Pi does not upload, persist, or log
+The single-model probe checks plain response closure by default. `--tool` checks a
+fixed tool-call and tool-result round trip; `--image` sends a generated one-pixel PNG
+to verify the exact route without using user content. Use separate tool and image
+probes. The canary matrix covers authenticated Opus 5.5 and GPT-6 Sol deployments at
+`high` and `xhigh`, plus a GPT-6 generated-image probe. Each request has a 15-second
+bound. A recovered terminal-close defect is reported as a warning rather than healthy.
+Results contain only status and bounded timings. SF Pi does not upload, persist, or log
 probe prompts, responses, credentials, URLs, or session identifiers; no telemetry is
 collected.
 
@@ -156,8 +176,11 @@ numbers look surprising.
   usage probe, or update beyond the explicitly chosen action.
 - Discovery publishes only exact IDs backed by a reusable public Pi catalog API;
   unmatched deployment IDs are excluded without model-specific routing rules.
-- Recognized access and configuration failures are replaced with bounded,
-  protocol-neutral guidance; raw provider response bodies are not repeated.
+- Recognized access, unsupported-image, transient-stream, and configuration failures are replaced
+  with bounded, protocol-neutral guidance; raw provider response bodies are not repeated.
+- Generated-image probes use a fixed non-private one-pixel PNG and run only after an explicit command.
+- Terminal-close recovery requires one terminal event and fully completed output items; partial tools
+  remain errors.
 - CA installation/download steps are explicit and human-confirmed.
 
 ## Troubleshooting
@@ -211,6 +234,18 @@ the session being compacted.
 **A request reports an unsupported `prompt_cache_key`:** Update SF Pi and retry.
 Current SF Pi omits this field on Gateway requests. If the error persists, ask
 the Gateway administrator to check the selected model's parameter handling.
+
+**A route rejects an image even though the public model supports images:** Exact
+Pi-backed models retain their public image-input capability even when Gateway metadata
+is unavailable. Run the explicit `--image` probe to verify the deployed route. If the
+route rejects the generated image, use another verified model/route and share the
+bounded diagnostic with the Gateway operator; end users don't need to publish metadata
+or permanently downgrade the public model.
+
+**A response shows `stream close recovered`:** The Gateway emitted a valid terminal
+Responses event but did not close the HTTP body within the grace period. SF Pi preserved
+the completed response, but doctor/canaries report a warning. Fix Gateway SSE closure;
+do not disable the HTTP idle timeout.
 
 ## File Structure
 

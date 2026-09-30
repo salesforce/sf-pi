@@ -116,6 +116,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Saved and environment credentials conflict
 - The dedicated compaction model falls back to the active model
 - A request reports an unsupported `prompt_cache_key`
+- A route rejects an image even though the public model supports images
+- A response shows `stream close recovered`
 
 **[SF Agent Script](./extensions/sf-agentscript.md#troubleshooting)**
 

@@ -132,6 +132,16 @@ describe("conservative model inference", () => {
     expect("thinkingLevelMap" in inferred).toBe(false);
   });
 
+  it("keeps exact Pi-backed image input available when Gateway metadata is absent", () => {
+    const config = toProviderModelConfig("gpt-6-sol");
+
+    expect(config).toMatchObject({
+      api: "openai-responses",
+      reasoning: true,
+      input: ["text", "image"],
+    });
+  });
+
   it("uses neutral authenticated metadata when present", () => {
     const config = toProviderModelConfig("example-responses-model", {
       id: "example-responses-model",

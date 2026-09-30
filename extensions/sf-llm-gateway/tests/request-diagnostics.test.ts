@@ -74,6 +74,40 @@ describe("normalizeGatewayRequestError", () => {
     expect(normalized).not.toContain("example-route");
   });
 
+  it("explains that an image failure belongs to the deployed route, not the public model", () => {
+    const raw =
+      'sf-llm-gateway API error (400): litellm.BadRequestError: BedrockException - {"message":"This model doesn\'t support the image field for user messages. Remove image and try again."}';
+    const normalized = normalizeGatewayRequestError(raw, {
+      ...READY,
+      modelId: "gpt-6-sol",
+    });
+
+    expect(normalized).toBe(
+      [
+        "SF LLM Gateway route sf-llm-gateway/gpt-6-sol rejected image input.",
+        "The public model can support images, but this deployed route has not proved compatible vision support.",
+        "Use a verified image-capable route or resend without the image, then run /sf-llm-gateway doctor.",
+      ].join("\n"),
+    );
+    expect(normalized).not.toContain("BedrockException");
+    expect(normalized).not.toContain("litellm.BadRequestError");
+  });
+
+  it.each([
+    "terminated",
+    "Request timed out.",
+    "Connection error.",
+    "sf-llm-gateway API error (503): upstream connect error or disconnect/reset before headers",
+  ])("normalizes transient stream failure without claiming the model failed: %s", (raw) => {
+    expect(normalizeGatewayRequestError(raw, READY)).toBe(
+      [
+        "SF LLM Gateway stream for sf-llm-gateway/example-model ended before local completion.",
+        "This is a retryable transport failure, not proof that the model rejected the request.",
+        "Run /sf-llm-gateway doctor; Pi agent retries apply when retry.enabled is true.",
+      ].join("\n"),
+    );
+  });
+
   it("does not echo an unsafe model identifier into access guidance", () => {
     const normalized = normalizeGatewayRequestError("team_model_access_denied", {
       ...READY,

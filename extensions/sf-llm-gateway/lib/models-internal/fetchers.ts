@@ -176,6 +176,12 @@ export async function fetchGatewayModelInfoMap(
         supportsReasoning:
           typeof mi.supports_reasoning === "boolean" ? mi.supports_reasoning : undefined,
         supportsVision: typeof mi.supports_vision === "boolean" ? mi.supports_vision : undefined,
+        supportsFunctionCalling:
+          typeof mi.supports_function_calling === "boolean"
+            ? mi.supports_function_calling
+            : undefined,
+        supportsPromptCaching:
+          typeof mi.supports_prompt_caching === "boolean" ? mi.supports_prompt_caching : undefined,
       };
     }
     return map;
