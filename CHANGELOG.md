@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.304.0](https://github.com/salesforce/sf-pi/compare/v0.303.6...v0.304.0) (2026-09-30)
+
+
+### Features
+
+* add conflict-aware Salesforce MCP catalog ([da059ce](https://github.com/salesforce/sf-pi/commit/da059ce64b18cbad72df71e1dac61e66e12e20c5))
+
 ## [0.303.6](https://github.com/salesforce/sf-pi/compare/v0.303.5...v0.303.6) (2026-09-30)
 
 
