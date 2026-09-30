@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.303.2](https://github.com/salesforce/sf-pi/compare/v0.303.1...v0.303.2) (2026-09-30)
+
+
+### Bug Fixes
+
+* **deps:** bump vscode-languageserver-protocol ([#733](https://github.com/salesforce/sf-pi/issues/733)) ([91020e5](https://github.com/salesforce/sf-pi/commit/91020e55caaca14b5cbdd843ed7992d543a1a415))
+
 ## [0.303.1](https://github.com/salesforce/sf-pi/compare/v0.303.0...v0.303.1) (2026-09-30)
 
 
