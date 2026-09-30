@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.303.5-2026-09-30",
-  "latestVersion": "0.303.5",
+  "revision": "release-0.303.6-2026-09-30",
+  "latestVersion": "0.303.6",
   "announcements": [
     {
-      "id": "release-0.303.5",
+      "id": "release-0.303.6",
       "kind": "update",
-      "title": "sf-pi v0.303.5 — llm-gateway: harden GPT-6 image and stream handling",
+      "title": "sf-pi v0.303.6 — deps: scope temporary brace-expansion exceptions",
       "publishedAt": "2026-09-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.303.5",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.303.6",
       "severity": "info",
-      "body": "llm-gateway: harden GPT-6 image and stream handling"
+      "body": "deps: scope temporary brace-expansion exceptions"
     }
   ]
 }
