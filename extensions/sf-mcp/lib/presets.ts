@@ -239,7 +239,8 @@ export function buildServerConfig(
         "--toolsets",
         toolsets,
       ],
-      exposure: "codemode-deferred",
+      description: preset.description,
+      exposure: "codemode",
       timeout: 120,
     };
   }
@@ -253,7 +254,8 @@ export function buildServerConfig(
         ANYPOINT_CLIENT_SECRET: "${ANYPOINT_CLIENT_SECRET}",
         ANYPOINT_REGION: setup.region ?? "PROD_US",
       },
-      exposure: "codemode-deferred",
+      description: preset.description,
+      exposure: "codemode",
       timeout: 120,
     };
   }
@@ -267,7 +269,8 @@ export function buildServerConfig(
         : "mai-mce-mcp-cdp1.sfdc-yfeipo.svc.sfdcfc.net";
     return {
       url: `https://${host}/t/${encodeURIComponent(tenantId)}/c/${encodeURIComponent(clientId)}/api/mcp`,
-      exposure: "codemode-deferred",
+      description: preset.description,
+      exposure: "codemode",
       timeout: 120,
     };
   }
@@ -275,6 +278,7 @@ export function buildServerConfig(
   if (preset.id === "custom-salesforce") {
     return {
       url: validatedCustomUrl(required(setup.customUrl, "Custom MCP URL")),
+      description: preset.description,
       exposure: "hidden",
       timeout: 120,
     };
@@ -297,20 +301,19 @@ export function buildServerConfig(
   const base: McpServerConfig = {
     url,
     oauth: { clientId, callbackPort: 8765 },
+    description: preset.description,
     timeout: 120,
   };
 
   if (resolution !== "complement-native") {
-    return { ...base, exposure: "codemode-deferred" };
+    return { ...base, exposure: "codemode" };
   }
 
   const complementary = complementaryTools(preset.id);
   return {
     ...base,
     exposure: "hidden",
-    toolExposure: Object.fromEntries(
-      complementary.map((tool) => [tool, "codemode-deferred"] as const),
-    ),
+    toolExposure: Object.fromEntries(complementary.map((tool) => [tool, "codemode"] as const)),
   };
 }
 

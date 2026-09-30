@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Strict, atomic reads and writes for Pi's native mcp.json files. */
+import type { McpExposure, McpServerConfig } from "@earendil-works/pi-coding-agent";
 import {
   existsSync,
   mkdirSync,
@@ -12,27 +13,7 @@ import {
 import path from "node:path";
 import { globalAgentPath, projectConfigPath } from "../../../lib/common/pi-paths.ts";
 
-export type McpExposure = "codemode" | "codemode-deferred" | "deferred" | "direct" | "hidden";
-
-export interface McpServerConfig {
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  cwd?: string;
-  url?: string;
-  headers?: Record<string, string>;
-  oauth?: {
-    clientId?: string;
-    clientSecret?: string;
-    callbackPort?: number;
-    callbackUrl?: string;
-    scope?: string;
-  };
-  exposure?: McpExposure;
-  toolExposure?: Record<string, McpExposure>;
-  enabled?: boolean;
-  timeout?: number;
-}
+export type { McpExposure, McpServerConfig };
 
 interface McpFileRoot extends Record<string, unknown> {
   mcpServers?: Record<string, McpServerConfig>;

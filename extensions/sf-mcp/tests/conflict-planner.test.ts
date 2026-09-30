@@ -39,10 +39,11 @@ describe("SF MCP capability conflict planning", () => {
     });
 
     expect(config.exposure).toBe("hidden");
+    expect(config.description).toBe(getPreset("sobject-mutations").description);
     expect(config.toolExposure).toEqual({
-      createSobjectRecord: "codemode-deferred",
-      updateSobjectRecord: "codemode-deferred",
-      updateRelatedRecord: "codemode-deferred",
+      createSobjectRecord: "codemode",
+      updateSobjectRecord: "codemode",
+      updateRelatedRecord: "codemode",
     });
     expect(config.toolExposure).not.toHaveProperty("soqlQuery");
     expect(config.toolExposure).not.toHaveProperty("getObjectSchema");
@@ -71,7 +72,11 @@ describe("SF MCP capability conflict planning", () => {
       oauthClientId: "consumer-key",
     });
 
-    expect(config.url).toBe("https://api.salesforce.com/platform/mcp/v1/data/sandbox/data360");
+    expect("url" in config ? config.url : undefined).toBe(
+      "https://api.salesforce.com/platform/mcp/v1/data/sandbox/data360",
+    );
+    expect(config.description).toBe(getPreset("data360").description);
+    expect(config.exposure).toBe("codemode");
   });
 
   it("keeps custom remote MCP presets on HTTPS", () => {

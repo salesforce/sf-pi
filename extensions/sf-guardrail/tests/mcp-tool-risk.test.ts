@@ -19,7 +19,7 @@ afterEach(() => {
 describe("Salesforce MCP tool safety subjects", () => {
   it("leaves read-only SObject MCP helpers alone", () => {
     expect(
-      classifyNativeToolRisk("mcp__salesforce-sobject-reads__soqlQuery", {
+      classifyNativeToolRisk("mcp__salesforce_sobject_reads__soqlQuery", {
         query: "SELECT Id FROM Account LIMIT 1",
       }),
     ).toBeUndefined();
@@ -27,7 +27,7 @@ describe("Salesforce MCP tool safety subjects", () => {
 
   it("blocks record mutations until the hosted MCP target is verified", () => {
     const subject = classifyNativeToolRisk(
-      "mcp__salesforce-sobject-mutations__updateSobjectRecord",
+      "mcp__salesforce_sobject_mutations__updateSobjectRecord",
       {
         "sobject-name": "Account",
         id: "001000000000001AAA",
@@ -48,6 +48,24 @@ describe("Salesforce MCP tool safety subjects", () => {
     });
   });
 
+  it("classifies Pi 0.99.2 underscore-normalized MCP server names", () => {
+    const subject = classifyNativeToolRisk(
+      "mcp__salesforce_sobject_mutations__updateSobjectRecord",
+      {
+        "sobject-name": "Account",
+        id: "001000000000001AAA",
+        body: { Name: "Updated" },
+      },
+    );
+
+    expect(subject).toMatchObject({
+      ruleId: "native-sf-mcp-record-write",
+      operationFamily: "mcp record write",
+      targetOrgUnverified: true,
+      blockProductionOrUnknown: true,
+    });
+  });
+
   it("uses a managed sandbox endpoint as bounded environment evidence", () => {
     const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-guardrail-"));
     tempDirs.push(cwd);
@@ -64,7 +82,7 @@ describe("Salesforce MCP tool safety subjects", () => {
     );
 
     const subject = normalizeSafetySubject(
-      "mcp__salesforce-sobject-mutations__createSobjectRecord",
+      "mcp__salesforce_sobject_mutations__createSobjectRecord",
       { "sobject-name": "Task", body: { Subject: "Follow up" } },
       { cwd, projectTrusted: true },
     ) as NativeToolSafetySubject;
@@ -75,6 +93,34 @@ describe("Salesforce MCP tool safety subjects", () => {
       orgType: "sandbox",
       orgResolutionSource: "mcpConfig",
     });
+  });
+
+  it("fails closed when configured server names collide after Pi normalization", () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-collision-"));
+    tempDirs.push(cwd);
+    mkdirSync(path.join(cwd, ".pi"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".pi", "mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          "salesforce-sobject-mutations": {
+            url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-mutations",
+          },
+          salesforce_sobject_mutations: {
+            url: "https://api.salesforce.com/platform/mcp/v1/platform/sobject-mutations",
+          },
+        },
+      }),
+    );
+
+    const subject = normalizeSafetySubject(
+      "mcp__salesforce_sobject_mutations__createSobjectRecord",
+      { "sobject-name": "Task", body: { Subject: "Follow up" } },
+      { cwd, projectTrusted: true },
+    ) as NativeToolSafetySubject;
+
+    expect(subject).toMatchObject({ targetOrgUnverified: true });
+    expect(evaluateNativeToolRisk(subject, cwd, config).action).toBe("block");
   });
 
   it("ignores an untrusted project MCP file when classifying target environment", () => {
@@ -93,7 +139,7 @@ describe("Salesforce MCP tool safety subjects", () => {
     );
 
     const subject = normalizeSafetySubject(
-      "mcp__salesforce-sobject-mutations__createSobjectRecord",
+      "mcp__salesforce_sobject_mutations__createSobjectRecord",
       { "sobject-name": "Task", body: { Subject: "Follow up" } },
       { cwd, projectTrusted: false },
     ) as NativeToolSafetySubject;
@@ -103,7 +149,7 @@ describe("Salesforce MCP tool safety subjects", () => {
   });
 
   it("classifies Data 360 execute meta-tool calls for Guardrail mediation", () => {
-    const subject = classifyNativeToolRisk("mcp__salesforce-data360__execute", {
+    const subject = classifyNativeToolRisk("mcp__salesforce_data360__execute", {
       toolName: "d360_segment_create",
       paramsJson: '{"name":"Example"}',
     });
@@ -117,7 +163,7 @@ describe("Salesforce MCP tool safety subjects", () => {
   });
 
   it("classifies mutation-like Salesforce DX MCP tools", () => {
-    const subject = classifyNativeToolRisk("mcp__salesforce-dx__deploy_metadata", {
+    const subject = classifyNativeToolRisk("mcp__salesforce_dx__deploy_metadata", {
       usernameOrAlias: "DevSandbox",
       sourceDir: ["force-app"],
     });
@@ -131,7 +177,7 @@ describe("Salesforce MCP tool safety subjects", () => {
   });
 
   it("confirms unclassified managed Marketing Cloud operations", () => {
-    const subject = classifyNativeToolRisk("mcp__salesforce-marketing-cloud__updateCampaign", {
+    const subject = classifyNativeToolRisk("mcp__salesforce_marketing_cloud__updateCampaign", {
       campaignId: "example-campaign",
     });
 
@@ -143,7 +189,7 @@ describe("Salesforce MCP tool safety subjects", () => {
   });
 
   it("classifies delete tools separately from create and update", () => {
-    const subject = classifyNativeToolRisk("mcp__salesforce-sobject-deletes__deleteSobjectRecord", {
+    const subject = classifyNativeToolRisk("mcp__salesforce_sobject_deletes__deleteSobjectRecord", {
       "sobject-name": "Lead",
       id: "00Q000000000001AAA",
     });

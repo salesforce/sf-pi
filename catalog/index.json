@@ -655,7 +655,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6005
+    "srcLoc": 6034
   },
   {
     "id": "sf-herdr",
@@ -881,7 +881,7 @@
     ],
     "docs": {
       "intentGroup": "Personalize pi",
-      "summary": "Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup fields, review, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, recommends complementary exposure profiles, preserves manual native configuration, keeps unknown custom tools quarantined, and writes no server entry until the user explicitly enables one.",
+      "summary": "Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup fields, review, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, recommends complementary exposure profiles, publishes compact native server descriptions, preserves manual native configuration, keeps unknown custom tools quarantined, and writes no server entry until the user explicitly enables one.",
       "primaryFiles": [
         "index.ts",
         "lib/config-panel.ts",
@@ -914,7 +914,7 @@
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2521
+    "srcLoc": 2506
   },
   {
     "id": "sf-ohana-spinner",

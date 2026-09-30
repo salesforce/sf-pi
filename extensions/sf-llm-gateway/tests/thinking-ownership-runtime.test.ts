@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Exact Pi 0.99.1 runtime proof that Gateway metadata never owns thinking selection. */
+/** Exact Pi 0.99.2 runtime proof that Gateway metadata never owns thinking selection. */
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";

@@ -1,7 +1,8 @@
 ---
 id: "0123"
-status: accepted
+status: superseded
 date: 2026-09-30
+supersededBy: ["0124"]
 ---
 
 # ADR 0123: Pi 0.99.1 Runtime Floor and Native Ownership

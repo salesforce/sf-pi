@@ -2,6 +2,7 @@
 /** Resolve only the environment class proven by a Salesforce Hosted MCP URL. */
 import { existsSync, readFileSync } from "node:fs";
 import { globalAgentPath, projectConfigPath } from "../../../lib/common/pi-paths.ts";
+import { canonicalizeMcpServerName } from "./mcp-tool-identity.ts";
 
 export type McpTargetType = "production" | "sandbox" | "unknown";
 
@@ -44,7 +45,12 @@ function readServerUrl(filePath: string, serverName: string): string | undefined
   try {
     const root = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
     if (!isRecord(root) || !isRecord(root.mcpServers)) return undefined;
-    const server = root.mcpServers[serverName];
+    const canonicalName = canonicalizeMcpServerName(serverName);
+    const matches = Object.entries(root.mcpServers).filter(
+      ([configuredName]) => canonicalizeMcpServerName(configuredName) === canonicalName,
+    );
+    if (matches.length !== 1) return undefined;
+    const server = matches[0]?.[1];
     if (!isRecord(server) || typeof server.url !== "string") return undefined;
     return server.url;
   } catch {
