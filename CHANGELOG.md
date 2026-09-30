@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.303.6](https://github.com/salesforce/sf-pi/compare/v0.303.5...v0.303.6) (2026-09-30)
+
+
+### Security
+
+* **deps:** scope temporary brace-expansion exceptions ([6dd7641](https://github.com/salesforce/sf-pi/commit/6dd7641085db83202ec7b481fdcd79ef64d13e91))
+
 ## [0.303.5](https://github.com/salesforce/sf-pi/compare/v0.303.4...v0.303.5) (2026-09-30)
 
 
