@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.304.0-2026-09-30",
-  "latestVersion": "0.304.0",
+  "revision": "release-0.305.0-2026-09-30",
+  "latestVersion": "0.305.0",
   "announcements": [
     {
-      "id": "release-0.304.0",
+      "id": "release-0.305.0",
       "kind": "update",
-      "title": "sf-pi v0.304.0 — add conflict-aware Salesforce MCP catalog",
+      "title": "sf-pi v0.305.0 — pi: adopt Pi 0.99.2 runtime",
       "publishedAt": "2026-09-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.304.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.305.0",
       "severity": "info",
-      "body": "add conflict-aware Salesforce MCP catalog"
+      "body": "pi: adopt Pi 0.99.2 runtime"
     }
   ]
 }
