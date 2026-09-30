@@ -4,11 +4,10 @@ updates:
   - package-ecosystem: npm
     directory: "/"
     schedule:
-      interval: weekly
-      day: monday
+      interval: daily
       time: "05:00"
       timezone: "America/Los_Angeles"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     labels:
       - dependencies
       - npm
@@ -37,12 +36,16 @@ updates:
     # audit-edge change. Ignore every update type, not just majors.
     ignore:
       - dependency-name: "@earendil-works/*"
+      # 1.2.46 regresses its nested Agent Script language/dialect packages
+      # below the aligned runtime toolchain. Allow future versions through.
+      - dependency-name: "@sf-agentscript/agentfabric-dialect"
+        versions:
+          - "1.2.46"
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: weekly
-      day: monday
+      interval: daily
       time: "05:00"
       timezone: "America/Los_Angeles"
     open-pull-requests-limit: 5
