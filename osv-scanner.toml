@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# Temporary, narrow exceptions for brace-expansion@5.0.9 shrinkwrapped inside
+# the @earendil-works/pi-coding-agent development dependency. Production
+# dependencies are unaffected (`npm audit --omit=dev` is clean). Remove these
+# entries when upstream Pi publishes brace-expansion >=5.0.12.
+
+[[IgnoredVulns]]
+id = "GHSA-6j4f-fj2g-mc7p"
+ignoreUntil = 2026-10-31
+reason = "Development-only shrinkwrapped Pi dependency; no root override can replace it."
+
+[[IgnoredVulns]]
+id = "GHSA-q2hr-2g5m-vwhr"
+ignoreUntil = 2026-10-31
+reason = "Development-only shrinkwrapped Pi dependency; no root override can replace it."
+
+[[IgnoredVulns]]
+id = "GHSA-qhr7-859c-m2p7"
+ignoreUntil = 2026-10-31
+reason = "Development-only shrinkwrapped Pi dependency; no root override can replace it."
