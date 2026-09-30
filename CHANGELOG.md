@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.303.1](https://github.com/salesforce/sf-pi/compare/v0.303.0...v0.303.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **deps:** bump brace-expansion from 5.0.9 to 5.0.12 ([#743](https://github.com/salesforce/sf-pi/issues/743)) ([b111f71](https://github.com/salesforce/sf-pi/commit/b111f7140dbda6c231a435ac97f2861d13405fba))
+
 ## [0.303.0](https://github.com/salesforce/sf-pi/compare/v0.302.2...v0.303.0) (2026-09-30)
 
 
