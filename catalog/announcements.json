@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.305.0-2026-09-30",
-  "latestVersion": "0.305.0",
+  "revision": "release-0.306.0-2026-10-01",
+  "latestVersion": "0.306.0",
   "announcements": [
     {
-      "id": "release-0.305.0",
+      "id": "release-0.306.0",
       "kind": "update",
-      "title": "sf-pi v0.305.0 — pi: adopt Pi 0.99.2 runtime",
-      "publishedAt": "2026-09-30T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.305.0",
+      "title": "sf-pi v0.306.0 — sf-mcp: govern hosted presets and attest exact targets",
+      "publishedAt": "2026-10-01T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.306.0",
       "severity": "info",
-      "body": "pi: adopt Pi 0.99.2 runtime"
+      "body": "sf-mcp: govern hosted presets and attest exact targets — sf-mcp: sanitize target attestation fixture"
     }
   ]
 }
