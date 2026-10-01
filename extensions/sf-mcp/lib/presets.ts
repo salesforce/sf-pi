@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Salesforce-published MCP presets and their deliberately small capability claims. */
+import { SF_MCP_HEADLESS_360_REQUIREMENT } from "../../../lib/common/sf-mcp-oauth-requirements.ts";
 import type { McpExposure, McpServerConfig } from "./mcp-config.ts";
 import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
 import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
@@ -265,7 +266,7 @@ const PRESETS: readonly McpPreset[] = [
   },
   {
     id: "headless-360",
-    revision: 1,
+    revision: 2,
     serverName: "salesforce-headless-360",
     category: "Salesforce Core",
     label: "Headless 360",
@@ -630,7 +631,10 @@ export function buildServerConfig(
 
   const base: McpServerConfig = {
     url,
-    oauth: { clientId, callbackPort: 8765 },
+    oauth:
+      preset.id === SF_MCP_HEADLESS_360_REQUIREMENT.presetId
+        ? { clientId, callbackUrl: SF_MCP_HEADLESS_360_REQUIREMENT.callbackUrl }
+        : { clientId, callbackPort: 8765 },
     description: preset.description,
     timeout: 120,
   };

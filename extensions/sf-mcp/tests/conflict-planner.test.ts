@@ -217,6 +217,11 @@ describe("SF MCP capability conflict planning", () => {
         `https://api.salesforce.com/platform/mcp/v1/${suffix}`,
       );
       expect(config.exposure).toBe("hidden");
+      if (presetId === "headless-360") {
+        expect("oauth" in config ? config.oauth : undefined).toMatchObject({
+          callbackUrl: "http://localhost:8765/callback",
+        });
+      }
       expect(Object.keys(config.toolExposure ?? {}).length).toBeGreaterThan(0);
       expect(Object.values(config.toolExposure ?? {})).toEqual(
         expect.arrayContaining(["codemode"]),

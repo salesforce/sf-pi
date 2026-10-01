@@ -208,6 +208,18 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     },
   },
   {
+    id: "sf-integrate",
+    name: "SF Integrate",
+    description: "Plan-bound Salesforce inbound OAuth and outbound modern credential setup, with guarded apply, secret-safe population, resulting-state verification, and bounded connection proof.",
+    file: "extensions/sf-integrate/index.ts",
+    category: "agent-tool",
+    maturity: "experimental",
+    defaultEnabled: true,
+    commands: ["/sf-integrate"],
+    tools: ["sf_integrate"],
+    events: ["session_start","session_shutdown"],
+  },
+  {
     id: "sf-llm-gateway",
     name: "SF LLM Gateway",
     description: "Salesforce LLM Gateway provider with model discovery",

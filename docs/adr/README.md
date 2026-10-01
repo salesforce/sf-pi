@@ -116,6 +116,8 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0128: SF MCP Reviewed Tool Exposure Policy](./0128-sf-mcp-reviewed-tool-exposure-policy.md) — 2026-10-01
 - [0129: SF MCP Exact Conflict and Drift Governance](./0129-sf-mcp-exact-conflict-and-drift-governance.md) — 2026-10-01
 - [0130: SF MCP Published Catalogs and Agentforce Sales](./0130-sf-mcp-published-catalogs-and-agentforce-sales.md) — 2026-10-01
+- [0131: SF Integrate owns hosted MCP org OAuth setup](./0131-sf-integrate-owns-hosted-mcp-org-oauth-setup.md) — 2026-10-01
+- [0132: SF Integrate adds plan-bound outbound credentials](./0132-sf-integrate-adds-plan-bound-outbound-credentials.md) — 2026-10-01
 
 ## Proposed
 

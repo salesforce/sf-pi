@@ -52,6 +52,26 @@
       "arguments": "--org <alias> [--surface all] [--mutate]"
     },
     {
+      "script": "e2e:sf-integrate",
+      "entry": "scripts/e2e/sf-integrate-e2e.ts",
+      "title": "SF Integrate Headless 360 OAuth lifecycle",
+      "summary": "Proves explicit-org preflight, source-bound External Client App planning, Metadata API check-only validation, and optional disposable create/read/delete verification for the Headless 360 MCP preset.",
+      "target": "Explicit non-production org with External Client App metadata support",
+      "posture": "bounded-mutation",
+      "artifacts": "Mode-0600 integration plan, deployment, verification, and handoff artifacts",
+      "arguments": "--org <alias> [--apply]"
+    },
+    {
+      "script": "e2e:sf-integrate-outbound",
+      "entry": "scripts/e2e/sf-integrate-outbound-e2e.ts",
+      "title": "SF Integrate outbound credential lifecycle",
+      "summary": "Proves plan-bound OAuth or API-key setup, optional External Credential check-only validation, disposable Named Credential stack creation, secret-safe credential population, principal access, OAuth consent URL generation or bounded GET callout, and cleanup.",
+      "target": "Explicit non-production org with modern Named Credentials and outbound callout access",
+      "posture": "bounded-mutation",
+      "artifacts": "Mode-0600 outbound plan, setup, verification, and Anonymous Apex probe artifacts",
+      "arguments": "--org <alias> [--auth api_key|oauth_client_credentials|oauth_browser] [--apply]"
+    },
+    {
       "script": "e2e:sf-flow",
       "entry": "scripts/e2e/sf-flow-e2e.ts",
       "title": "SF Flow lifecycle harness",

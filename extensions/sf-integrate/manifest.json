@@ -1,0 +1,41 @@
+{
+  "id": "sf-integrate",
+  "name": "SF Integrate",
+  "description": "Plan-bound Salesforce inbound OAuth and outbound modern credential setup, with guarded apply, secret-safe population, resulting-state verification, and bounded connection proof.",
+  "category": "agent-tool",
+  "maturity": "experimental",
+  "defaultEnabled": true,
+  "commands": ["/sf-integrate"],
+  "tools": ["sf_integrate"],
+  "events": ["session_start", "session_shutdown"],
+  "docs": {
+    "intentGroup": "Work with Salesforce orgs",
+    "agentGuide": "AGENT_GUIDE.md",
+    "summary": "Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The inbound slice supports Headless 360 External Client Apps with Metadata API check-only validation and SF MCP handoff. The outbound slice supports OAuth client credentials, OAuth JWT bearer, OAuth authorization code, and custom API-key External Credential plus Named Credential stacks, secret-safe population from a masked prompt or environment reference, principal permission access, OAuth consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.",
+    "primaryFiles": [
+      "index.ts",
+      "lib/sf-integrate-tool.ts",
+      "lib/operations.ts",
+      "lib/outbound-operations.ts",
+      "lib/outbound-api.ts",
+      "lib/outbound-plans.ts",
+      "lib/metadata.ts",
+      "lib/plans.ts"
+    ],
+    "stateFiles": [
+      "<globalAgentDir>/sf-pi/sf-integrate/plans/*",
+      "<globalAgentDir>/sf-pi/sf-integrate/runs/*",
+      "<globalAgentDir>/sf-pi/sf-integrate/verification/*",
+      "<globalAgentDir>/sf-pi/sf-integrate/handoffs/*"
+    ],
+    "safety": [
+      "No startup org probes, metadata describes, subprocesses, or network calls; the family tool registers on session_start and contacts Salesforce only for explicit actions.",
+      "Every org-backed action requires an explicit target_org. setup.apply, secret.populate, and oauth.authorize require a current session-bound plan ID/hash/exact target plus allow_mutation=true, remain Guardrail-mediated, and refuse production or unknown orgs.",
+      "setup.apply is create-only in Phase 1, runs Metadata API check-only validation before deployment, refuses current-state drift, and verifies three exact External Client App components after deployment.",
+      "The Headless 360 app is a public PKCE client and never uses a client secret. Outbound secrets are accepted only through a masked TUI prompt or named environment variable, sent directly to Salesforce, and never written to tool arguments, model output, or artifacts.",
+      "SF Integrate never edits mcp.json or stores OAuth tokens. The final client-ID copy remains an explicit handoff to SF MCP and Pi's native MCP OAuth runtime.",
+      "Both slices are create-only and refuse existing-resource drift. The outbound connection proof is GET-only, delegates execution to sf_apex, and never returns the external response body.",
+      "Production policies, existing-resource updates, rotations, migration, rollback, and user-selected destructive cleanup remain out of scope."
+    ]
+  }
+}

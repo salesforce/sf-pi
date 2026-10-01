@@ -29,6 +29,7 @@ export function classifyNativeToolRisk(
 ): NativeToolSafetySubject | undefined {
   return (
     classifySfApex(toolName, input) ??
+    classifySfIntegrate(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
@@ -72,6 +73,81 @@ function classifySfApex(
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
+function classifySfIntegrate(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_integrate") return undefined;
+  const action = stringValue(input.action);
+  if (action !== "setup.apply" && action !== "secret.populate" && action !== "oauth.authorize") {
+    return undefined;
+  }
+  const targetOrg = stringValue(input.target_org);
+  const target =
+    stringValue(input.named_credential_name) ??
+    stringValue(input.app_name) ??
+    "unspecified integration";
+  const planId = stringValue(input.plan_id) ?? "missing-plan";
+  const planHash = stringValue(input.plan_hash) ?? "missing-hash";
+  const operation = {
+    action,
+    target,
+    planId,
+    planHash,
+    secretSource: stringValue(input.secret_source),
+    secretEnv: stringValue(input.secret_env),
+    allowMutation: input.allow_mutation === true,
+  };
+  const fingerprint = fingerprintText(JSON.stringify(operation));
+  const operationFamily =
+    action === "setup.apply"
+      ? "integration setup"
+      : action === "secret.populate"
+        ? "integration credential population"
+        : "integration oauth authorization";
+  const riskTier =
+    action === "setup.apply"
+      ? "integration_setup_mutation_exact"
+      : action === "secret.populate"
+        ? "integration_secret_population_exact"
+        : "integration_oauth_authorization_exact";
+  const promptTitle =
+    action === "setup.apply"
+      ? "⚠ Integration setup"
+      : action === "secret.populate"
+        ? "⚠ Credential population"
+        : "⚠ OAuth authorization";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action,
+    ruleId: "native-sf-integrate-setup",
+    subject: `sf_integrate ${action} ${target}`,
+    reason: `SF Integrate ${action} requested for ${target}.`,
+    promptTitle,
+    operationFamily,
+    riskTier,
+    fingerprint: `sf_integrate|${action}|${fingerprint}`,
+    approvalLabel: `${action} ${target}`,
+    approvalDetail: [
+      `target=${target}`,
+      `plan_id=${planId}`,
+      `plan_hash=${fingerprintText(planHash)}`,
+      action === "secret.populate"
+        ? `secret_source=${stringValue(input.secret_source) ?? "prompt"}`
+        : undefined,
+      `allow_mutation=${input.allow_mutation === true}`,
+    ]
+      .filter(Boolean)
+      .join("; "),
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+    blockProductionOrUnknown: true,
+    allowSession: action === "setup.apply",
   };
 }
 

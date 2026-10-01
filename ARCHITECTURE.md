@@ -35,6 +35,7 @@ sf-pi/
 │   ├── sf-flow/
 │   ├── sf-guardrail/
 │   ├── sf-herdr/
+│   ├── sf-integrate/
 │   ├── sf-llm-gateway/
 │   ├── sf-lsp/
 │   ├── sf-lwc/

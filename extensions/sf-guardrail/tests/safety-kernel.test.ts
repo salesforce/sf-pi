@@ -382,6 +382,122 @@ describe("Safety Kernel", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("confirms plan-bound sf_integrate setup only for non-production targets", async () => {
+    mockedEnv = env("IntegrationDev", "developer");
+
+    const decision = await evaluateSafety({
+      toolName: "sf_integrate",
+      input: {
+        action: "setup.apply",
+        target_org: "IntegrationDev",
+        app_name: "SfPiHeadless360Mcp",
+        plan_id: "plan_example",
+        plan_hash: "sha256:example",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-integrate-setup",
+      orgAlias: "IntegrationDev",
+      orgType: "developer",
+    });
+    expect(decision?.approvalScope).toMatchObject({
+      operationFamily: "integration setup",
+      riskTier: "integration_setup_mutation_exact",
+    });
+  });
+
+  it("separately confirms sf_integrate secret population and OAuth authorization", async () => {
+    mockedEnv = env("IntegrationDev", "developer");
+
+    const secret = await evaluateSafety({
+      toolName: "sf_integrate",
+      input: {
+        action: "secret.populate",
+        target_org: "IntegrationDev",
+        named_credential_name: "ExampleNC",
+        plan_id: "plan_example",
+        plan_hash: "sha256:example",
+        secret_source: "env",
+        secret_env: "EXAMPLE_CLIENT_SECRET",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const authorize = await evaluateSafety({
+      toolName: "sf_integrate",
+      input: {
+        action: "oauth.authorize",
+        target_org: "IntegrationDev",
+        named_credential_name: "ExampleNC",
+        plan_id: "plan_example",
+        plan_hash: "sha256:example",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(secret?.approvalScope).toMatchObject({
+      operationFamily: "integration credential population",
+      riskTier: "integration_secret_population_exact",
+      allowSession: false,
+    });
+    expect(authorize?.approvalScope).toMatchObject({
+      operationFamily: "integration oauth authorization",
+      riskTier: "integration_oauth_authorization_exact",
+      allowSession: false,
+    });
+    expect(secret?.fingerprint).not.toBe(authorize?.fingerprint);
+    expect(secret?.reason).not.toContain("EXAMPLE_CLIENT_SECRET=");
+  });
+
+  it("hard-blocks sf_integrate setup for production targets", async () => {
+    mockedEnv = env("Prod", "production");
+
+    const decision = await evaluateSafety({
+      toolName: "sf_integrate",
+      input: {
+        action: "setup.apply",
+        target_org: "Prod",
+        app_name: "SfPiHeadless360Mcp",
+        plan_id: "plan_example",
+        plan_hash: "sha256:example",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      action: "block",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-integrate-setup",
+      orgType: "production",
+    });
+  });
+
+  it("does not mediate read-only sf_integrate actions", async () => {
+    await expect(
+      evaluateSafety({
+        toolName: "sf_integrate",
+        input: {
+          action: "setup.verify",
+          target_org: "IntegrationDev",
+          app_name: "SfPiHeadless360Mcp",
+        },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it("confirms mutating sf_flow lifecycle actions with exact action fingerprints", async () => {
     mockedEnv = env("FlowLifecycleDev", "developer");
 

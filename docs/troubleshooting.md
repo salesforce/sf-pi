@@ -171,6 +171,16 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - The Herdr package is missing
 - Startup errors about `herdr_layout` / `herdr_pane` / `herdr_agent` conflicts
 
+**[SF Integrate](./extensions/sf-integrate.md#troubleshooting)**
+
+- Preflight is blocked
+- Planning reports existing resources
+- Secret entry is unavailable
+- OAuth client credentials remain unconfigured
+- Browser OAuth returns no consent URL
+- JWT planning is blocked
+- Connection test fails
+
 **[SF LWC](./extensions/sf-lwc.md#troubleshooting)**
 
 - No `sfdx-project.json` is found

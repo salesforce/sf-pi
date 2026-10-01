@@ -15,6 +15,7 @@ export const extensionSidebarItems = [
   { text: "SF Browser", link: "/extensions/sf-browser" },
   { text: "SF Data Explorer", link: "/extensions/sf-data-explorer" },
   { text: "SF DevBar", link: "/extensions/sf-devbar" },
+  { text: "SF Integrate", link: "/extensions/sf-integrate" },
   { text: "SF Data 360", link: "/extensions/sf-data360" },
   { text: "SF Brain", link: "/extensions/sf-brain" },
   { text: "SF Guardrail", link: "/extensions/sf-guardrail" },

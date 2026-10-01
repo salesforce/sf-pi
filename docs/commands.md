@@ -105,6 +105,14 @@ _Non-mutating Salesforce workflow plans for the current split Herdr tools._
 - Commands: `/sf-herdr`
 - Tools: `sf_herdr_plan`
 
+### [SF Integrate](./extensions/sf-integrate)
+
+_Plan-bound Salesforce inbound OAuth and outbound modern credential setup, with guarded apply, secret-safe population, resulting-state verification, and bounded connection proof._
+
+- Default: **on**
+- Commands: `/sf-integrate`
+- Tools: `sf_integrate`
+
 ### [SF LWC](./extensions/sf-lwc)
 
 _Local-native Lightning Web Component lifecycle workflows for pi: project scan, component inspection, focused diagnostics, targeted Jest tests, and artifacts._

@@ -100,6 +100,12 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
   <span>Bespoke Salesforce developer status bar with org context, model info, git, and context window progress</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-devbar</code></span>
 </a>
+<a class="sfpi-extension-card" href="./extensions/sf-integrate">
+  <span class="sfpi-card-kicker">Agent Tool · on</span>
+  <strong>SF Integrate</strong>
+  <span>Plan-bound Salesforce inbound OAuth and outbound modern credential setup, with guarded apply, secret-safe population, resulting-state verification, and bounded connection proof.</span>
+  <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-integrate</code></span>
+</a>
 </div>
 
 ## Work with Data Cloud

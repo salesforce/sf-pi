@@ -76,6 +76,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `sf-conn/`                     | directory |                     5 |               0 |
 | `sf-environment/`              | directory |                     6 |               4 |
 | `sf-lsp-health/`               | directory |                     2 |               1 |
+| `sf-mcp-oauth-requirements.ts` | module    |                     1 |               0 |
 | `sf-pi-extension-state.ts`     | module    |                     1 |               0 |
 | `sf-pi-package-resolution.ts`  | module    |                     1 |               0 |
 | `sf-pi-package-root.ts`        | module    |                     1 |               0 |

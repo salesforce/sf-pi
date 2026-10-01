@@ -521,6 +521,7 @@ describe("SF MCP Manager catalog", () => {
     const output = panel.renderContent(110).join("\n");
     expect(output).toContain("SF MCP › Headless 360 › Setup");
     expect(output).toContain("External Client App consumer key");
+    expect(output).toContain("http://localhost:8765/callback");
     expect(ui.select).not.toHaveBeenCalled();
     expect(ui.input).not.toHaveBeenCalled();
     expect(ui.confirm).not.toHaveBeenCalled();

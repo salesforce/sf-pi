@@ -2,6 +2,7 @@
 /** Inline preset setup form hosted inside the SF Pi Manager panel. */
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Input, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import { SF_MCP_HEADLESS_360_REQUIREMENT } from "../../../lib/common/sf-mcp-oauth-requirements.ts";
 import type { McpPreset, PresetSetup } from "./presets.ts";
 
 type ChoiceKey = "environment" | "region";
@@ -229,12 +230,16 @@ function setupControls(theme: Theme, preset: McpPreset): Control[] {
         { label: "Production", value: "production" },
       ],
     });
+    const callbackUrl =
+      preset.id === SF_MCP_HEADLESS_360_REQUIREMENT.presetId
+        ? SF_MCP_HEADLESS_360_REQUIREMENT.callbackUrl
+        : "http://127.0.0.1:8765/callback";
     controls.push(
       textControl(
         theme,
         "oauthClientId",
         "External Client App consumer key",
-        "Public client identifier. Callback: http://127.0.0.1:8765/callback · scopes: mcp_api, refresh_token",
+        `Public client identifier. Callback: ${callbackUrl} · scopes: mcp_api, refresh_token`,
         "Paste consumer key",
       ),
     );
