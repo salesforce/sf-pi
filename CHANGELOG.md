@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.308.0](https://github.com/salesforce/sf-pi/compare/v0.307.1...v0.308.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** add tool contract discovery ([54a8bfa](https://github.com/salesforce/sf-pi/commit/54a8bfa9eb0b2077556f31e480a9d8b95bffd674))
+
 ## [0.307.1](https://github.com/salesforce/sf-pi/compare/v0.307.0...v0.307.1) (2026-10-01)
 
 
