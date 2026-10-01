@@ -4,6 +4,7 @@ import type { McpExposure, McpServerConfig } from "./mcp-config.ts";
 import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
 import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
 import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
+import { TABLEAU_MCP_TOOLS } from "./tool-contracts-tableau.ts";
 
 export type McpPresetId =
   | "salesforce-dx"
@@ -12,12 +13,24 @@ export type McpPresetId =
   | "content-readonly"
   | "content-write"
   | "headless-360"
+  | "tableau"
   | "tableau-next"
   | "crm-analytics"
   | "marketing-cloud"
   | "mulesoft-dx"
   | "agentforce-sales"
-  | "custom-salesforce";
+  | "custom-salesforce"
+  | "trailhead";
+
+export type McpPresetCategory =
+  | "Salesforce Core"
+  | "Data Cloud"
+  | "Tableau"
+  | "Marketing Cloud"
+  | "MuleSoft"
+  | "Agentforce"
+  | "Custom"
+  | "Trailhead";
 
 export type ConflictRelationship = "direct" | "partial";
 
@@ -32,6 +45,7 @@ export interface McpPreset {
   id: McpPresetId;
   revision: number;
   serverName: string;
+  category: McpPresetCategory;
   label: string;
   icon: string;
   description: string;
@@ -166,6 +180,7 @@ const PRESETS: readonly McpPreset[] = [
     id: "salesforce-dx",
     revision: 3,
     serverName: "salesforce-dx",
+    category: "Salesforce Core",
     label: "Salesforce DX",
     icon: "⚡",
     description: "Org, metadata, user, data, and testing tools using existing Salesforce CLI auth.",
@@ -192,33 +207,10 @@ const PRESETS: readonly McpPreset[] = [
     ],
   },
   {
-    id: "data360",
-    revision: 2,
-    serverName: "salesforce-data360",
-    label: "Data 360",
-    icon: "◉",
-    description: "Data 360 Connect API discovery, payload examples, and execution meta-tools.",
-    transport: "http",
-    setup: "hosted-oauth",
-    risk: "mixed",
-    support: "ga",
-    docsUrl:
-      "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/data360-mcp.html",
-    approvedTools: ["search", "payload_examples", "execute"],
-    overlaps: [
-      {
-        nativeExtensionId: "sf-data360",
-        relationship: "direct",
-        capabilities: ["data360.query", "data360.configuration", "data360.activation"],
-        reason:
-          "SF Data 360 already owns typed discovery, dry-run planning, execution, orchestration, and artifacts.",
-      },
-    ],
-  },
-  {
     id: "backup-recover",
     revision: 1,
     serverName: "salesforce-backup-recover",
+    category: "Salesforce Core",
     label: "Backup and Recover",
     icon: "↻",
     description: "Inspect backups and guide bounded backup and restore-selection workflows.",
@@ -237,6 +229,7 @@ const PRESETS: readonly McpPreset[] = [
     id: "content-readonly",
     revision: 1,
     serverName: "salesforce-content-readonly",
+    category: "Salesforce Core",
     label: "Content Read-Only",
     icon: "▤",
     description: "Read Salesforce CMS workspaces, channels, folders, content, and media.",
@@ -255,6 +248,7 @@ const PRESETS: readonly McpPreset[] = [
     id: "content-write",
     revision: 1,
     serverName: "salesforce-content-write",
+    category: "Salesforce Core",
     label: "Content Write",
     icon: "✐",
     description: "Create, update, publish, and organize Salesforce CMS content and channels.",
@@ -273,6 +267,7 @@ const PRESETS: readonly McpPreset[] = [
     id: "headless-360",
     revision: 1,
     serverName: "salesforce-headless-360",
+    category: "Salesforce Core",
     label: "Headless 360",
     icon: "◎",
     description: "Discover, describe, and dispatch broad Salesforce platform operations.",
@@ -307,9 +302,54 @@ const PRESETS: readonly McpPreset[] = [
     ],
   },
   {
+    id: "data360",
+    revision: 2,
+    serverName: "salesforce-data360",
+    category: "Data Cloud",
+    label: "Data 360",
+    icon: "◉",
+    description: "Data 360 Connect API discovery, payload examples, and execution meta-tools.",
+    transport: "http",
+    setup: "hosted-oauth",
+    risk: "mixed",
+    support: "ga",
+    docsUrl:
+      "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/data360-mcp.html",
+    approvedTools: ["search", "payload_examples", "execute"],
+    overlaps: [
+      {
+        nativeExtensionId: "sf-data360",
+        relationship: "direct",
+        capabilities: ["data360.query", "data360.configuration", "data360.activation"],
+        reason:
+          "SF Data 360 already owns typed discovery, dry-run planning, execution, orchestration, and artifacts.",
+      },
+    ],
+  },
+  {
+    id: "tableau",
+    revision: 1,
+    serverName: "tableau",
+    category: "Tableau",
+    label: "Tableau MCP",
+    icon: "▧",
+    description:
+      "Connect Tableau's standalone stack for governed data, content, Pulse, Prep flows, and administration.",
+    transport: "http",
+    setup: "ready",
+    risk: "mixed",
+    support: "alpha",
+    supportNote:
+      "Alpha in SF Pi: Tableau marks the standalone server Tableau Supported but does not publish a GA or Beta release label. It is separate from Salesforce-hosted Tableau Next MCP.",
+    docsUrl: "https://tableau.github.io/tableau-mcp/docs/hosted-tableau-mcp",
+    approvedTools: TABLEAU_MCP_TOOLS.map((tool) => tool.name),
+    overlaps: [],
+  },
+  {
     id: "tableau-next",
     revision: 1,
     serverName: "salesforce-tableau-next",
+    category: "Tableau",
     label: "Tableau Next",
     icon: "▥",
     description: "Read governed Tableau Next semantic models, metrics, dashboards, and analytics.",
@@ -326,6 +366,7 @@ const PRESETS: readonly McpPreset[] = [
     id: "crm-analytics",
     revision: 1,
     serverName: "salesforce-crm-analytics",
+    category: "Tableau",
     label: "CRM Analytics",
     icon: "▦",
     description: "Read CRM Analytics apps, datasets, SAQL results, dashboards, and lenses.",
@@ -342,6 +383,7 @@ const PRESETS: readonly McpPreset[] = [
   {
     id: "marketing-cloud",
     serverName: "salesforce-marketing-cloud",
+    category: "Marketing Cloud",
     label: "Marketing Cloud",
     icon: "☁",
     description: "Marketing Cloud Engagement campaign, content, customer-data, and transfer tools.",
@@ -358,6 +400,7 @@ const PRESETS: readonly McpPreset[] = [
   {
     id: "mulesoft-dx",
     serverName: "mulesoft-dx",
+    category: "MuleSoft",
     label: "MuleSoft DX",
     icon: "M",
     description: "API design, Exchange, deployment, policy, and Anypoint Platform tools.",
@@ -373,6 +416,7 @@ const PRESETS: readonly McpPreset[] = [
   {
     id: "agentforce-sales",
     serverName: "salesforce-agentforce-sales",
+    category: "Agentforce",
     label: "Agentforce Sales",
     icon: "◆",
     description:
@@ -399,6 +443,7 @@ const PRESETS: readonly McpPreset[] = [
   {
     id: "custom-salesforce",
     serverName: "salesforce-custom",
+    category: "Custom",
     label: "Custom Salesforce MCP",
     icon: "+",
     description: "Connect an org-curated streamable HTTP server in quarantine mode.",
@@ -410,6 +455,24 @@ const PRESETS: readonly McpPreset[] = [
     supportNote: "Custom servers remain quarantined until their tools are reviewed in /mcp.",
     docsUrl:
       "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/custom-servers.html",
+    overlaps: [],
+  },
+  {
+    id: "trailhead",
+    serverName: "trailhead",
+    category: "Trailhead",
+    label: "Trailhead",
+    icon: "T",
+    description: "Search and retrieve public Trailhead learning content by topic, role, and level.",
+    transport: "http",
+    setup: "ready",
+    risk: "read",
+    support: "alpha",
+    revision: 1,
+    supportNote:
+      "Alpha in SF Pi: Trailhead describes a free, read-only server with no authentication but does not publish a GA or Beta release label.",
+    docsUrl: "https://trailhead.salesforce.com/support/mcp",
+    approvedTools: ["content_search", "fetch_content"],
     overlaps: [],
   },
 ] as const;
@@ -453,6 +516,32 @@ export function buildServerConfig(
           "--toolsets",
           toolsets,
         ],
+        description: preset.description,
+        timeout: 120,
+      },
+      toolExposure,
+    );
+  }
+
+  if (preset.id === "tableau") {
+    return withReviewedToolExposure(
+      preset,
+      resolution,
+      {
+        url: "https://mcp.tableau.com",
+        description: preset.description,
+        timeout: 120,
+      },
+      toolExposure,
+    );
+  }
+
+  if (preset.id === "trailhead") {
+    return withReviewedToolExposure(
+      preset,
+      resolution,
+      {
+        url: "https://mcp.trailhead.salesforce.com/mcp",
         description: preset.description,
         timeout: 120,
       },
@@ -671,6 +760,24 @@ export function isPresetConfigCompatible(
     } catch {
       return { compatible: false, reason: "The URL is invalid." };
     }
+  }
+  if (preset.id === "tableau" || preset.id === "trailhead") {
+    const expectedUrl =
+      preset.id === "tableau"
+        ? "https://mcp.tableau.com"
+        : "https://mcp.trailhead.salesforce.com/mcp";
+    if (!("url" in config) || config.url !== expectedUrl) {
+      return {
+        compatible: false,
+        reason: `The entry is not the documented ${preset.label} endpoint.`,
+      };
+    }
+    return hasApprovedToolExposure(preset, config)
+      ? { compatible: true }
+      : {
+          compatible: false,
+          reason: `${preset.label} does not use its reviewed per-tool exposure contract.`,
+        };
   }
   if (preset.id === "agentforce-sales") {
     return "url" in config &&

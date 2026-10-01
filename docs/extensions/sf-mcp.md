@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. The Manager now carries reviewed tool contracts for the configured Salesforce DX core toolsets and the published Marketing Cloud Engagement and MuleSoft DX catalogs, with high-contrast exposure states and exact Hidden, Code Mode, Deferred, or Direct policy. It also catalogs the Agentforce Sales ChatGPT sandbox Beta as an SF Pi Alpha whose exact tools and generic-client interoperability remain undocumented. Conflict, drift, adoption, and redacted apply workflows stay fail-closed and preserve user-owned configuration.
+Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The Manager carries reviewed tool contracts for Salesforce DX, standalone Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, MuleSoft DX, and the other published hosted catalogs, with high-contrast exposure states and exact Hidden, Code Mode, Deferred, or Direct policy. It also catalogs the Agentforce Sales ChatGPT sandbox Beta as an SF Pi Alpha whose exact tools and generic-client interoperability remain undocumented. Conflict, drift, adoption, and redacted apply workflows stay fail-closed and preserve user-owned configuration.
 
 ## Start
 
@@ -35,11 +35,12 @@ Open its Manager detail or change its package state with:
 - Direct capability overlaps default to native SF Pi owners; complementary profiles use hidden-by-default server exposure with exact approved tools.
 - Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.
 - Pi-normalized server-name collisions require the user to choose the one entry to keep.
-- Governed presets, including Salesforce DX, Marketing Cloud Engagement, and MuleSoft DX, use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.
+- Governed presets, including Salesforce DX, Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX, use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.
 - Tool policy profiles support Hidden, Code Mode, Deferred, and Direct exposure, with warnings for risky Direct choices and explicit diff review before persistence.
 - Exact tool conflict recommendations change only MCP exposure; SF MCP never disables an SF Pi capability owner automatically.
 - Observed additions remain locked hidden until a reviewed preset revision approves them; removed documented tools are unavailable and can be repaired to Hidden on unchanged managed entries.
 - Agentforce Sales is sandbox-only and experimental in SF Pi; its secret is an environment reference and every operation remains Guardrail-mediated and fail-closed without exact OAuth-org identity.
+- Standalone Tableau uses Pi-native OAuth against Tableau's managed endpoint; Trailhead uses its published no-auth, read-only public-content endpoint.
 - Custom MCP URLs start with no callable tools.
 - Legacy SObject MCP entries are not managed by SF MCP; if manually configured, their mutation tools remain Guardrail-mediated and fail closed.
 - Agentforce Sales and MuleSoft secrets are referenced through environment variables and are never stored in native MCP configuration or SF MCP state.

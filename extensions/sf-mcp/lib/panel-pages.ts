@@ -42,6 +42,7 @@ export function renderCatalogPage(input: {
   messageTone: "success" | "warning" | "error";
 }): string[] {
   const { theme: t, width } = input;
+  const contentWidth = Math.max(24, width - 3);
   const enabled = input.states.filter((state) => state.managed.status === "managed-enabled").length;
   const lines = [
     ` ${t.fg("accent", t.bold("☁  Salesforce MCPs"))}`,
@@ -51,9 +52,16 @@ export function renderCatalogPage(input: {
     "",
   ];
 
+  let category: McpPreset["category"] | undefined;
   for (let index = 0; index < input.states.length; index++) {
     const state = input.states[index];
     if (!state) continue;
+    if (state.preset.category !== category) {
+      category = state.preset.category;
+      const prefix = `◆ ${category.toUpperCase()} `;
+      const rule = "─".repeat(Math.max(0, contentWidth - visibleWidth(prefix) - 1));
+      lines.push(` ${t.fg("accent", t.bold(`${prefix}${rule}`))}`, "");
+    }
     const selected = index === input.cursor;
     const cursor = selected ? t.fg("accent", "❯") : " ";
     const label = selected
@@ -63,16 +71,16 @@ export function renderCatalogPage(input: {
     const action = renderAction(t, state.managed.status);
     const left = ` ${cursor} ${label}`;
     const right = `${status}  ${action}`;
-    const gap = Math.max(2, width - visibleWidth(left) - visibleWidth(right) - 1);
+    const gap = Math.max(2, contentWidth - visibleWidth(left) - visibleWidth(right) - 1);
     lines.push(`${left}${" ".repeat(gap)}${right}`);
     lines.push(
-      ...wrapText(state.preset.description, Math.max(24, width - 6)).map(
+      ...wrapText(state.preset.description, Math.max(24, contentWidth - 6)).map(
         (line) => `     ${t.fg("dim", line)}`,
       ),
     );
     if (selected) {
       lines.push(
-        ...wrapText(selectedDetail(state), Math.max(24, width - 6)).map(
+        ...wrapText(selectedDetail(state), Math.max(24, contentWidth - 6)).map(
           (line) => `     ${t.fg("muted", line)}`,
         ),
       );
@@ -82,7 +90,7 @@ export function renderCatalogPage(input: {
 
   if (input.message) {
     lines.push(
-      ...wrapText(input.message, Math.max(24, width - 3)).map(
+      ...wrapText(input.message, Math.max(24, contentWidth - 3)).map(
         (line) => ` ${t.fg(input.messageTone, line)}`,
       ),
     );

@@ -81,6 +81,47 @@ describe("SF MCP capability conflict planning", () => {
     expect(hasReviewedToolPolicy(getPreset("mulesoft-dx"))).toBe(true);
   });
 
+  it("keeps Data 360 in Data Cloud and separates standalone Tableau from Tableau Next", () => {
+    const tableau = getPreset("tableau");
+    const tableauNext = getPreset("tableau-next");
+    const trailhead = getPreset("trailhead");
+    const tableauTools = getPresetToolCatalog(tableau).tools.map((tool) => tool.name);
+    const trailheadTools = getPresetToolCatalog(trailhead).tools.map((tool) => tool.name);
+
+    expect(getPreset("data360").category).toBe("Data Cloud");
+    expect(tableau.category).toBe("Tableau");
+    expect(tableauNext.category).toBe("Tableau");
+    expect(tableau.description).toContain("standalone");
+    expect(tableauTools).toEqual(
+      expect.arrayContaining([
+        "search-content",
+        "query-datasource",
+        "generate-pulse-insight-brief",
+        "publish-workbook",
+      ]),
+    );
+    expect(trailhead).toMatchObject({ category: "Trailhead", risk: "read", setup: "ready" });
+    expect(trailheadTools).toEqual(["content_search", "fetch_content"]);
+
+    const tableauConfig = buildServerConfig(tableau, "enable");
+    expect(tableauConfig).toMatchObject({
+      url: "https://mcp.tableau.com",
+      exposure: "hidden",
+    });
+    expect(Object.keys(tableauConfig.toolExposure ?? {})).toEqual(tableau.approvedTools);
+
+    const trailheadConfig = buildServerConfig(trailhead, "enable");
+    expect(trailheadConfig).toEqual({
+      url: "https://mcp.trailhead.salesforce.com/mcp",
+      description: trailhead.description,
+      exposure: "hidden",
+      toolExposure: { content_search: "codemode", fetch_content: "codemode" },
+      timeout: 120,
+    });
+    expect(isPresetConfigCompatible(tableau, tableauConfig)).toEqual({ compatible: true });
+    expect(isPresetConfigCompatible(trailhead, trailheadConfig)).toEqual({ compatible: true });
+  });
+
   it("builds an experimental Agentforce Sales sandbox preset without storing its secret", () => {
     const preset = getPreset("agentforce-sales");
     const config = buildServerConfig(preset, "enable", { oauthClientId: "public-client" });

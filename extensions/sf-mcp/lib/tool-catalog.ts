@@ -6,6 +6,7 @@ import { defineTools, type DocumentedMcpTool, type McpToolRisk } from "./tool-co
 import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
 import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
 import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
+import { TABLEAU_MCP_TOOLS } from "./tool-contracts-tableau.ts";
 
 export type { DocumentedMcpTool, McpToolRisk } from "./tool-contract-types.ts";
 
@@ -535,6 +536,21 @@ const CRM_ANALYTICS_TOOLS = defineTools([
   ],
 ]);
 
+const TRAILHEAD_TOOLS = defineTools([
+  [
+    "content_search",
+    "Search public Trailhead learning content by topic, role, and skill level.",
+    "Learning content discovery",
+    "read",
+  ],
+  [
+    "fetch_content",
+    "Retrieve complete public Trailhead badge or trail content as Markdown.",
+    "Learning content retrieval",
+    "read",
+  ],
+]);
+
 const EMPTY_TOOLS: readonly DocumentedMcpTool[] = [];
 
 const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
@@ -590,6 +606,17 @@ const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
     tools: HEADLESS_360_TOOLS,
     note: "Dispatch is a meta-tool. Pi can expose or hide dispatch, but it cannot select individual operations behind it.",
   },
+  tableau: {
+    capabilities: [
+      "Content and project discovery",
+      "Governed data analysis",
+      "Pulse insights",
+      "Prep flow operations",
+      "Site administration",
+    ],
+    tools: TABLEAU_MCP_TOOLS,
+    note: "This is Tableau's standalone hosted stack. It is separate from the Salesforce-hosted Tableau Next semantic-layer server.",
+  },
   "tableau-next": {
     capabilities: [
       "Natural-language analysis",
@@ -638,6 +665,15 @@ const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
     capabilities: ["Runtime-declared custom capabilities"],
     tools: EMPTY_TOOLS,
     note: "Custom server tools remain quarantined and appear here only after the server has been configured and observed.",
+  },
+  trailhead: {
+    capabilities: [
+      "Public Trailhead content search",
+      "Role and skill-level filtering",
+      "Badge and trail retrieval",
+    ],
+    tools: TRAILHEAD_TOOLS,
+    note: "Trailhead MCP is read-only, requires no authentication, and doesn't access learner progress or private account data.",
   },
 };
 

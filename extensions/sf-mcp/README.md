@@ -4,7 +4,7 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 
 ## What It Does
 
-- Shows a local, versioned catalog of Salesforce MCP presets.
+- Shows a local, versioned catalog of Salesforce MCP presets grouped by product family.
 - Opens every preset with a non-mutating overview of capabilities, documented tools, risk, support maturity, conflicts, and official documentation.
 - Merges bounded session-observed tool descriptions, input schemas, annotations, and effective exposure after a server connects; runtime metadata is never persisted.
 - Detects semantic overlap with enabled SF Pi family tools.
@@ -54,7 +54,9 @@ Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` pr
 
 Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. **Configure tool exposure** opens a reviewed profile and per-tool editor; **Configure connection** continues to capability review, setup fields, configuration review, apply, and result states. For a new server, SF MCP carries the selected tool policy through connection setup. For an unchanged managed server, it shows an exact redacted diff and updates only `exposure` and `toolExposure`. Choose global or trusted-project scope before applying a change. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, manual exposure review, and reconnects.
 
-Governed presets include concise, versioned tool summaries sourced from official documentation. Salesforce DX catalogs the nine GA tools in the configured core toolsets; Marketing Cloud Engagement and MuleSoft DX include their published permission-scoped references. The connected server can advertise a subset based on enabled toolsets, client support, permissions, or entitlements, and unavailable documented tools remain locked hidden. Custom servers and Agentforce Sales show reviewed capability groups plus live metadata because Salesforce doesn't currently publish an exact Agentforce Sales tool reference. An observed tool absent from an approved contract remains visibly unapproved and inherits hidden exposure.
+Governed presets include concise, versioned tool summaries sourced from official documentation. Salesforce DX catalogs the nine GA tools in the configured core toolsets; standalone Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX include their published tool references. The connected server can advertise a subset based on enabled features, toolsets, client support, permissions, or entitlements, and unavailable documented tools remain locked hidden. Custom servers and Agentforce Sales show reviewed capability groups plus live metadata because Salesforce doesn't currently publish an exact Agentforce Sales tool reference. An observed tool absent from an approved contract remains visibly unapproved and inherits hidden exposure.
+
+**Tableau MCP and Tableau Next MCP are distinct.** Tableau MCP connects to Tableau's standalone managed stack at `mcp.tableau.com`; Tableau Next MCP connects to the Salesforce/Core hosted endpoint and its semantic layer. Trailhead MCP connects without authentication and exposes only public learning-content search and retrieval.
 
 **Review tool conflicts** shows the exact tools, capability, active owners, relationship, and recommended exposure. Broad meta-tools explicitly warn that Pi can govern the dispatcher but not individual operations behind it. **Review contract drift** separates observed additions from documented removals. Added tools require a reviewed SF MCP preset revision; removed tools can be repaired to Hidden when the native entry remains unchanged and managed.
 
@@ -71,7 +73,8 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - Native-preferred conflict recommendations alter only MCP exposure. They never disable `sf-soql`, `sf-apex`, `sf-flow`, `sf-data360`, or another SF Pi owner.
 - Runtime observation never approves a new tool. Additions require a reviewed preset revision; removed tools remain unavailable and repair only changes their native exposure to Hidden.
 - New custom servers start with `hidden` exposure and no callable tools.
-- OAuth tokens remain in Pi's native MCP credential store.
+- OAuth tokens, including standalone Tableau OAuth, remain in Pi's native MCP credential store.
+- Trailhead MCP requires no authentication and is restricted to its two documented read-only public-content tools.
 - External Client App consumer keys are public client identifiers. Standard hosted presets don't request client secrets.
 - Agentforce Sales references `AGENTFORCE_SALES_CLIENT_SECRET`; MuleSoft references `ANYPOINT_CLIENT_ID` and `ANYPOINT_CLIENT_SECRET`. Secret values are never copied into SF MCP state.
 - Backup and Recover writes, Content writes, Headless 360 dispatch, hosted Data 360 execution, and managed external operations pass through SF Guardrail. Every experimental Agentforce Sales operation fails closed because exact OAuth-org identity is unavailable. Hosted mutation targets without exact identity evidence remain fail-closed.
@@ -97,18 +100,43 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 
 ## Current Presets
 
+### Salesforce Core
+
 - Salesforce DX
-- Data 360
 - Backup and Recover (**SF Pi Alpha**; the current Salesforce reference leaves GA/Beta status unresolved)
 - Content Read-Only (**SF Pi Alpha**; Salesforce currently documents Agentforce Vibes as the only supported client)
 - Content Write (**SF Pi Alpha**; Salesforce currently documents Agentforce Vibes as the only supported client)
 - Headless 360 (Beta; includes Archive Connect operations)
+
+### Data Cloud
+
+- Data 360
+
+### Tableau
+
+- Tableau MCP (**SF Pi Alpha**; Tableau marks the standalone server Tableau Supported but does not publish a GA/Beta label)
 - Tableau Next
 - CRM Analytics (Beta)
+
+### Marketing Cloud
+
 - Marketing Cloud Engagement
+
+### MuleSoft
+
 - MuleSoft DX
+
+### Agentforce
+
 - Agentforce Sales (**SF Pi Alpha**; Salesforce documents the Beta sandbox endpoint for ChatGPT, while generic Pi interoperability and the exact tools remain undocumented)
+
+### Custom
+
 - Custom Salesforce MCP quarantine entry
+
+### Trailhead
+
+- Trailhead MCP (**SF Pi Alpha**; the official page doesn't publish a GA/Beta label)
 
 ## Official Sources
 
@@ -116,6 +144,9 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 - [Salesforce DX MCP setup](https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-mcp-server.html)
 - [Salesforce DX core tool reference](https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-mcp-use-core-tools.html)
 - [Salesforce Hosted MCP standard servers](https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/servers-reference.html)
+- [Tableau MCP](https://tableau.github.io/tableau-mcp/)
+- [Tableau Next MCP](https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/tableau-next.html)
+- [Trailhead MCP](https://trailhead.salesforce.com/support/mcp)
 - [Marketing Cloud Engagement MCP tool reference](https://developer.salesforce.com/docs/marketing/mce-mcp/references/mce-mcp-tools/mce-mcp-tools.html)
 - [MuleSoft DX MCP tool reference](https://docs.mulesoft.com/mulesoft-mcp-server/reference-mcp-tools)
 - [Agentforce Sales ChatGPT sandbox setup](https://help.salesforce.com/s/articleView?id=sales.test_sales_chatgpt_sandbox.htm&type=5)

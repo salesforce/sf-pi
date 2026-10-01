@@ -7,7 +7,7 @@ import { visibleWidth } from "@earendil-works/pi-tui";
 
 import { createConfigPanel } from "../lib/config-panel.ts";
 import { captureObservedMcpTools } from "../lib/observed-tools.ts";
-import { getPreset } from "../lib/presets.ts";
+import { SALESFORCE_MCP_PRESETS, getPreset, type McpPresetId } from "../lib/presets.ts";
 import { installPreset } from "../lib/service.ts";
 import { inspectPresetTools } from "../lib/tool-catalog.ts";
 import { renderToolPolicyPage } from "../lib/tool-policy-pages.ts";
@@ -30,7 +30,7 @@ type TestPanel = {
   renderContent(width: number): string[];
 };
 
-function fixture(mcpRoot?: unknown) {
+function fixture(mcpRoot?: unknown, panelTheme = theme) {
   const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-panel-"));
   tempDirs.push(cwd);
   if (mcpRoot) {
@@ -50,7 +50,7 @@ function fixture(mcpRoot?: unknown) {
     ui,
   };
   const panel = createConfigPanel(
-    theme,
+    panelTheme,
     cwd,
     "project",
     done,
@@ -64,28 +64,70 @@ function moveDown(panel: TestPanel, count: number): void {
   for (let index = 0; index < count; index++) panel.handleInput("\u001b[B");
 }
 
+function moveToPreset(panel: TestPanel, presetId: McpPresetId): void {
+  const index = SALESFORCE_MCP_PRESETS.findIndex((preset) => preset.id === presetId);
+  if (index < 0) throw new Error(`Unknown test preset: ${presetId}`);
+  moveDown(panel, index);
+}
+
 function typeText(panel: TestPanel, value: string): void {
   for (const character of value) panel.handleInput(character);
 }
 
 describe("SF MCP Manager catalog", () => {
-  it("renders a colorful whitespace-first catalog without internal box borders", () => {
+  it("renders a colorful category-grouped catalog without internal box borders", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     const output = panel.renderContent(110).join("\n");
 
     expect(output).toContain("☁  Salesforce MCPs");
+    expect(output).toContain("SALESFORCE CORE");
+    expect(output).toContain("DATA CLOUD");
+    expect(output).toContain("TABLEAU");
+    expect(output).toContain("MULESOFT");
+    expect(output).toContain("TRAILHEAD");
     expect(output).toContain("◎  Headless 360");
     expect(output).toContain("overlap with sf-soql");
+    expect(output.indexOf("SALESFORCE CORE")).toBeLessThan(output.indexOf("DATA CLOUD"));
+    expect(output.indexOf("DATA CLOUD")).toBeLessThan(output.indexOf("TABLEAU"));
+    expect(output.indexOf("TABLEAU")).toBeLessThan(output.indexOf("MULESOFT"));
+    expect(output.indexOf("MULESOFT")).toBeLessThan(output.indexOf("TRAILHEAD"));
+    expect(output).toContain("────────");
     expect(output).not.toContain("╭");
     expect(output).not.toContain("╰");
+  });
+
+  it("reserves a right gutter for the Manager scrollbar", () => {
+    const { panel } = fixture();
+    const lines = panel.renderContent(70);
+    const categoryLine = lines.find((line) => line.includes("SALESFORCE CORE"));
+    const presetLine = lines.find((line) => line.includes("Data 360"));
+
+    expect(categoryLine).toBeDefined();
+    expect(presetLine).toBeDefined();
+    expect(visibleWidth((categoryLine ?? "").trimEnd())).toBeLessThanOrEqual(67);
+    expect(visibleWidth((presetLine ?? "").trimEnd())).toBeLessThanOrEqual(67);
+  });
+
+  it("renders category dividers in the accent color", () => {
+    const accentTheme = {
+      fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
+      bold: (text: string) => text,
+    } as never;
+    const { panel } = fixture(undefined, accentTheme);
+
+    const output = panel.renderContent(110).join("\n");
+
+    expect(output).toContain("<accent>◆ SALESFORCE CORE ────");
+    expect(output).toContain("<accent>◆ TABLEAU ────");
+    expect(output).not.toContain("<muted>SALESFORCE CORE</muted>");
   });
 
   it("opens a non-mutating overview before configuring a preset", () => {
     const { panel, ui } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     panel.handleInput("\r");
     const overview = panel.renderContent(110).join("\n");
 
@@ -135,7 +177,7 @@ describe("SF MCP Manager catalog", () => {
   it("configures a read-only profile and supports custom per-tool exposure without writing", () => {
     const { cwd, panel } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     panel.handleInput("\r"); // Overview.
     panel.handleInput("\u001b[B"); // Configure tools.
     panel.handleInput("\r");
@@ -163,7 +205,7 @@ describe("SF MCP Manager catalog", () => {
   it("carries a selected tool profile through conflict, setup, review, and apply", () => {
     const { cwd, panel } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     panel.handleInput("\r"); // Overview.
     panel.handleInput("\u001b[B"); // Configure tools.
     panel.handleInput("\r");
@@ -206,7 +248,7 @@ describe("SF MCP Manager catalog", () => {
       }).ok,
     ).toBe(true);
 
-    moveDown(panel, 1);
+    moveToPreset(panel, "data360");
     panel.handleInput("\r"); // Overview.
     panel.handleInput("\u001b[B"); // Configure tools.
     panel.handleInput("\r");
@@ -230,7 +272,7 @@ describe("SF MCP Manager catalog", () => {
   it("reviews exact tool conflicts and opens the native-preferred recommendation", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     panel.handleInput("\r"); // Overview.
     moveDown(panel, 2); // Review tool conflicts.
     panel.handleInput("\r");
@@ -272,7 +314,7 @@ describe("SF MCP Manager catalog", () => {
       { name: "mcp__salesforce_data360__unexpected_write", exposure: "hidden" },
     ]);
 
-    moveDown(panel, 1);
+    moveToPreset(panel, "data360");
     panel.handleInput("\r"); // Overview.
     moveDown(panel, 3); // Review contract drift.
     panel.handleInput("\r");
@@ -302,7 +344,7 @@ describe("SF MCP Manager catalog", () => {
   it("keeps overview, tool list, and tool detail width-safe at the Manager minimum", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     panel.handleInput("\r");
     expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
 
@@ -316,7 +358,7 @@ describe("SF MCP Manager catalog", () => {
   it("keeps profile and tool policy pages width-safe at the Manager minimum", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     panel.handleInput("\r");
     panel.handleInput("\u001b[B");
     panel.handleInput("\r");
@@ -385,7 +427,7 @@ describe("SF MCP Manager catalog", () => {
     };
     const { cwd, panel } = fixture(config);
 
-    moveDown(panel, 1);
+    moveToPreset(panel, "data360");
     panel.handleInput("\r"); // Open overview.
     panel.handleInput("\u001b[B"); // Review tool conflicts.
     panel.handleInput("\u001b[B"); // Review configuration.
@@ -401,7 +443,7 @@ describe("SF MCP Manager catalog", () => {
   it("opens Marketing Cloud setup inside the Manager panel without secondary dialogs", () => {
     const { panel, ui } = fixture();
 
-    moveDown(panel, 8);
+    moveToPreset(panel, "marketing-cloud");
     panel.handleInput("\r"); // Open overview.
     panel.handleInput("\u001b[B"); // Configure tool exposure.
     panel.handleInput("\u001b[B"); // Configure connection.
@@ -421,7 +463,7 @@ describe("SF MCP Manager catalog", () => {
   it("opens experimental Agentforce Sales sandbox setup with environment-only secret guidance", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 10);
+    moveToPreset(panel, "agentforce-sales");
     panel.handleInput("\r"); // Overview.
     panel.handleInput("\u001b[B"); // Configure connection.
     panel.handleInput("\r"); // Capability review.
@@ -438,7 +480,7 @@ describe("SF MCP Manager catalog", () => {
   it("keeps Headless 360 conflict resolution and hosted setup in the same panel", () => {
     const { panel, ui } = fixture();
 
-    moveDown(panel, 5);
+    moveToPreset(panel, "headless-360");
     panel.handleInput("\r"); // Open overview.
     panel.handleInput("\u001b[B"); // Configure tools.
     panel.handleInput("\u001b[B"); // Review tool conflicts.
@@ -459,7 +501,7 @@ describe("SF MCP Manager catalog", () => {
   it("completes setup, review, apply, and result without leaving the panel", () => {
     const { cwd, panel, done, ui } = fixture();
 
-    moveDown(panel, 8);
+    moveToPreset(panel, "marketing-cloud");
     panel.handleInput("\r"); // Open overview.
     panel.handleInput("\u001b[B"); // Configure tool exposure.
     panel.handleInput("\u001b[B"); // Configure connection.
@@ -492,7 +534,7 @@ describe("SF MCP Manager catalog", () => {
   it("keeps the embedded setup page width-safe at the Manager minimum", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 8);
+    moveToPreset(panel, "marketing-cloud");
     panel.handleInput("\r"); // Open overview.
     panel.handleInput("\u001b[B"); // Configure.
     panel.handleInput("\r");
@@ -504,7 +546,7 @@ describe("SF MCP Manager catalog", () => {
   it("uses Escape as an in-panel back action before closing the Manager page", () => {
     const { panel, done } = fixture();
 
-    moveDown(panel, 8);
+    moveToPreset(panel, "marketing-cloud");
     panel.handleInput("\r");
     panel.handleInput("\u001b");
 
