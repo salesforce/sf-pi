@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.306.1-2026-10-01",
-  "latestVersion": "0.306.1",
+  "revision": "release-0.307.0-2026-10-01",
+  "latestVersion": "0.307.0",
   "announcements": [
     {
-      "id": "release-0.306.1",
+      "id": "release-0.307.0",
       "kind": "update",
-      "title": "sf-pi v0.306.1 — sf-mcp: type target verification test fixture",
+      "title": "sf-pi v0.307.0 — sf-mcp: remove legacy SObject presets",
       "publishedAt": "2026-10-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.306.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.307.0",
       "severity": "info",
-      "body": "sf-mcp: type target verification test fixture"
+      "body": "sf-mcp: remove legacy SObject presets"
     }
   ]
 }
