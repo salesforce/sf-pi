@@ -223,7 +223,7 @@ function setupControls(theme: Theme, preset: McpPreset): Control[] {
       kind: "choice",
       key: "environment",
       label: "Org environment",
-      help: "Select the endpoint family. The exact OAuth org is still verified at execution time.",
+      help: "Select the endpoint family. Guardrail classifies production, sandbox, or unknown; exact OAuth-org correlation is not yet available.",
       options: [
         { label: "Sandbox / Scratch", value: "sandbox" },
         { label: "Production", value: "production" },

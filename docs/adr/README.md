@@ -111,6 +111,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0121: Pi 0.87.1 Audit Edge](./0121-pi-0871-audit-edge.md) — 2026-09-24
 - [0122: Gateway Catalog Requires Pi-Backed IDs](./0122-gateway-catalog-requires-pi-backed-ids.md) — 2026-09-26
 - [0124: Pi 0.99.2 Runtime Floor and MCP Identity](./0124-pi-0992-runtime-floor-and-mcp-identity.md) — 2026-09-30
+- [0125: SF MCP Exact Target Attestation](./0125-sf-mcp-exact-target-attestation.md) — 2026-10-01
 
 ## Proposed
 

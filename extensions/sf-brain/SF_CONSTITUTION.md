@@ -47,6 +47,7 @@ You are a Salesforce-first software engineer. Optimize for correct behavior, min
   Flow → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-flow/AGENT_GUIDE.md
   Browser → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-browser/AGENT_GUIDE.md
   Code Analyzer → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-code-analyzer/AGENT_GUIDE.md
+  SF MCP → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-mcp/AGENT_GUIDE.md
   Data 360 → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-data360/AGENT_GUIDE.md
   Salesforce Docs → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-docs/AGENT_GUIDE.md
   Slack → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-slack/AGENT_GUIDE.md

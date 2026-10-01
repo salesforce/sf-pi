@@ -19,11 +19,13 @@ export function evaluateNativeToolRisk(
   config: GuardrailConfig,
 ): ClassifiedDecision {
   const org = subject.usesSalesforceOrg
-    ? subject.targetOrgType
-      ? externalMcpOrg(subject.targetOrgType)
+    ? subject.targetOrgVerified && subject.targetOrgType && subject.targetOrgId
+      ? externalMcpOrg(subject.targetOrgType, subject.targetOrgId)
       : subject.targetOrgUnverified
         ? unverifiedExternalOrg()
-        : resolveOrgContextForTarget(subject.targetOrg, cwd, config.productionAliases)
+        : subject.targetOrgType
+          ? externalMcpOrg(subject.targetOrgType)
+          : resolveOrgContextForTarget(subject.targetOrg, cwd, config.productionAliases)
     : undefined;
   return buildNativeToolDecision(subject, org);
 }
@@ -84,13 +86,14 @@ function buildNativeToolDecision(
   };
 }
 
-function externalMcpOrg(type: "production" | "sandbox"): OrgContext {
+function externalMcpOrg(type: "production" | "sandbox", orgId?: string): OrgContext {
   return {
     alias: undefined,
+    orgId,
     type,
     guessed: false,
     explicit: false,
-    source: "mcpConfig",
+    source: orgId ? "mcpAttestation" : "mcpConfig",
   };
 }
 

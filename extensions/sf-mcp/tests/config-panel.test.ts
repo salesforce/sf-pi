@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -23,9 +23,14 @@ type TestPanel = {
   renderContent(width: number): string[];
 };
 
-function fixture() {
+function fixture(mcpRoot?: unknown) {
   const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-panel-"));
   tempDirs.push(cwd);
+  if (mcpRoot) {
+    const configDir = path.join(cwd, ".pi");
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(path.join(configDir, "mcp.json"), `${JSON.stringify(mcpRoot, null, 2)}\n`);
+  }
   const done = vi.fn();
   const ui = {
     select: vi.fn().mockResolvedValue(undefined),
@@ -70,10 +75,51 @@ describe("SF MCP Manager catalog", () => {
     expect(output).not.toContain("╰");
   });
 
+  it("shows support maturity for experimental hosted presets", () => {
+    const { panel } = fixture();
+
+    const output = panel.renderContent(110).join("\n");
+
+    expect(output).toContain("Content Read-Only");
+    expect(output).toContain("ALPHA");
+    expect(output).toContain("CRM Analytics");
+    expect(output).toContain("BETA");
+  });
+
+  it("adopts a compatible manual entry without replacing it", () => {
+    const config = {
+      mcpServers: {
+        "salesforce-sobject-reads": {
+          url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+          oauth: { clientId: "existing-client" },
+          exposure: "hidden",
+          toolExposure: {
+            getObjectSchema: "codemode",
+            soqlQuery: "codemode",
+            find: "codemode",
+            getUserInfo: "codemode",
+            listRecentSobjectRecords: "codemode",
+            getRelatedRecords: "codemode",
+          },
+        },
+      },
+    };
+    const { cwd, panel } = fixture(config);
+
+    moveDown(panel, 1);
+    panel.handleInput("\r");
+    expect(panel.renderContent(110).join("\n")).toContain("Configuration Review");
+    expect(panel.renderContent(110).join("\n")).toContain("Adopt existing entry");
+
+    panel.handleInput("\r");
+    expect(panel.renderContent(110).join("\n")).toContain("Adopted");
+    expect(JSON.parse(readFileSync(path.join(cwd, ".pi", "mcp.json"), "utf8"))).toEqual(config);
+  });
+
   it("opens Marketing Cloud setup inside the Manager panel without secondary dialogs", () => {
     const { panel, ui } = fixture();
 
-    moveDown(panel, 6);
+    moveDown(panel, 12);
     panel.handleInput("\r");
     const output = panel.renderContent(110).join("\n");
 
@@ -106,7 +152,7 @@ describe("SF MCP Manager catalog", () => {
   it("completes setup, review, apply, and result without leaving the panel", () => {
     const { cwd, panel, done, ui } = fixture();
 
-    moveDown(panel, 6);
+    moveDown(panel, 12);
     panel.handleInput("\r"); // Open setup.
     panel.handleInput("\r"); // Accept US and move to Tenant ID.
     typeText(panel, "tenant-example");
@@ -136,7 +182,7 @@ describe("SF MCP Manager catalog", () => {
   it("keeps the embedded setup page width-safe at the Manager minimum", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 6);
+    moveDown(panel, 12);
     panel.handleInput("\r");
     const lines = panel.renderContent(70);
 
@@ -146,7 +192,7 @@ describe("SF MCP Manager catalog", () => {
   it("uses Escape as an in-panel back action before closing the Manager page", () => {
     const { panel, done } = fixture();
 
-    moveDown(panel, 6);
+    moveDown(panel, 12);
     panel.handleInput("\r");
     panel.handleInput("\u001b");
 

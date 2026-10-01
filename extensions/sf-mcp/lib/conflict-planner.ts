@@ -68,6 +68,18 @@ export function planPresetConflicts(
     };
   }
 
+  if (preset.id === "headless-360") {
+    return {
+      presetId: preset.id,
+      conflicts,
+      recommendation: {
+        resolution: "native-only",
+        summary:
+          "Keep the specialized SF Pi lifecycle owners. Enable Headless 360 side-by-side only for an operation they do not provide.",
+      },
+    };
+  }
+
   return {
     presetId: preset.id,
     conflicts,

@@ -32,16 +32,43 @@ describe("SF MCP managed preset state", () => {
     const config = { command: "npx", args: ["-y", "@salesforce/mcp@latest"] };
     expect(upsertMcpServer(mcpFile, "salesforce-dx", config).ok).toBe(true);
 
-    expect(inspectManagedServer(mcpFile, store, "salesforce-dx").status).toBe("manual");
+    expect(
+      inspectManagedServer(mcpFile, store, {
+        serverName: "salesforce-dx",
+        presetId: "salesforce-dx",
+        presetRevision: 1,
+      }).status,
+    ).toBe("manual");
 
     recordManagedServer(store, "salesforce-dx", {
       presetId: "salesforce-dx",
+      presetRevision: 1,
       resolution: "enable",
       config,
     });
-    expect(inspectManagedServer(mcpFile, store, "salesforce-dx").status).toBe("managed-enabled");
+    expect(
+      inspectManagedServer(mcpFile, store, {
+        serverName: "salesforce-dx",
+        presetId: "salesforce-dx",
+        presetRevision: 1,
+      }).status,
+    ).toBe("managed-enabled");
+
+    expect(
+      inspectManagedServer(mcpFile, store, {
+        serverName: "salesforce-dx",
+        presetId: "salesforce-dx",
+        presetRevision: 2,
+      }).status,
+    ).toBe("managed-outdated");
 
     expect(replaceMcpServer(mcpFile, "salesforce-dx", { command: "custom-wrapper" }).ok).toBe(true);
-    expect(inspectManagedServer(mcpFile, store, "salesforce-dx").status).toBe("modified");
+    expect(
+      inspectManagedServer(mcpFile, store, {
+        serverName: "salesforce-dx",
+        presetId: "salesforce-dx",
+        presetRevision: 2,
+      }).status,
+    ).toBe("modified");
   });
 });

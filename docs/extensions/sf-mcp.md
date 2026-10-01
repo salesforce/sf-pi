@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup fields, review, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, recommends complementary exposure profiles, publishes compact native server descriptions, preserves manual native configuration, keeps unknown custom tools quarantined, and writes no server entry until the user explicitly enables one.
+Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup, adoption, redacted diff, reset, canonical-name reconciliation, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, governs approved tool contracts and observed drift, publishes compact native server descriptions, preserves manual native configuration, keeps unknown tools quarantined, and writes no server entry until the user explicitly enables or resets one.
 
 ## Start
 
@@ -33,9 +33,10 @@ Open its Manager detail or change its package state with:
 - No Salesforce MCP server is configured, connected, launched, or exposed by default.
 - Pi's built-in MCP extension owns transport, OAuth, tokens, connections, exposure, resources, and readiness.
 - Direct capability overlaps default to native SF Pi owners; complementary profiles use hidden-by-default server exposure with exact approved tools.
-- Manual, malformed, or externally modified native MCP entries are never overwritten.
-- Custom MCP URLs start with hidden exposure so no tools are callable before review.
-- Hosted Salesforce record mutations are Guardrail-mediated and fail closed while their OAuth target remains unverified.
+- Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.
+- Pi-normalized server-name collisions require the user to choose the one entry to keep.
+- Governed hosted presets use hidden exposure with exact approved tools, and custom MCP URLs start with no callable tools.
+- SObject MCP mutations require a fresh one-use exact-org attestation from sf_mcp_verify_target before Guardrail can offer confirmation; other hosted mutations fail closed when exact identity is unavailable.
 - MuleSoft secrets are referenced through environment variables and are never stored in native MCP configuration or SF MCP state.
 
 ## Exact reference
@@ -45,11 +46,11 @@ Open its Manager detail or change its package state with:
 
 - **Extension id:** `sf-mcp`
 - **Intent:** Personalize pi
-- **Category:** Assistive
+- **Category:** Agent Tool
 - **Maturity:** experimental
 - **Default state:** on
 - **Commands:** `/sf-mcp`
-- **LLM tools:** _none_
+- **LLM tools:** `sf_mcp_verify_target`
 - **Providers:** _none_
 - **Events/hooks:** `session_start`, `before_agent_start`
 
@@ -59,3 +60,4 @@ Open its Manager detail or change its package state with:
 
 - [Full extension README](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-mcp/README.md)
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-mcp)
+- [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-mcp/AGENT_GUIDE.md)

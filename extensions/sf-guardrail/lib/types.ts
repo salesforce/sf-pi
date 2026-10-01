@@ -153,7 +153,11 @@ export interface NativeToolSafetySubject {
   targetOrgExplicit?: boolean;
   /** True when an external MCP OAuth target cannot be correlated to the active CLI org. */
   targetOrgUnverified?: boolean;
-  /** Environment class proven by a known Salesforce Hosted MCP endpoint. */
+  /** True only when one-use evidence matched the MCP OAuth org to an explicit CLI org. */
+  targetOrgVerified?: boolean;
+  /** Organization ID proven by exact MCP-to-CLI attestation. */
+  targetOrgId?: string;
+  /** Environment class proven by a known Salesforce Hosted MCP endpoint or exact attestation. */
   targetOrgType?: "production" | "sandbox";
   /** False for native operations that should not create session approvals. */
   allowSession?: boolean;
@@ -220,7 +224,8 @@ export interface ClassifiedDecision {
   orgId?: string;
   orgUsername?: string;
   orgResolutionGuessed?: boolean;
-  orgResolutionSource?: "cache" | "lookup" | "productionAliases" | "mcpConfig" | "guessed";
+  orgResolutionSource?:
+    "cache" | "lookup" | "productionAliases" | "mcpConfig" | "mcpAttestation" | "guessed";
   orgTargetExplicit?: boolean;
   orgCommand?: string;
 }
@@ -252,7 +257,8 @@ export interface DecisionEntryData {
   orgId?: string;
   orgUsername?: string;
   orgResolutionGuessed?: boolean;
-  orgResolutionSource?: "cache" | "lookup" | "productionAliases" | "mcpConfig" | "guessed";
+  orgResolutionSource?:
+    "cache" | "lookup" | "productionAliases" | "mcpConfig" | "mcpAttestation" | "guessed";
   approvalScopeLabel?: string;
   approvalScopeDetail?: string;
   approvalRiskTier?: string;

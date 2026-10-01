@@ -1,24 +1,45 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Resolve only the environment class proven by a Salesforce Hosted MCP URL. */
+/** Resolve bounded target evidence proven by a configured Salesforce Hosted MCP URL. */
 import { existsSync, readFileSync } from "node:fs";
+import { fingerprintMcpServerConfig } from "../../../lib/common/mcp-target-attestation/store.ts";
 import { globalAgentPath, projectConfigPath } from "../../../lib/common/pi-paths.ts";
 import { canonicalizeMcpServerName } from "./mcp-tool-identity.ts";
 
 export type McpTargetType = "production" | "sandbox" | "unknown";
+
+export interface McpConfiguredTargetContext {
+  targetType: McpTargetType;
+  configFingerprint?: string;
+}
 
 export function resolveMcpTargetType(
   cwd: string | undefined,
   serverName: string,
   projectTrusted = false,
 ): McpTargetType {
+  return resolveMcpConfiguredTargetContext(cwd, serverName, projectTrusted).targetType;
+}
+
+export function resolveMcpConfiguredTargetContext(
+  cwd: string | undefined,
+  serverName: string,
+  projectTrusted = false,
+): McpConfiguredTargetContext {
   const project =
     cwd && projectTrusted
-      ? readServerUrl(projectConfigPath(cwd, "mcp.json"), serverName)
+      ? readServerEntry(projectConfigPath(cwd, "mcp.json"), serverName)
       : undefined;
-  const global = readServerUrl(globalAgentPath("mcp.json"), serverName);
-  const value = project ?? global;
-  if (!value) return "unknown";
+  const global = readServerEntry(globalAgentPath("mcp.json"), serverName);
+  const entry = project ?? global;
+  if (!entry) return { targetType: "unknown" };
+  return {
+    targetType: classifyHostedUrl(entry.url),
+    configFingerprint: fingerprintMcpServerConfig(entry.config),
+  };
+}
 
+function classifyHostedUrl(value: string | undefined): McpTargetType {
+  if (!value) return "unknown";
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.hostname !== "api.salesforce.com") return "unknown";
@@ -30,7 +51,8 @@ export function resolveMcpTargetType(
     }
     if (
       url.pathname.startsWith("/platform/mcp/v1/platform/") ||
-      url.pathname.startsWith("/platform/mcp/v1/data/")
+      url.pathname.startsWith("/platform/mcp/v1/data/") ||
+      url.pathname.startsWith("/platform/mcp/v1/analytics/")
     ) {
       return "production";
     }
@@ -40,7 +62,10 @@ export function resolveMcpTargetType(
   return "unknown";
 }
 
-function readServerUrl(filePath: string, serverName: string): string | undefined {
+function readServerEntry(
+  filePath: string,
+  serverName: string,
+): { url?: string; config: Record<string, unknown> } | undefined {
   if (!existsSync(filePath)) return undefined;
   try {
     const root = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
@@ -51,8 +76,11 @@ function readServerUrl(filePath: string, serverName: string): string | undefined
     );
     if (matches.length !== 1) return undefined;
     const server = matches[0]?.[1];
-    if (!isRecord(server) || typeof server.url !== "string") return undefined;
-    return server.url;
+    if (!isRecord(server)) return undefined;
+    return {
+      url: typeof server.url === "string" ? server.url : undefined,
+      config: server,
+    };
   } catch {
     return undefined;
   }

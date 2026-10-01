@@ -3,13 +3,14 @@
  * sf-mcp behavior contract
  *
  * SF MCP is a catalog and conflict-aware installer for Pi's native MCP runtime.
- * It never connects an MCP server itself and registers no model-callable tools.
+ * It never connects an MCP server itself. Its one model-callable operation performs
+ * read-only exact-org attestation through Pi's already-connected MCP runtime.
  *
  * Behavior matrix:
  *
  *   Trigger                    | Result
  *   ---------------------------|-----------------------------------------------------------
- *   extension load             | Register command and Manager actions; no network/process
+ *   extension load             | Register command, verifier, Manager actions; no network/process
  *   session_start              | Cache local side-by-side routing guidance; no network/process
  *   before_agent_start         | Add guidance only for accepted active overlaps
  *   /sf-mcp                    | Open the SF Pi Manager detail page
@@ -19,6 +20,7 @@
  *   /sf-mcp disable <preset>   | Disable only an unchanged SF MCP-managed native entry
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { clearMcpTargetAttestations } from "../../lib/common/mcp-target-attestation/store.ts";
 import {
   getFirstTokenCompletionsFromActions,
   resolveAction,
@@ -37,12 +39,14 @@ import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { formatConflictPlan } from "./lib/conflict-planner.ts";
 import { mcpConfigPath } from "./lib/mcp-config.ts";
+import { captureObservedMcpTools } from "./lib/observed-tools.ts";
 import { SALESFORCE_MCP_PRESETS, getPreset } from "./lib/presets.ts";
 import {
   buildMcpRoutingGuidelines,
   inspectPresetRuntime,
   setManagedPresetEnabled,
 } from "./lib/service.ts";
+import { registerMcpTargetVerificationTool } from "./lib/target-verification-tool.ts";
 
 const EXTENSION_ID = "sf-mcp";
 const COMMAND_NAME = "sf-mcp";
@@ -90,11 +94,16 @@ const ACTIONS: SfPiCommandAction<SfMcpAction>[] = [
 export default function sfMcp(pi: ExtensionAPI): void {
   if (!requirePiVersion(pi, "sf-mcp")) return;
 
+  registerMcpTargetVerificationTool(pi);
+
   let routingGuidelines: string[] = [];
   pi.on("session_start", (_event, ctx) => {
+    clearMcpTargetAttestations(ctx.sessionManager.getSessionId());
+    captureObservedMcpTools(pi.getAllTools());
     routingGuidelines = buildMcpRoutingGuidelines(ctx.cwd);
   });
   pi.on("before_agent_start", (event) => {
+    captureObservedMcpTools(pi.getAllTools());
     for (const guideline of routingGuidelines) {
       if (!event.systemPromptOptions.promptGuidelines.includes(guideline)) {
         event.systemPromptOptions.promptGuidelines.push(guideline);
@@ -153,6 +162,7 @@ async function handleAction(
   args: string[],
   fromPanel: boolean,
 ): Promise<void> {
+  captureObservedMcpTools(pi.getAllTools());
   const scope = parseScope(args);
   const positional = args.filter(
     (token, index) => token !== "--scope" && args[index - 1] !== "--scope",
@@ -245,7 +255,11 @@ function renderStatus(cwd: string, scope: "global" | "project"): string {
       ? ` · overlaps ${state.plan.conflicts.map((item) => item.nativeExtensionId).join(", ")}`
       : "";
     const scopeConflict = state.scopeConflict ? ` · ${state.scopeConflict.kind}` : "";
-    return `  ${preset.icon} ${preset.id.padEnd(22)} ${status}${overlap}${scopeConflict}`;
+    const drift =
+      state.drift.status === "review"
+        ? ` · tool review +${state.drift.added.length}/-${state.drift.removed.length}`
+        : "";
+    return `  ${preset.icon} ${preset.id.padEnd(22)} ${status}${overlap}${scopeConflict}${drift}`;
   });
   return [
     `Salesforce MCP presets — ${scope} scope`,
@@ -259,7 +273,7 @@ function renderStatus(cwd: string, scope: "global" | "project"): string {
 function renderHelp(): string {
   return [
     "SF MCP is a conflict-aware catalog for Pi's built-in MCP runtime.",
-    "It does not implement MCP transport, OAuth, connection management, or agent tools.",
+    "It does not implement MCP transport, OAuth, or connection management. Its verification tool performs one read-only nested MCP query for exact target attestation.",
     "",
     "Commands:",
     "  /sf-mcp                         Open SF MCP in the Manager",
@@ -269,7 +283,7 @@ function renderHelp(): string {
     "  /sf-mcp disable <preset>        Disable an unchanged managed preset",
     "  /sf-mcp native                  Prepare Pi's native /mcp manager",
     "",
-    "Use the catalog to enable presets. Manual or externally modified entries are never overwritten.",
+    "Use the catalog to enable presets. Existing entries require explicit adoption or diff-reviewed reset.",
   ].join("\n");
 }
 
@@ -305,6 +319,10 @@ function statusLabel(status: ReturnType<typeof inspectPresetRuntime>["managed"][
       return "manual config";
     case "modified":
       return "review changes";
+    case "managed-outdated":
+      return "preset update";
+    case "name-conflict":
+      return "name conflict";
     case "invalid-config":
       return "invalid config";
     default:

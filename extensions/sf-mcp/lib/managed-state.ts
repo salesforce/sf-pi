@@ -2,11 +2,16 @@
 /** Non-secret ownership and drift metadata for SF MCP-managed native entries. */
 import { createHash } from "node:crypto";
 import { createStateStore, type StateStore } from "../../../lib/common/state-store.ts";
-import { inspectMcpConfig, type McpServerConfig } from "./mcp-config.ts";
+import {
+  findCanonicalMcpServerNames,
+  inspectMcpConfig,
+  type McpServerConfig,
+} from "./mcp-config.ts";
 import type { McpPresetId, McpResolution } from "./presets.ts";
 
-interface ManagedServerRecord {
+export interface ManagedServerRecord {
   presetId: McpPresetId;
+  presetRevision: number;
   resolution: McpResolution;
   configFingerprint: string;
 }
@@ -16,10 +21,20 @@ interface ManagedState {
 }
 
 export type ManagedServerStatus =
-  "missing" | "manual" | "managed-enabled" | "managed-disabled" | "modified" | "invalid-config";
+  | "missing"
+  | "manual"
+  | "managed-enabled"
+  | "managed-disabled"
+  | "managed-outdated"
+  | "modified"
+  | "name-conflict"
+  | "invalid-config";
 
 export interface ManagedServerInspection {
   status: ManagedServerStatus;
+  configuredName?: string;
+  conflictingNames?: string[];
+  config?: McpServerConfig;
   record?: ManagedServerRecord;
   message?: string;
 }
@@ -34,7 +49,7 @@ export function createManagedStateStore(
   return createStateStore<ManagedState>({
     namespace: "sf-mcp",
     filename: "managed-presets.json",
-    schemaVersion: 1,
+    schemaVersion: 2,
     defaults: DEFAULT_STATE,
     scope,
     cwd,
@@ -47,7 +62,12 @@ export function createManagedStateStore(
 export function recordManagedServer(
   store: StateStore<ManagedState>,
   serverName: string,
-  input: { presetId: McpPresetId; resolution: McpResolution; config: McpServerConfig },
+  input: {
+    presetId: McpPresetId;
+    presetRevision: number;
+    resolution: McpResolution;
+    config: McpServerConfig;
+  },
 ): void {
   store.update((current) => {
     const normalized = normalizeState(current);
@@ -56,6 +76,7 @@ export function recordManagedServer(
         ...normalized.servers,
         [serverName]: {
           presetId: input.presetId,
+          presetRevision: input.presetRevision,
           resolution: input.resolution,
           configFingerprint: fingerprintConfig(input.config),
         },
@@ -76,25 +97,54 @@ export function forgetManagedServer(store: StateStore<ManagedState>, serverName:
 export function inspectManagedServer(
   mcpFile: string,
   store: StateStore<ManagedState>,
-  serverName: string,
+  input: { serverName: string; presetId: McpPresetId; presetRevision: number },
 ): ManagedServerInspection {
   const inspected = inspectMcpConfig(mcpFile);
   if (inspected.ok === false) {
     return { status: "invalid-config", message: inspected.message };
   }
-  const config = inspected.servers[serverName];
-  if (!config) return { status: "missing" };
+  const matches = findCanonicalMcpServerNames(inspected.servers, input.serverName);
+  if (matches.length === 0) return { status: "missing" };
+  if (matches.length > 1) {
+    return {
+      status: "name-conflict",
+      conflictingNames: matches,
+      message: `${matches.join(", ")} collide after Pi normalizes hyphens and underscores.`,
+    };
+  }
 
-  const record = normalizeState(store.read()).servers[serverName];
-  if (!record) return { status: "manual" };
+  const configuredName = matches[0];
+  if (!configuredName) return { status: "missing" };
+  const config = inspected.servers[configuredName];
+  if (!config) return { status: "missing" };
+  const record = normalizeState(store.read()).servers[configuredName];
+  if (!record || record.presetId !== input.presetId) {
+    return { status: "manual", configuredName, config };
+  }
   if (record.configFingerprint !== fingerprintConfig(config)) {
     return {
       status: "modified",
+      configuredName,
+      config,
       record,
       message: "The native MCP entry changed after SF MCP created it. Review before replacing it.",
     };
   }
-  return { status: config.enabled === false ? "managed-disabled" : "managed-enabled", record };
+  if (record.presetRevision < input.presetRevision) {
+    return {
+      status: "managed-outdated",
+      configuredName,
+      config,
+      record,
+      message: `Preset revision ${record.presetRevision} is older than revision ${input.presetRevision}. Review the current preset before updating.`,
+    };
+  }
+  return {
+    status: config.enabled === false ? "managed-disabled" : "managed-enabled",
+    configuredName,
+    config,
+    record,
+  };
 }
 
 export function fingerprintConfig(config: McpServerConfig): string {
@@ -117,7 +167,15 @@ function normalizeState(value: unknown): ManagedState {
     ) {
       continue;
     }
-    normalized[name] = item as ManagedServerRecord;
+    normalized[name] = {
+      presetId: item.presetId as McpPresetId,
+      presetRevision:
+        typeof item.presetRevision === "number" && Number.isInteger(item.presetRevision)
+          ? item.presetRevision
+          : 0,
+      resolution: item.resolution as McpResolution,
+      configFingerprint: item.configFingerprint,
+    };
   }
   return { servers: normalized };
 }

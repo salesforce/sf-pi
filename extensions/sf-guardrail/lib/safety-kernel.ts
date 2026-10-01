@@ -15,6 +15,7 @@ import { evaluateFilePolicy } from "./file-policy-gate.ts";
 import { evaluateOrgAwareRiskWithOrgLookup } from "./org-aware-risk-gate.ts";
 import { evaluateNativeToolRiskWithOrgLookup } from "./native-tool-risk-gate.ts";
 import { normalizeSafetySubject } from "./safety-subject.ts";
+import type { McpTargetAttestation } from "../../../lib/common/mcp-target-attestation/store.ts";
 import type { ClassifiedDecision, GuardrailConfig } from "./types.ts";
 
 export interface SafetyKernelInput {
@@ -24,6 +25,8 @@ export interface SafetyKernelInput {
   config: GuardrailConfig;
   sessionId?: string;
   projectTrusted?: boolean;
+  mcpTargetType?: "production" | "sandbox" | "unknown";
+  mcpTargetAttestation?: Pick<McpTargetAttestation, "orgId" | "isSandbox">;
 }
 export type GuardrailDecision = ClassifiedDecision;
 
@@ -34,6 +37,8 @@ export async function evaluateSafety(
     sessionId: input.sessionId,
     cwd: input.cwd,
     projectTrusted: input.projectTrusted,
+    mcpTargetType: input.mcpTargetType,
+    mcpTargetAttestation: input.mcpTargetAttestation,
   });
   if (!subject) return undefined;
 

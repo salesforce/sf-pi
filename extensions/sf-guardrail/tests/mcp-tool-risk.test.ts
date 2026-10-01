@@ -66,7 +66,7 @@ describe("Salesforce MCP tool safety subjects", () => {
     });
   });
 
-  it("uses a managed sandbox endpoint as bounded environment evidence", () => {
+  it("blocks a managed sandbox endpoint until the exact OAuth org is attested", () => {
     const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-guardrail-"));
     tempDirs.push(cwd);
     mkdirSync(path.join(cwd, ".pi"), { recursive: true });
@@ -87,12 +87,85 @@ describe("Salesforce MCP tool safety subjects", () => {
       { cwd, projectTrusted: true },
     ) as NativeToolSafetySubject;
 
-    expect(subject).toMatchObject({ targetOrgType: "sandbox", targetOrgUnverified: false });
+    expect(subject).toMatchObject({ targetOrgType: "sandbox", targetOrgUnverified: true });
     expect(evaluateNativeToolRisk(subject!, cwd, config)).toMatchObject({
+      action: "block",
+      orgType: "production",
+      orgResolutionGuessed: true,
+    });
+  });
+
+  it("confirms a sandbox record write only with exact one-use org evidence", () => {
+    const subject = normalizeSafetySubject(
+      "mcp__salesforce_sobject_mutations__createSobjectRecord",
+      { "sobject-name": "Task", body: { Subject: "Follow up" } },
+      {
+        mcpTargetType: "sandbox",
+        mcpTargetAttestation: {
+          orgId: "00D000000000001AAA",
+          isSandbox: true,
+        },
+      },
+    ) as NativeToolSafetySubject;
+
+    expect(subject).toMatchObject({
+      targetOrgType: "sandbox",
+      targetOrgId: "00D000000000001AAA",
+      targetOrgVerified: true,
+      targetOrgUnverified: false,
+    });
+    expect(evaluateNativeToolRisk(subject, process.cwd(), config)).toMatchObject({
       action: "confirm",
       orgType: "sandbox",
-      orgResolutionSource: "mcpConfig",
+      orgId: "00D000000000001AAA",
+      orgResolutionSource: "mcpAttestation",
     });
+  });
+
+  it("still blocks an exactly attested production record write", () => {
+    const subject = normalizeSafetySubject(
+      "mcp__salesforce_sobject_mutations__createSobjectRecord",
+      { "sobject-name": "Task", body: { Subject: "Follow up" } },
+      {
+        mcpTargetType: "production",
+        mcpTargetAttestation: {
+          orgId: "00D000000000001AAA",
+          isSandbox: false,
+        },
+      },
+    ) as NativeToolSafetySubject;
+
+    expect(subject).toMatchObject({ targetOrgVerified: true, targetOrgType: "production" });
+    expect(evaluateNativeToolRisk(subject, process.cwd(), config)).toMatchObject({
+      action: "block",
+      orgId: "00D000000000001AAA",
+      orgResolutionSource: "mcpAttestation",
+    });
+  });
+
+  it("blocks a managed production endpoint without connecting to production", () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-production-"));
+    tempDirs.push(cwd);
+    mkdirSync(path.join(cwd, ".pi"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".pi", "mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          "salesforce-sobject-mutations": {
+            url: "https://api.salesforce.com/platform/mcp/v1/platform/sobject-mutations",
+          },
+        },
+      }),
+    );
+
+    const subject = normalizeSafetySubject(
+      "mcp__salesforce_sobject_mutations__createSobjectRecord",
+      { "sobject-name": "Task", body: { Subject: "Follow up" } },
+      { cwd, projectTrusted: true },
+    ) as NativeToolSafetySubject;
+
+    expect(subject).toMatchObject({ targetOrgType: "production", targetOrgUnverified: true });
+    expect(evaluateNativeToolRisk(subject, cwd, config).action).toBe("block");
   });
 
   it("fails closed when configured server names collide after Pi normalization", () => {
@@ -186,6 +259,74 @@ describe("Salesforce MCP tool safety subjects", () => {
       operationFamily: "mcp external operation",
       allowSession: false,
     });
+  });
+
+  it("classifies Backup and Recover writes for exact confirmation", () => {
+    for (const tool of ["enqueue_backup", "create_compare_activity", "update_selection_records"]) {
+      expect(classifyNativeToolRisk(`mcp__salesforce_backup_recover__${tool}`, {})).toMatchObject({
+        ruleId: "native-sf-mcp-backup-write",
+        operationFamily: "mcp backup write",
+        blockProductionOrUnknown: true,
+      });
+    }
+    expect(
+      classifyNativeToolRisk("mcp__salesforce_backup_recover__get_backups", {}),
+    ).toBeUndefined();
+  });
+
+  it("classifies every Content Write operation conservatively", () => {
+    expect(
+      classifyNativeToolRisk("mcp__salesforce_content_write__publish_cms_content", {
+        contentIds: ["example"],
+      }),
+    ).toMatchObject({
+      ruleId: "native-sf-mcp-content-write",
+      operationFamily: "mcp content write",
+      blockProductionOrUnknown: true,
+    });
+  });
+
+  it("requires confirmation for a Content write on a managed sandbox endpoint", () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-content-write-"));
+    tempDirs.push(cwd);
+    mkdirSync(path.join(cwd, ".pi"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".pi", "mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          "salesforce-content-write": {
+            url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/content-write",
+          },
+        },
+      }),
+    );
+
+    const subject = normalizeSafetySubject(
+      "mcp__salesforce_content_write__publish_cms_content",
+      { contentIds: ["example"] },
+      { cwd, projectTrusted: true },
+    ) as NativeToolSafetySubject;
+
+    expect(subject).toMatchObject({ targetOrgType: "sandbox", targetOrgUnverified: true });
+    expect(evaluateNativeToolRisk(subject, cwd, config).action).toBe("block");
+  });
+
+  it("classifies Headless 360 dispatch but leaves read-only dispatch alone", () => {
+    expect(
+      classifyNativeToolRisk("mcp__salesforce_headless_360__dispatch", {
+        method: "POST",
+        url: "https://api.example.com/v1/users",
+      }),
+    ).toMatchObject({
+      ruleId: "native-sf-mcp-headless-dispatch",
+      operationFamily: "mcp headless dispatch",
+      blockProductionOrUnknown: true,
+    });
+    expect(
+      classifyNativeToolRisk("mcp__salesforce_headless_360__dispatch_readonly", {
+        method: "GET",
+      }),
+    ).toBeUndefined();
   });
 
   it("classifies delete tools separately from create and update", () => {

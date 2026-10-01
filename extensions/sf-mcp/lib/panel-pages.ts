@@ -15,6 +15,11 @@ export type ConflictOption = {
   resolution?: McpResolution;
 };
 
+export type ReconcileOption = {
+  label: string;
+  description: string;
+};
+
 export function renderCatalogPage(input: {
   theme: Theme;
   width: number;
@@ -42,7 +47,7 @@ export function renderCatalogPage(input: {
     const label = selected
       ? t.fg("accent", t.bold(`${state.preset.icon}  ${state.preset.label}`))
       : t.fg("text", `${state.preset.icon}  ${state.preset.label}`);
-    const status = renderStatus(t, state.managed.status, state.preset);
+    const status = `${supportTag(t, state.preset)}${renderStatus(t, state.managed.status, state.preset)}`;
     const action = renderAction(t, state.managed.status);
     const left = ` ${cursor} ${label}`;
     const right = `${status}  ${action}`;
@@ -122,6 +127,47 @@ export function renderConflictPage(input: {
   return lines;
 }
 
+export function renderReconcilePage(input: {
+  theme: Theme;
+  width: number;
+  preset: McpPreset;
+  status: ManagedServerStatus;
+  message?: string;
+  options: ReconcileOption[];
+  selected: number;
+}): string[] {
+  const { theme: t, width } = input;
+  const lines = [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › Configuration Review`))}`,
+    "",
+    ` ${t.fg("warning", t.bold(`Existing entry: ${input.status}`))}`,
+  ];
+  if (input.message) {
+    lines.push(
+      ...wrapText(input.message, Math.max(24, width - 3)).map(
+        (line) => ` ${t.fg("warning", line)}`,
+      ),
+    );
+  }
+  lines.push("", ` ${t.fg("muted", "Choose one explicit reconciliation action")}`, "");
+  for (let index = 0; index < input.options.length; index++) {
+    const option = input.options[index];
+    if (!option) continue;
+    const selected = index === input.selected;
+    lines.push(
+      ` ${selected ? t.fg("accent", "❯") : " "} ${selected ? t.fg("accent", t.bold(option.label)) : t.fg("text", option.label)}`,
+    );
+    lines.push(
+      ...wrapText(option.description, Math.max(24, width - 5)).map(
+        (line) => `   ${t.fg("dim", line)}`,
+      ),
+    );
+    lines.push("");
+  }
+  lines.push(` ${t.fg("dim", "↑/↓ choose · Enter continue · Esc catalog")}`);
+  return lines;
+}
+
 export function renderSetupPage(input: {
   theme: Theme;
   width: number;
@@ -150,6 +196,7 @@ export function renderReviewPage(input: {
   runtime: PresetRuntimeState;
   config: McpServerConfig;
   resolution: McpResolution;
+  configDiff?: string[];
   selected: number;
 }): string[] {
   const { theme: t, width } = input;
@@ -166,7 +213,7 @@ export function renderReviewPage(input: {
         ? `    File               ${t.fg("dim", line)}`
         : `                       ${t.fg("dim", line)}`,
     ),
-    `    Server name        ${t.fg("text", input.preset.serverName)}`,
+    `    Server name        ${t.fg("text", input.runtime.managed.configuredName ?? input.preset.serverName)}`,
     `    Existing entry     ${t.fg("text", input.runtime.managed.status === "missing" ? "none" : input.runtime.managed.status)}`,
     "",
     ` ${t.fg("accent", "▰")} ${t.fg("muted", "CONNECTION")}`,
@@ -178,12 +225,26 @@ export function renderReviewPage(input: {
         : `                       ${t.fg("dim", line)}`,
     ),
     `    Resolution         ${t.fg("text", resolutionLabel(input.resolution))}`,
+  ];
+  if (input.configDiff && input.configDiff.length > 0) {
+    lines.push(
+      "",
+      ` ${t.fg("accent", "▰")} ${t.fg("muted", "CHANGES")}`,
+      ...input.configDiff.flatMap((change) =>
+        wrapText(change, Math.max(24, width - 8)).map((line) => `    ${t.fg("warning", line)}`),
+      ),
+    );
+  }
+  lines.push(
     "",
     ` ${t.fg("accent", "▰")} ${t.fg("muted", "SAFETY")}`,
-    `    ${t.fg("success", "✓")} Manual or modified entries are never overwritten`,
+    `    ${t.fg("success", "✓")} Existing entries change only after explicit diff review`,
     `    ${t.fg("success", "✓")} OAuth and connection state remain Pi-owned`,
     `    ${t.fg("success", "✓")} Guardrail mediates managed mutation surfaces`,
-  ];
+  );
+  if (input.preset.supportNote) {
+    lines.push(`    ${t.fg("warning", "⚠")} ${t.fg("warning", input.preset.supportNote)}`);
+  }
   if (input.runtime.scopeConflict) {
     lines.push(
       ...wrapText(input.runtime.scopeConflict.message, Math.max(24, width - 8)).map(
@@ -311,6 +372,8 @@ function renderStatus(theme: Theme, status: ManagedServerStatus, preset: McpPres
   if (status === "managed-disabled") return theme.fg("muted", "○ DISABLED");
   if (status === "manual") return theme.fg("warning", "◐ MANUAL CONFIG");
   if (status === "modified") return theme.fg("warning", "▲ REVIEW CHANGES");
+  if (status === "managed-outdated") return theme.fg("warning", "▲ PRESET UPDATE");
+  if (status === "name-conflict") return theme.fg("error", "● NAME CONFLICT");
   if (status === "invalid-config") return theme.fg("error", "● INVALID CONFIG");
   if (preset.risk === "delete" || preset.id === "sobject-all") {
     return theme.fg("error", "▲ ELEVATED RISK");
@@ -322,25 +385,45 @@ function renderStatus(theme: Theme, status: ManagedServerStatus, preset: McpPres
 function renderAction(theme: Theme, status: ManagedServerStatus): string {
   if (status === "managed-enabled") return theme.fg("dim", "D Disable");
   if (status === "managed-disabled") return theme.fg("accent", "Enter Enable");
-  if (status === "manual" || status === "modified" || status === "invalid-config") {
-    return theme.fg("warning", "Open /mcp");
+  if (
+    status === "manual" ||
+    status === "modified" ||
+    status === "managed-outdated" ||
+    status === "name-conflict"
+  ) {
+    return theme.fg("warning", "Enter Review");
   }
+  if (status === "invalid-config") return theme.fg("warning", "Open /mcp");
   return theme.fg("accent", "Enter Set up");
 }
 
 function selectedDetail(state: PresetRuntimeState): string {
   if (state.scopeConflict) return `⚠ ${state.scopeConflict.message}`;
+  if (state.drift.status === "review") {
+    return `⚠ tool contract changed · added: ${state.drift.added.join(", ") || "none"} · removed: ${state.drift.removed.join(", ") || "none"}`;
+  }
   if (state.managed.status === "manual") {
-    return "Existing native entry detected; SF MCP will not overwrite it.";
+    return "Existing native entry detected; review adoption or an explicit preset reset.";
   }
   if (state.managed.status === "modified") {
     return "Managed entry changed outside SF MCP; review it before repair.";
+  }
+  if (state.managed.status === "managed-outdated") {
+    return "A newer reviewed preset revision is available.";
+  }
+  if (state.managed.status === "name-conflict") {
+    return state.managed.message ?? "Canonical MCP server names conflict.";
   }
   if (state.plan.conflicts.length === 0) {
     return `${state.preset.transport} · no active SF Pi capability overlap detected`;
   }
   const owners = state.plan.conflicts.map((conflict) => conflict.nativeExtensionId).join(", ");
   return `⚠ overlap with ${owners} · ${state.plan.recommendation.summary}`;
+}
+
+function supportTag(theme: Theme, preset: McpPreset): string {
+  if (preset.support === "ga") return "";
+  return `${theme.fg(preset.support === "alpha" ? "warning" : "muted", `${preset.support.toUpperCase()} `)}`;
 }
 
 function resolutionLabel(resolution: McpResolution): string {

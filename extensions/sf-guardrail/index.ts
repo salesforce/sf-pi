@@ -56,6 +56,7 @@
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
+import { takeMcpTargetAttestation } from "../../lib/common/mcp-target-attestation/store.ts";
 import {
   registerManagerDetailActions,
   type ManagerDetailAction,
@@ -87,6 +88,8 @@ import { renderApprovalDetail } from "./lib/approval-detail.ts";
 import { evaluateSafety } from "./lib/safety-kernel.ts";
 import { type GuardrailConfigSource, loadConfig } from "./lib/config.ts";
 import { confirmDecision, isOperatorAutoApproveEnabled } from "./lib/hitl.ts";
+import { resolveMcpConfiguredTargetContext } from "./lib/mcp-target-context.ts";
+import { parseMcpToolIdentity } from "./lib/mcp-tool-identity.ts";
 import { readGuardrailPiSettings } from "./lib/guardrail-settings.ts";
 import { shouldPowerToolAutoApprove } from "./lib/power-tool-mode.ts";
 import { loadPrompt } from "./lib/prompt-injection.ts";
@@ -151,13 +154,30 @@ export default function sfGuardrail(pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     const { config } = getConfig();
 
+    const sessionId = ctx.sessionManager.getSessionId();
+    const mcpIdentity = parseMcpToolIdentity(event.toolName);
+    const mcpConfig = mcpIdentity
+      ? resolveMcpConfiguredTargetContext(ctx.cwd, mcpIdentity.serverName, ctx.isProjectTrusted())
+      : undefined;
+    const mcpTargetAttestation =
+      mcpIdentity && mcpConfig?.configFingerprint
+        ? takeMcpTargetAttestation({
+            sessionId,
+            serverName: mcpIdentity.serverName,
+            nextTool: mcpIdentity.toolName,
+            configFingerprint: mcpConfig.configFingerprint,
+          })
+        : undefined;
+
     const decision = await evaluateSafety({
       toolName: event.toolName,
       input: (event.input ?? {}) as Record<string, unknown>,
       cwd: ctx.cwd,
       config,
-      sessionId: ctx.sessionManager.getSessionId(),
+      sessionId,
       projectTrusted: ctx.isProjectTrusted(),
+      mcpTargetType: mcpConfig?.targetType,
+      mcpTargetAttestation,
     });
     if (!decision) return undefined;
 

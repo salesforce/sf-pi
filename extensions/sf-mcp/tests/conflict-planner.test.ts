@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 
 import { SF_PI_REGISTRY } from "../../../catalog/registry.ts";
 import { planPresetConflicts } from "../lib/conflict-planner.ts";
-import { SALESFORCE_MCP_PRESETS, buildServerConfig, getPreset } from "../lib/presets.ts";
+import {
+  SALESFORCE_MCP_PRESETS,
+  buildServerConfig,
+  getPreset,
+  isPresetConfigCompatible,
+} from "../lib/presets.ts";
 
 describe("SF MCP capability conflict planning", () => {
   it("keeps every native overlap claim tied to a declared extension", () => {
@@ -59,11 +64,60 @@ describe("SF MCP capability conflict planning", () => {
     });
   });
 
+  it("limits Salesforce DX conflict claims to toolsets the preset actually enables", () => {
+    const preset = getPreset("salesforce-dx");
+    expect(preset.overlaps.map((overlap) => overlap.nativeExtensionId)).toEqual([
+      "sf-soql",
+      "sf-apex",
+    ]);
+  });
+
   it("allows a non-overlapping Marketing Cloud preset normally", () => {
     const plan = planPresetConflicts(getPreset("marketing-cloud"), new Set(["sf-soql"]));
 
     expect(plan.conflicts).toEqual([]);
     expect(plan.recommendation.resolution).toBe("enable");
+  });
+
+  it("builds governed configurations for every documented hosted preset", () => {
+    const expectedPaths = {
+      "backup-recover": "sandbox/platform/backup-and-recover",
+      "content-readonly": "sandbox/platform/content-readonly",
+      "content-write": "sandbox/platform/content-write",
+      "headless-360": "sandbox/platform/headless-360",
+      "tableau-next": "sandbox/analytics/tableau-next",
+      "crm-analytics": "sandbox/analytics/crma-beta",
+    } as const;
+
+    for (const [presetId, suffix] of Object.entries(expectedPaths)) {
+      const config = buildServerConfig(getPreset(presetId), "enable", {
+        environment: "sandbox",
+        oauthClientId: "consumer-key",
+      });
+      expect("url" in config ? config.url : undefined).toBe(
+        `https://api.salesforce.com/platform/mcp/v1/${suffix}`,
+      );
+      expect(config.exposure).toBe("hidden");
+      expect(Object.keys(config.toolExposure ?? {}).length).toBeGreaterThan(0);
+      expect(Object.values(config.toolExposure ?? {})).toEqual(
+        expect.arrayContaining(["codemode"]),
+      );
+    }
+  });
+
+  it("refuses to adopt an ungoverned full-exposure hosted entry", () => {
+    expect(
+      isPresetConfigCompatible(getPreset("sobject-reads"), {
+        url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+        oauth: { clientId: "consumer-key" },
+        exposure: "codemode",
+      }),
+    ).toMatchObject({ compatible: false });
+  });
+
+  it("marks Content presets as alpha while their documented client support is limited", () => {
+    expect(getPreset("content-readonly")).toMatchObject({ support: "alpha" });
+    expect(getPreset("content-write")).toMatchObject({ support: "alpha" });
   });
 
   it("builds the documented Data 360 sandbox endpoint", () => {
@@ -76,7 +130,12 @@ describe("SF MCP capability conflict planning", () => {
       "https://api.salesforce.com/platform/mcp/v1/data/sandbox/data360",
     );
     expect(config.description).toBe(getPreset("data360").description);
-    expect(config.exposure).toBe("codemode");
+    expect(config.exposure).toBe("hidden");
+    expect(config.toolExposure).toEqual({
+      search: "codemode",
+      payload_examples: "codemode",
+      execute: "codemode",
+    });
   });
 
   it("keeps custom remote MCP presets on HTTPS", () => {

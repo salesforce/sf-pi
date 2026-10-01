@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { inspectMcpConfig, upsertMcpServer, type McpServerConfig } from "../lib/mcp-config.ts";
+import {
+  inspectMcpConfig,
+  removeCanonicalMcpServerDuplicates,
+  upsertMcpServer,
+  type McpServerConfig,
+} from "../lib/mcp-config.ts";
 
 const tempDirs: string[] = [];
 
@@ -72,6 +77,52 @@ describe("native Pi MCP configuration", () => {
     expect(JSON.parse(readFileSync(file, "utf8")).mcpServers["salesforce-dx"]).toEqual({
       command: "custom-wrapper",
     });
+  });
+
+  it("refuses a server name that collides after Pi namespace normalization", () => {
+    const file = tempFile();
+    writeFileSync(
+      file,
+      `${JSON.stringify({ mcpServers: { salesforce_sobject_reads: { url: "https://example.test/mcp" } } }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const result = upsertMcpServer(file, "salesforce-sobject-reads", {
+      url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+    });
+
+    expect(result).toMatchObject({ ok: false, reason: "server-name-conflict" });
+  });
+
+  it("removes canonical duplicates only after naming the entry to keep", () => {
+    const file = tempFile();
+    writeFileSync(
+      file,
+      `${JSON.stringify(
+        {
+          mcpServers: {
+            "salesforce-sobject-reads": { url: "https://example.test/one" },
+            salesforce_sobject_reads: { url: "https://example.test/two" },
+            unrelated: { url: "https://example.test/other" },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    const result = removeCanonicalMcpServerDuplicates(
+      file,
+      "salesforce-sobject-reads",
+      "salesforce_sobject_reads",
+    );
+    const written = JSON.parse(readFileSync(file, "utf8"));
+
+    expect(result).toMatchObject({ ok: true });
+    expect(written.mcpServers).not.toHaveProperty("salesforce-sobject-reads");
+    expect(written.mcpServers.salesforce_sobject_reads).toBeDefined();
+    expect(written.mcpServers.unrelated).toBeDefined();
   });
 
   it("refuses to replace malformed JSON", () => {

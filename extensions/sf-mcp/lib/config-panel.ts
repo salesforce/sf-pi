@@ -9,36 +9,58 @@ import {
   padAnsi,
   renderCatalogPage,
   renderConflictPage,
+  renderReconcilePage,
   renderResultPage,
   renderReviewPage,
   renderSetupPage,
   renderTogglePage,
   type ConflictOption,
+  type ReconcileOption,
 } from "./panel-pages.ts";
 import {
   SALESFORCE_MCP_PRESETS,
   buildServerConfig,
   getPreset,
+  isPresetConfigCompatible,
   type McpPresetId,
   type McpResolution,
   type PresetSetup,
 } from "./presets.ts";
 import {
+  adoptPreset,
   inspectPresetRuntime,
   installPreset,
+  reconcileCanonicalServerNames,
   setManagedPresetEnabled,
+  summarizeConfigDiff,
   type PresetRuntimeState,
 } from "./service.ts";
 import { PresetSetupForm } from "./setup-form.ts";
+
+type ReconcileAction =
+  | { kind: "adopt" }
+  | { kind: "reset" }
+  | { kind: "keep-name"; keepName: string }
+  | { kind: "cancel" };
+
+type ReconcileChoice = ReconcileOption & { action: ReconcileAction };
 
 type PanelView =
   | { kind: "catalog" }
   | { kind: "conflicts"; sourcePresetId: McpPresetId; plan: ConflictPlan; selected: number }
   | {
+      kind: "reconcile";
+      presetId: McpPresetId;
+      state: PresetRuntimeState;
+      options: ReconcileChoice[];
+      selected: number;
+    }
+  | {
       kind: "setup";
       sourcePresetId: McpPresetId;
       targetPresetId: McpPresetId;
       resolution: McpResolution;
+      replaceExisting: boolean;
       form: PresetSetupForm;
     }
   | {
@@ -48,6 +70,7 @@ type PanelView =
       resolution: McpResolution;
       setup: PresetSetup;
       config: McpServerConfig;
+      replaceExisting: boolean;
       form?: PresetSetupForm;
       selected: number;
     }
@@ -86,6 +109,9 @@ class SfMcpConfigPanel implements Focusable {
       case "conflicts":
         this.handleConflictInput(data);
         return;
+      case "reconcile":
+        this.handleReconcileInput(data);
+        return;
       case "setup":
         this.handleSetupInput(data);
         return;
@@ -123,6 +149,16 @@ class SfMcpConfigPanel implements Focusable {
             options: conflictOptions(view.plan),
             selected: view.selected,
           });
+        case "reconcile":
+          return renderReconcilePage({
+            theme: this.theme,
+            width,
+            preset: getPreset(view.presetId),
+            status: view.state.managed.status,
+            message: view.state.managed.message,
+            options: view.options,
+            selected: view.selected,
+          });
         case "setup":
           return renderSetupPage({
             theme: this.theme,
@@ -142,6 +178,12 @@ class SfMcpConfigPanel implements Focusable {
             runtime: inspectPresetRuntime(this.cwd, this.scope, preset),
             config: view.config,
             resolution: view.resolution,
+            configDiff: view.replaceExisting
+              ? summarizeConfigDiff(
+                  inspectPresetRuntime(this.cwd, this.scope, preset).managed.config,
+                  view.config,
+                )
+              : undefined,
             selected: view.selected,
           });
         }
@@ -221,12 +263,55 @@ class SfMcpConfigPanel implements Focusable {
     this.openSetup(view.sourcePresetId, option.resolution);
   }
 
+  private handleReconcileInput(data: string): void {
+    const view = this.viewAs("reconcile");
+    if (matchesKey(data, "escape") || data === "q") {
+      this.view = { kind: "catalog" };
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      view.selected = cycle(view.selected, view.options.length, -1);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      view.selected = cycle(view.selected, view.options.length, 1);
+      return;
+    }
+    if (!matchesKey(data, "enter") && !matchesKey(data, "return") && !matchesKey(data, "space")) {
+      return;
+    }
+    const choice = view.options[view.selected];
+    if (!choice || choice.action.kind === "cancel") {
+      this.view = { kind: "catalog" };
+      return;
+    }
+    if (choice.action.kind === "adopt") {
+      this.finishMutation(
+        adoptPreset({ cwd: this.cwd, scope: this.scope, presetId: view.presetId }),
+      );
+      return;
+    }
+    if (choice.action.kind === "keep-name") {
+      this.finishMutation(
+        reconcileCanonicalServerNames({
+          cwd: this.cwd,
+          scope: this.scope,
+          presetId: view.presetId,
+          keepName: choice.action.keepName,
+        }),
+      );
+      return;
+    }
+    const resolution = view.state.managed.record?.resolution ?? "enable";
+    this.openSetup(view.presetId, resolution, true);
+  }
+
   private handleSetupInput(data: string): void {
     const view = this.viewAs("setup");
     const event = view.form.handleInput(data);
     if (!event) return;
     if (event.kind === "back") {
-      this.backFromSetup(view.sourcePresetId);
+      this.backFromSetup(view.sourcePresetId, view.replaceExisting);
       return;
     }
     this.openReview({
@@ -235,6 +320,7 @@ class SfMcpConfigPanel implements Focusable {
       resolution: view.resolution,
       setup: event.setup,
       form: view.form,
+      replaceExisting: view.replaceExisting,
     });
   }
 
@@ -266,6 +352,7 @@ class SfMcpConfigPanel implements Focusable {
       presetId: view.sourcePresetId,
       resolution: view.resolution,
       setup: view.setup,
+      replaceExisting: view.replaceExisting,
     });
     this.finishMutation(result);
   }
@@ -342,7 +429,9 @@ class SfMcpConfigPanel implements Focusable {
     }
     if (state.managed.status === "managed-enabled") {
       this.setMessage(
-        `${state.preset.label} is already enabled. Press D to disable it.`,
+        state.drift.status === "review"
+          ? `${state.preset.label} observed tool drift. Added tools remain hidden until a reviewed preset revision approves them; removed tools are unreachable.`
+          : `${state.preset.label} is already enabled. Press D to disable it.`,
         "warning",
       );
       return;
@@ -351,10 +440,15 @@ class SfMcpConfigPanel implements Focusable {
       this.view = { kind: "toggle", presetId: state.preset.id, enable: true, selected: 0 };
       return;
     }
-    if (["manual", "modified", "invalid-config"].includes(state.managed.status)) {
+    if (
+      ["manual", "modified", "managed-outdated", "name-conflict"].includes(state.managed.status)
+    ) {
+      this.openReconcile(state);
+      return;
+    }
+    if (state.managed.status === "invalid-config") {
       this.setMessage(
-        state.managed.message ??
-          `${state.preset.serverName} already has configuration that SF MCP will not overwrite.`,
+        state.managed.message ?? "The native MCP configuration is invalid.",
         "warning",
       );
       return;
@@ -368,10 +462,24 @@ class SfMcpConfigPanel implements Focusable {
       };
       return;
     }
-    this.openSetup(state.preset.id, "enable");
+    this.openSetup(state.preset.id, "enable", false);
   }
 
-  private openSetup(sourcePresetId: McpPresetId, resolution: McpResolution): void {
+  private openReconcile(state: PresetRuntimeState): void {
+    this.view = {
+      kind: "reconcile",
+      presetId: state.preset.id,
+      state,
+      options: reconcileOptions(state),
+      selected: 0,
+    };
+  }
+
+  private openSetup(
+    sourcePresetId: McpPresetId,
+    resolution: McpResolution,
+    replaceExisting = false,
+  ): void {
     const targetPreset =
       resolution === "use-sobject-mutations"
         ? getPreset("sobject-mutations")
@@ -382,6 +490,7 @@ class SfMcpConfigPanel implements Focusable {
         targetPresetId: targetPreset.id,
         resolution,
         setup: {},
+        replaceExisting,
       });
       return;
     }
@@ -390,6 +499,7 @@ class SfMcpConfigPanel implements Focusable {
       sourcePresetId,
       targetPresetId: targetPreset.id,
       resolution,
+      replaceExisting,
       form: new PresetSetupForm(this.theme, targetPreset),
     };
   }
@@ -400,13 +510,20 @@ class SfMcpConfigPanel implements Focusable {
     resolution: McpResolution;
     setup: PresetSetup;
     form?: PresetSetupForm;
+    replaceExisting?: boolean;
   }): void {
     const targetPreset = getPreset(input.targetPresetId);
     const configResolution =
       input.resolution === "use-sobject-mutations" ? "complement-native" : input.resolution;
     try {
       const config = buildServerConfig(targetPreset, configResolution, input.setup);
-      this.view = { kind: "review", ...input, config, selected: 0 };
+      this.view = {
+        kind: "review",
+        ...input,
+        replaceExisting: input.replaceExisting === true,
+        config,
+        selected: 0,
+      };
     } catch (error) {
       this.view = {
         kind: "result",
@@ -418,8 +535,12 @@ class SfMcpConfigPanel implements Focusable {
     }
   }
 
-  private backFromSetup(sourcePresetId: McpPresetId): void {
+  private backFromSetup(sourcePresetId: McpPresetId, replaceExisting = false): void {
     const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(sourcePresetId));
+    if (replaceExisting) {
+      this.openReconcile(state);
+      return;
+    }
     this.view = state.plan.conflicts.length
       ? { kind: "conflicts", sourcePresetId, plan: state.plan, selected: 0 }
       : { kind: "catalog" };
@@ -433,11 +554,12 @@ class SfMcpConfigPanel implements Focusable {
         sourcePresetId: this.view.sourcePresetId,
         targetPresetId: this.view.targetPresetId,
         resolution: this.view.resolution,
+        replaceExisting: this.view.replaceExisting,
         form: this.view.form,
       };
       return;
     }
-    this.backFromSetup(this.view.sourcePresetId);
+    this.backFromSetup(this.view.sourcePresetId, this.view.replaceExisting);
   }
 
   private openToggle(enable: boolean): void {
@@ -481,7 +603,7 @@ class SfMcpConfigPanel implements Focusable {
       title: result.changed ? `${result.preset.label} saved` : "No configuration change needed",
       message: result.message,
       tone: "success",
-      needsReload: result.changed,
+      needsReload: result.reloadRequired,
     };
   }
 
@@ -497,6 +619,51 @@ class SfMcpConfigPanel implements Focusable {
     this.message = message;
     this.messageTone = tone;
   }
+}
+
+function reconcileOptions(state: PresetRuntimeState): ReconcileChoice[] {
+  if (state.managed.status === "name-conflict") {
+    return [
+      ...(state.managed.conflictingNames ?? []).map((name) => ({
+        label: `Keep ${name}`,
+        description:
+          "Remove the other canonically equivalent names. The kept entry remains user-owned until adopted.",
+        action: { kind: "keep-name" as const, keepName: name },
+      })),
+      {
+        label: "Cancel",
+        description: "Leave every native MCP entry unchanged.",
+        action: { kind: "cancel" as const },
+      },
+    ];
+  }
+
+  const options: ReconcileChoice[] = [];
+  if (
+    state.managed.config &&
+    isPresetConfigCompatible(state.preset, state.managed.config).compatible
+  ) {
+    options.push({
+      label: "Adopt existing entry  · Recommended",
+      description:
+        "Record the current compatible configuration as SF MCP-managed without changing mcp.json.",
+      action: { kind: "adopt" },
+    });
+  }
+  options.push(
+    {
+      label: "Reset to current preset",
+      description:
+        "Review a redacted field-level diff, then explicitly replace this one entry with the current preset revision.",
+      action: { kind: "reset" },
+    },
+    {
+      label: "Cancel",
+      description: "Keep the existing entry user-owned and unchanged.",
+      action: { kind: "cancel" },
+    },
+  );
+  return options;
 }
 
 function conflictOptions(plan: ConflictPlan): ConflictOption[] {
@@ -527,7 +694,7 @@ function conflictOptions(plan: ConflictPlan): ConflictOption[] {
       {
         label: "Enable MCP side-by-side  · Advanced",
         description:
-          "Keep both providers with explicit routing guidance and deferred MCP exposure.",
+          "Keep both providers with explicit routing guidance and the preset's approved MCP tools.",
         resolution: "side-by-side",
       },
       { label: "Cancel", description: "Return to the Salesforce MCP catalog." },
@@ -541,7 +708,8 @@ function conflictOptions(plan: ConflictPlan): ConflictOption[] {
     },
     {
       label: "Enable full MCP side-by-side  · Advanced",
-      description: "Keep all MCP tools deferred and add explicit routing guidance.",
+      description:
+        "Expose the current approved MCP tool contract and keep newly discovered tools hidden.",
       resolution: "side-by-side",
     },
     { label: "Cancel", description: "Return to the Salesforce MCP catalog." },

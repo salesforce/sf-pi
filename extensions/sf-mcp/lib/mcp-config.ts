@@ -2,6 +2,10 @@
 /** Strict, atomic reads and writes for Pi's native mcp.json files. */
 import type { McpExposure, McpServerConfig } from "@earendil-works/pi-coding-agent";
 import {
+  canonicalMcpServerName,
+  fingerprintMcpServerConfig,
+} from "../../../lib/common/mcp-target-attestation/store.ts";
+import {
   existsSync,
   mkdirSync,
   readFileSync,
@@ -46,6 +50,7 @@ export type McpConfigMutationResult =
         | "invalid-servers"
         | "read-failed"
         | "server-exists"
+        | "server-name-conflict"
         | "server-missing"
         | "write-failed";
       message: string;
@@ -116,6 +121,50 @@ export function inspectMcpConfig(filePath: string): McpConfigInspection {
   };
 }
 
+export { canonicalMcpServerName };
+
+export function findCanonicalMcpServerNames(
+  servers: Readonly<Record<string, McpServerConfig>>,
+  serverName: string,
+): string[] {
+  const canonical = canonicalMcpServerName(serverName);
+  return Object.keys(servers).filter((name) => canonicalMcpServerName(name) === canonical);
+}
+
+export interface EffectiveMcpServerEntry {
+  configuredName: string;
+  config: McpServerConfig;
+  configFingerprint: string;
+  scope: "global" | "project";
+}
+
+export function resolveEffectiveMcpServerEntry(
+  cwd: string,
+  serverName: string,
+  projectTrusted: boolean,
+): EffectiveMcpServerEntry | undefined {
+  const scopes: ("project" | "global")[] = projectTrusted ? ["project", "global"] : ["global"];
+  for (const scope of scopes) {
+    const inspected = inspectMcpConfig(mcpConfigPath(cwd, scope));
+    if (inspected.ok === false) throw new Error(inspected.message);
+    const matches = findCanonicalMcpServerNames(inspected.servers, serverName);
+    if (matches.length > 1) {
+      throw new Error(`${matches.join(", ")} collide after Pi normalizes hyphens and underscores.`);
+    }
+    const configuredName = matches[0];
+    if (!configuredName) continue;
+    const config = inspected.servers[configuredName];
+    if (!config) continue;
+    return {
+      configuredName,
+      config,
+      configFingerprint: fingerprintMcpServerConfig(config),
+      scope,
+    };
+  }
+  return undefined;
+}
+
 export function upsertMcpServer(
   filePath: string,
   serverName: string,
@@ -123,12 +172,16 @@ export function upsertMcpServer(
 ): McpConfigMutationResult {
   const inspected = inspectMcpConfig(filePath);
   if (inspected.ok === false) return inspectionFailure(inspected);
-  if (Object.hasOwn(inspected.servers, serverName)) {
+  const matches = findCanonicalMcpServerNames(inspected.servers, serverName);
+  if (matches.length > 0) {
+    const exact = matches.includes(serverName);
     return {
       ok: false,
       path: filePath,
-      reason: "server-exists",
-      message: `${serverName} already exists in ${filePath}. Review or adopt it instead of overwriting it.`,
+      reason: exact ? "server-exists" : "server-name-conflict",
+      message: exact
+        ? `${serverName} already exists in ${filePath}. Review or adopt it instead of overwriting it.`
+        : `${serverName} conflicts with ${matches.join(", ")} after Pi normalizes hyphens and underscores. Resolve the duplicate before installing this preset.`,
     };
   }
 
@@ -161,6 +214,30 @@ export function replaceMcpServer(
     mcpServers: { ...inspected.servers, [serverName]: config },
   };
   const write = writeMcpRoot(filePath, root);
+  return write.ok ? { ok: true, created: false, path: filePath } : write;
+}
+
+export function removeCanonicalMcpServerDuplicates(
+  filePath: string,
+  serverName: string,
+  keepName: string,
+): McpConfigMutationResult {
+  const inspected = inspectMcpConfig(filePath);
+  if (inspected.ok === false) return inspectionFailure(inspected);
+  const matches = findCanonicalMcpServerNames(inspected.servers, serverName);
+  if (!matches.includes(keepName)) {
+    return {
+      ok: false,
+      path: filePath,
+      reason: "server-missing",
+      message: `${keepName} is not a canonical match for ${serverName} in ${filePath}.`,
+    };
+  }
+  const servers = { ...inspected.servers };
+  for (const name of matches) {
+    if (name !== keepName) delete servers[name];
+  }
+  const write = writeMcpRoot(filePath, { ...inspected.root, mcpServers: servers });
   return write.ok ? { ok: true, created: false, path: filePath } : write;
 }
 
