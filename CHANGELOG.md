@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.307.0](https://github.com/salesforce/sf-pi/compare/v0.306.1...v0.307.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** remove legacy SObject presets ([86f1470](https://github.com/salesforce/sf-pi/commit/86f147076fc3d81c5d844b054522c78c5715bb56))
+
 ## [0.306.1](https://github.com/salesforce/sf-pi/compare/v0.306.0...v0.306.1) (2026-10-01)
 
 
