@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Salesforce-published MCP presets and their deliberately small capability claims. */
 import type { McpExposure, McpServerConfig } from "./mcp-config.ts";
+import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
+import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
+import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
 
 export type McpPresetId =
   | "salesforce-dx"
@@ -13,6 +16,7 @@ export type McpPresetId =
   | "crm-analytics"
   | "marketing-cloud"
   | "mulesoft-dx"
+  | "agentforce-sales"
   | "custom-salesforce";
 
 export type ConflictRelationship = "direct" | "partial";
@@ -32,7 +36,13 @@ export interface McpPreset {
   icon: string;
   description: string;
   transport: "stdio" | "http";
-  setup: "ready" | "hosted-oauth" | "marketing-cloud" | "mulesoft-env" | "custom-url";
+  setup:
+    | "ready"
+    | "hosted-oauth"
+    | "marketing-cloud"
+    | "mulesoft-env"
+    | "agentforce-sales-oauth"
+    | "custom-url";
   risk: "read" | "write" | "delete" | "mixed";
   support: "ga" | "beta" | "alpha";
   supportNote?: string;
@@ -154,7 +164,7 @@ const CRM_ANALYTICS_TOOLS = [
 const PRESETS: readonly McpPreset[] = [
   {
     id: "salesforce-dx",
-    revision: 2,
+    revision: 3,
     serverName: "salesforce-dx",
     label: "Salesforce DX",
     icon: "⚡",
@@ -164,7 +174,8 @@ const PRESETS: readonly McpPreset[] = [
     risk: "mixed",
     support: "ga",
     docsUrl:
-      "https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-mcp-server.html",
+      "https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-mcp-use-core-tools.html",
+    approvedTools: SALESFORCE_DX_TOOLS.map((tool) => tool.name),
     overlaps: [
       {
         nativeExtensionId: "sf-soql",
@@ -338,8 +349,10 @@ const PRESETS: readonly McpPreset[] = [
     setup: "marketing-cloud",
     risk: "mixed",
     support: "ga",
-    revision: 1,
-    docsUrl: "https://developer.salesforce.com/docs/marketing/mce-mcp/guide/mce-mcp-setup.html",
+    revision: 2,
+    docsUrl:
+      "https://developer.salesforce.com/docs/marketing/mce-mcp/references/mce-mcp-tools/mce-mcp-tools.html",
+    approvedTools: MARKETING_CLOUD_TOOLS.map((tool) => tool.name),
     overlaps: [],
   },
   {
@@ -352,9 +365,36 @@ const PRESETS: readonly McpPreset[] = [
     setup: "mulesoft-env",
     risk: "mixed",
     support: "ga",
-    revision: 1,
-    docsUrl: "https://docs.mulesoft.com/mulesoft-mcp-server/getting-started",
+    revision: 2,
+    docsUrl: "https://docs.mulesoft.com/mulesoft-mcp-server/reference-mcp-tools",
+    approvedTools: MULESOFT_DX_TOOLS.map((tool) => tool.name),
     overlaps: [],
+  },
+  {
+    id: "agentforce-sales",
+    serverName: "salesforce-agentforce-sales",
+    label: "Agentforce Sales",
+    icon: "◆",
+    description:
+      "Connect the Agentforce Sales ChatGPT app Beta surface for governed sales context and actions.",
+    transport: "http",
+    setup: "agentforce-sales-oauth",
+    risk: "mixed",
+    support: "alpha",
+    revision: 1,
+    supportNote:
+      "Alpha in SF Pi: Salesforce documents this Beta endpoint for ChatGPT. Generic Pi client interoperability and the exact tool contract are not yet documented.",
+    docsUrl:
+      "https://help.salesforce.com/s/articleView?id=sales.test_sales_chatgpt_sandbox.htm&type=5",
+    overlaps: [
+      {
+        nativeExtensionId: "sf-soql",
+        relationship: "partial",
+        capabilities: ["platform.records.query", "platform.records.mutate"],
+        reason:
+          "Agentforce Sales can read and update CRM sales records also governed by SF SOQL workflows.",
+      },
+    ],
   },
   {
     id: "custom-salesforce",
@@ -400,35 +440,43 @@ export function buildServerConfig(
       resolution === "complement-native"
         ? "orgs,metadata,users"
         : "orgs,metadata,data,users,testing";
-    return {
-      command: "npx",
-      args: [
-        "-y",
-        "@salesforce/mcp@latest",
-        "--orgs",
-        "DEFAULT_TARGET_ORG",
-        "--toolsets",
-        toolsets,
-      ],
-      description: preset.description,
-      exposure: "codemode",
-      timeout: 120,
-    };
+    return withReviewedToolExposure(
+      preset,
+      resolution,
+      {
+        command: "npx",
+        args: [
+          "-y",
+          "@salesforce/mcp@latest",
+          "--orgs",
+          "DEFAULT_TARGET_ORG",
+          "--toolsets",
+          toolsets,
+        ],
+        description: preset.description,
+        timeout: 120,
+      },
+      toolExposure,
+    );
   }
 
   if (preset.id === "mulesoft-dx") {
-    return {
-      command: "npx",
-      args: ["-y", "mulesoft-mcp-server", "start"],
-      env: {
-        ANYPOINT_CLIENT_ID: "${ANYPOINT_CLIENT_ID}",
-        ANYPOINT_CLIENT_SECRET: "${ANYPOINT_CLIENT_SECRET}",
-        ANYPOINT_REGION: setup.region ?? "PROD_US",
+    return withReviewedToolExposure(
+      preset,
+      resolution,
+      {
+        command: "npx",
+        args: ["-y", "mulesoft-mcp-server", "start"],
+        env: {
+          ANYPOINT_CLIENT_ID: "${ANYPOINT_CLIENT_ID}",
+          ANYPOINT_CLIENT_SECRET: "${ANYPOINT_CLIENT_SECRET}",
+          ANYPOINT_REGION: setup.region ?? "PROD_US",
+        },
+        description: preset.description,
+        timeout: 120,
       },
-      description: preset.description,
-      exposure: "codemode",
-      timeout: 120,
-    };
+      toolExposure,
+    );
   }
 
   if (preset.id === "marketing-cloud") {
@@ -438,8 +486,28 @@ export function buildServerConfig(
       setup.region === "EU"
         ? "mai-mce-mcp-cdp1.sfdc-yzvdd4.svc.sfdcfc.net"
         : "mai-mce-mcp-cdp1.sfdc-yfeipo.svc.sfdcfc.net";
+    return withReviewedToolExposure(
+      preset,
+      resolution,
+      {
+        url: `https://${host}/t/${encodeURIComponent(tenantId)}/c/${encodeURIComponent(clientId)}/api/mcp`,
+        description: preset.description,
+        timeout: 120,
+      },
+      toolExposure,
+    );
+  }
+
+  if (preset.id === "agentforce-sales") {
+    const clientId = required(setup.oauthClientId, "External Client App consumer key");
     return {
-      url: `https://${host}/t/${encodeURIComponent(tenantId)}/c/${encodeURIComponent(clientId)}/api/mcp`,
+      url: "https://api.salesforce.com/platform/mcp/v1-beta.2/sandbox/agentforce-sales",
+      oauth: {
+        clientId,
+        clientSecret: "${AGENTFORCE_SALES_CLIENT_SECRET}",
+        callbackPort: 8765,
+        scope: "api sfap_api refresh_token offline_access einstein_gpt_api",
+      },
       description: preset.description,
       exposure: "codemode",
       timeout: 120,
@@ -478,20 +546,33 @@ export function buildServerConfig(
     timeout: 120,
   };
 
-  const approved = approvedToolsForResolution(preset);
+  return withReviewedToolExposure(preset, resolution, base, toolExposure);
+}
+
+export function approvedToolsForResolution(
+  preset: McpPreset,
+  resolution: McpResolution = "enable",
+): string[] | undefined {
+  const approved = preset.approvedTools ? [...preset.approvedTools] : undefined;
+  if (!approved || preset.id !== "salesforce-dx" || resolution !== "complement-native") {
+    return approved;
+  }
+  const excluded = new Set(["run_soql_query", "run_agent_test", "run_apex_test"]);
+  return approved.filter((tool) => !excluded.has(tool));
+}
+
+function withReviewedToolExposure(
+  preset: McpPreset,
+  resolution: McpResolution,
+  base: McpServerConfig,
+  toolExposure?: Readonly<Record<string, McpExposure>>,
+): McpServerConfig {
+  const approved = approvedToolsForResolution(preset, resolution);
   if (!approved) return { ...base, exposure: "codemode" };
   const configuredExposure = toolExposure
     ? validateToolExposure(preset, approved, toolExposure)
     : Object.fromEntries(approved.map((tool) => [tool, "codemode"] as const));
-  return {
-    ...base,
-    exposure: "hidden",
-    toolExposure: configuredExposure,
-  };
-}
-
-export function approvedToolsForResolution(preset: McpPreset): string[] | undefined {
-  return preset.approvedTools ? [...preset.approvedTools] : undefined;
+  return { ...base, exposure: "hidden", toolExposure: configuredExposure };
 }
 
 function validateToolExposure(
@@ -499,7 +580,7 @@ function validateToolExposure(
   approved: readonly string[],
   toolExposure: Readonly<Record<string, McpExposure>>,
 ): Record<string, McpExposure> {
-  const approvedSet = new Set(approved);
+  const approvedSet = new Set(preset.approvedTools ?? approved);
   const configured = Object.keys(toolExposure);
   const missing = approved.filter((tool) => !(tool in toolExposure));
   const unknown = configured.filter((tool) => !approvedSet.has(tool));
@@ -524,18 +605,38 @@ export function isPresetConfigCompatible(
 ): { compatible: boolean; reason?: string } {
   if (preset.id === "salesforce-dx") {
     const args = "args" in config ? (config.args ?? []) : [];
-    return "command" in config &&
-      config.command === "npx" &&
-      args.some((arg) => arg.startsWith("@salesforce/mcp@"))
+    if (
+      !("command" in config) ||
+      config.command !== "npx" ||
+      !args.some((arg) => arg.startsWith("@salesforce/mcp@"))
+    ) {
+      return { compatible: false, reason: "The command is not the Salesforce DX MCP package." };
+    }
+    const toolsetIndex = args.indexOf("--toolsets");
+    const toolsets = toolsetIndex >= 0 ? (args[toolsetIndex + 1] ?? "") : "";
+    const resolution =
+      toolsets.includes("data") || toolsets.includes("testing") ? "enable" : "complement-native";
+    return hasApprovedToolExposure(preset, config, resolution)
       ? { compatible: true }
-      : { compatible: false, reason: "The command is not the Salesforce DX MCP package." };
+      : {
+          compatible: false,
+          reason: "The Salesforce DX entry does not use its reviewed per-tool exposure contract.",
+        };
   }
   if (preset.id === "mulesoft-dx") {
-    return "command" in config &&
+    const packageMatches =
+      "command" in config &&
       config.command === "npx" &&
-      (config.args ?? []).includes("mulesoft-mcp-server")
+      (config.args ?? []).includes("mulesoft-mcp-server");
+    if (!packageMatches) {
+      return { compatible: false, reason: "The command is not the MuleSoft DX MCP server." };
+    }
+    return hasApprovedToolExposure(preset, config)
       ? { compatible: true }
-      : { compatible: false, reason: "The command is not the MuleSoft DX MCP server." };
+      : {
+          compatible: false,
+          reason: "The MuleSoft entry does not use its reviewed per-tool exposure contract.",
+        };
   }
   if (preset.id === "custom-salesforce") {
     try {
@@ -553,14 +654,34 @@ export function isPresetConfigCompatible(
         "mai-mce-mcp-cdp1.sfdc-yzvdd4.svc.sfdcfc.net",
         "mai-mce-mcp-cdp1.sfdc-yfeipo.svc.sfdcfc.net",
       ].includes(url.hostname);
-      return url.protocol === "https:" &&
-        knownHost &&
-        /^\/t\/[^/]+\/c\/[^/]+\/api\/mcp$/.test(url.pathname)
+      if (
+        url.protocol !== "https:" ||
+        !knownHost ||
+        !/^\/t\/[^/]+\/c\/[^/]+\/api\/mcp$/.test(url.pathname)
+      ) {
+        return { compatible: false, reason: "The URL is not a Marketing Cloud MCP endpoint." };
+      }
+      return hasApprovedToolExposure(preset, config)
         ? { compatible: true }
-        : { compatible: false, reason: "The URL is not a Marketing Cloud MCP endpoint." };
+        : {
+            compatible: false,
+            reason:
+              "The Marketing Cloud entry does not use its reviewed per-tool exposure contract.",
+          };
     } catch {
       return { compatible: false, reason: "The URL is invalid." };
     }
+  }
+  if (preset.id === "agentforce-sales") {
+    return "url" in config &&
+      config.url === "https://api.salesforce.com/platform/mcp/v1-beta.2/sandbox/agentforce-sales" &&
+      !!config.oauth?.clientId &&
+      config.oauth.clientSecret === "${AGENTFORCE_SALES_CLIENT_SECRET}"
+      ? { compatible: true }
+      : {
+          compatible: false,
+          reason: "The entry is not the documented Agentforce Sales sandbox endpoint.",
+        };
   }
   if (!("url" in config) || !config.url) {
     return { compatible: false, reason: "The entry is not a hosted MCP URL." };
@@ -593,10 +714,14 @@ export function isPresetConfigCompatible(
   }
 }
 
-function hasApprovedToolExposure(preset: McpPreset, config: McpServerConfig): boolean {
+function hasApprovedToolExposure(
+  preset: McpPreset,
+  config: McpServerConfig,
+  resolution: McpResolution = "enable",
+): boolean {
   if (config.exposure !== "hidden" || !config.toolExposure) return false;
   const configured = Object.keys(config.toolExposure).sort();
-  const approved = approvedToolsForResolution(preset)?.sort() ?? [];
+  const approved = approvedToolsForResolution(preset, resolution)?.sort() ?? [];
   return (
     approved.length > 0 &&
     approved.length === configured.length &&

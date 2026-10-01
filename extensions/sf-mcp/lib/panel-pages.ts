@@ -435,10 +435,9 @@ export function renderReviewPage(input: {
     `    Resolution         ${t.fg("text", resolutionLabel(input.resolution))}`,
   ];
   if (input.toolPolicy) {
-    const counts = Object.values(input.toolPolicy.exposures).reduce<Record<string, number>>(
-      (current, exposure) => ({ ...current, [exposure]: (current[exposure] ?? 0) + 1 }),
-      {},
-    );
+    const counts = Object.values(input.config.toolExposure ?? input.toolPolicy.exposures).reduce<
+      Record<string, number>
+    >((current, exposure) => ({ ...current, [exposure]: (current[exposure] ?? 0) + 1 }), {});
     lines.push(
       "",
       ` ${t.fg("accent", "▰")} ${t.fg("muted", "TOOL EXPOSURE")}`,

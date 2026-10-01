@@ -24,7 +24,8 @@ export function resolveMcpTargetType(
     if (url.protocol !== "https:" || url.hostname !== "api.salesforce.com") return "unknown";
     if (
       url.pathname.startsWith("/platform/mcp/v1/sandbox/") ||
-      url.pathname.startsWith("/platform/mcp/v1/data/sandbox/")
+      url.pathname.startsWith("/platform/mcp/v1/data/sandbox/") ||
+      url.pathname === "/platform/mcp/v1-beta.2/sandbox/agentforce-sales"
     ) {
       return "sandbox";
     }

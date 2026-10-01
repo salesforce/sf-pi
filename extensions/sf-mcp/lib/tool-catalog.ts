@@ -2,15 +2,12 @@
 /** Reviewed tool summaries merged with bounded session-local MCP observations. */
 import { getObservedMcpTools, type ObservedMcpTool } from "./observed-tools.ts";
 import type { McpPreset, McpPresetId } from "./presets.ts";
+import { defineTools, type DocumentedMcpTool, type McpToolRisk } from "./tool-contract-types.ts";
+import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
+import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
+import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
 
-export type McpToolRisk = "read" | "write" | "destructive" | "mixed" | "unknown";
-
-export interface DocumentedMcpTool {
-  name: string;
-  description: string;
-  capability: string;
-  risk: McpToolRisk;
-}
+export type { DocumentedMcpTool, McpToolRisk } from "./tool-contract-types.ts";
 
 interface PresetToolCatalog {
   capabilities: readonly string[];
@@ -549,8 +546,8 @@ const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
       "User access management",
       "Apex and Agentforce testing",
     ],
-    tools: EMPTY_TOOLS,
-    note: "The exact tool list is published by the installed @salesforce/mcp package and appears here after connection.",
+    tools: SALESFORCE_DX_TOOLS,
+    note: "This reviewed contract covers the GA tools in the configured core, orgs, metadata, data, users, and testing toolsets. Non-GA tools require a separate server flag and remain unavailable.",
   },
   data360: {
     capabilities: ["Connect API discovery", "Payload and schema inspection", "Data 360 execution"],
@@ -613,8 +610,8 @@ const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
       "Email, SMS, and push",
       "Journeys and tracking",
     ],
-    tools: EMPTY_TOOLS,
-    note: "Marketing Cloud publishes a large, permission-scoped tool catalog. Exact tools appear here after connection.",
+    tools: MARKETING_CLOUD_TOOLS,
+    note: "Availability is permission-scoped by the installed Marketing Cloud package. The connected server can advertise a subset of this reviewed contract.",
   },
   "mulesoft-dx": {
     capabilities: [
@@ -623,8 +620,19 @@ const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
       "Deployment and policies",
       "Anypoint Platform operations",
     ],
+    tools: MULESOFT_DX_TOOLS,
+    note: "Some documented tools require Anypoint Code Builder or Connector Builder and become unavailable when the connected server does not advertise them.",
+  },
+  "agentforce-sales": {
+    capabilities: [
+      "Prioritize sales leads and opportunities",
+      "Read live Salesforce sales context",
+      "Delegate prospect engagement",
+      "Update sales records",
+      "Generate and save account plans",
+    ],
     tools: EMPTY_TOOLS,
-    note: "The MuleSoft server supplies its exact tool contract after the local server connects.",
+    note: "Salesforce documents this Beta server for the Agentforce Sales ChatGPT app but does not publish an exact tool reference. Tools appear after connection and remain outside the reviewed per-tool policy until Salesforce publishes their contract.",
   },
   "custom-salesforce": {
     capabilities: ["Runtime-declared custom capabilities"],
@@ -678,15 +686,4 @@ function riskFromAnnotations(annotations: ObservedMcpTool["annotations"]): McpTo
   if (annotations?.destructiveHint === true) return "destructive";
   if (annotations?.readOnlyHint === false && annotations.destructiveHint === false) return "write";
   return "unknown";
-}
-
-function defineTools(
-  entries: readonly (readonly [string, string, string, McpToolRisk])[],
-): readonly DocumentedMcpTool[] {
-  return entries.map(([name, description, capability, risk]) => ({
-    name,
-    description,
-    capability,
-    risk,
-  }));
 }

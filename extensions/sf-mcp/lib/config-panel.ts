@@ -23,6 +23,7 @@ import {
 } from "./panel-pages.ts";
 import {
   SALESFORCE_MCP_PRESETS,
+  approvedToolsForResolution,
   buildServerConfig,
   getPreset,
   isPresetConfigCompatible,
@@ -958,7 +959,12 @@ class SfMcpConfigPanel implements Focusable {
           kind: "tool-policy-review",
           presetId,
           policy,
-          proposedConfig: applyToolExposurePolicy(state.preset, state.managed.config, policy),
+          proposedConfig: applyToolExposurePolicy(
+            state.preset,
+            state.managed.config,
+            policy,
+            approvedToolsForResolution(state.preset, state.managed.record?.resolution ?? "enable"),
+          ),
           selected: 0,
         };
       } catch (error) {

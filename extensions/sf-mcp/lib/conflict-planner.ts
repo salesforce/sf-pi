@@ -52,6 +52,18 @@ export function planPresetConflicts(
     };
   }
 
+  if (preset.id === "agentforce-sales") {
+    return {
+      presetId: preset.id,
+      conflicts,
+      recommendation: {
+        resolution: "native-only",
+        summary:
+          "Keep the native SF Pi owner. Enable Agentforce Sales only for explicit sandbox interoperability testing because its exact tools are not published.",
+      },
+    };
+  }
+
   if (preset.id === "headless-360") {
     return {
       presetId: preset.id,

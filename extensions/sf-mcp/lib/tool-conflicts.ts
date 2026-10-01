@@ -28,6 +28,21 @@ interface ToolConflictClaim {
 }
 
 const CLAIMS: Partial<Record<McpPresetId, Readonly<Record<string, ToolConflictClaim>>>> = {
+  "salesforce-dx": {
+    run_soql_query: {
+      owners: ["sf-soql"],
+      relationship: "direct",
+      reason: "The native SF SOQL family owns bounded schema-grounded record query workflows.",
+      recommendedExposure: "hidden",
+    },
+    run_apex_test: {
+      owners: ["sf-apex"],
+      relationship: "direct",
+      reason:
+        "The native SF Apex family owns targeted test execution, results, and coverage evidence.",
+      recommendedExposure: "hidden",
+    },
+  },
   data360: {
     search: {
       owners: ["sf-data360"],

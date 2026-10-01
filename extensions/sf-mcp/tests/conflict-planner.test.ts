@@ -10,6 +10,7 @@ import {
   isPresetConfigCompatible,
 } from "../lib/presets.ts";
 import { getPresetToolCatalog } from "../lib/tool-catalog.ts";
+import { hasReviewedToolPolicy } from "../lib/tool-policy.ts";
 
 describe("SF MCP capability conflict planning", () => {
   it("omits the legacy SObject server family from the catalog", () => {
@@ -40,6 +41,86 @@ describe("SF MCP capability conflict planning", () => {
         expect(tool.capability.length, `${preset.id}:${tool.name}`).toBeGreaterThan(3);
       }
     }
+  });
+
+  it("catalogs the documented DX, Marketing Cloud, and MuleSoft tool surfaces", () => {
+    const dx = getPresetToolCatalog(getPreset("salesforce-dx"));
+    const marketing = getPresetToolCatalog(getPreset("marketing-cloud"));
+    const mulesoft = getPresetToolCatalog(getPreset("mulesoft-dx"));
+
+    expect(dx.tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining([
+        "get_username",
+        "list_all_orgs",
+        "run_soql_query",
+        "deploy_metadata",
+        "run_apex_test",
+      ]),
+    );
+    expect(dx.tools.length).toBe(9);
+    expect(marketing.tools.length).toBeGreaterThan(100);
+    expect(marketing.tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining([
+        "sfmc_create_automation",
+        "sfmc_delete_contacts",
+        "sfmc_send_transactional_email",
+        "sfmc_publish_journey",
+      ]),
+    );
+    expect(mulesoft.tools.length).toBeGreaterThan(40);
+    expect(mulesoft.tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining([
+        "generate_mule_flow",
+        "search_asset",
+        "deploy_mule_application",
+        "manage_api_instance_policy",
+      ]),
+    );
+    expect(hasReviewedToolPolicy(getPreset("salesforce-dx"))).toBe(true);
+    expect(hasReviewedToolPolicy(getPreset("marketing-cloud"))).toBe(true);
+    expect(hasReviewedToolPolicy(getPreset("mulesoft-dx"))).toBe(true);
+  });
+
+  it("builds an experimental Agentforce Sales sandbox preset without storing its secret", () => {
+    const preset = getPreset("agentforce-sales");
+    const config = buildServerConfig(preset, "enable", { oauthClientId: "public-client" });
+
+    expect(config).toMatchObject({
+      url: "https://api.salesforce.com/platform/mcp/v1-beta.2/sandbox/agentforce-sales",
+      oauth: {
+        clientId: "public-client",
+        clientSecret: "${AGENTFORCE_SALES_CLIENT_SECRET}",
+        callbackPort: 8765,
+      },
+      exposure: "codemode",
+    });
+    expect(preset).toMatchObject({ support: "alpha", risk: "mixed" });
+    expect(getPresetToolCatalog(preset).capabilities.length).toBeGreaterThan(3);
+  });
+
+  it("generates exact hidden-by-default policies for the expanded catalogs", () => {
+    const cases = [
+      ["salesforce-dx", {}],
+      ["marketing-cloud", { region: "US", tenantId: "tenant", marketingClientId: "client" }],
+      ["mulesoft-dx", { region: "PROD_US" }],
+    ] as const;
+    for (const [presetId, setup] of cases) {
+      const preset = getPreset(presetId);
+      const config = buildServerConfig(preset, "side-by-side", setup);
+      expect(config.exposure, presetId).toBe("hidden");
+      expect(Object.keys(config.toolExposure ?? {}), presetId).toEqual([
+        ...(preset.approvedTools ?? []),
+      ]);
+    }
+  });
+
+  it("keeps experimental Agentforce Sales native-only by default", () => {
+    const plan = planPresetConflicts(getPreset("agentforce-sales"), new Set(["sf-soql"]));
+
+    expect(plan.recommendation).toMatchObject({
+      resolution: "native-only",
+      summary: expect.stringContaining("explicit sandbox interoperability testing"),
+    });
   });
 
   it("keeps every native overlap claim tied to a declared extension", () => {

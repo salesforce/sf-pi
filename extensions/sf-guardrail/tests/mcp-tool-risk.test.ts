@@ -187,6 +187,46 @@ describe("Salesforce MCP tool safety subjects", () => {
     });
   });
 
+  it("fails closed for every experimental Agentforce Sales operation", () => {
+    const subject = classifyNativeToolRisk("mcp__salesforce_agentforce_sales__update_opportunity", {
+      opportunityId: "example-opportunity",
+      stage: "Closed Won",
+    });
+
+    expect(subject).toMatchObject({
+      ruleId: "native-sf-mcp-agentforce-sales-operation",
+      operationFamily: "mcp Agentforce Sales operation",
+      targetOrgUnverified: true,
+      blockProductionOrUnknown: true,
+      allowSession: false,
+    });
+  });
+
+  it("recognizes the Agentforce Sales sandbox endpoint but still blocks unverified execution", () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-agentforce-sales-"));
+    tempDirs.push(cwd);
+    mkdirSync(path.join(cwd, ".pi"), { recursive: true });
+    writeFileSync(
+      path.join(cwd, ".pi", "mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          "salesforce-agentforce-sales": {
+            url: "https://api.salesforce.com/platform/mcp/v1-beta.2/sandbox/agentforce-sales",
+          },
+        },
+      }),
+    );
+
+    const subject = normalizeSafetySubject(
+      "mcp__salesforce_agentforce_sales__prioritize_leads",
+      {},
+      { cwd, projectTrusted: true },
+    ) as NativeToolSafetySubject;
+
+    expect(subject).toMatchObject({ targetOrgType: "sandbox", targetOrgUnverified: true });
+    expect(evaluateNativeToolRisk(subject, cwd, config).action).toBe("block");
+  });
+
   it("classifies mutation-like Salesforce DX MCP tools", () => {
     const subject = classifyNativeToolRisk("mcp__salesforce_dx__deploy_metadata", {
       usernameOrAlias: "DevSandbox",

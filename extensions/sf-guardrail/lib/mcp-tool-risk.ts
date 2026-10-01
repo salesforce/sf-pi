@@ -120,6 +120,19 @@ export function classifySfMcpRisk(
     };
   }
 
+  if (serverName === "salesforce_agentforce_sales") {
+    return hostedOperationSubject({
+      toolName,
+      serverName,
+      mcpTool,
+      payloadFingerprint,
+      targetOrgType,
+      ruleId: "native-sf-mcp-agentforce-sales-operation",
+      operationFamily: "mcp Agentforce Sales operation",
+      promptTitle: "⚠ Salesforce MCP Agentforce Sales operation",
+    });
+  }
+
   if (serverName === "salesforce_dx" && DX_MUTATION_PATTERN.test(mcpTool)) {
     const targetOrg =
       stringValue(input.target_org) ??

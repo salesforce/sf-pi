@@ -7,7 +7,11 @@ import { visibleWidth } from "@earendil-works/pi-tui";
 
 import { createConfigPanel } from "../lib/config-panel.ts";
 import { captureObservedMcpTools } from "../lib/observed-tools.ts";
+import { getPreset } from "../lib/presets.ts";
 import { installPreset } from "../lib/service.ts";
+import { inspectPresetTools } from "../lib/tool-catalog.ts";
+import { renderToolPolicyPage } from "../lib/tool-policy-pages.ts";
+import { buildToolExposurePolicy } from "../lib/tool-policy.ts";
 
 const tempDirs: string[] = [];
 
@@ -107,6 +111,25 @@ describe("SF MCP Manager catalog", () => {
     expect(ui.select).not.toHaveBeenCalled();
     expect(ui.input).not.toHaveBeenCalled();
     expect(ui.confirm).not.toHaveBeenCalled();
+  });
+
+  it("renders the selected exposure and metadata with high-contrast semantic color", () => {
+    const contrastTheme = {
+      fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
+      bold: (text: string) => text,
+    } as never;
+    const preset = getPreset("data360");
+    const output = renderToolPolicyPage({
+      theme: contrastTheme,
+      width: 110,
+      preset,
+      policy: buildToolExposurePolicy(preset, "quarantine"),
+      tools: inspectPresetTools(preset),
+      cursor: 0,
+    }).join("\n");
+
+    expect(output).toContain("<accent>API discovery · Read risk · Hidden</accent>");
+    expect(output).not.toContain("<dim>API discovery · Read risk · Hidden</dim>");
   });
 
   it("configures a read-only profile and supports custom per-tool exposure without writing", () => {
@@ -324,6 +347,7 @@ describe("SF MCP Manager catalog", () => {
     panel.handleInput("\r");
     expect(panel.renderContent(110).join("\n")).toContain("list_all_orgs");
 
+    moveDown(panel, 2);
     panel.handleInput("\r");
     const detail = panel.renderContent(110).join("\n");
     expect(detail).toContain("Lists every Salesforce org authorized in this environment.");
@@ -379,7 +403,8 @@ describe("SF MCP Manager catalog", () => {
 
     moveDown(panel, 8);
     panel.handleInput("\r"); // Open overview.
-    panel.handleInput("\u001b[B"); // Configure.
+    panel.handleInput("\u001b[B"); // Configure tool exposure.
+    panel.handleInput("\u001b[B"); // Configure connection.
     panel.handleInput("\r");
     const output = panel.renderContent(110).join("\n");
 
@@ -391,6 +416,23 @@ describe("SF MCP Manager catalog", () => {
     expect(ui.input).not.toHaveBeenCalled();
     expect(ui.confirm).not.toHaveBeenCalled();
     expect(ui.notify).not.toHaveBeenCalled();
+  });
+
+  it("opens experimental Agentforce Sales sandbox setup with environment-only secret guidance", () => {
+    const { panel } = fixture();
+
+    moveDown(panel, 10);
+    panel.handleInput("\r"); // Overview.
+    panel.handleInput("\u001b[B"); // Configure connection.
+    panel.handleInput("\r"); // Capability review.
+    panel.handleInput("\u001b[B"); // Experimental side-by-side.
+    panel.handleInput("\r"); // Agentforce Sales setup.
+    const output = panel.renderContent(110).join("\n");
+
+    expect(output).toContain("SF MCP › Agentforce Sales › Setup");
+    expect(output).toContain("External Client App consumer key");
+    expect(output).toContain("AGENTFORCE_SALES_CLIENT_SECRET");
+    expect(output).toContain("generic-client interoperability is experimental");
   });
 
   it("keeps Headless 360 conflict resolution and hosted setup in the same panel", () => {
@@ -419,7 +461,8 @@ describe("SF MCP Manager catalog", () => {
 
     moveDown(panel, 8);
     panel.handleInput("\r"); // Open overview.
-    panel.handleInput("\u001b[B"); // Configure.
+    panel.handleInput("\u001b[B"); // Configure tool exposure.
+    panel.handleInput("\u001b[B"); // Configure connection.
     panel.handleInput("\r"); // Open setup.
     panel.handleInput("\r"); // Accept US and move to Tenant ID.
     typeText(panel, "tenant-example");

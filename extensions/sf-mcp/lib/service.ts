@@ -34,6 +34,7 @@ import {
 } from "./tool-policy.ts";
 import {
   SALESFORCE_MCP_PRESETS,
+  approvedToolsForResolution,
   buildServerConfig,
   getPreset,
   isPresetConfigCompatible,
@@ -82,7 +83,7 @@ export function inspectPresetRuntime(
     preset,
     plan: planPresetConflicts(preset, enabledOverlapOwners(cwd, preset)),
     managed,
-    drift: inspectObservedToolDrift(preset),
+    drift: inspectObservedToolDrift(preset, managed.record?.resolution ?? "enable"),
     scopeConflict: inspectScopeConflict(cwd, scope, preset),
   };
 }
@@ -353,7 +354,12 @@ export function updateManagedPresetToolPolicy(input: {
 
   let config: McpServerConfig;
   try {
-    config = applyToolExposurePolicy(preset, managed.config, input.policy);
+    config = applyToolExposurePolicy(
+      preset,
+      managed.config,
+      input.policy,
+      approvedToolsForResolution(preset, managed.record?.resolution ?? "enable"),
+    );
   } catch (error) {
     return { ok: false, message: errorMessage(error) };
   }

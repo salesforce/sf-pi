@@ -90,12 +90,12 @@ export function renderToolPolicyPage(input: {
       ...wrapText(
         `${tool.capability} · ${riskLabel(tool.risk)} risk · ${exposureLabel(exposure)}${unavailable ? " · unavailable (locked)" : ""}`,
         Math.max(24, width - 5),
-      ).map((line) => `   ${t.fg(unavailable ? "warning" : "dim", line)}`),
+      ).map((line) => `   ${t.fg(unavailable ? "warning" : selected ? "accent" : "text", line)}`),
     );
     if (selected) {
       lines.push(
         ...wrapText(tool.description, Math.max(24, width - 5)).map(
-          (line) => `   ${t.fg("muted", line)}`,
+          (line) => `   ${t.fg("text", line)}`,
         ),
       );
       const warning = warnings.find((item) => item.startsWith(`${tool.name} `));

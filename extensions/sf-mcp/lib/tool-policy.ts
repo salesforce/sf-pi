@@ -123,13 +123,11 @@ export function applyToolExposurePolicy(
   preset: McpPreset,
   config: McpServerConfig,
   policy: ToolExposurePolicy,
+  toolNames: readonly string[] = getPresetToolCatalog(preset).tools.map((tool) => tool.name),
 ): McpServerConfig {
   validateToolExposurePolicy(preset, policy);
   const toolExposure = Object.fromEntries(
-    getPresetToolCatalog(preset).tools.map((tool) => [
-      tool.name,
-      policy.exposures[tool.name] ?? "hidden",
-    ]),
+    toolNames.map((name) => [name, policy.exposures[name] ?? "hidden"]),
   );
   return { ...config, exposure: "hidden", toolExposure };
 }

@@ -238,6 +238,16 @@ function setupControls(theme: Theme, preset: McpPreset): Control[] {
         "Paste consumer key",
       ),
     );
+  } else if (preset.setup === "agentforce-sales-oauth") {
+    controls.push(
+      textControl(
+        theme,
+        "oauthClientId",
+        "External Client App consumer key",
+        "Set AGENTFORCE_SALES_CLIENT_SECRET in the environment. SF Pi uses a loopback callback; Salesforce currently documents this Beta endpoint for ChatGPT, so generic-client interoperability is experimental.",
+        "Paste consumer key",
+      ),
+    );
   } else if (preset.setup === "marketing-cloud") {
     controls.push({
       kind: "choice",
