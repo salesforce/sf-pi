@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.310.0](https://github.com/salesforce/sf-pi/compare/v0.309.0...v0.310.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** add conflict and drift governance ([c4baedd](https://github.com/salesforce/sf-pi/commit/c4baedda8309b22c99be9d70fcc57f52a38712e5))
+
 ## [0.309.0](https://github.com/salesforce/sf-pi/compare/v0.308.0...v0.309.0) (2026-10-01)
 
 
