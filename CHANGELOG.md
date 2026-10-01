@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.306.1](https://github.com/salesforce/sf-pi/compare/v0.306.0...v0.306.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* **sf-mcp:** type target verification test fixture ([a5ca2d9](https://github.com/salesforce/sf-pi/commit/a5ca2d9be83a8b7cc173bea9f3e7493171fbff9b))
+
 ## [0.306.0](https://github.com/salesforce/sf-pi/compare/v0.305.0...v0.306.0) (2026-10-01)
 
 
