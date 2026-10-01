@@ -112,6 +112,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0122: Gateway Catalog Requires Pi-Backed IDs](./0122-gateway-catalog-requires-pi-backed-ids.md) — 2026-09-26
 - [0124: Pi 0.99.2 Runtime Floor and MCP Identity](./0124-pi-0992-runtime-floor-and-mcp-identity.md) — 2026-09-30
 - [0126: SF MCP Removes Legacy SObject Presets](./0126-sf-mcp-removes-legacy-sobject-presets.md) — 2026-10-01
+- [0127: SF MCP Tool Contract Discovery](./0127-sf-mcp-tool-contract-discovery.md) — 2026-10-01
 
 ## Proposed
 

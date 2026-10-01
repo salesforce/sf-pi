@@ -3,6 +3,27 @@
 import { canonicalMcpServerName } from "./mcp-config.ts";
 import { approvedToolsForResolution, type McpPreset } from "./presets.ts";
 
+export interface ObservedMcpToolInput {
+  name: string;
+  description?: string;
+  parameters?: unknown;
+  exposure?: string;
+  annotations?: {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+    openWorldHint?: boolean;
+  };
+}
+
+export interface ObservedMcpTool {
+  name: string;
+  description?: string;
+  parameters?: unknown;
+  exposure?: string;
+  annotations?: ObservedMcpToolInput["annotations"];
+}
+
 export interface ObservedToolDrift {
   status: "not-observed" | "clean" | "review";
   observed: string[];
@@ -10,25 +31,41 @@ export interface ObservedToolDrift {
   removed: string[];
 }
 
-let observedByServer = new Map<string, string[]>();
+let observedByServer = new Map<string, ObservedMcpTool[]>();
 
-export function captureObservedMcpTools(tools: readonly { name: string }[]): void {
-  const next = new Map<string, Set<string>>();
+export function captureObservedMcpTools(tools: readonly ObservedMcpToolInput[]): void {
+  const next = new Map<string, Map<string, ObservedMcpTool>>();
   for (const tool of tools) {
     const identity = parseRuntimeToolName(tool.name);
     if (!identity) continue;
-    const names = next.get(identity.serverName) ?? new Set<string>();
-    names.add(identity.toolName);
-    next.set(identity.serverName, names);
+    const serverTools = next.get(identity.serverName) ?? new Map<string, ObservedMcpTool>();
+    serverTools.set(identity.toolName, {
+      name: identity.toolName,
+      ...(tool.description ? { description: tool.description } : {}),
+      ...(tool.parameters ? { parameters: tool.parameters } : {}),
+      ...(tool.exposure ? { exposure: tool.exposure } : {}),
+      ...(tool.annotations ? { annotations: { ...tool.annotations } } : {}),
+    });
+    next.set(identity.serverName, serverTools);
   }
   observedByServer = new Map(
-    [...next.entries()].map(([server, names]) => [server, [...names].sort()] as const),
+    [...next.entries()].map(([server, toolsByName]) => [
+      server,
+      [...toolsByName.values()].sort((left, right) => left.name.localeCompare(right.name)),
+    ]),
   );
 }
 
+export function getObservedMcpTools(preset: McpPreset): ObservedMcpTool[] {
+  return [...(observedByServer.get(canonicalMcpServerName(preset.serverName)) ?? [])];
+}
+
 export function inspectObservedToolDrift(preset: McpPreset): ObservedToolDrift {
-  const observed = observedByServer.get(canonicalMcpServerName(preset.serverName));
-  if (!observed) return { status: "not-observed", observed: [], added: [], removed: [] };
+  const observedTools = observedByServer.get(canonicalMcpServerName(preset.serverName));
+  if (!observedTools) {
+    return { status: "not-observed", observed: [], added: [], removed: [] };
+  }
+  const observed = observedTools.map((tool) => tool.name);
   const approved = approvedToolsForResolution(preset);
   if (!approved) return { status: "clean", observed, added: [], removed: [] };
 
@@ -48,7 +85,7 @@ function parseRuntimeToolName(name: string): { serverName: string; toolName: str
   if (!name.startsWith("mcp__")) return undefined;
   const identity = name.slice("mcp__".length);
   const separator = identity.indexOf("__");
-  if (separator <= 0 || separator === identity.length - 2) return undefined;
+  if (separator <= 0 || separator >= identity.length - 2) return undefined;
   return {
     serverName: canonicalMcpServerName(identity.slice(0, separator)),
     toolName: identity.slice(separator + 2),

@@ -881,7 +881,7 @@
     ],
     "docs": {
       "intentGroup": "Personalize pi",
-      "summary": "Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow keeps conflict review, setup, adoption, redacted diff, reset, canonical-name reconciliation, apply, and results inside one floating panel; it detects semantic overlap with enabled SF Pi family tools, governs approved tool contracts and observed drift, publishes compact native server descriptions, preserves manual native configuration, keeps unknown tools quarantined, and writes no server entry until the user explicitly enables or resets one.",
+      "summary": "Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow opens each preset with a non-mutating overview and documented tool catalog, merges bounded session-observed descriptions, schemas, annotations, and exposure, then keeps conflict review, setup, adoption, redacted diff, reset, canonical-name reconciliation, apply, and results inside one floating panel. It preserves manual native configuration, keeps unknown tools quarantined, and writes no server entry until the user explicitly configures, enables, or resets one.",
       "primaryFiles": [
         "index.ts",
         "lib/config-panel.ts",
@@ -889,8 +889,8 @@
         "lib/conflict-planner.ts",
         "lib/service.ts",
         "lib/mcp-config.ts",
-        "lib/managed-state.ts",
-        "lib/observed-tools.ts"
+        "lib/observed-tools.ts",
+        "lib/tool-catalog.ts"
       ],
       "stateFiles": [
         "~/.pi/agent/mcp.json or <cwd>/.pi/mcp.json (Pi-native MCP configuration)",
@@ -915,7 +915,7 @@
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 3259
+    "srcLoc": 4443
   },
   {
     "id": "sf-ohana-spinner",

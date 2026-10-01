@@ -112,6 +112,7 @@ export default function sfMcp(pi: ExtensionAPI): void {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const tokens = args.trim().split(/\s+/).filter(Boolean);
         if (tokens.length === 0 && ctx.hasUI) {
+          captureObservedMcpTools(pi.getAllTools());
           await openMcpInManager(pi, ctx, "detail");
           return;
         }

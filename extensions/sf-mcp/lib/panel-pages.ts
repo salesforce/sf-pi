@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Pure renderers for SF MCP's embedded Manager workflow pages. */
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { ConflictPlan } from "./conflict-planner.ts";
 import type { ManagedServerStatus } from "./managed-state.ts";
 import type { McpServerConfig } from "./mcp-config.ts";
 import type { McpPreset, McpResolution } from "./presets.ts";
 import type { PresetRuntimeState } from "./service.ts";
 import type { PresetSetupForm } from "./setup-form.ts";
+import type { McpToolDetail } from "./tool-catalog.ts";
 
 export type ConflictOption = {
   label: string;
@@ -16,6 +17,11 @@ export type ConflictOption = {
 };
 
 export type ReconcileOption = {
+  label: string;
+  description: string;
+};
+
+export type PresetOverviewOption = {
   label: string;
   description: string;
 };
@@ -79,6 +85,201 @@ export function renderCatalogPage(input: {
   lines.push(
     ` ${t.fg("dim", "↑/↓ navigate · Enter/Space configure · D disable managed preset · Esc back")}`,
   );
+  return lines;
+}
+
+export function renderPresetOverviewPage(input: {
+  theme: Theme;
+  width: number;
+  state: PresetRuntimeState;
+  capabilities: readonly string[];
+  catalogNote?: string;
+  tools: readonly McpToolDetail[];
+  options: readonly PresetOverviewOption[];
+  selected: number;
+}): string[] {
+  const { theme: t, width, state } = input;
+  const documented = input.tools.filter((tool) => tool.documented).length;
+  const observed = input.tools.filter((tool) => tool.observed).length;
+  const conflicts = state.plan.conflicts.map((conflict) => conflict.nativeExtensionId);
+  const lines = [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${state.preset.label} › Overview`))}`,
+    "",
+    ` ${t.fg("accent", t.bold(`${state.preset.icon}  ${state.preset.label}`))}`,
+    ` ${t.fg("muted", `${state.preset.support.toUpperCase()} · ${state.preset.transport.toUpperCase()} · ${riskLabel(state.preset.risk)} risk · ${plainStatus(state.managed.status)}`)}`,
+    ...wrapText(state.preset.description, Math.max(24, width - 3)).map(
+      (line) => ` ${t.fg("dim", line)}`,
+    ),
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "CAPABILITIES")}`,
+    ...input.capabilities.flatMap((capability) =>
+      wrapText(capability, Math.max(24, width - 8)).map(
+        (line, index) =>
+          `    ${index === 0 ? `${t.fg("success", "✓")} ` : "  "}${t.fg("text", line)}`,
+      ),
+    ),
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "TOOLS")}`,
+    `    ${t.fg("text", `${documented} documented · ${observed} observed in this session`)}`,
+  ];
+  if (input.catalogNote) {
+    lines.push(
+      ...wrapText(input.catalogNote, Math.max(24, width - 8)).map(
+        (line) => `    ${t.fg("dim", line)}`,
+      ),
+    );
+  }
+  lines.push("", ` ${t.fg("accent", "▰")} ${t.fg("muted", "CONFLICTS")}`);
+  if (conflicts.length === 0) {
+    lines.push(
+      `    ${t.fg("success", "✓")} ${t.fg("text", "No active SF Pi capability overlap detected")}`,
+    );
+  } else {
+    lines.push(`    ${t.fg("warning", "⚠")} ${t.fg("warning", conflicts.join(" · "))}`);
+    lines.push(
+      ...wrapText(state.plan.recommendation.summary, Math.max(24, width - 8)).map(
+        (line) => `      ${t.fg("dim", line)}`,
+      ),
+    );
+  }
+  if (state.drift.status === "review") {
+    lines.push(
+      `    ${t.fg("warning", "⚠")} ${t.fg("warning", `Contract drift: +${state.drift.added.length} / -${state.drift.removed.length}`)}`,
+    );
+  }
+  lines.push(
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "DOCUMENTATION")}`,
+    ...wrapText(state.preset.docsUrl, Math.max(24, width - 8)).map(
+      (line) => `    ${t.fg("dim", line)}`,
+    ),
+    "",
+    ` ${t.fg("muted", "Actions")}`,
+    "",
+  );
+  for (let index = 0; index < input.options.length; index++) {
+    const option = input.options[index];
+    if (!option) continue;
+    const selected = index === input.selected;
+    lines.push(
+      ` ${selected ? t.fg("accent", "❯") : " "} ${selected ? t.fg("accent", t.bold(option.label)) : t.fg("text", option.label)}`,
+    );
+    lines.push(
+      ...wrapText(option.description, Math.max(24, width - 5)).map(
+        (line) => `   ${t.fg("dim", line)}`,
+      ),
+    );
+    lines.push("");
+  }
+  lines.push(` ${t.fg("dim", "↑/↓ choose · Enter continue · Esc catalog")}`);
+  return lines;
+}
+
+export function renderToolListPage(input: {
+  theme: Theme;
+  width: number;
+  preset: McpPreset;
+  runtime: PresetRuntimeState;
+  tools: readonly McpToolDetail[];
+  cursor: number;
+  catalogNote?: string;
+}): string[] {
+  const { theme: t, width } = input;
+  const windowSize = 10;
+  const start = Math.max(
+    0,
+    Math.min(input.cursor - Math.floor(windowSize / 2), input.tools.length - windowSize),
+  );
+  const end = Math.min(input.tools.length, start + windowSize);
+  const lines = [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › Tools`))}`,
+    "",
+    ` ${t.fg("muted", input.tools.length > 0 ? `Showing ${start + 1}–${end} of ${input.tools.length}` : "No tool names are available before connection")}`,
+    "",
+  ];
+  if (input.tools.length === 0 && input.catalogNote) {
+    lines.push(
+      ...wrapText(input.catalogNote, Math.max(24, width - 3)).map(
+        (line) => ` ${t.fg("dim", line)}`,
+      ),
+      "",
+    );
+  }
+  for (let index = start; index < end; index++) {
+    const tool = input.tools[index];
+    if (!tool) continue;
+    const selected = index === input.cursor;
+    const status = tool.documented
+      ? tool.observed
+        ? "documented · observed"
+        : "documented"
+      : "observed only · unapproved";
+    const exposure = configuredToolExposure(input.runtime.managed.config, tool.name, tool.exposure);
+    const heading = `${selected ? "❯" : " "} ${tool.name}`;
+    lines.push(
+      ` ${selected ? t.fg("accent", t.bold(truncateToWidth(heading, Math.max(20, width - 2)))) : t.fg("text", truncateToWidth(heading, Math.max(20, width - 2)))}`,
+    );
+    lines.push(
+      ...wrapText(
+        `${tool.capability} · ${riskLabel(tool.risk)} risk · ${exposure} · ${status}`,
+        Math.max(24, width - 5),
+      ).map((line) => `   ${t.fg(tool.documented ? "dim" : "warning", line)}`),
+    );
+    if (selected) {
+      lines.push(
+        ...wrapText(tool.description, Math.max(24, width - 5)).map(
+          (line) => `   ${t.fg("muted", line)}`,
+        ),
+      );
+    }
+    lines.push("");
+  }
+  lines.push(
+    ` ${t.fg("dim", input.tools.length > 0 ? "↑/↓ navigate · Enter inspect · Esc overview" : "Esc overview")}`,
+  );
+  return lines;
+}
+
+export function renderToolDetailPage(input: {
+  theme: Theme;
+  width: number;
+  preset: McpPreset;
+  runtime: PresetRuntimeState;
+  tool: McpToolDetail;
+}): string[] {
+  const { theme: t, width, tool } = input;
+  const exposure = configuredToolExposure(input.runtime.managed.config, tool.name, tool.exposure);
+  const contract = tool.documented
+    ? tool.observed
+      ? "Documented and observed live"
+      : "Documented · not observed in this session"
+    : "Observed live · not in the reviewed preset contract";
+  const descriptionSource =
+    tool.descriptionSource === "observed" ? "Observed live" : "Documented contract";
+  const lines = [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › ${tool.name}`))}`,
+    "",
+    ` ${t.fg("accent", t.bold(tool.name))}`,
+    ...wrapText(tool.description, Math.max(24, width - 3)).map((line) => ` ${t.fg("text", line)}`),
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "CONTRACT")}`,
+    `    Capability         ${t.fg("text", tool.capability)}`,
+    `    Risk               ${t.fg(tool.risk === "read" ? "success" : "warning", riskLabel(tool.risk))}`,
+    `    Exposure           ${t.fg("text", exposure)}`,
+    `    Status             ${t.fg(tool.documented ? "text" : "warning", contract)}`,
+    `    Description source ${t.fg("text", descriptionSource)}`,
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "RUNTIME METADATA")}`,
+    ...renderAnnotations(t, tool, width),
+    ...renderSchemaSummary(t, tool.parameters, width),
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "DOCUMENTATION")}`,
+    ...wrapText(input.preset.docsUrl, Math.max(24, width - 8)).map(
+      (line) => `    ${t.fg("dim", line)}`,
+    ),
+    "",
+    ` ${t.fg("dim", "Enter/Esc back to tools")}`,
+  ];
   return lines;
 }
 
@@ -365,6 +566,112 @@ function splitToken(value: string, width: number): string[] {
   }
   if (current) chunks.push(current);
   return chunks;
+}
+
+function configuredToolExposure(
+  config: McpServerConfig | undefined,
+  toolName: string,
+  observedExposure?: string,
+): string {
+  if (!config) return observedExposure ?? "not configured";
+  const entries = Object.entries(config.toolExposure ?? {});
+  const exact = entries.find(([pattern]) => pattern === toolName)?.[1];
+  if (exact) return exact;
+  for (const [pattern, exposure] of entries) {
+    if (!pattern.includes("*")) continue;
+    const expression = new RegExp(
+      `^${pattern
+        .split("*")
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join(".*")}$`,
+    );
+    if (expression.test(toolName)) return exposure;
+  }
+  return observedExposure ?? config.exposure ?? "codemode";
+}
+
+function renderAnnotations(theme: Theme, tool: McpToolDetail, width: number): string[] {
+  const annotations = tool.annotations;
+  if (!annotations) return [`    ${theme.fg("dim", "Annotations        Not observed")}`];
+  const values = [
+    annotations.readOnlyHint === true
+      ? "read-only"
+      : annotations.readOnlyHint === false
+        ? "writes"
+        : undefined,
+    annotations.destructiveHint === true
+      ? "destructive"
+      : annotations.destructiveHint === false
+        ? "non-destructive"
+        : undefined,
+    annotations.idempotentHint === true
+      ? "idempotent"
+      : annotations.idempotentHint === false
+        ? "non-idempotent"
+        : undefined,
+    annotations.openWorldHint === true
+      ? "open-world"
+      : annotations.openWorldHint === false
+        ? "closed-world"
+        : undefined,
+  ].filter((value): value is string => value !== undefined);
+  return wrapText(values.join(" · ") || "No explicit hints", Math.max(20, width - 23)).map(
+    (line, index) =>
+      index === 0
+        ? `    Annotations        ${theme.fg("text", line)}`
+        : `                       ${theme.fg("text", line)}`,
+  );
+}
+
+function renderSchemaSummary(theme: Theme, parameters: unknown, width: number): string[] {
+  if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) {
+    return [`    ${theme.fg("dim", "Input schema       Not observed")}`];
+  }
+  const schema = parameters as { properties?: unknown; required?: unknown };
+  const properties =
+    schema.properties && typeof schema.properties === "object" && !Array.isArray(schema.properties)
+      ? Object.keys(schema.properties as Record<string, unknown>)
+      : [];
+  const required = Array.isArray(schema.required)
+    ? schema.required.filter((value): value is string => typeof value === "string")
+    : [];
+  if (properties.length === 0)
+    return [`    Input schema       ${theme.fg("text", "No parameters")}`];
+  const fields = properties.map((name) => (required.includes(name) ? `${name}*` : name)).join(", ");
+  return [
+    ...wrapText(fields, Math.max(20, width - 23)).map((line, index) =>
+      index === 0
+        ? `    Input schema       ${theme.fg("text", line)}`
+        : `                       ${theme.fg("text", line)}`,
+    ),
+    `    ${theme.fg("dim", "* required")}`,
+  ];
+}
+
+function plainStatus(status: ManagedServerStatus): string {
+  switch (status) {
+    case "managed-enabled":
+      return "enabled";
+    case "managed-disabled":
+      return "disabled";
+    case "manual":
+      return "manual configuration";
+    case "modified":
+      return "review changes";
+    case "managed-outdated":
+      return "preset update available";
+    case "name-conflict":
+      return "name conflict";
+    case "invalid-config":
+      return "invalid configuration";
+    default:
+      return "not configured";
+  }
+}
+
+function riskLabel(risk: McpPreset["risk"] | McpToolDetail["risk"]): string {
+  if (risk === "destructive") return "Destructive";
+  return `${risk.slice(0, 1).toUpperCase()}${risk.slice(1)}`;
 }
 
 function renderStatus(theme: Theme, status: ManagedServerStatus, preset: McpPreset): string {

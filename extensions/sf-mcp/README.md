@@ -5,6 +5,8 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 ## What It Does
 
 - Shows a local, versioned catalog of Salesforce MCP presets.
+- Opens every preset with a non-mutating overview of capabilities, documented tools, risk, support maturity, conflicts, and official documentation.
+- Merges bounded session-observed tool descriptions, input schemas, annotations, and effective exposure after a server connects; runtime metadata is never persisted.
 - Detects semantic overlap with enabled SF Pi family tools.
 - Recommends a complementary profile instead of silently duplicating capabilities.
 - Writes explicit, user-reviewed entries to Pi's native global or project `mcp.json`.
@@ -45,7 +47,9 @@ Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` pr
 
 ## Configuration
 
-Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. Capability review, setup fields, configuration review, apply, and result states remain inside the same SF Pi Manager window. Choose global or trusted-project scope before applying the preset. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, exposure changes, and reconnects.
+Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. Review the documented and session-observed tools, then choose **Configure connection** to continue to capability review, setup fields, configuration review, apply, and result states inside the same SF Pi Manager window. Choose global or trusted-project scope before applying the preset. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, exposure changes, and reconnects.
+
+Governed hosted presets include concise, versioned tool summaries sourced from the preset's official Salesforce documentation. Servers with package-defined, permission-scoped, or custom tool catalogs show reviewed capability groups before setup and their exact tool metadata after Pi observes a live connection. An observed tool that is absent from the approved preset contract remains visibly unapproved and inherits the server's hidden exposure.
 
 SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <preset-id>`. Existing manual entries and entries changed outside SF MCP remain user-owned. The Manager can adopt a compatible entry without changing it, or show a redacted field-level diff before an explicit reset. Canonically colliding names require the user to choose the one entry to keep.
 

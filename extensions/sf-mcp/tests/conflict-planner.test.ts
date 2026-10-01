@@ -9,6 +9,7 @@ import {
   getPreset,
   isPresetConfigCompatible,
 } from "../lib/presets.ts";
+import { getPresetToolCatalog } from "../lib/tool-catalog.ts";
 
 describe("SF MCP capability conflict planning", () => {
   it("omits the legacy SObject server family from the catalog", () => {
@@ -23,6 +24,22 @@ describe("SF MCP capability conflict planning", () => {
       ]),
     );
     expect(ids).toContain("headless-360");
+  });
+
+  it("keeps documented tool details aligned with every approved hosted contract", () => {
+    for (const preset of SALESFORCE_MCP_PRESETS) {
+      const catalog = getPresetToolCatalog(preset);
+      expect(catalog.capabilities.length, preset.id).toBeGreaterThan(0);
+      if (!preset.approvedTools) continue;
+      expect(
+        catalog.tools.map((tool) => tool.name),
+        preset.id,
+      ).toEqual([...preset.approvedTools]);
+      for (const tool of catalog.tools) {
+        expect(tool.description.length, `${preset.id}:${tool.name}`).toBeGreaterThan(10);
+        expect(tool.capability.length, `${preset.id}:${tool.name}`).toBeGreaterThan(3);
+      }
+    }
   });
 
   it("keeps every native overlap claim tied to a declared extension", () => {

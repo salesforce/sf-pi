@@ -15,10 +15,12 @@ import {
   summarizeConfigDiff,
 } from "../lib/service.ts";
 import { buildServerConfig, getPreset } from "../lib/presets.ts";
+import { inspectPresetTools } from "../lib/tool-catalog.ts";
 
 const tempDirs: string[] = [];
 
 afterEach(() => {
+  captureObservedMcpTools([]);
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -128,6 +130,42 @@ describe("SF MCP preset service", () => {
     expect(diff).not.toContain("secret");
     expect(diff).not.toContain("old-client");
     expect(diff).not.toContain("new-client");
+  });
+
+  it("keeps observed but unapproved tools visible without adding them to the reviewed contract", () => {
+    const preset = getPreset("data360");
+    captureObservedMcpTools([
+      {
+        name: "mcp__salesforce_data360__search",
+        description: "Live search description.",
+        exposure: "codemode",
+        annotations: { readOnlyHint: true },
+      },
+      {
+        name: "mcp__salesforce_data360__unexpectedWrite",
+        description: "Live unapproved description.",
+        exposure: "hidden",
+        annotations: { readOnlyHint: false, destructiveHint: true },
+      },
+    ]);
+
+    expect(inspectPresetTools(preset)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "search",
+          documented: true,
+          observed: true,
+          descriptionSource: "observed",
+        }),
+        expect.objectContaining({
+          name: "unexpectedWrite",
+          documented: false,
+          observed: true,
+          exposure: "hidden",
+          risk: "destructive",
+        }),
+      ]),
+    );
   });
 
   it("requires review when observed tools drift from the approved preset contract", () => {

@@ -6,10 +6,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
 import { createConfigPanel } from "../lib/config-panel.ts";
+import { captureObservedMcpTools } from "../lib/observed-tools.ts";
 
 const tempDirs: string[] = [];
 
 afterEach(() => {
+  captureObservedMcpTools([]);
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -75,6 +77,80 @@ describe("SF MCP Manager catalog", () => {
     expect(output).not.toContain("╰");
   });
 
+  it("opens a non-mutating overview before configuring a preset", () => {
+    const { panel, ui } = fixture();
+
+    moveDown(panel, 5);
+    panel.handleInput("\r");
+    const overview = panel.renderContent(110).join("\n");
+
+    expect(overview).toContain("SF MCP › Headless 360 › Overview");
+    expect(overview).toContain("4 documented");
+    expect(overview).toContain("Operation discovery");
+    expect(overview).toContain("Review tools");
+    expect(overview).not.toContain("Capability Review");
+    expect(overview).not.toContain("External Client App consumer key");
+
+    panel.handleInput("\r");
+    const tools = panel.renderContent(110).join("\n");
+    expect(tools).toContain("SF MCP › Headless 360 › Tools");
+    expect(tools).toContain("discover");
+    expect(tools).toContain("dispatch_readonly");
+
+    panel.handleInput("\r");
+    const detail = panel.renderContent(110).join("\n");
+    expect(detail).toContain("SF MCP › Headless 360 › discover");
+    expect(detail).toContain("Find Salesforce operations by natural-language intent");
+    expect(detail).toContain("Risk");
+    expect(detail).toContain("DOCUMENTATION");
+    expect(ui.select).not.toHaveBeenCalled();
+    expect(ui.input).not.toHaveBeenCalled();
+    expect(ui.confirm).not.toHaveBeenCalled();
+  });
+
+  it("keeps overview, tool list, and tool detail width-safe at the Manager minimum", () => {
+    const { panel } = fixture();
+
+    moveDown(panel, 5);
+    panel.handleInput("\r");
+    expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
+
+    panel.handleInput("\r");
+    expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
+
+    panel.handleInput("\r");
+    expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
+  });
+
+  it("shows live descriptions, schemas, annotations, and exposure for observed tools", () => {
+    captureObservedMcpTools([
+      {
+        name: "mcp__salesforce_dx__list_all_orgs",
+        description: "Lists every Salesforce org authorized in this environment.",
+        parameters: {
+          type: "object",
+          properties: { includeExpired: { type: "boolean" } },
+          required: ["includeExpired"],
+        },
+        exposure: "codemode",
+        annotations: { readOnlyHint: true, destructiveHint: false },
+      },
+    ]);
+    const { panel } = fixture();
+
+    panel.handleInput("\r");
+    panel.handleInput("\r");
+    expect(panel.renderContent(110).join("\n")).toContain("list_all_orgs");
+
+    panel.handleInput("\r");
+    const detail = panel.renderContent(110).join("\n");
+    expect(detail).toContain("Lists every Salesforce org authorized in this environment.");
+    expect(detail).toContain("includeExpired");
+    expect(detail).toContain("read-only");
+    expect(detail).toContain("codemode");
+    expect(detail).toContain("Observed live");
+  });
+
   it("shows support maturity for experimental hosted presets", () => {
     const { panel } = fixture();
 
@@ -104,6 +180,8 @@ describe("SF MCP Manager catalog", () => {
     const { cwd, panel } = fixture(config);
 
     moveDown(panel, 1);
+    panel.handleInput("\r"); // Open overview.
+    panel.handleInput("\u001b[B"); // Configure.
     panel.handleInput("\r");
     expect(panel.renderContent(110).join("\n")).toContain("Configuration Review");
     expect(panel.renderContent(110).join("\n")).toContain("Adopt existing entry");
@@ -117,6 +195,8 @@ describe("SF MCP Manager catalog", () => {
     const { panel, ui } = fixture();
 
     moveDown(panel, 8);
+    panel.handleInput("\r"); // Open overview.
+    panel.handleInput("\u001b[B"); // Configure.
     panel.handleInput("\r");
     const output = panel.renderContent(110).join("\n");
 
@@ -134,6 +214,8 @@ describe("SF MCP Manager catalog", () => {
     const { panel, ui } = fixture();
 
     moveDown(panel, 5);
+    panel.handleInput("\r"); // Open overview.
+    panel.handleInput("\u001b[B"); // Configure.
     panel.handleInput("\r");
     expect(panel.renderContent(110).join("\n")).toContain("Capability Review");
 
@@ -151,6 +233,8 @@ describe("SF MCP Manager catalog", () => {
     const { cwd, panel, done, ui } = fixture();
 
     moveDown(panel, 8);
+    panel.handleInput("\r"); // Open overview.
+    panel.handleInput("\u001b[B"); // Configure.
     panel.handleInput("\r"); // Open setup.
     panel.handleInput("\r"); // Accept US and move to Tenant ID.
     typeText(panel, "tenant-example");
@@ -181,6 +265,8 @@ describe("SF MCP Manager catalog", () => {
     const { panel } = fixture();
 
     moveDown(panel, 8);
+    panel.handleInput("\r"); // Open overview.
+    panel.handleInput("\u001b[B"); // Configure.
     panel.handleInput("\r");
     const lines = panel.renderContent(70);
 
