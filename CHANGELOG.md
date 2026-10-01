@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.313.0](https://github.com/salesforce/sf-pi/compare/v0.312.0...v0.313.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** unify MCP configuration editor ([8f17f6b](https://github.com/salesforce/sf-pi/commit/8f17f6b07b2cc922e029cfac0edd98c6ee33bbc5))
+
 ## [0.312.0](https://github.com/salesforce/sf-pi/compare/v0.311.0...v0.312.0) (2026-10-01)
 
 
