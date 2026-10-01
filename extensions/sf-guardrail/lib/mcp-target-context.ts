@@ -1,45 +1,24 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Resolve bounded target evidence proven by a configured Salesforce Hosted MCP URL. */
+/** Resolve only the environment class proven by a Salesforce Hosted MCP URL. */
 import { existsSync, readFileSync } from "node:fs";
-import { fingerprintMcpServerConfig } from "../../../lib/common/mcp-target-attestation/store.ts";
 import { globalAgentPath, projectConfigPath } from "../../../lib/common/pi-paths.ts";
 import { canonicalizeMcpServerName } from "./mcp-tool-identity.ts";
 
 export type McpTargetType = "production" | "sandbox" | "unknown";
-
-export interface McpConfiguredTargetContext {
-  targetType: McpTargetType;
-  configFingerprint?: string;
-}
 
 export function resolveMcpTargetType(
   cwd: string | undefined,
   serverName: string,
   projectTrusted = false,
 ): McpTargetType {
-  return resolveMcpConfiguredTargetContext(cwd, serverName, projectTrusted).targetType;
-}
-
-export function resolveMcpConfiguredTargetContext(
-  cwd: string | undefined,
-  serverName: string,
-  projectTrusted = false,
-): McpConfiguredTargetContext {
   const project =
     cwd && projectTrusted
-      ? readServerEntry(projectConfigPath(cwd, "mcp.json"), serverName)
+      ? readServerUrl(projectConfigPath(cwd, "mcp.json"), serverName)
       : undefined;
-  const global = readServerEntry(globalAgentPath("mcp.json"), serverName);
-  const entry = project ?? global;
-  if (!entry) return { targetType: "unknown" };
-  return {
-    targetType: classifyHostedUrl(entry.url),
-    configFingerprint: fingerprintMcpServerConfig(entry.config),
-  };
-}
-
-function classifyHostedUrl(value: string | undefined): McpTargetType {
+  const global = readServerUrl(globalAgentPath("mcp.json"), serverName);
+  const value = project ?? global;
   if (!value) return "unknown";
+
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.hostname !== "api.salesforce.com") return "unknown";
@@ -62,10 +41,7 @@ function classifyHostedUrl(value: string | undefined): McpTargetType {
   return "unknown";
 }
 
-function readServerEntry(
-  filePath: string,
-  serverName: string,
-): { url?: string; config: Record<string, unknown> } | undefined {
+function readServerUrl(filePath: string, serverName: string): string | undefined {
   if (!existsSync(filePath)) return undefined;
   try {
     const root = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
@@ -76,11 +52,8 @@ function readServerEntry(
     );
     if (matches.length !== 1) return undefined;
     const server = matches[0]?.[1];
-    if (!isRecord(server)) return undefined;
-    return {
-      url: typeof server.url === "string" ? server.url : undefined,
-      config: server,
-    };
+    if (!isRecord(server) || typeof server.url !== "string") return undefined;
+    return server.url;
   } catch {
     return undefined;
   }

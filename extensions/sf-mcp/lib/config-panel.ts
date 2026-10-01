@@ -480,10 +480,7 @@ class SfMcpConfigPanel implements Focusable {
     resolution: McpResolution,
     replaceExisting = false,
   ): void {
-    const targetPreset =
-      resolution === "use-sobject-mutations"
-        ? getPreset("sobject-mutations")
-        : getPreset(sourcePresetId);
+    const targetPreset = getPreset(sourcePresetId);
     if (targetPreset.setup === "ready") {
       this.openReview({
         sourcePresetId,
@@ -513,10 +510,8 @@ class SfMcpConfigPanel implements Focusable {
     replaceExisting?: boolean;
   }): void {
     const targetPreset = getPreset(input.targetPresetId);
-    const configResolution =
-      input.resolution === "use-sobject-mutations" ? "complement-native" : input.resolution;
     try {
-      const config = buildServerConfig(targetPreset, configResolution, input.setup);
+      const config = buildServerConfig(targetPreset, input.resolution, input.setup);
       this.view = {
         kind: "review",
         ...input,
@@ -667,23 +662,6 @@ function reconcileOptions(state: PresetRuntimeState): ReconcileChoice[] {
 }
 
 function conflictOptions(plan: ConflictPlan): ConflictOption[] {
-  if (plan.recommendation.resolution === "use-sobject-mutations") {
-    return [
-      {
-        label: "Keep SF SOQL + enable SObject Mutations  · Recommended",
-        description:
-          "Preserve the bounded native query lifecycle and add create/update. Delete remains separate.",
-        resolution: "use-sobject-mutations",
-      },
-      {
-        label: "Enable SObject All side-by-side  · Advanced",
-        description:
-          "Expose the complete MCP server through codemode and add explicit routing guidance.",
-        resolution: "side-by-side",
-      },
-      { label: "Cancel", description: "Return to the Salesforce MCP catalog." },
-    ];
-  }
   if (plan.recommendation.resolution === "native-only") {
     return [
       {

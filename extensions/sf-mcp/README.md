@@ -27,7 +27,7 @@ The default routing policy is:
 3. Offer full MCP side-by-side exposure only as an explicit advanced choice.
 4. Never disable an SF Pi extension automatically.
 
-For example, when SF SOQL is enabled, selecting SObject All recommends keeping SF SOQL for bounded reads and enabling SObject Mutations only for create/update. Delete remains a separate elevated-risk preset.
+For example, when the Data 360 preset overlaps the typed SF Data 360 families, the catalog recommends keeping the native lifecycle owner unless the user explicitly needs MCP comparison behavior.
 
 ## Commands
 
@@ -42,10 +42,6 @@ For example, when SF SOQL is enabled, selecting SObject All recommends keeping S
 ```
 
 Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` prepares Pi's built-in `/mcp` manager after installation.
-
-## Tool
-
-`sf_mcp_verify_target` performs the read-only, one-use exact-org attestation required immediately before an SObject MCP mutation. Pass the configured SObject server name, an explicit Salesforce CLI alias or username, and the exact next MCP mutation tool. The tool invokes the server's own `soqlQuery` through Pi's nested-tool pipeline, so MCP OAuth, SF Guardrail hooks, and cancellation remain Pi-owned.
 
 ## Configuration
 
@@ -63,9 +59,8 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - OAuth tokens remain in Pi's native MCP credential store.
 - External Client App consumer keys are public client identifiers; client secrets are never requested for Salesforce Hosted MCP presets.
 - MuleSoft credentials are environment references only and are never copied into SF MCP state.
-- Salesforce record writes and deletes, Backup and Recover writes, Content writes, and Headless 360 dispatch pass through SF Guardrail. Production or unknown hosted targets fail closed.
-- SObject mutations require `sf_mcp_verify_target` to match the authenticated MCP `Organization.Id` to an explicit Salesforce CLI org before Guardrail can offer confirmation. The attestation is one-use, configuration-bound, session-local, and expires after two minutes.
-- Hosted mutation servers that cannot return an exact org fingerprint remain fail-closed; endpoint classification alone never authorizes a write.
+- Backup and Recover writes, Content writes, Headless 360 dispatch, hosted Data 360 execution, and managed external operations pass through SF Guardrail. Hosted mutation targets without exact identity evidence remain fail-closed.
+- The legacy SObject Reads, Mutations, Deletes, and All servers are intentionally absent from the SF MCP catalog. Existing native Pi entries are left untouched and remain visible in `/mcp`; users remove them there if desired. Legacy SObject mutation calls remain Guardrail-mediated and fail closed.
 
 ## Native Configuration Ownership
 
@@ -79,41 +74,15 @@ Pi remains authoritative for:
 
 SF MCP stores only a short configuration fingerprint, preset id, preset revision, and selected resolution so it can detect manual edits and outdated presets. Observed tool names are session-local. It stores no OAuth tokens, client secrets, record data, or tool arguments.
 
-## Exact Target Attestation
+## Legacy SObject Servers
 
-A hosted endpoint proves an environment family, not the exact org selected during OAuth. `sf_mcp_verify_target` closes that gap for SObject mutation, delete, and all servers by executing this bounded read through the same authenticated MCP connection:
+SF MCP no longer catalogs or manages the four legacy SObject server presets. This is an SF Pi product simplification to avoid overlapping choices with Headless 360 and the native SF SOQL lifecycle; it is not a claim that Salesforce has retired the underlying public endpoints.
 
-```sql
-SELECT Id, IsSandbox FROM Organization LIMIT 1
-```
-
-It compares the returned `Organization.Id` and sandbox classification with an explicit Salesforce CLI target resolved through the shared Salesforce Connection Module. A successful match records one in-memory attestation bound to the session, canonical server name, exact next mutation tool, and native MCP configuration fingerprint. The next matching tool call consumes it. Mismatches, expiry, configuration changes, another tool, another session, or missing evidence fail closed.
-
-Verification is not approval. SF Guardrail still blocks production writes and still asks before an exactly attested sandbox write. SF MCP never reads Pi's OAuth token store and never starts a second MCP client.
-
-Other hosted mutation servers remain blocked until their own MCP tool surface can return an equivalent exact org fingerprint.
-
-## Live Sandbox Smoke
-
-Use a dedicated sandbox fixture and never substitute a production org:
-
-1. Configure SObject Reads with the sandbox endpoint and a public External Client App consumer key.
-2. Reload Pi, open `/mcp`, complete OAuth, and verify the server and approved tool count.
-3. Run `getUserInfo`, `getObjectSchema`, and a bounded `soqlQuery`.
-4. Configure SObject Mutations and call `sf_mcp_verify_target` for the exact next mutation and explicit CLI sandbox target.
-5. Update a dedicated fixture record, re-verify, and restore the original value.
-6. Confirm that Guardrail asks before both exactly attested writes.
-7. Keep production, unknown, missing-attestation, and mismatch blocking as automated Behavior Proofs; no production connection is required.
-
-The repository's normal automated suite does not require Hosted MCP credentials. Live smoke evidence is release evidence, not a default CI dependency.
+Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-*` entries continue to be owned by Pi's `/mcp` manager until the user disables or removes them.
 
 ## Current Presets
 
 - Salesforce DX
-- SObject Reads
-- SObject Mutations
-- SObject Deletes
-- SObject All
 - Data 360
 - Backup and Recover (**SF Pi Alpha**; the current Salesforce reference leaves GA/Beta status unresolved)
 - Content Read-Only (**SF Pi Alpha**; Salesforce currently documents Agentforce Vibes as the only supported client)
@@ -130,7 +99,6 @@ The repository's normal automated suite does not require Hosted MCP credentials.
 - [Pi MCP configuration and exposure](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/mcp.md)
 - [Salesforce DX MCP setup](https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-mcp-server.html)
 - [Salesforce Hosted MCP standard servers](https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/servers-reference.html)
-- [SObject Reads identity and read tools](https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/sobject-reads.html)
 - [Marketing Cloud Engagement MCP setup](https://developer.salesforce.com/docs/marketing/mce-mcp/guide/mce-mcp-setup.html)
 - [MuleSoft DX MCP setup](https://docs.mulesoft.com/mulesoft-mcp-server/getting-started)
 
@@ -142,7 +110,6 @@ The repository's normal automated suite does not require Hosted MCP credentials.
 extensions/sf-mcp/
   lib/                        ← implementation modules
   tests/                      ← Behavior Proofs and test fixtures
-  AGENT_GUIDE.md              ← agent operating guide
   index.ts                    ← Pi extension entry point
   manifest.json               ← source-of-truth extension metadata
   README.md                   ← human behavior and usage

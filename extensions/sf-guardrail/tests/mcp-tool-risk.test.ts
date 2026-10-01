@@ -95,54 +95,6 @@ describe("Salesforce MCP tool safety subjects", () => {
     });
   });
 
-  it("confirms a sandbox record write only with exact one-use org evidence", () => {
-    const subject = normalizeSafetySubject(
-      "mcp__salesforce_sobject_mutations__createSobjectRecord",
-      { "sobject-name": "Task", body: { Subject: "Follow up" } },
-      {
-        mcpTargetType: "sandbox",
-        mcpTargetAttestation: {
-          orgId: "00D000000000001AAA",
-          isSandbox: true,
-        },
-      },
-    ) as NativeToolSafetySubject;
-
-    expect(subject).toMatchObject({
-      targetOrgType: "sandbox",
-      targetOrgId: "00D000000000001AAA",
-      targetOrgVerified: true,
-      targetOrgUnverified: false,
-    });
-    expect(evaluateNativeToolRisk(subject, process.cwd(), config)).toMatchObject({
-      action: "confirm",
-      orgType: "sandbox",
-      orgId: "00D000000000001AAA",
-      orgResolutionSource: "mcpAttestation",
-    });
-  });
-
-  it("still blocks an exactly attested production record write", () => {
-    const subject = normalizeSafetySubject(
-      "mcp__salesforce_sobject_mutations__createSobjectRecord",
-      { "sobject-name": "Task", body: { Subject: "Follow up" } },
-      {
-        mcpTargetType: "production",
-        mcpTargetAttestation: {
-          orgId: "00D000000000001AAA",
-          isSandbox: false,
-        },
-      },
-    ) as NativeToolSafetySubject;
-
-    expect(subject).toMatchObject({ targetOrgVerified: true, targetOrgType: "production" });
-    expect(evaluateNativeToolRisk(subject, process.cwd(), config)).toMatchObject({
-      action: "block",
-      orgId: "00D000000000001AAA",
-      orgResolutionSource: "mcpAttestation",
-    });
-  });
-
   it("blocks a managed production endpoint without connecting to production", () => {
     const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-production-"));
     tempDirs.push(cwd);

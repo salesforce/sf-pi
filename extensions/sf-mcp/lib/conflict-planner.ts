@@ -38,22 +38,6 @@ export function planPresetConflicts(
   }
 
   if (
-    preset.id === "sobject-all" &&
-    conflicts.some((item) => item.nativeExtensionId === "sf-soql")
-  ) {
-    return {
-      presetId: preset.id,
-      conflicts,
-      recommendation: {
-        resolution: "use-sobject-mutations",
-        alternatePresetId: "sobject-mutations",
-        summary:
-          "Keep SF SOQL for reads and enable SObject Mutations for create/update. Add Deletes separately only when required.",
-      },
-    };
-  }
-
-  if (
     preset.id === "data360" &&
     conflicts.some((item) => item.nativeExtensionId === "sf-data360")
   ) {

@@ -4,10 +4,6 @@ import type { McpServerConfig } from "./mcp-config.ts";
 
 export type McpPresetId =
   | "salesforce-dx"
-  | "sobject-reads"
-  | "sobject-mutations"
-  | "sobject-deletes"
-  | "sobject-all"
   | "data360"
   | "backup-recover"
   | "content-readonly"
@@ -45,8 +41,7 @@ export interface McpPreset {
   overlaps: McpPresetOverlap[];
 }
 
-export type McpResolution =
-  "enable" | "complement-native" | "side-by-side" | "native-only" | "use-sobject-mutations";
+export type McpResolution = "enable" | "complement-native" | "side-by-side" | "native-only";
 
 export interface PresetSetup {
   environment?: "production" | "sandbox";
@@ -57,37 +52,6 @@ export interface PresetSetup {
   customUrl?: string;
 }
 
-const SOQL_OVERLAP: McpPresetOverlap = {
-  nativeExtensionId: "sf-soql",
-  relationship: "direct",
-  capabilities: ["platform.records.schema", "platform.records.query", "platform.records.search"],
-  reason:
-    "SF SOQL already owns schema-aware query and search with validation, bounds, plans, and artifacts.",
-};
-
-const SOBJECT_READ_TOOLS = [
-  "getObjectSchema",
-  "soqlQuery",
-  "find",
-  "getUserInfo",
-  "listRecentSobjectRecords",
-  "getRelatedRecords",
-] as const;
-const SOBJECT_MUTATION_TOOLS = [
-  "getObjectSchema",
-  "soqlQuery",
-  "find",
-  "createSobjectRecord",
-  "updateSobjectRecord",
-  "updateRelatedRecord",
-] as const;
-const SOBJECT_DELETE_TOOLS = [
-  "getObjectSchema",
-  "soqlQuery",
-  "find",
-  "deleteSobjectRecord",
-  "deleteRelatedRecord",
-] as const;
 const BACKUP_RECOVER_TOOLS = [
   "get_backups",
   "get_backup_by_id",
@@ -215,78 +179,6 @@ const PRESETS: readonly McpPreset[] = [
         reason: "The DX testing toolset overlaps with SF Apex targeted tests.",
       },
     ],
-  },
-  {
-    id: "sobject-reads",
-    revision: 2,
-    serverName: "salesforce-sobject-reads",
-    label: "SObject Reads",
-    icon: "🔎",
-    description:
-      "Read-only Salesforce schema, query, search, recent-record, and relationship tools.",
-    transport: "http",
-    setup: "hosted-oauth",
-    risk: "read",
-    support: "ga",
-    docsUrl:
-      "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/sobject-reads.html",
-    approvedTools: SOBJECT_READ_TOOLS,
-    overlaps: [SOQL_OVERLAP],
-  },
-  {
-    id: "sobject-mutations",
-    revision: 2,
-    serverName: "salesforce-sobject-mutations",
-    label: "SObject Mutations",
-    icon: "✎",
-    description: "Create and update records without exposing delete operations.",
-    transport: "http",
-    setup: "hosted-oauth",
-    risk: "write",
-    support: "ga",
-    docsUrl:
-      "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/sobject-mutations.html",
-    approvedTools: SOBJECT_MUTATION_TOOLS,
-    overlaps: [SOQL_OVERLAP],
-  },
-  {
-    id: "sobject-deletes",
-    revision: 2,
-    serverName: "salesforce-sobject-deletes",
-    label: "SObject Deletes",
-    icon: "⌫",
-    description: "Delete-focused record tools with schema, query, and search helpers.",
-    transport: "http",
-    setup: "hosted-oauth",
-    risk: "delete",
-    support: "ga",
-    docsUrl:
-      "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/sobject-deletes.html",
-    approvedTools: SOBJECT_DELETE_TOOLS,
-    overlaps: [SOQL_OVERLAP],
-  },
-  {
-    id: "sobject-all",
-    revision: 2,
-    serverName: "salesforce-sobject-all",
-    label: "SObject All",
-    icon: "◆",
-    description: "Full create, read, update, delete, query, search, and relationship access.",
-    transport: "http",
-    setup: "hosted-oauth",
-    risk: "mixed",
-    support: "ga",
-    docsUrl:
-      "https://developer.salesforce.com/docs/platform/hosted-mcp-servers/references/reference/sobject-all.html",
-    approvedTools: [
-      ...SOBJECT_READ_TOOLS,
-      "createSobjectRecord",
-      "updateSobjectRecord",
-      "updateRelatedRecord",
-      "deleteSobjectRecord",
-      "deleteRelatedRecord",
-    ],
-    overlaps: [SOQL_OVERLAP],
   },
   {
     id: "data360",
@@ -495,7 +387,7 @@ export function buildServerConfig(
   resolution: McpResolution,
   setup: PresetSetup = {},
 ): McpServerConfig {
-  if (resolution === "native-only" || resolution === "use-sobject-mutations") {
+  if (resolution === "native-only") {
     throw new Error(`${resolution} does not install ${preset.id}.`);
   }
 
@@ -562,10 +454,6 @@ export function buildServerConfig(
   const environment = setup.environment ?? "sandbox";
   const clientId = required(setup.oauthClientId, "External Client App consumer key");
   const pathByPreset: Partial<Record<McpPresetId, string>> = {
-    "sobject-reads": "platform/sobject-reads",
-    "sobject-mutations": "platform/sobject-mutations",
-    "sobject-deletes": "platform/sobject-deletes",
-    "sobject-all": "platform/sobject-all",
     data360: "data360",
     "backup-recover": "platform/backup-and-recover",
     "content-readonly": "platform/content-readonly",
@@ -597,35 +485,9 @@ export function buildServerConfig(
 
 export function approvedToolsForResolution(
   preset: McpPreset,
-  resolution: McpResolution,
+  _resolution: McpResolution,
 ): string[] | undefined {
-  if (resolution !== "complement-native")
-    return preset.approvedTools ? [...preset.approvedTools] : undefined;
-  return complementaryTools(preset.id);
-}
-
-function complementaryTools(id: McpPresetId): string[] {
-  switch (id) {
-    case "sobject-reads":
-      return ["getUserInfo", "listRecentSobjectRecords", "getRelatedRecords"];
-    case "sobject-mutations":
-      return ["createSobjectRecord", "updateSobjectRecord", "updateRelatedRecord"];
-    case "sobject-deletes":
-      return ["deleteSobjectRecord", "deleteRelatedRecord"];
-    case "sobject-all":
-      return [
-        "getUserInfo",
-        "listRecentSobjectRecords",
-        "getRelatedRecords",
-        "createSobjectRecord",
-        "updateSobjectRecord",
-        "updateRelatedRecord",
-        "deleteSobjectRecord",
-        "deleteRelatedRecord",
-      ];
-    default:
-      return [];
-  }
+  return preset.approvedTools ? [...preset.approvedTools] : undefined;
 }
 
 function hostedEndpointPrefix(id: McpPresetId, environment: "production" | "sandbox"): string {

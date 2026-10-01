@@ -257,11 +257,10 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     name: "SF MCP",
     description: "Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime",
     file: "extensions/sf-mcp/index.ts",
-    category: "agent-tool",
+    category: "assistive",
     maturity: "experimental",
     defaultEnabled: true,
     commands: ["/sf-mcp"],
-    tools: ["sf_mcp_verify_target"],
     events: ["session_start","before_agent_start"],
     configurable: true,
     getConfigPanel: async () => {

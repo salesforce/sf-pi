@@ -1,7 +1,8 @@
 ---
 id: "0125"
-status: accepted
+status: superseded
 date: 2026-10-01
+supersededBy: ["0126"]
 ---
 
 # ADR 0125: SF MCP Exact Target Attestation

@@ -113,14 +113,6 @@ _Local-native Lightning Web Component lifecycle workflows for pi: project scan, 
 - Commands: `/sf-lwc`
 - Tools: `sf_lwc`
 
-### [SF MCP](./extensions/sf-mcp)
-
-_Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime_
-
-- Default: **on**
-- Commands: `/sf-mcp`
-- Tools: `sf_mcp_verify_target`
-
 ### [SF Slack](./extensions/sf-slack)
 
 _Slack integration — search messages, read threads, browse channel history_
@@ -177,6 +169,13 @@ _Real-time Salesforce LSP diagnostics on write/edit with a working indicator, tr
 
 - Default: **on**
 - Commands: `/sf-lsp`
+
+### [SF MCP](./extensions/sf-mcp)
+
+_Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime_
+
+- Default: **on**
+- Commands: `/sf-mcp`
 
 ## UI
 

@@ -37,12 +37,8 @@ A **Safety Subject** normalized from an LLM-callable SF Pi tool rather than from
 _Avoid_: per-extension approval system, model approval flag, native policy layer, tool self-approval
 
 **MCP Tool Safety Subject**:
-A **Native Tool Safety Subject** normalized from an `sf-mcp` MCP tool execution. `sf-mcp` supplies MCP server identity, tool identity, operation family, known Salesforce org or external destination, risk annotations, and argument fingerprint; SF Guardrail decides the resulting **Guardrail Decision**. Hosted SObject mutations also require one-use **Exact MCP Target Attestation** before they can become human-confirmable.
+A **Native Tool Safety Subject** normalized from an MCP tool execution. SF Guardrail uses MCP server identity, tool identity, operation family, known Salesforce org or external destination, risk annotations, and argument fingerprint to decide the resulting **Guardrail Decision**. Legacy SObject mutation tools remain fail-closed even though SF MCP no longer catalogs that server family.
 _Avoid_: MCP approval helper, server trust flag, raw MCP payload approval, duplicate approval ledger
-
-**Exact MCP Target Attestation**:
-Short-lived, session-local evidence produced by a read-only organization fingerprint through the same authenticated MCP connection and matched to an explicit Salesforce CLI org. It is bound to one canonical server, native configuration fingerprint, and exact next mutation tool, then consumed once. It is identity evidence, not approval.
-_Avoid_: trusted server, endpoint verification, persistent OAuth trust, user approval, reusable grant
 
 **High-Value Durable Mutation**:
 A first-party, LLM-callable operation that can persistently change Salesforce org state, Data 360 resources, externally visible collaboration content, or another durable system of record under the user's authority. Mutation alone is not the risk; the risk is a native semantic write path where the model could otherwise self-approve a specific durable change. Ordinary local source edits are not high-value durable mutations; they become externally durable only when a separate deploy, publish, save, or execute operation applies them to a system of record.

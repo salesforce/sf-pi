@@ -3,14 +3,13 @@
  * sf-mcp behavior contract
  *
  * SF MCP is a catalog and conflict-aware installer for Pi's native MCP runtime.
- * It never connects an MCP server itself. Its one model-callable operation performs
- * read-only exact-org attestation through Pi's already-connected MCP runtime.
+ * It never connects an MCP server itself and registers no model-callable tools.
  *
  * Behavior matrix:
  *
  *   Trigger                    | Result
  *   ---------------------------|-----------------------------------------------------------
- *   extension load             | Register command, verifier, Manager actions; no network/process
+ *   extension load             | Register command and Manager actions; no network/process
  *   session_start              | Cache local side-by-side routing guidance; no network/process
  *   before_agent_start         | Add guidance only for accepted active overlaps
  *   /sf-mcp                    | Open the SF Pi Manager detail page
@@ -20,7 +19,6 @@
  *   /sf-mcp disable <preset>   | Disable only an unchanged SF MCP-managed native entry
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { clearMcpTargetAttestations } from "../../lib/common/mcp-target-attestation/store.ts";
 import {
   getFirstTokenCompletionsFromActions,
   resolveAction,
@@ -46,7 +44,6 @@ import {
   inspectPresetRuntime,
   setManagedPresetEnabled,
 } from "./lib/service.ts";
-import { registerMcpTargetVerificationTool } from "./lib/target-verification-tool.ts";
 
 const EXTENSION_ID = "sf-mcp";
 const COMMAND_NAME = "sf-mcp";
@@ -94,11 +91,8 @@ const ACTIONS: SfPiCommandAction<SfMcpAction>[] = [
 export default function sfMcp(pi: ExtensionAPI): void {
   if (!requirePiVersion(pi, "sf-mcp")) return;
 
-  registerMcpTargetVerificationTool(pi);
-
   let routingGuidelines: string[] = [];
   pi.on("session_start", (_event, ctx) => {
-    clearMcpTargetAttestations(ctx.sessionManager.getSessionId());
     captureObservedMcpTools(pi.getAllTools());
     routingGuidelines = buildMcpRoutingGuidelines(ctx.cwd);
   });
@@ -273,7 +267,7 @@ function renderStatus(cwd: string, scope: "global" | "project"): string {
 function renderHelp(): string {
   return [
     "SF MCP is a conflict-aware catalog for Pi's built-in MCP runtime.",
-    "It does not implement MCP transport, OAuth, or connection management. Its verification tool performs one read-only nested MCP query for exact target attestation.",
+    "It does not implement MCP transport, OAuth, connection management, or agent tools.",
     "",
     "Commands:",
     "  /sf-mcp                         Open SF MCP in the Manager",

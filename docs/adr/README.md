@@ -111,7 +111,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0121: Pi 0.87.1 Audit Edge](./0121-pi-0871-audit-edge.md) — 2026-09-24
 - [0122: Gateway Catalog Requires Pi-Backed IDs](./0122-gateway-catalog-requires-pi-backed-ids.md) — 2026-09-26
 - [0124: Pi 0.99.2 Runtime Floor and MCP Identity](./0124-pi-0992-runtime-floor-and-mcp-identity.md) — 2026-09-30
-- [0125: SF MCP Exact Target Attestation](./0125-sf-mcp-exact-target-attestation.md) — 2026-10-01
+- [0126: SF MCP Removes Legacy SObject Presets](./0126-sf-mcp-removes-legacy-sobject-presets.md) — 2026-10-01
 
 ## Proposed
 
@@ -138,6 +138,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25 — superseded by [ADR 0118](./0118-pi-086-runtime-floor.md)
 - [0118: Pi 0.86.0 Runtime Floor](./0118-pi-086-runtime-floor.md) — 2026-09-21 — superseded by [ADR 0119](./0119-pi-087-runtime-floor-and-actionable-settlement.md)
 - [0123: Pi 0.99.1 Runtime Floor and Native Ownership](./0123-pi-0991-runtime-floor-and-native-ownership.md) — 2026-09-30 — superseded by [ADR 0124](./0124-pi-0992-runtime-floor-and-mcp-identity.md)
+- [0125: SF MCP Exact Target Attestation](./0125-sf-mcp-exact-target-attestation.md) — 2026-10-01 — superseded by [ADR 0126](./0126-sf-mcp-removes-legacy-sobject-presets.md)
 
 ### Rejected
 

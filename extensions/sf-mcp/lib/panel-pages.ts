@@ -375,9 +375,7 @@ function renderStatus(theme: Theme, status: ManagedServerStatus, preset: McpPres
   if (status === "managed-outdated") return theme.fg("warning", "▲ PRESET UPDATE");
   if (status === "name-conflict") return theme.fg("error", "● NAME CONFLICT");
   if (status === "invalid-config") return theme.fg("error", "● INVALID CONFIG");
-  if (preset.risk === "delete" || preset.id === "sobject-all") {
-    return theme.fg("error", "▲ ELEVATED RISK");
-  }
+  if (preset.risk === "delete") return theme.fg("error", "▲ ELEVATED RISK");
   if (preset.setup === "ready") return theme.fg("success", "● READY");
   return theme.fg("warning", "◐ NEEDS SETUP");
 }
@@ -432,8 +430,6 @@ function resolutionLabel(resolution: McpResolution): string {
       return "Complement SF Pi";
     case "side-by-side":
       return "Full MCP side-by-side";
-    case "use-sobject-mutations":
-      return "SF SOQL + SObject Mutations";
     case "native-only":
       return "Native SF Pi owner only";
     default:

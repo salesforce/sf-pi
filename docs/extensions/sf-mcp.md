@@ -36,7 +36,7 @@ Open its Manager detail or change its package state with:
 - Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.
 - Pi-normalized server-name collisions require the user to choose the one entry to keep.
 - Governed hosted presets use hidden exposure with exact approved tools, and custom MCP URLs start with no callable tools.
-- SObject MCP mutations require a fresh one-use exact-org attestation from sf_mcp_verify_target before Guardrail can offer confirmation; other hosted mutations fail closed when exact identity is unavailable.
+- Legacy SObject MCP entries are not managed by SF MCP; if manually configured, their mutation tools remain Guardrail-mediated and fail closed.
 - MuleSoft secrets are referenced through environment variables and are never stored in native MCP configuration or SF MCP state.
 
 ## Exact reference
@@ -46,11 +46,11 @@ Open its Manager detail or change its package state with:
 
 - **Extension id:** `sf-mcp`
 - **Intent:** Personalize pi
-- **Category:** Agent Tool
+- **Category:** Assistive
 - **Maturity:** experimental
 - **Default state:** on
 - **Commands:** `/sf-mcp`
-- **LLM tools:** `sf_mcp_verify_target`
+- **LLM tools:** _none_
 - **Providers:** _none_
 - **Events/hooks:** `session_start`, `before_agent_start`
 
@@ -60,4 +60,3 @@ Open its Manager detail or change its package state with:
 
 - [Full extension README](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-mcp/README.md)
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-mcp)
-- [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-mcp/AGENT_GUIDE.md)

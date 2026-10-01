@@ -83,12 +83,12 @@ describe("native Pi MCP configuration", () => {
     const file = tempFile();
     writeFileSync(
       file,
-      `${JSON.stringify({ mcpServers: { salesforce_sobject_reads: { url: "https://example.test/mcp" } } }, null, 2)}\n`,
+      `${JSON.stringify({ mcpServers: { salesforce_headless_360: { url: "https://example.test/mcp" } } }, null, 2)}\n`,
       "utf8",
     );
 
-    const result = upsertMcpServer(file, "salesforce-sobject-reads", {
-      url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+    const result = upsertMcpServer(file, "salesforce-headless-360", {
+      url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/headless-360",
     });
 
     expect(result).toMatchObject({ ok: false, reason: "server-name-conflict" });
@@ -101,8 +101,8 @@ describe("native Pi MCP configuration", () => {
       `${JSON.stringify(
         {
           mcpServers: {
-            "salesforce-sobject-reads": { url: "https://example.test/one" },
-            salesforce_sobject_reads: { url: "https://example.test/two" },
+            "salesforce-headless-360": { url: "https://example.test/one" },
+            salesforce_headless_360: { url: "https://example.test/two" },
             unrelated: { url: "https://example.test/other" },
           },
         },
@@ -114,14 +114,14 @@ describe("native Pi MCP configuration", () => {
 
     const result = removeCanonicalMcpServerDuplicates(
       file,
-      "salesforce-sobject-reads",
-      "salesforce_sobject_reads",
+      "salesforce-headless-360",
+      "salesforce_headless_360",
     );
     const written = JSON.parse(readFileSync(file, "utf8"));
 
     expect(result).toMatchObject({ ok: true });
-    expect(written.mcpServers).not.toHaveProperty("salesforce-sobject-reads");
-    expect(written.mcpServers.salesforce_sobject_reads).toBeDefined();
+    expect(written.mcpServers).not.toHaveProperty("salesforce-headless-360");
+    expect(written.mcpServers.salesforce_headless_360).toBeDefined();
     expect(written.mcpServers.unrelated).toBeDefined();
   });
 

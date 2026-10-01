@@ -2,10 +2,6 @@
 /** Strict, atomic reads and writes for Pi's native mcp.json files. */
 import type { McpExposure, McpServerConfig } from "@earendil-works/pi-coding-agent";
 import {
-  canonicalMcpServerName,
-  fingerprintMcpServerConfig,
-} from "../../../lib/common/mcp-target-attestation/store.ts";
-import {
   existsSync,
   mkdirSync,
   readFileSync,
@@ -121,7 +117,9 @@ export function inspectMcpConfig(filePath: string): McpConfigInspection {
   };
 }
 
-export { canonicalMcpServerName };
+export function canonicalMcpServerName(serverName: string): string {
+  return serverName.replace(/-/g, "_");
+}
 
 export function findCanonicalMcpServerNames(
   servers: Readonly<Record<string, McpServerConfig>>,
@@ -129,40 +127,6 @@ export function findCanonicalMcpServerNames(
 ): string[] {
   const canonical = canonicalMcpServerName(serverName);
   return Object.keys(servers).filter((name) => canonicalMcpServerName(name) === canonical);
-}
-
-export interface EffectiveMcpServerEntry {
-  configuredName: string;
-  config: McpServerConfig;
-  configFingerprint: string;
-  scope: "global" | "project";
-}
-
-export function resolveEffectiveMcpServerEntry(
-  cwd: string,
-  serverName: string,
-  projectTrusted: boolean,
-): EffectiveMcpServerEntry | undefined {
-  const scopes: ("project" | "global")[] = projectTrusted ? ["project", "global"] : ["global"];
-  for (const scope of scopes) {
-    const inspected = inspectMcpConfig(mcpConfigPath(cwd, scope));
-    if (inspected.ok === false) throw new Error(inspected.message);
-    const matches = findCanonicalMcpServerNames(inspected.servers, serverName);
-    if (matches.length > 1) {
-      throw new Error(`${matches.join(", ")} collide after Pi normalizes hyphens and underscores.`);
-    }
-    const configuredName = matches[0];
-    if (!configuredName) continue;
-    const config = inspected.servers[configuredName];
-    if (!config) continue;
-    return {
-      configuredName,
-      config,
-      configFingerprint: fingerprintMcpServerConfig(config),
-      scope,
-    };
-  }
-  return undefined;
 }
 
 export function upsertMcpServer(

@@ -100,14 +100,6 @@ export function installPreset(input: {
     };
   }
 
-  if (input.resolution === "use-sobject-mutations") {
-    return installPreset({
-      ...input,
-      presetId: "sobject-mutations",
-      resolution: "complement-native",
-    });
-  }
-
   let config: McpServerConfig;
   try {
     config = buildServerConfig(preset, input.resolution, input.setup);

@@ -65,11 +65,11 @@ describe("SF MCP Manager catalog", () => {
   it("renders a colorful whitespace-first catalog without internal box borders", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 4);
+    moveDown(panel, 5);
     const output = panel.renderContent(110).join("\n");
 
     expect(output).toContain("☁  Salesforce MCPs");
-    expect(output).toContain("◆  SObject All");
+    expect(output).toContain("◎  Headless 360");
     expect(output).toContain("overlap with sf-soql");
     expect(output).not.toContain("╭");
     expect(output).not.toContain("╰");
@@ -89,17 +89,14 @@ describe("SF MCP Manager catalog", () => {
   it("adopts a compatible manual entry without replacing it", () => {
     const config = {
       mcpServers: {
-        "salesforce-sobject-reads": {
-          url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+        "salesforce-data360": {
+          url: "https://api.salesforce.com/platform/mcp/v1/data/sandbox/data360",
           oauth: { clientId: "existing-client" },
           exposure: "hidden",
           toolExposure: {
-            getObjectSchema: "codemode",
-            soqlQuery: "codemode",
-            find: "codemode",
-            getUserInfo: "codemode",
-            listRecentSobjectRecords: "codemode",
-            getRelatedRecords: "codemode",
+            search: "codemode",
+            payload_examples: "codemode",
+            execute: "codemode",
           },
         },
       },
@@ -119,7 +116,7 @@ describe("SF MCP Manager catalog", () => {
   it("opens Marketing Cloud setup inside the Manager panel without secondary dialogs", () => {
     const { panel, ui } = fixture();
 
-    moveDown(panel, 12);
+    moveDown(panel, 8);
     panel.handleInput("\r");
     const output = panel.renderContent(110).join("\n");
 
@@ -133,16 +130,17 @@ describe("SF MCP Manager catalog", () => {
     expect(ui.notify).not.toHaveBeenCalled();
   });
 
-  it("keeps SObject All conflict resolution and hosted setup in the same panel", () => {
+  it("keeps Headless 360 conflict resolution and hosted setup in the same panel", () => {
     const { panel, ui } = fixture();
 
-    moveDown(panel, 4);
+    moveDown(panel, 5);
     panel.handleInput("\r");
     expect(panel.renderContent(110).join("\n")).toContain("Capability Review");
 
+    panel.handleInput("\u001b[B");
     panel.handleInput("\r");
     const output = panel.renderContent(110).join("\n");
-    expect(output).toContain("SF MCP › SObject Mutations › Setup");
+    expect(output).toContain("SF MCP › Headless 360 › Setup");
     expect(output).toContain("External Client App consumer key");
     expect(ui.select).not.toHaveBeenCalled();
     expect(ui.input).not.toHaveBeenCalled();
@@ -152,7 +150,7 @@ describe("SF MCP Manager catalog", () => {
   it("completes setup, review, apply, and result without leaving the panel", () => {
     const { cwd, panel, done, ui } = fixture();
 
-    moveDown(panel, 12);
+    moveDown(panel, 8);
     panel.handleInput("\r"); // Open setup.
     panel.handleInput("\r"); // Accept US and move to Tenant ID.
     typeText(panel, "tenant-example");
@@ -182,7 +180,7 @@ describe("SF MCP Manager catalog", () => {
   it("keeps the embedded setup page width-safe at the Manager minimum", () => {
     const { panel } = fixture();
 
-    moveDown(panel, 12);
+    moveDown(panel, 8);
     panel.handleInput("\r");
     const lines = panel.renderContent(70);
 
@@ -192,7 +190,7 @@ describe("SF MCP Manager catalog", () => {
   it("uses Escape as an in-panel back action before closing the Manager page", () => {
     const { panel, done } = fixture();
 
-    moveDown(panel, 12);
+    moveDown(panel, 8);
     panel.handleInput("\r");
     panel.handleInput("\u001b");
 

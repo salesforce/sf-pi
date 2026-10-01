@@ -39,14 +39,8 @@ export function classifySfMcpRisk(
   const { serverName, toolName: mcpTool } = identity;
 
   const payloadFingerprint = fingerprintText(JSON.stringify({ serverName, mcpTool, input }));
-  const attestation = context.mcpTargetAttestation;
-  const targetOrgVerified = !!attestation;
-  const targetOrgId = attestation?.orgId;
-  const targetOrgType = attestation
-    ? attestation.isSandbox
-      ? "sandbox"
-      : "production"
-    : context.mcpTargetType === "sandbox" || context.mcpTargetType === "production"
+  const targetOrgType =
+    context.mcpTargetType === "sandbox" || context.mcpTargetType === "production"
       ? context.mcpTargetType
       : undefined;
 
@@ -61,8 +55,6 @@ export function classifySfMcpRisk(
       deleting,
       payloadFingerprint,
       targetOrgType,
-      targetOrgId,
-      targetOrgVerified,
     });
   }
 
@@ -73,8 +65,6 @@ export function classifySfMcpRisk(
       mcpTool,
       payloadFingerprint,
       targetOrgType,
-      targetOrgId,
-      targetOrgVerified,
       ruleId: "native-sf-mcp-backup-write",
       operationFamily: "mcp backup write",
       promptTitle: "⚠ Salesforce MCP Backup and Recover write",
@@ -88,8 +78,6 @@ export function classifySfMcpRisk(
       mcpTool,
       payloadFingerprint,
       targetOrgType,
-      targetOrgId,
-      targetOrgVerified,
       ruleId: "native-sf-mcp-content-write",
       operationFamily: "mcp content write",
       promptTitle: "⚠ Salesforce MCP Content write",
@@ -103,8 +91,6 @@ export function classifySfMcpRisk(
       mcpTool,
       payloadFingerprint,
       targetOrgType,
-      targetOrgId,
-      targetOrgVerified,
       ruleId: "native-sf-mcp-headless-dispatch",
       operationFamily: "mcp headless dispatch",
       promptTitle: "⚠ Salesforce MCP Headless 360 dispatch",
@@ -128,9 +114,7 @@ export function classifySfMcpRisk(
       approvalDetail: `server=${serverName}; tool=${dispatchedTool}; payload=${payloadFingerprint}`,
       usesSalesforceOrg: true,
       targetOrgType,
-      targetOrgId,
-      targetOrgVerified,
-      targetOrgUnverified: !targetOrgVerified,
+      targetOrgUnverified: true,
       blockProductionOrUnknown: true,
       allowSession: false,
     };
@@ -190,8 +174,6 @@ function hostedOperationSubject(input: {
   mcpTool: string;
   payloadFingerprint: string;
   targetOrgType: "production" | "sandbox" | undefined;
-  targetOrgId: string | undefined;
-  targetOrgVerified: boolean;
   ruleId: string;
   operationFamily: string;
   promptTitle: string;
@@ -211,9 +193,7 @@ function hostedOperationSubject(input: {
     approvalDetail: `server=${input.serverName}; tool=${input.mcpTool}; payload=${input.payloadFingerprint}`,
     usesSalesforceOrg: true,
     targetOrgType: input.targetOrgType,
-    targetOrgId: input.targetOrgId,
-    targetOrgVerified: input.targetOrgVerified,
-    targetOrgUnverified: !input.targetOrgVerified,
+    targetOrgUnverified: true,
     blockProductionOrUnknown: true,
     allowSession: false,
   };
@@ -227,8 +207,6 @@ function recordSubject(input: {
   deleting: boolean;
   payloadFingerprint: string;
   targetOrgType: "production" | "sandbox" | undefined;
-  targetOrgId: string | undefined;
-  targetOrgVerified: boolean;
 }): NativeToolSafetySubject {
   const objectName = stringValue(input.input["sobject-name"]) ?? "unknown object";
   const recordId = stringValue(input.input.id);
@@ -245,13 +223,7 @@ function recordSubject(input: {
     action: input.mcpTool,
     ruleId: input.deleting ? "native-sf-mcp-record-delete" : "native-sf-mcp-record-write",
     subject: `${input.serverName} ${input.mcpTool} ${target}`,
-    reason: `Salesforce MCP ${actionLabel} requested for ${target}. ${
-      input.targetOrgVerified
-        ? `A one-use read-only attestation matched the MCP OAuth org to the explicit Salesforce CLI target (${input.targetOrgType}).`
-        : input.targetOrgType
-          ? `The native MCP endpoint identifies the target as ${input.targetOrgType}, but the exact OAuth org is not attested.`
-          : "The hosted OAuth target is not attested to an explicit Salesforce CLI org."
-    }`,
+    reason: `Legacy Salesforce SObject MCP ${actionLabel} requested for ${target}. SF Pi no longer manages this server family, and its OAuth org is not verified.`,
     promptTitle: input.deleting
       ? "⚠ Salesforce MCP record delete"
       : "⚠ Salesforce MCP record write",
@@ -262,9 +234,7 @@ function recordSubject(input: {
     approvalDetail: `server=${input.serverName}; tool=${input.mcpTool}; object=${objectName}; payload=${input.payloadFingerprint}`,
     usesSalesforceOrg: true,
     targetOrgType: input.targetOrgType,
-    targetOrgId: input.targetOrgId,
-    targetOrgVerified: input.targetOrgVerified,
-    targetOrgUnverified: !input.targetOrgVerified,
+    targetOrgUnverified: true,
     blockProductionOrUnknown: true,
     allowSession: false,
   };

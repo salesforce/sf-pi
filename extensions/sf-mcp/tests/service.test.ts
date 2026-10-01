@@ -35,14 +35,13 @@ describe("SF MCP preset service", () => {
       installPreset({
         cwd,
         scope: "project",
-        presetId: "sobject-reads",
+        presetId: "salesforce-dx",
         resolution: "side-by-side",
-        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
       }).ok,
     ).toBe(true);
 
     expect(buildMcpRoutingGuidelines(cwd)).toEqual([
-      expect.stringContaining("SObject Reads MCP is enabled side-by-side with sf-soql"),
+      expect.stringContaining("Salesforce DX MCP is enabled side-by-side"),
     ]);
   });
 
@@ -70,7 +69,7 @@ describe("SF MCP preset service", () => {
 
   it("adopts a compatible manual entry without replacing native configuration", () => {
     const cwd = workspace();
-    const preset = getPreset("sobject-reads");
+    const preset = getPreset("tableau-next");
     const config = buildServerConfig(preset, "enable", {
       environment: "sandbox",
       oauthClientId: "consumer-key",
@@ -85,10 +84,10 @@ describe("SF MCP preset service", () => {
 
   it("resets a reviewed manual entry to the current preset", () => {
     const cwd = workspace();
-    const preset = getPreset("sobject-reads");
+    const preset = getPreset("tableau-next");
     expect(
       upsertMcpServer(mcpConfigPath(cwd, "project"), preset.serverName, {
-        url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+        url: "https://api.salesforce.com/platform/mcp/v1/sandbox/analytics/tableau-next",
         oauth: { clientId: "old-client" },
         exposure: "codemode",
       }).ok,
@@ -133,7 +132,7 @@ describe("SF MCP preset service", () => {
 
   it("requires review when observed tools drift from the approved preset contract", () => {
     const cwd = workspace();
-    const preset = getPreset("sobject-reads");
+    const preset = getPreset("data360");
     expect(
       installPreset({
         cwd,
@@ -144,8 +143,8 @@ describe("SF MCP preset service", () => {
       }).ok,
     ).toBe(true);
     captureObservedMcpTools([
-      { name: "mcp__salesforce_sobject_reads__getObjectSchema" },
-      { name: "mcp__salesforce_sobject_reads__unexpectedWrite" },
+      { name: "mcp__salesforce_data360__search" },
+      { name: "mcp__salesforce_data360__unexpectedWrite" },
     ]);
 
     expect(inspectPresetRuntime(cwd, "project", preset).drift).toMatchObject({
@@ -158,52 +157,46 @@ describe("SF MCP preset service", () => {
     const cwd = workspace();
     const file = mcpConfigPath(cwd, "project");
     expect(
-      upsertMcpServer(file, "salesforce-sobject-reads", { url: "https://example.test/one" }).ok,
+      upsertMcpServer(file, "salesforce-headless-360", { url: "https://example.test/one" }).ok,
     ).toBe(true);
     const root = JSON.parse(readFileSync(file, "utf8"));
-    root.mcpServers.salesforce_sobject_reads = { url: "https://example.test/two" };
+    root.mcpServers.salesforce_headless_360 = { url: "https://example.test/two" };
     writeFileSync(file, `${JSON.stringify(root, null, 2)}\n`);
 
-    expect(inspectPresetRuntime(cwd, "project", getPreset("sobject-reads")).managed).toMatchObject({
+    expect(inspectPresetRuntime(cwd, "project", getPreset("headless-360")).managed).toMatchObject({
       status: "name-conflict",
     });
     expect(
       reconcileCanonicalServerNames({
         cwd,
         scope: "project",
-        presetId: "sobject-reads",
-        keepName: "salesforce_sobject_reads",
+        presetId: "headless-360",
+        keepName: "salesforce_headless_360",
       }),
     ).toMatchObject({ ok: true, reloadRequired: true });
   });
 
-  it("applies the SObject All recommendation as a scoped mutation preset", () => {
+  it("leaves an existing legacy SObject entry untouched while installing another preset", () => {
     const cwd = workspace();
-    const result = installPreset({
-      cwd,
-      scope: "project",
-      presetId: "sobject-all",
-      resolution: "use-sobject-mutations",
-      setup: { environment: "sandbox", oauthClientId: "consumer-key" },
-    });
+    const file = mcpConfigPath(cwd, "project");
+    const legacyConfig = {
+      url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+      exposure: "codemode",
+    } as const;
+    expect(upsertMcpServer(file, "salesforce-sobject-reads", legacyConfig).ok).toBe(true);
 
-    expect(result).toMatchObject({
-      ok: true,
-      preset: { id: "sobject-mutations" },
-      resolution: "complement-native",
-    });
-    const config = JSON.parse(readFileSync(mcpConfigPath(cwd, "project"), "utf8"));
-    expect(config.mcpServers).not.toHaveProperty("salesforce-sobject-all");
-    expect(config.mcpServers["salesforce-sobject-mutations"]).toMatchObject({
-      description: getPreset("sobject-mutations").description,
-      exposure: "hidden",
-      toolExposure: {
-        createSobjectRecord: "codemode",
-        updateSobjectRecord: "codemode",
-      },
-    });
     expect(
-      inspectPresetRuntime(cwd, "project", getPreset("sobject-mutations")).managed.status,
-    ).toBe("managed-enabled");
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: "headless-360",
+        resolution: "enable",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+
+    const config = JSON.parse(readFileSync(file, "utf8"));
+    expect(config.mcpServers["salesforce-sobject-reads"]).toEqual(legacyConfig);
+    expect(config.mcpServers["salesforce-headless-360"]).toBeDefined();
   });
 });

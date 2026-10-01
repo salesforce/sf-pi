@@ -11,6 +11,20 @@ import {
 } from "../lib/presets.ts";
 
 describe("SF MCP capability conflict planning", () => {
+  it("omits the legacy SObject server family from the catalog", () => {
+    const ids = SALESFORCE_MCP_PRESETS.map((preset) => preset.id);
+
+    expect(ids).not.toEqual(
+      expect.arrayContaining([
+        "sobject-reads",
+        "sobject-mutations",
+        "sobject-deletes",
+        "sobject-all",
+      ]),
+    );
+    expect(ids).toContain("headless-360");
+  });
+
   it("keeps every native overlap claim tied to a declared extension", () => {
     const extensionIds = new Set(SF_PI_REGISTRY.map((entry) => entry.id));
     for (const preset of SALESFORCE_MCP_PRESETS) {
@@ -18,40 +32,6 @@ describe("SF MCP capability conflict planning", () => {
         expect(extensionIds.has(overlap.nativeExtensionId), overlap.nativeExtensionId).toBe(true);
       }
     }
-  });
-
-  it("recommends the scoped mutation server instead of SObject All when SF SOQL is enabled", () => {
-    const plan = planPresetConflicts(getPreset("sobject-all"), new Set(["sf-soql"]));
-
-    expect(plan.conflicts).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          nativeExtensionId: "sf-soql",
-          relationship: "direct",
-        }),
-      ]),
-    );
-    expect(plan.recommendation).toMatchObject({
-      resolution: "use-sobject-mutations",
-      alternatePresetId: "sobject-mutations",
-    });
-  });
-
-  it("keeps only complementary mutation tools when SF SOQL owns reads", () => {
-    const config = buildServerConfig(getPreset("sobject-mutations"), "complement-native", {
-      environment: "sandbox",
-      oauthClientId: "consumer-key",
-    });
-
-    expect(config.exposure).toBe("hidden");
-    expect(config.description).toBe(getPreset("sobject-mutations").description);
-    expect(config.toolExposure).toEqual({
-      createSobjectRecord: "codemode",
-      updateSobjectRecord: "codemode",
-      updateRelatedRecord: "codemode",
-    });
-    expect(config.toolExposure).not.toHaveProperty("soqlQuery");
-    expect(config.toolExposure).not.toHaveProperty("getObjectSchema");
   });
 
   it("recommends the native Data 360 families when they are enabled", () => {
@@ -107,8 +87,8 @@ describe("SF MCP capability conflict planning", () => {
 
   it("refuses to adopt an ungoverned full-exposure hosted entry", () => {
     expect(
-      isPresetConfigCompatible(getPreset("sobject-reads"), {
-        url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/sobject-reads",
+      isPresetConfigCompatible(getPreset("headless-360"), {
+        url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/headless-360",
         oauth: { clientId: "consumer-key" },
         exposure: "codemode",
       }),
