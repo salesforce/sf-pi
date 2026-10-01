@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.315.0](https://github.com/salesforce/sf-pi/compare/v0.314.0...v0.315.0) (2026-10-01)
+
+
+### Features
+
+* **sf-integrate:** add integration authentication lifecycle ([3ef6b65](https://github.com/salesforce/sf-pi/commit/3ef6b6519e312ca05185549e16b2b97475457f58))
+
 ## [0.314.0](https://github.com/salesforce/sf-pi/compare/v0.313.0...v0.314.0) (2026-10-01)
 
 
