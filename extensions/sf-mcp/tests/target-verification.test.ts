@@ -100,7 +100,7 @@ describe("SF MCP exact target verification", () => {
           content: [
             {
               type: "text",
-              text: JSON.stringify([{ Id: "00D000000000002AAA", IsSandbox: true }]),
+              text: JSON.stringify([{ Id: `${ORG_ID.slice(0, -4)}2AAA`, IsSandbox: true }]),
             },
           ],
           details: undefined,
