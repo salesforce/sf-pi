@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Salesforce-published MCP presets and their deliberately small capability claims. */
-import type { McpServerConfig } from "./mcp-config.ts";
+import type { McpExposure, McpServerConfig } from "./mcp-config.ts";
 
 export type McpPresetId =
   | "salesforce-dx"
@@ -386,9 +386,13 @@ export function buildServerConfig(
   preset: McpPreset,
   resolution: McpResolution,
   setup: PresetSetup = {},
+  toolExposure?: Readonly<Record<string, McpExposure>>,
 ): McpServerConfig {
   if (resolution === "native-only") {
     throw new Error(`${resolution} does not install ${preset.id}.`);
+  }
+  if (toolExposure && !preset.approvedTools) {
+    throw new Error(`${preset.label} has no reviewed per-tool exposure contract.`);
   }
 
   if (preset.id === "salesforce-dx") {
@@ -476,15 +480,37 @@ export function buildServerConfig(
 
   const approved = approvedToolsForResolution(preset);
   if (!approved) return { ...base, exposure: "codemode" };
+  const configuredExposure = toolExposure
+    ? validateToolExposure(preset, approved, toolExposure)
+    : Object.fromEntries(approved.map((tool) => [tool, "codemode"] as const));
   return {
     ...base,
     exposure: "hidden",
-    toolExposure: Object.fromEntries(approved.map((tool) => [tool, "codemode"] as const)),
+    toolExposure: configuredExposure,
   };
 }
 
 export function approvedToolsForResolution(preset: McpPreset): string[] | undefined {
   return preset.approvedTools ? [...preset.approvedTools] : undefined;
+}
+
+function validateToolExposure(
+  preset: McpPreset,
+  approved: readonly string[],
+  toolExposure: Readonly<Record<string, McpExposure>>,
+): Record<string, McpExposure> {
+  const approvedSet = new Set(approved);
+  const configured = Object.keys(toolExposure);
+  const missing = approved.filter((tool) => !(tool in toolExposure));
+  const unknown = configured.filter((tool) => !approvedSet.has(tool));
+  if (missing.length > 0 || unknown.length > 0) {
+    throw new Error(
+      `${preset.label} tool exposure must exactly match its reviewed contract` +
+        `${missing.length > 0 ? `; missing ${missing.join(", ")}` : ""}` +
+        `${unknown.length > 0 ? `; unknown ${unknown.join(", ")}` : ""}.`,
+    );
+  }
+  return Object.fromEntries(approved.map((tool) => [tool, toolExposure[tool] ?? "hidden"]));
 }
 
 function hostedEndpointPrefix(id: McpPresetId, environment: "production" | "sandbox"): string {
@@ -569,10 +595,7 @@ export function isPresetConfigCompatible(
 
 function hasApprovedToolExposure(preset: McpPreset, config: McpServerConfig): boolean {
   if (config.exposure !== "hidden" || !config.toolExposure) return false;
-  const configured = Object.entries(config.toolExposure)
-    .filter(([, exposure]) => exposure !== "hidden")
-    .map(([name]) => name)
-    .sort();
+  const configured = Object.keys(config.toolExposure).sort();
   const approved = approvedToolsForResolution(preset)?.sort() ?? [];
   return (
     approved.length > 0 &&

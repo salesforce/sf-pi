@@ -13,9 +13,11 @@ import {
   inspectPresetRuntime,
   reconcileCanonicalServerNames,
   summarizeConfigDiff,
+  updateManagedPresetToolPolicy,
 } from "../lib/service.ts";
 import { buildServerConfig, getPreset } from "../lib/presets.ts";
 import { inspectPresetTools } from "../lib/tool-catalog.ts";
+import { buildToolExposurePolicy } from "../lib/tool-policy.ts";
 
 const tempDirs: string[] = [];
 
@@ -110,6 +112,116 @@ describe("SF MCP preset service", () => {
       exposure: "hidden",
       oauth: { clientId: "new-client" },
     });
+  });
+
+  it("installs a new preset with an explicit read-only tool policy", () => {
+    const cwd = workspace();
+    const preset = getPreset("headless-360");
+
+    const result = installPreset({
+      cwd,
+      scope: "project",
+      presetId: preset.id,
+      resolution: "side-by-side",
+      setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      toolPolicy: buildToolExposurePolicy(preset, "read-only"),
+    });
+
+    expect(result).toMatchObject({ ok: true, changed: true });
+    const written = JSON.parse(readFileSync(mcpConfigPath(cwd, "project"), "utf8"));
+    expect(written.mcpServers[preset.serverName]).toMatchObject({
+      exposure: "hidden",
+      toolExposure: {
+        discover: "codemode",
+        describe: "codemode",
+        dispatch: "hidden",
+        dispatch_readonly: "codemode",
+      },
+    });
+  });
+
+  it("updates only tool exposure on an unchanged managed preset", () => {
+    const cwd = workspace();
+    const preset = getPreset("data360");
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: preset.id,
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+
+    const result = updateManagedPresetToolPolicy({
+      cwd,
+      scope: "project",
+      presetId: preset.id,
+      policy: buildToolExposurePolicy(preset, "quarantine"),
+    });
+
+    expect(result).toMatchObject({ ok: true, changed: true, reloadRequired: true });
+    const written = JSON.parse(readFileSync(mcpConfigPath(cwd, "project"), "utf8"));
+    expect(written.mcpServers[preset.serverName]).toMatchObject({
+      oauth: { clientId: "consumer-key" },
+      exposure: "hidden",
+      toolExposure: {
+        search: "hidden",
+        payload_examples: "hidden",
+        execute: "hidden",
+      },
+    });
+  });
+
+  it("treats a semantically unchanged recommended policy as a no-op", () => {
+    const cwd = workspace();
+    const preset = getPreset("data360");
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: preset.id,
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      updateManagedPresetToolPolicy({
+        cwd,
+        scope: "project",
+        presetId: preset.id,
+        policy: buildToolExposurePolicy(preset, "recommended"),
+      }),
+    ).toMatchObject({ ok: true, changed: false, reloadRequired: false });
+  });
+
+  it("refuses tool exposure changes after an external native configuration edit", () => {
+    const cwd = workspace();
+    const preset = getPreset("data360");
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: preset.id,
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+    const file = mcpConfigPath(cwd, "project");
+    const root = JSON.parse(readFileSync(file, "utf8"));
+    root.mcpServers[preset.serverName].timeout = 30;
+    writeFileSync(file, `${JSON.stringify(root, null, 2)}\n`);
+
+    expect(
+      updateManagedPresetToolPolicy({
+        cwd,
+        scope: "project",
+        presetId: preset.id,
+        policy: buildToolExposurePolicy(preset, "quarantine"),
+      }),
+    ).toMatchObject({ ok: false, message: expect.stringContaining("not an unchanged") });
+    expect(JSON.parse(readFileSync(file, "utf8")).mcpServers[preset.serverName].timeout).toBe(30);
   });
 
   it("redacts credential values from configuration diffs", () => {

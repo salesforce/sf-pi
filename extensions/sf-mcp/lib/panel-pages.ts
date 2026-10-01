@@ -9,6 +9,12 @@ import type { McpPreset, McpResolution } from "./presets.ts";
 import type { PresetRuntimeState } from "./service.ts";
 import type { PresetSetupForm } from "./setup-form.ts";
 import type { McpToolDetail } from "./tool-catalog.ts";
+import {
+  exposureLabel,
+  profileLabel,
+  toolPolicyWarnings,
+  type ToolExposurePolicy,
+} from "./tool-policy.ts";
 
 export type ConflictOption = {
   label: string;
@@ -399,6 +405,7 @@ export function renderReviewPage(input: {
   resolution: McpResolution;
   configDiff?: string[];
   selected: number;
+  toolPolicy?: ToolExposurePolicy;
 }): string[] {
   const { theme: t, width } = input;
   const endpoint = describeTransport(input.config);
@@ -427,6 +434,28 @@ export function renderReviewPage(input: {
     ),
     `    Resolution         ${t.fg("text", resolutionLabel(input.resolution))}`,
   ];
+  if (input.toolPolicy) {
+    const counts = Object.values(input.toolPolicy.exposures).reduce<Record<string, number>>(
+      (current, exposure) => ({ ...current, [exposure]: (current[exposure] ?? 0) + 1 }),
+      {},
+    );
+    lines.push(
+      "",
+      ` ${t.fg("accent", "▰")} ${t.fg("muted", "TOOL EXPOSURE")}`,
+      `    Profile            ${t.fg("text", profileLabel(input.toolPolicy.profile))}`,
+      ...(["hidden", "codemode", "deferred", "direct"] as const).map(
+        (exposure) =>
+          `    ${exposureLabel(exposure).padEnd(19)}${t.fg("text", String(counts[exposure] ?? 0))}`,
+      ),
+    );
+    for (const warning of toolPolicyWarnings(input.preset, input.toolPolicy)) {
+      lines.push(
+        ...wrapText(warning, Math.max(24, width - 8)).map((line, index) =>
+          index === 0 ? `    ${t.fg("warning", `⚠ ${line}`)}` : `      ${t.fg("warning", line)}`,
+        ),
+      );
+    }
+  }
   if (input.configDiff && input.configDiff.length > 0) {
     lines.push(
       "",

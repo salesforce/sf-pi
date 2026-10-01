@@ -37,10 +37,24 @@ import {
   reconcileCanonicalServerNames,
   setManagedPresetEnabled,
   summarizeConfigDiff,
+  updateManagedPresetToolPolicy,
   type PresetRuntimeState,
 } from "./service.ts";
 import { PresetSetupForm } from "./setup-form.ts";
 import { getPresetToolCatalog, inspectPresetTools } from "./tool-catalog.ts";
+import {
+  renderToolPolicyPage,
+  renderToolPolicyReviewPage,
+  renderToolProfilesPage,
+} from "./tool-policy-pages.ts";
+import {
+  TOOL_POLICY_PROFILES,
+  applyToolExposurePolicy,
+  buildToolExposurePolicy,
+  cycleToolExposure,
+  hasReviewedToolPolicy,
+  type ToolExposurePolicy,
+} from "./tool-policy.ts";
 
 type ReconcileAction =
   | { kind: "adopt" }
@@ -49,13 +63,30 @@ type ReconcileAction =
   | { kind: "cancel" };
 
 type ReconcileChoice = ReconcileOption & { action: ReconcileAction };
+type OverviewAction = "tools" | "policy" | "configure" | "back";
+type OverviewChoice = PresetOverviewOption & { action: OverviewAction };
 
 type PanelView =
   | { kind: "catalog" }
   | { kind: "overview"; presetId: McpPresetId; selected: number }
   | { kind: "tools"; presetId: McpPresetId; cursor: number }
   | { kind: "tool-detail"; presetId: McpPresetId; toolName: string }
-  | { kind: "conflicts"; sourcePresetId: McpPresetId; plan: ConflictPlan; selected: number }
+  | { kind: "tool-profiles"; presetId: McpPresetId; selected: number }
+  | { kind: "tool-policy"; presetId: McpPresetId; policy: ToolExposurePolicy; cursor: number }
+  | {
+      kind: "tool-policy-review";
+      presetId: McpPresetId;
+      policy: ToolExposurePolicy;
+      proposedConfig: McpServerConfig;
+      selected: number;
+    }
+  | {
+      kind: "conflicts";
+      sourcePresetId: McpPresetId;
+      plan: ConflictPlan;
+      selected: number;
+      toolPolicy?: ToolExposurePolicy;
+    }
   | {
       kind: "reconcile";
       presetId: McpPresetId;
@@ -70,6 +101,7 @@ type PanelView =
       resolution: McpResolution;
       replaceExisting: boolean;
       form: PresetSetupForm;
+      toolPolicy?: ToolExposurePolicy;
     }
   | {
       kind: "review";
@@ -81,6 +113,7 @@ type PanelView =
       replaceExisting: boolean;
       form?: PresetSetupForm;
       selected: number;
+      toolPolicy?: ToolExposurePolicy;
     }
   | { kind: "toggle"; presetId: McpPresetId; enable: boolean; selected: number }
   | {
@@ -122,6 +155,15 @@ class SfMcpConfigPanel implements Focusable {
         return;
       case "tool-detail":
         this.handleToolDetailInput(data);
+        return;
+      case "tool-profiles":
+        this.handleToolProfilesInput(data);
+        return;
+      case "tool-policy":
+        this.handleToolPolicyInput(data);
+        return;
+      case "tool-policy-review":
+        this.handleToolPolicyReviewInput(data);
         return;
       case "conflicts":
         this.handleConflictInput(data);
@@ -207,6 +249,34 @@ class SfMcpConfigPanel implements Focusable {
             tool,
           });
         }
+        case "tool-profiles":
+          return renderToolProfilesPage({
+            theme: this.theme,
+            width,
+            preset: getPreset(view.presetId),
+            options: TOOL_POLICY_PROFILES,
+            selected: view.selected,
+          });
+        case "tool-policy":
+          return renderToolPolicyPage({
+            theme: this.theme,
+            width,
+            preset: getPreset(view.presetId),
+            policy: view.policy,
+            tools: inspectPresetTools(getPreset(view.presetId)),
+            cursor: view.cursor,
+          });
+        case "tool-policy-review": {
+          const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(view.presetId));
+          return renderToolPolicyReviewPage({
+            theme: this.theme,
+            width,
+            preset: state.preset,
+            policy: view.policy,
+            configDiff: summarizeConfigDiff(state.managed.config, view.proposedConfig),
+            selected: view.selected,
+          });
+        }
         case "conflicts":
           return renderConflictPage({
             theme: this.theme,
@@ -252,6 +322,7 @@ class SfMcpConfigPanel implements Focusable {
                 )
               : undefined,
             selected: view.selected,
+            ...(view.toolPolicy ? { toolPolicy: view.toolPolicy } : {}),
           });
         }
         case "toggle":
@@ -313,15 +384,20 @@ class SfMcpConfigPanel implements Focusable {
     if (!matchesKey(data, "enter") && !matchesKey(data, "return") && !matchesKey(data, "space")) {
       return;
     }
-    if (view.selected === 0) {
+    const choice = options[view.selected];
+    if (!choice || choice.action === "back") {
+      this.view = { kind: "catalog" };
+      return;
+    }
+    if (choice.action === "tools") {
       this.view = { kind: "tools", presetId: view.presetId, cursor: 0 };
       return;
     }
-    if (view.selected === 1) {
-      this.beginPresetConfiguration(state);
+    if (choice.action === "policy") {
+      this.view = { kind: "tool-profiles", presetId: view.presetId, selected: 0 };
       return;
     }
-    this.view = { kind: "catalog" };
+    this.beginPresetConfiguration(state);
   }
 
   private handleToolsInput(data: string): void {
@@ -367,10 +443,124 @@ class SfMcpConfigPanel implements Focusable {
     this.view = { kind: "tools", presetId: view.presetId, cursor };
   }
 
+  private handleToolProfilesInput(data: string): void {
+    const view = this.viewAs("tool-profiles");
+    if (matchesKey(data, "escape") || data === "q") {
+      this.view = { kind: "overview", presetId: view.presetId, selected: 1 };
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      view.selected = cycle(view.selected, TOOL_POLICY_PROFILES.length, -1);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      view.selected = cycle(view.selected, TOOL_POLICY_PROFILES.length, 1);
+      return;
+    }
+    if (!matchesKey(data, "enter") && !matchesKey(data, "return") && !matchesKey(data, "space")) {
+      return;
+    }
+    const option = TOOL_POLICY_PROFILES[view.selected];
+    if (!option) return;
+    const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(view.presetId));
+    try {
+      this.view = {
+        kind: "tool-policy",
+        presetId: view.presetId,
+        policy: buildToolExposurePolicy(state.preset, option.id, state.managed.config),
+        cursor: 0,
+      };
+    } catch (error) {
+      this.view = {
+        kind: "result",
+        title: "Tool policy unavailable",
+        message: error instanceof Error ? error.message : String(error),
+        tone: "warning",
+        needsReload: false,
+      };
+    }
+  }
+
+  private handleToolPolicyInput(data: string): void {
+    const view = this.viewAs("tool-policy");
+    if (matchesKey(data, "escape") || data === "q") {
+      this.view = { kind: "overview", presetId: view.presetId, selected: 1 };
+      return;
+    }
+    if (data === "p" || data === "P") {
+      this.view = { kind: "tool-profiles", presetId: view.presetId, selected: 0 };
+      return;
+    }
+    const preset = getPreset(view.presetId);
+    const tools = inspectPresetTools(preset).filter((tool) => tool.documented);
+    if (matchesKey(data, "up")) {
+      view.cursor = cycle(view.cursor, tools.length, -1);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      view.cursor = cycle(view.cursor, tools.length, 1);
+      return;
+    }
+    if (matchesKey(data, "left") || matchesKey(data, "right") || matchesKey(data, "space")) {
+      const tool = tools[view.cursor];
+      if (!tool || view.policy.unavailable.includes(tool.name)) return;
+      view.policy = cycleToolExposure(
+        preset,
+        view.policy,
+        tool.name,
+        matchesKey(data, "left") ? -1 : 1,
+      );
+      return;
+    }
+    if (data === "a" || data === "A") this.continueToolPolicy(view.presetId, view.policy);
+  }
+
+  private handleToolPolicyReviewInput(data: string): void {
+    const view = this.viewAs("tool-policy-review");
+    if (matchesKey(data, "escape") || data === "q") {
+      this.view = {
+        kind: "tool-policy",
+        presetId: view.presetId,
+        policy: view.policy,
+        cursor: 0,
+      };
+      return;
+    }
+    if (
+      matchesKey(data, "up") ||
+      matchesKey(data, "down") ||
+      matchesKey(data, "left") ||
+      matchesKey(data, "right")
+    ) {
+      view.selected = view.selected === 0 ? 1 : 0;
+      return;
+    }
+    if (!matchesKey(data, "enter") && !matchesKey(data, "return") && !matchesKey(data, "space")) {
+      return;
+    }
+    if (view.selected === 1) {
+      this.view = {
+        kind: "tool-policy",
+        presetId: view.presetId,
+        policy: view.policy,
+        cursor: 0,
+      };
+      return;
+    }
+    this.finishMutation(
+      updateManagedPresetToolPolicy({
+        cwd: this.cwd,
+        scope: this.scope,
+        presetId: view.presetId,
+        policy: view.policy,
+      }),
+    );
+  }
+
   private handleConflictInput(data: string): void {
     const view = this.viewAs("conflicts");
     if (matchesKey(data, "escape") || data === "q") {
-      this.view = { kind: "overview", presetId: view.sourcePresetId, selected: 1 };
+      this.backFromConflict(view);
       return;
     }
     const options = conflictOptions(view.plan);
@@ -387,7 +577,7 @@ class SfMcpConfigPanel implements Focusable {
     }
     const option = options[view.selected];
     if (!option?.resolution) {
-      this.view = { kind: "overview", presetId: view.sourcePresetId, selected: 1 };
+      this.backFromConflict(view);
       return;
     }
     if (option.resolution === "native-only") {
@@ -400,7 +590,7 @@ class SfMcpConfigPanel implements Focusable {
       };
       return;
     }
-    this.openSetup(view.sourcePresetId, option.resolution);
+    this.openSetup(view.sourcePresetId, option.resolution, false, view.toolPolicy);
   }
 
   private handleReconcileInput(data: string): void {
@@ -451,7 +641,7 @@ class SfMcpConfigPanel implements Focusable {
     const event = view.form.handleInput(data);
     if (!event) return;
     if (event.kind === "back") {
-      this.backFromSetup(view.sourcePresetId, view.replaceExisting);
+      this.backFromSetup(view.sourcePresetId, view.replaceExisting, view.toolPolicy);
       return;
     }
     this.openReview({
@@ -461,6 +651,7 @@ class SfMcpConfigPanel implements Focusable {
       setup: event.setup,
       form: view.form,
       replaceExisting: view.replaceExisting,
+      ...(view.toolPolicy ? { toolPolicy: view.toolPolicy } : {}),
     });
   }
 
@@ -493,6 +684,7 @@ class SfMcpConfigPanel implements Focusable {
       resolution: view.resolution,
       setup: view.setup,
       replaceExisting: view.replaceExisting,
+      ...(view.toolPolicy ? { toolPolicy: view.toolPolicy } : {}),
     });
     this.finishMutation(result);
   }
@@ -563,7 +755,78 @@ class SfMcpConfigPanel implements Focusable {
     this.view = { kind: "overview", presetId: state.preset.id, selected: 0 };
   }
 
-  private beginPresetConfiguration(state: PresetRuntimeState): void {
+  private continueToolPolicy(presetId: McpPresetId, policy: ToolExposurePolicy): void {
+    const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(presetId));
+    if (this.scope === "project" && !this.projectTrusted) {
+      this.view = {
+        kind: "result",
+        title: "Project setup unavailable",
+        message:
+          "Project MCP configuration is unavailable until Pi trusts this project. Switch to global scope or use /trust.",
+        tone: "warning",
+        needsReload: false,
+      };
+      return;
+    }
+    if (state.managed.status === "missing") {
+      this.beginPresetConfiguration(state, policy);
+      return;
+    }
+    if (
+      (state.managed.status === "managed-enabled" || state.managed.status === "managed-disabled") &&
+      state.managed.config
+    ) {
+      try {
+        this.view = {
+          kind: "tool-policy-review",
+          presetId,
+          policy,
+          proposedConfig: applyToolExposurePolicy(state.preset, state.managed.config, policy),
+          selected: 0,
+        };
+      } catch (error) {
+        this.view = {
+          kind: "result",
+          title: "Tool policy validation failed",
+          message: error instanceof Error ? error.message : String(error),
+          tone: "error",
+          needsReload: false,
+        };
+      }
+      return;
+    }
+    this.view = {
+      kind: "result",
+      title: "Review existing configuration first",
+      message:
+        "Adopt or reset the existing native MCP entry before changing its governed tool exposure.",
+      tone: "warning",
+      needsReload: false,
+    };
+  }
+
+  private backFromConflict(view: Extract<PanelView, { kind: "conflicts" }>): void {
+    if (view.toolPolicy) {
+      this.view = {
+        kind: "tool-policy",
+        presetId: view.sourcePresetId,
+        policy: view.toolPolicy,
+        cursor: 0,
+      };
+      return;
+    }
+    const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(view.sourcePresetId));
+    this.view = {
+      kind: "overview",
+      presetId: view.sourcePresetId,
+      selected: overviewActionIndex(state, "configure"),
+    };
+  }
+
+  private beginPresetConfiguration(
+    state: PresetRuntimeState,
+    toolPolicy?: ToolExposurePolicy,
+  ): void {
     if (this.scope === "project" && !this.projectTrusted) {
       this.view = {
         kind: "result",
@@ -614,10 +877,11 @@ class SfMcpConfigPanel implements Focusable {
         sourcePresetId: state.preset.id,
         plan: state.plan,
         selected: 0,
+        ...(toolPolicy ? { toolPolicy } : {}),
       };
       return;
     }
-    this.openSetup(state.preset.id, "enable", false);
+    this.openSetup(state.preset.id, "enable", false, toolPolicy);
   }
 
   private openReconcile(state: PresetRuntimeState): void {
@@ -634,6 +898,7 @@ class SfMcpConfigPanel implements Focusable {
     sourcePresetId: McpPresetId,
     resolution: McpResolution,
     replaceExisting = false,
+    toolPolicy?: ToolExposurePolicy,
   ): void {
     const targetPreset = getPreset(sourcePresetId);
     if (targetPreset.setup === "ready") {
@@ -643,6 +908,7 @@ class SfMcpConfigPanel implements Focusable {
         resolution,
         setup: {},
         replaceExisting,
+        ...(toolPolicy ? { toolPolicy } : {}),
       });
       return;
     }
@@ -653,6 +919,7 @@ class SfMcpConfigPanel implements Focusable {
       resolution,
       replaceExisting,
       form: new PresetSetupForm(this.theme, targetPreset),
+      ...(toolPolicy ? { toolPolicy } : {}),
     };
   }
 
@@ -663,10 +930,16 @@ class SfMcpConfigPanel implements Focusable {
     setup: PresetSetup;
     form?: PresetSetupForm;
     replaceExisting?: boolean;
+    toolPolicy?: ToolExposurePolicy;
   }): void {
     const targetPreset = getPreset(input.targetPresetId);
     try {
-      const config = buildServerConfig(targetPreset, input.resolution, input.setup);
+      const config = buildServerConfig(
+        targetPreset,
+        input.resolution,
+        input.setup,
+        input.toolPolicy?.exposures,
+      );
       this.view = {
         kind: "review",
         ...input,
@@ -685,15 +958,33 @@ class SfMcpConfigPanel implements Focusable {
     }
   }
 
-  private backFromSetup(sourcePresetId: McpPresetId, replaceExisting = false): void {
+  private backFromSetup(
+    sourcePresetId: McpPresetId,
+    replaceExisting = false,
+    toolPolicy?: ToolExposurePolicy,
+  ): void {
     const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(sourcePresetId));
     if (replaceExisting) {
       this.openReconcile(state);
       return;
     }
-    this.view = state.plan.conflicts.length
-      ? { kind: "conflicts", sourcePresetId, plan: state.plan, selected: 0 }
-      : { kind: "overview", presetId: sourcePresetId, selected: 1 };
+    if (state.plan.conflicts.length) {
+      this.view = {
+        kind: "conflicts",
+        sourcePresetId,
+        plan: state.plan,
+        selected: 0,
+        ...(toolPolicy ? { toolPolicy } : {}),
+      };
+      return;
+    }
+    this.view = toolPolicy
+      ? { kind: "tool-policy", presetId: sourcePresetId, policy: toolPolicy, cursor: 0 }
+      : {
+          kind: "overview",
+          presetId: sourcePresetId,
+          selected: overviewActionIndex(state, "configure"),
+        };
   }
 
   private backFromReview(): void {
@@ -706,10 +997,11 @@ class SfMcpConfigPanel implements Focusable {
         resolution: this.view.resolution,
         replaceExisting: this.view.replaceExisting,
         form: this.view.form,
+        ...(this.view.toolPolicy ? { toolPolicy: this.view.toolPolicy } : {}),
       };
       return;
     }
-    this.backFromSetup(this.view.sourcePresetId, this.view.replaceExisting);
+    this.backFromSetup(this.view.sourcePresetId, this.view.replaceExisting, this.view.toolPolicy);
   }
 
   private openToggle(enable: boolean): void {
@@ -771,7 +1063,7 @@ class SfMcpConfigPanel implements Focusable {
   }
 }
 
-function overviewOptions(state: PresetRuntimeState): PresetOverviewOption[] {
+function overviewOptions(state: PresetRuntimeState): OverviewChoice[] {
   const configureLabel =
     state.managed.status === "managed-enabled"
       ? "Review current configuration"
@@ -780,22 +1072,44 @@ function overviewOptions(state: PresetRuntimeState): PresetOverviewOption[] {
         : ["manual", "modified", "managed-outdated", "name-conflict"].includes(state.managed.status)
           ? "Review configuration"
           : "Configure connection";
-  return [
+  const options: OverviewChoice[] = [
     {
       label: "Review tools",
       description:
         "Inspect documented and session-observed tools, capabilities, risk, exposure, and runtime metadata without changing configuration.",
+      action: "tools",
     },
+  ];
+  if (
+    hasReviewedToolPolicy(state.preset) &&
+    ["missing", "managed-enabled", "managed-disabled"].includes(state.managed.status)
+  ) {
+    options.push({
+      label: "Configure tool exposure",
+      description:
+        "Choose a reviewed profile, then set approved tools to Hidden, Code Mode, Deferred, or Direct.",
+      action: "policy",
+    });
+  }
+  options.push(
     {
       label: configureLabel,
       description:
         "Continue to conflict review, connection setup, and an explicit native configuration diff.",
+      action: "configure",
     },
     {
       label: "Back to catalog",
       description: "Return without changing native MCP configuration.",
+      action: "back",
     },
-  ];
+  );
+  return options;
+}
+
+function overviewActionIndex(state: PresetRuntimeState, action: OverviewAction): number {
+  const index = overviewOptions(state).findIndex((option) => option.action === action);
+  return Math.max(0, index);
 }
 
 function reconcileOptions(state: PresetRuntimeState): ReconcileChoice[] {

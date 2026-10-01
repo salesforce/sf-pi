@@ -17,12 +17,18 @@ import {
 } from "./mcp-config.ts";
 import {
   createManagedStateStore,
+  fingerprintConfig,
   forgetManagedServer,
   inspectManagedServer,
   recordManagedServer,
   type ManagedServerInspection,
 } from "./managed-state.ts";
 import { inspectObservedToolDrift, type ObservedToolDrift } from "./observed-tools.ts";
+import {
+  applyToolExposurePolicy,
+  validateToolExposurePolicy,
+  type ToolExposurePolicy,
+} from "./tool-policy.ts";
 import {
   SALESFORCE_MCP_PRESETS,
   buildServerConfig,
@@ -85,6 +91,7 @@ export function installPreset(input: {
   resolution: McpResolution;
   setup?: PresetSetup;
   replaceExisting?: boolean;
+  toolPolicy?: ToolExposurePolicy;
 }): PresetMutationResult {
   const preset = getPreset(input.presetId);
   if (input.resolution === "native-only") {
@@ -101,7 +108,8 @@ export function installPreset(input: {
 
   let config: McpServerConfig;
   try {
-    config = buildServerConfig(preset, input.resolution, input.setup);
+    if (input.toolPolicy) validateToolExposurePolicy(preset, input.toolPolicy);
+    config = buildServerConfig(preset, input.resolution, input.setup, input.toolPolicy?.exposures);
   } catch (error) {
     return { ok: false, message: errorMessage(error) };
   }
@@ -306,6 +314,68 @@ export function setManagedPresetEnabled(input: {
     changed: true,
     reloadRequired: true,
     message: `${input.enabled ? "Enabled" : "Disabled"} ${preset.label} in ${file}.`,
+  };
+}
+
+export function updateManagedPresetToolPolicy(input: {
+  cwd: string;
+  scope: "global" | "project";
+  presetId: McpPresetId;
+  policy: ToolExposurePolicy;
+}): PresetMutationResult {
+  const preset = getPreset(input.presetId);
+  const file = mcpConfigPath(input.cwd, input.scope);
+  const store = createManagedStateStore(input.cwd, input.scope);
+  const managed = inspectManagedServer(file, store, {
+    serverName: preset.serverName,
+    presetId: preset.id,
+    presetRevision: preset.revision,
+  });
+  if (
+    (managed.status !== "managed-enabled" && managed.status !== "managed-disabled") ||
+    !managed.config ||
+    !managed.configuredName
+  ) {
+    return {
+      ok: false,
+      message: `${preset.label} is not an unchanged SF MCP-managed entry. Review or reset it before changing tool exposure.`,
+    };
+  }
+
+  let config: McpServerConfig;
+  try {
+    config = applyToolExposurePolicy(preset, managed.config, input.policy);
+  } catch (error) {
+    return { ok: false, message: errorMessage(error) };
+  }
+  if (fingerprintConfig(config) === fingerprintConfig(managed.config)) {
+    return {
+      ok: true,
+      preset,
+      resolution: managed.record?.resolution ?? "enable",
+      path: file,
+      changed: false,
+      reloadRequired: false,
+      message: `${preset.label} already uses the selected tool exposure policy.`,
+    };
+  }
+
+  const mutation = replaceMcpServer(file, managed.configuredName, config);
+  if (mutation.ok === false) return { ok: false, message: mutation.message };
+  recordManagedServer(store, managed.configuredName, {
+    presetId: preset.id,
+    presetRevision: preset.revision,
+    resolution: managed.record?.resolution ?? "enable",
+    config,
+  });
+  return {
+    ok: true,
+    preset,
+    resolution: managed.record?.resolution ?? "enable",
+    path: file,
+    changed: true,
+    reloadRequired: true,
+    message: `Updated ${preset.label} tool exposure in ${file}. Reload Pi to apply it.`,
   };
 }
 

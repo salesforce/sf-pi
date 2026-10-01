@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow opens each preset with a non-mutating overview and documented tool catalog, merges bounded session-observed descriptions, schemas, annotations, and exposure, then keeps conflict review, setup, adoption, redacted diff, reset, canonical-name reconciliation, apply, and results inside one floating panel. It preserves manual native configuration, keeps unknown tools quarantined, and writes no server entry until the user explicitly configures, enables, or resets one.
+Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow opens each preset with a non-mutating overview and documented tool catalog, merges bounded session-observed metadata, and authors exact reviewed per-tool exposure through Recommended, Read-only, All approved, Custom, or Quarantine profiles. Hidden, Code Mode, Deferred, and Direct choices receive an explicit redacted diff before SF MCP updates an unchanged managed native entry or carries the policy through setup. It preserves manual configuration, keeps unknown tools quarantined, and writes nothing until the user explicitly applies a reviewed change.
 
 ## Start
 
@@ -35,7 +35,9 @@ Open its Manager detail or change its package state with:
 - Direct capability overlaps default to native SF Pi owners; complementary profiles use hidden-by-default server exposure with exact approved tools.
 - Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.
 - Pi-normalized server-name collisions require the user to choose the one entry to keep.
-- Governed hosted presets use hidden exposure with exact approved tools, and custom MCP URLs start with no callable tools.
+- Governed hosted presets use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.
+- Tool policy profiles support Hidden, Code Mode, Deferred, and Direct exposure, with warnings for risky Direct choices and explicit diff review before persistence.
+- Custom MCP URLs start with no callable tools.
 - Legacy SObject MCP entries are not managed by SF MCP; if manually configured, their mutation tools remain Guardrail-mediated and fail closed.
 - MuleSoft secrets are referenced through environment variables and are never stored in native MCP configuration or SF MCP state.
 

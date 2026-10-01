@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import { visibleWidth } from "@earendil-works/pi-tui";
 
 import { createConfigPanel } from "../lib/config-panel.ts";
 import { captureObservedMcpTools } from "../lib/observed-tools.ts";
+import { installPreset } from "../lib/service.ts";
 
 const tempDirs: string[] = [];
 
@@ -108,6 +109,101 @@ describe("SF MCP Manager catalog", () => {
     expect(ui.confirm).not.toHaveBeenCalled();
   });
 
+  it("configures a read-only profile and supports custom per-tool exposure without writing", () => {
+    const { cwd, panel } = fixture();
+
+    moveDown(panel, 5);
+    panel.handleInput("\r"); // Overview.
+    panel.handleInput("\u001b[B"); // Configure tools.
+    panel.handleInput("\r");
+    expect(panel.renderContent(110).join("\n")).toContain("Tool Exposure Profiles");
+
+    panel.handleInput("\u001b[B"); // Read-only.
+    panel.handleInput("\r");
+    let output = panel.renderContent(110).join("\n");
+    expect(output).toContain("Tool Exposure Policy");
+    expect(output).toContain("READ-ONLY");
+    expect(output).toContain("dispatch");
+    expect(output).toContain("Hidden");
+
+    panel.handleInput("\u001b[B");
+    panel.handleInput("\u001b[B"); // dispatch.
+    panel.handleInput("\u001b[C");
+    panel.handleInput("\u001b[C");
+    panel.handleInput("\u001b[C"); // Hidden → Direct.
+    output = panel.renderContent(110).join("\n");
+    expect(output).toContain("CUSTOM");
+    expect(output).toContain("Direct exposure with Mixed risk");
+    expect(existsSync(path.join(cwd, ".pi", "mcp.json"))).toBe(false);
+  });
+
+  it("carries a selected tool profile through conflict, setup, review, and apply", () => {
+    const { cwd, panel } = fixture();
+
+    moveDown(panel, 5);
+    panel.handleInput("\r"); // Overview.
+    panel.handleInput("\u001b[B"); // Configure tools.
+    panel.handleInput("\r");
+    panel.handleInput("\u001b[B"); // Read-only.
+    panel.handleInput("\r");
+    panel.handleInput("A"); // Continue to conflict review.
+    expect(panel.renderContent(110).join("\n")).toContain("Capability Review");
+
+    panel.handleInput("\u001b[B"); // Enable side-by-side.
+    panel.handleInput("\r");
+    panel.handleInput("\r"); // Accept sandbox and focus client id.
+    typeText(panel, "consumer-key");
+    panel.handleInput("\r"); // Review action.
+    panel.handleInput("\r"); // Open review.
+    const reviewLines = panel.renderContent(70);
+    const review = reviewLines.join("\n");
+    expect(review).toContain("TOOL EXPOSURE");
+    expect(review).toContain("Read-only");
+    expect(reviewLines.every((line) => visibleWidth(line) <= 70)).toBe(true);
+
+    panel.handleInput("\r"); // Apply.
+    const config = JSON.parse(readFileSync(path.join(cwd, ".pi", "mcp.json"), "utf8"));
+    expect(config.mcpServers["salesforce-headless-360"].toolExposure).toEqual({
+      discover: "codemode",
+      describe: "codemode",
+      dispatch: "hidden",
+      dispatch_readonly: "codemode",
+    });
+  });
+
+  it("diff-reviews and updates tool exposure on an existing managed preset", () => {
+    const { cwd, panel } = fixture();
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: "data360",
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+
+    moveDown(panel, 1);
+    panel.handleInput("\r"); // Overview.
+    panel.handleInput("\u001b[B"); // Configure tools.
+    panel.handleInput("\r");
+    moveDown(panel, 4); // Quarantine.
+    panel.handleInput("\r");
+    panel.handleInput("A");
+    const review = panel.renderContent(110).join("\n");
+    expect(review).toContain("Tool Policy Review");
+    expect(review).toContain("Quarantine");
+    expect(review).toContain("execute:hidden");
+
+    panel.handleInput("\r"); // Apply.
+    const config = JSON.parse(readFileSync(path.join(cwd, ".pi", "mcp.json"), "utf8"));
+    expect(Object.values(config.mcpServers["salesforce-data360"].toolExposure)).toEqual([
+      "hidden",
+      "hidden",
+      "hidden",
+    ]);
+  });
+
   it("keeps overview, tool list, and tool detail width-safe at the Manager minimum", () => {
     const { panel } = fixture();
 
@@ -118,6 +214,20 @@ describe("SF MCP Manager catalog", () => {
     panel.handleInput("\r");
     expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
 
+    panel.handleInput("\r");
+    expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
+  });
+
+  it("keeps profile and tool policy pages width-safe at the Manager minimum", () => {
+    const { panel } = fixture();
+
+    moveDown(panel, 5);
+    panel.handleInput("\r");
+    panel.handleInput("\u001b[B");
+    panel.handleInput("\r");
+    expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
+
+    panel.handleInput("\u001b[B");
     panel.handleInput("\r");
     expect(panel.renderContent(70).every((line) => visibleWidth(line) <= 70)).toBe(true);
   });
@@ -215,7 +325,8 @@ describe("SF MCP Manager catalog", () => {
 
     moveDown(panel, 5);
     panel.handleInput("\r"); // Open overview.
-    panel.handleInput("\u001b[B"); // Configure.
+    panel.handleInput("\u001b[B"); // Configure tools.
+    panel.handleInput("\u001b[B"); // Configure connection.
     panel.handleInput("\r");
     expect(panel.renderContent(110).join("\n")).toContain("Capability Review");
 

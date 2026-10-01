@@ -102,6 +102,22 @@ describe("SF MCP capability conflict planning", () => {
     }
   });
 
+  it("accepts a governed hosted entry when reviewed tools use mixed exposure modes", () => {
+    expect(
+      isPresetConfigCompatible(getPreset("headless-360"), {
+        url: "https://api.salesforce.com/platform/mcp/v1/sandbox/platform/headless-360",
+        oauth: { clientId: "consumer-key" },
+        exposure: "hidden",
+        toolExposure: {
+          discover: "codemode",
+          describe: "deferred",
+          dispatch: "hidden",
+          dispatch_readonly: "direct",
+        },
+      }),
+    ).toEqual({ compatible: true });
+  });
+
   it("refuses to adopt an ungoverned full-exposure hosted entry", () => {
     expect(
       isPresetConfigCompatible(getPreset("headless-360"), {

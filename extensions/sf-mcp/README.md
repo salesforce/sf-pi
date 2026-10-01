@@ -16,7 +16,9 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 - Offers explicit adoption, redacted diff, reset, and canonical-name reconciliation for existing entries.
 - Versions governed preset contracts and reports observed tool additions or removals.
 - Keeps newly discovered tools hidden for presets with an approved tool contract.
-- Uses `/mcp` for connection state, OAuth, errors, reconnects, and exposure review.
+- Authors exact per-tool exposure through Recommended, Read-only, All approved, Custom, and Quarantine profiles.
+- Supports Pi's Hidden, Code Mode, Deferred, and Direct exposure modes with explicit diff review and warnings for risky Direct choices.
+- Uses `/mcp` for connection state, OAuth, errors, reconnects, and manual runtime review.
 
 The SF MCP extension is enabled by default for discoverability, but **every MCP server is off by default**. Loading SF Pi performs no Salesforce MCP network request or subprocess launch.
 
@@ -47,7 +49,7 @@ Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` pr
 
 ## Configuration
 
-Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. Review the documented and session-observed tools, then choose **Configure connection** to continue to capability review, setup fields, configuration review, apply, and result states inside the same SF Pi Manager window. Choose global or trusted-project scope before applying the preset. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, exposure changes, and reconnects.
+Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. **Configure tool exposure** opens a reviewed profile and per-tool editor; **Configure connection** continues to capability review, setup fields, configuration review, apply, and result states. For a new server, SF MCP carries the selected tool policy through connection setup. For an unchanged managed server, it shows an exact redacted diff and updates only `exposure` and `toolExposure`. Choose global or trusted-project scope before applying a change. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, manual exposure review, and reconnects.
 
 Governed hosted presets include concise, versioned tool summaries sourced from the preset's official Salesforce documentation. Servers with package-defined, permission-scoped, or custom tool catalogs show reviewed capability groups before setup and their exact tool metadata after Pi observes a live connection. An observed tool that is absent from the approved preset contract remains visibly unapproved and inherits the server's hidden exposure.
 
@@ -58,7 +60,9 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - The catalog is local and performs no network request or subprocess launch at startup.
 - MCP servers, tools, OAuth, and resources remain off until explicit setup.
 - Complementary profiles hide overlapping tools rather than merely deferring them.
-- Governed hosted presets use hidden server exposure with exact approved tools, so newly discovered tools remain unreachable until a preset revision approves them.
+- Governed hosted presets use hidden server exposure with an exact reviewed tool policy, so newly discovered tools remain unreachable until a preset revision approves them.
+- Read-only profiles hide every write, destructive, mixed, or unknown-risk tool. Documented tools missing from an observed live contract remain locked hidden.
+- Direct exposure for a non-read tool is allowed only as an explicit custom choice and produces a visible warning before apply.
 - New custom servers start with `hidden` exposure and no callable tools.
 - OAuth tokens remain in Pi's native MCP credential store.
 - External Client App consumer keys are public client identifiers; client secrets are never requested for Salesforce Hosted MCP presets.
@@ -74,9 +78,9 @@ Pi remains authoritative for:
 - OAuth token storage and refresh
 - connection and error state
 - tool discovery and resources
-- exposure, codemode, and tool search
+- runtime enforcement of exposure, Code Mode, and tool search
 
-SF MCP stores only a short configuration fingerprint, preset id, preset revision, and selected resolution so it can detect manual edits and outdated presets. Observed tool names are session-local. It stores no OAuth tokens, client secrets, record data, or tool arguments.
+SF MCP authors reviewed native `exposure` and `toolExposure` fields, while Pi remains the runtime authority that enforces them. The selected per-tool policy lives in `mcp.json`; SF MCP does not duplicate it in extension state. SF MCP stores only a short configuration fingerprint, preset id, preset revision, and selected resolution so it can detect manual edits and outdated presets. Observed tool metadata is session-local. It stores no OAuth tokens, client secrets, record data, or tool arguments.
 
 ## Legacy SObject Servers
 
