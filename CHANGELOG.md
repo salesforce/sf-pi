@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.311.0](https://github.com/salesforce/sf-pi/compare/v0.310.0...v0.311.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** expand published tool catalogs ([c771f8c](https://github.com/salesforce/sf-pi/commit/c771f8c799eafb0b91492b5800673ba580162b93))
+
 ## [0.310.0](https://github.com/salesforce/sf-pi/compare/v0.309.0...v0.310.0) (2026-10-01)
 
 
