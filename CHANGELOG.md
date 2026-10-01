@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.309.0](https://github.com/salesforce/sf-pi/compare/v0.308.0...v0.309.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** add per-tool exposure policies ([ef5c5ea](https://github.com/salesforce/sf-pi/commit/ef5c5eab5f5b48c213331c691aee656337a68d33))
+
 ## [0.308.0](https://github.com/salesforce/sf-pi/compare/v0.307.1...v0.308.0) (2026-10-01)
 
 
