@@ -180,7 +180,8 @@
     "vitest": "Vitest resolves Vite as a transitive test runner dependency. Force the patched Vite 7 line for tests until Vitest naturally resolves to a patched Vite release without overrides.",
     "esbuild": "Force >= 0.28.1 to clear GHSA-gv7w-rqvm-qjhr. Vite uses esbuild as build/test tooling; remove once all Vite ranges in the tree naturally require a patched esbuild.",
     "vite": "Direct dev dependency used to satisfy Vite peer imports for VitePress/Vitest while pinning a patched Vite line. Keep aligned with the transitive Vite overrides and remove only if docs/test tooling no longer requires a root peer install.",
-    "minimatch": "Force minimatch 10.2.5+ across the dependency tree and lock production brace-expansion to 5.0.9+ to clear GHSA-mh99-v99m-4gvg and GHSA-rgw5-rvv9-x895. Remove once @salesforce/source-deploy-retrieve and vscode-languageclient naturally require patched matcher releases. Pi's audited development package currently shrinkwraps its own nested matcher tree."
+    "minimatch": "Force minimatch 10.2.5+ across the dependency tree and lock production brace-expansion to 5.0.9+ to clear GHSA-mh99-v99m-4gvg and GHSA-rgw5-rvv9-x895. Remove once @salesforce/source-deploy-retrieve and vscode-languageclient naturally require patched matcher releases. Pi's audited development package currently shrinkwraps its own nested matcher tree.",
+    "basic-ftp": "Force basic-ftp 6.2.1+ to clear GHSA-c475-qrg2-pj4r (quadratic-time CPU denial of service in Unix directory-list parsing). Reaches sf-pi through @salesforce/source-deploy-retrieve -> proxy-agent -> pac-proxy-agent -> get-uri; remove once get-uri requires a patched release."
   },
   "overrides": {
     "fast-xml-parser": "^5.7.0",
@@ -197,6 +198,7 @@
       "vite": "7.3.5"
     },
     "esbuild": "^0.28.1",
-    "minimatch": "^10.2.5"
+    "minimatch": "^10.2.5",
+    "basic-ftp": "^6.2.1"
   }
 }
