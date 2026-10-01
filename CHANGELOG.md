@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.306.0](https://github.com/salesforce/sf-pi/compare/v0.305.0...v0.306.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** govern hosted presets and attest exact targets ([b36a2ba](https://github.com/salesforce/sf-pi/commit/b36a2bab2eeb55a4310fc4cd9b222750259c29cb))
+
+
+### Bug Fixes
+
+* **sf-mcp:** sanitize target attestation fixture ([81c55fe](https://github.com/salesforce/sf-pi/commit/81c55fefc4aee76c3b1bb84d3f8d6d3c9882829f))
+
 ## [0.305.0](https://github.com/salesforce/sf-pi/compare/v0.304.0...v0.305.0) (2026-09-30)
 
 
