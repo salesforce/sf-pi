@@ -474,7 +474,7 @@ export function buildServerConfig(
     timeout: 120,
   };
 
-  const approved = approvedToolsForResolution(preset, resolution);
+  const approved = approvedToolsForResolution(preset);
   if (!approved) return { ...base, exposure: "codemode" };
   return {
     ...base,
@@ -483,10 +483,7 @@ export function buildServerConfig(
   };
 }
 
-export function approvedToolsForResolution(
-  preset: McpPreset,
-  _resolution: McpResolution,
-): string[] | undefined {
+export function approvedToolsForResolution(preset: McpPreset): string[] | undefined {
   return preset.approvedTools ? [...preset.approvedTools] : undefined;
 }
 
@@ -576,15 +573,11 @@ function hasApprovedToolExposure(preset: McpPreset, config: McpServerConfig): bo
     .filter(([, exposure]) => exposure !== "hidden")
     .map(([name]) => name)
     .sort();
-  const candidates = [
-    approvedToolsForResolution(preset, "enable") ?? [],
-    approvedToolsForResolution(preset, "complement-native") ?? [],
-  ];
-  return candidates.some(
-    (candidate) =>
-      candidate.length > 0 &&
-      candidate.length === configured.length &&
-      [...candidate].sort().every((name, index) => name === configured[index]),
+  const approved = approvedToolsForResolution(preset)?.sort() ?? [];
+  return (
+    approved.length > 0 &&
+    approved.length === configured.length &&
+    approved.every((name, index) => name === configured[index])
   );
 }
 

@@ -25,7 +25,6 @@ import {
 import { inspectObservedToolDrift, type ObservedToolDrift } from "./observed-tools.ts";
 import {
   SALESFORCE_MCP_PRESETS,
-  approvedToolsForResolution,
   buildServerConfig,
   getPreset,
   isPresetConfigCompatible,
@@ -74,7 +73,7 @@ export function inspectPresetRuntime(
     preset,
     plan: planPresetConflicts(preset, enabledOverlapOwners(cwd, preset)),
     managed,
-    drift: inspectObservedToolDrift(preset, managed.record?.resolution ?? "enable"),
+    drift: inspectObservedToolDrift(preset),
     scopeConflict: inspectScopeConflict(cwd, scope, preset),
   };
 }
@@ -181,7 +180,7 @@ export function adoptPreset(input: {
         compatibility.reason ?? `${managed.configuredName} is not compatible with this preset.`,
     };
   }
-  const resolution = managed.record?.resolution ?? inferResolution(preset, managed.config);
+  const resolution = managed.record?.resolution ?? "enable";
   recordManagedServer(store, managed.configuredName, {
     presetId: preset.id,
     presetRevision: preset.revision,
@@ -308,21 +307,6 @@ export function setManagedPresetEnabled(input: {
     reloadRequired: true,
     message: `${input.enabled ? "Enabled" : "Disabled"} ${preset.label} in ${file}.`,
   };
-}
-
-function inferResolution(preset: McpPreset, config: McpServerConfig): McpResolution {
-  if (config.exposure !== "hidden") return "enable";
-  const configured = Object.keys(config.toolExposure ?? {}).sort();
-  const complementary = approvedToolsForResolution(preset, "complement-native")?.sort() ?? [];
-  const full = approvedToolsForResolution(preset, "enable")?.sort() ?? [];
-  if (
-    configured.length === complementary.length &&
-    configured.every((name, index) => name === complementary[index]) &&
-    configured.some((name, index) => name !== full[index])
-  ) {
-    return "complement-native";
-  }
-  return "enable";
 }
 
 function summarizeConfig(config: McpServerConfig | undefined): Record<string, string> {

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Session-local observed MCP tool contracts. Pi remains the connection-state owner. */
 import { canonicalMcpServerName } from "./mcp-config.ts";
-import { approvedToolsForResolution, type McpPreset, type McpResolution } from "./presets.ts";
+import { approvedToolsForResolution, type McpPreset } from "./presets.ts";
 
 export interface ObservedToolDrift {
   status: "not-observed" | "clean" | "review";
@@ -26,13 +26,10 @@ export function captureObservedMcpTools(tools: readonly { name: string }[]): voi
   );
 }
 
-export function inspectObservedToolDrift(
-  preset: McpPreset,
-  resolution: McpResolution,
-): ObservedToolDrift {
+export function inspectObservedToolDrift(preset: McpPreset): ObservedToolDrift {
   const observed = observedByServer.get(canonicalMcpServerName(preset.serverName));
   if (!observed) return { status: "not-observed", observed: [], added: [], removed: [] };
-  const approved = approvedToolsForResolution(preset, resolution);
+  const approved = approvedToolsForResolution(preset);
   if (!approved) return { status: "clean", observed, added: [], removed: [] };
 
   const approvedSet = new Set(approved);
