@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.309.0-2026-10-01",
-  "latestVersion": "0.309.0",
+  "revision": "release-0.310.0-2026-10-01",
+  "latestVersion": "0.310.0",
   "announcements": [
     {
-      "id": "release-0.309.0",
+      "id": "release-0.310.0",
       "kind": "update",
-      "title": "sf-pi v0.309.0 — sf-mcp: add per-tool exposure policies",
+      "title": "sf-pi v0.310.0 — sf-mcp: add conflict and drift governance",
       "publishedAt": "2026-10-01T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.309.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.310.0",
       "severity": "info",
-      "body": "sf-mcp: add per-tool exposure policies"
+      "body": "sf-mcp: add conflict and drift governance"
     }
   ]
 }
