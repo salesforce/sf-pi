@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createToolTestContext } from "../../../lib/common/tests/extension-tool-context.ts";
@@ -13,14 +14,25 @@ import {
 
 const ORG_ID = "00D000000000001AAA";
 
+type CapturedVerificationTool = {
+  name: string;
+  execute(
+    toolCallId: string,
+    params: { server_name: string; target_org: string; next_tool: string },
+    signal: AbortSignal | undefined,
+    onUpdate: undefined,
+    ctx: ExtensionToolContext,
+  ): Promise<{ content: { type: string; text: string }[] }>;
+};
+
 describe("SF MCP exact target verification", () => {
   beforeEach(() => clearMcpTargetAttestations());
 
   it("records a one-use attestation after comparing the same MCP and CLI org", async () => {
-    let definition: any;
+    let definition: CapturedVerificationTool | undefined;
     const pi = {
-      registerTool: vi.fn((value) => {
-        definition = value;
+      registerTool: vi.fn((value: unknown) => {
+        definition = value as CapturedVerificationTool;
       }),
     };
     registerMcpTargetVerificationTool(pi as never, {
@@ -33,7 +45,8 @@ describe("SF MCP exact target verification", () => {
       now: () => 1_000,
     });
 
-    expect(definition.name).toBe(SF_MCP_VERIFY_TARGET_TOOL_NAME);
+    expect(definition?.name).toBe(SF_MCP_VERIFY_TARGET_TOOL_NAME);
+    const tool = definition as CapturedVerificationTool;
     const ctx = createToolTestContext({
       cwd: "/workspace",
       isProjectTrusted: () => true,
@@ -47,7 +60,7 @@ describe("SF MCP exact target verification", () => {
       }),
     });
 
-    const result = await definition.execute(
+    const result = await tool.execute(
       "verify-1",
       {
         server_name: "salesforce-sobject-mutations",
@@ -79,8 +92,12 @@ describe("SF MCP exact target verification", () => {
   });
 
   it("refuses a mismatched MCP OAuth org", async () => {
-    let definition: any;
-    const pi = { registerTool: (value: unknown) => (definition = value) };
+    let definition: CapturedVerificationTool | undefined;
+    const pi = {
+      registerTool: (value: unknown) => {
+        definition = value as CapturedVerificationTool;
+      },
+    };
     registerMcpTargetVerificationTool(pi as never, {
       resolveServer: () => ({
         configuredName: "salesforce-sobject-mutations",
@@ -90,6 +107,7 @@ describe("SF MCP exact target verification", () => {
       resolveCliOrg: vi.fn().mockResolvedValue({ orgId: ORG_ID, isSandbox: true }),
       now: () => 1_000,
     });
+    const tool = definition as CapturedVerificationTool;
     const ctx = createToolTestContext({
       cwd: "/workspace",
       isProjectTrusted: () => true,
@@ -109,7 +127,7 @@ describe("SF MCP exact target verification", () => {
     });
 
     await expect(
-      definition.execute(
+      tool.execute(
         "verify-1",
         {
           server_name: "salesforce-sobject-mutations",
