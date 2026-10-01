@@ -260,9 +260,12 @@ export function renderToolDetailPage(input: {
   preset: McpPreset;
   runtime: PresetRuntimeState;
   tool: McpToolDetail;
+  exposureOverride?: string;
 }): string[] {
   const { theme: t, width, tool } = input;
-  const exposure = configuredToolExposure(input.runtime.managed.config, tool.name, tool.exposure);
+  const exposure =
+    input.exposureOverride ??
+    configuredToolExposure(input.runtime.managed.config, tool.name, tool.exposure);
   const contract = tool.documented
     ? tool.observed
       ? "Documented and observed live"
@@ -292,7 +295,7 @@ export function renderToolDetailPage(input: {
       (line) => `    ${t.fg("dim", line)}`,
     ),
     "",
-    ` ${t.fg("dim", "Enter/Esc back to tools")}`,
+    ` ${t.fg("dim", `Enter/Esc back to ${input.exposureOverride ? "configuration" : "tools"}`)}`,
   ];
   return lines;
 }
@@ -495,9 +498,9 @@ export function renderReviewPage(input: {
   lines.push(
     "",
     ` ${t.fg("muted", "Actions")}`,
-    `   ${renderButton(t, "Apply preset", input.selected === 0)}  ${renderButton(t, "Back", input.selected === 1)}`,
+    `   ${renderButton(t, "Save configuration", input.selected === 0)}  ${renderButton(t, "Back", input.selected === 1)}`,
     "",
-    ` ${t.fg("dim", "←/→ or ↑/↓ choose · Enter apply · Esc back")}`,
+    ` ${t.fg("dim", "←/→ or ↑/↓ choose · Enter save · Esc back")}`,
   );
   return lines;
 }

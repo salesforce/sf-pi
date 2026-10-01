@@ -48,11 +48,7 @@ import {
   renderToolConflictReviewPage,
   renderToolDriftPage,
 } from "./tool-governance-pages.ts";
-import {
-  buildConflictAwareToolPolicy,
-  hasActiveToolConflicts,
-  inspectActiveToolConflicts,
-} from "./tool-conflicts.ts";
+import { buildConflictAwareToolPolicy, inspectActiveToolConflicts } from "./tool-conflicts.ts";
 import {
   renderToolPolicyPage,
   renderToolPolicyReviewPage,
@@ -63,6 +59,7 @@ import {
   applyToolExposurePolicy,
   buildToolExposurePolicy,
   cycleToolExposure,
+  exposureLabel,
   hasReviewedToolPolicy,
   type ToolExposurePolicy,
 } from "./tool-policy.ts";
@@ -81,8 +78,20 @@ type PanelView =
   | { kind: "catalog" }
   | { kind: "overview"; presetId: McpPresetId; selected: number }
   | { kind: "tools"; presetId: McpPresetId; cursor: number }
-  | { kind: "tool-detail"; presetId: McpPresetId; toolName: string }
-  | { kind: "tool-profiles"; presetId: McpPresetId; selected: number }
+  | {
+      kind: "tool-detail";
+      presetId: McpPresetId;
+      toolName: string;
+      returnPolicy?: ToolExposurePolicy;
+      returnCursor?: number;
+    }
+  | {
+      kind: "tool-profiles";
+      presetId: McpPresetId;
+      selected: number;
+      returnPolicy?: ToolExposurePolicy;
+      returnCursor?: number;
+    }
   | { kind: "tool-conflicts"; presetId: McpPresetId; cursor: number }
   | { kind: "tool-conflict-detail"; presetId: McpPresetId; toolName: string }
   | { kind: "tool-drift"; presetId: McpPresetId }
@@ -270,6 +279,9 @@ class SfMcpConfigPanel implements Focusable {
             preset,
             runtime: inspectPresetRuntime(this.cwd, this.scope, preset),
             tool,
+            ...(view.returnPolicy
+              ? { exposureOverride: exposureLabelForPolicy(view.returnPolicy, tool.name) }
+              : {}),
           });
         }
         case "tool-conflicts": {
@@ -328,15 +340,22 @@ class SfMcpConfigPanel implements Focusable {
             options: TOOL_POLICY_PROFILES,
             selected: view.selected,
           });
-        case "tool-policy":
+        case "tool-policy": {
+          const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(view.presetId));
           return renderToolPolicyPage({
             theme: this.theme,
             width,
-            preset: getPreset(view.presetId),
+            preset: state.preset,
             policy: view.policy,
-            tools: inspectPresetTools(getPreset(view.presetId)),
+            tools: inspectPresetTools(state.preset),
             cursor: view.cursor,
+            connection: {
+              status: state.managed.status,
+              ...(state.managed.message ? { message: state.managed.message } : {}),
+            },
+            conflicts: inspectActiveToolConflicts(state.preset, state.plan),
           });
+        }
         case "tool-policy-review": {
           const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(view.presetId));
           return renderToolPolicyReviewPage({
@@ -464,10 +483,6 @@ class SfMcpConfigPanel implements Focusable {
       this.view = { kind: "tools", presetId: view.presetId, cursor: 0 };
       return;
     }
-    if (choice.action === "policy") {
-      this.view = { kind: "tool-profiles", presetId: view.presetId, selected: 0 };
-      return;
-    }
     if (choice.action === "tool-conflicts") {
       this.view = { kind: "tool-conflicts", presetId: view.presetId, cursor: 0 };
       return;
@@ -476,7 +491,7 @@ class SfMcpConfigPanel implements Focusable {
       this.view = { kind: "tool-drift", presetId: view.presetId };
       return;
     }
-    this.beginPresetConfiguration(state);
+    this.openUnifiedConfigurator(state);
   }
 
   private handleToolsInput(data: string): void {
@@ -519,6 +534,15 @@ class SfMcpConfigPanel implements Focusable {
       0,
       tools.findIndex((tool) => tool.name === view.toolName),
     );
+    if (view.returnPolicy) {
+      this.view = {
+        kind: "tool-policy",
+        presetId: view.presetId,
+        policy: view.returnPolicy,
+        cursor: view.returnCursor ?? cursor,
+      };
+      return;
+    }
     this.view = { kind: "tools", presetId: view.presetId, cursor };
   }
 
@@ -621,7 +645,16 @@ class SfMcpConfigPanel implements Focusable {
   private handleToolProfilesInput(data: string): void {
     const view = this.viewAs("tool-profiles");
     if (matchesKey(data, "escape") || data === "q") {
-      this.view = { kind: "overview", presetId: view.presetId, selected: 1 };
+      if (view.returnPolicy) {
+        this.view = {
+          kind: "tool-policy",
+          presetId: view.presetId,
+          policy: view.returnPolicy,
+          cursor: view.returnCursor ?? 0,
+        };
+      } else {
+        this.view = { kind: "overview", presetId: view.presetId, selected: 0 };
+      }
       return;
     }
     if (matchesKey(data, "up")) {
@@ -646,7 +679,7 @@ class SfMcpConfigPanel implements Focusable {
           option.id === "recommended"
             ? buildConflictAwareToolPolicy(state.preset, state.plan)
             : buildToolExposurePolicy(state.preset, option.id, state.managed.config),
-        cursor: 0,
+        cursor: view.returnCursor ?? 0,
       };
     } catch (error) {
       this.view = {
@@ -662,11 +695,17 @@ class SfMcpConfigPanel implements Focusable {
   private handleToolPolicyInput(data: string): void {
     const view = this.viewAs("tool-policy");
     if (matchesKey(data, "escape") || data === "q") {
-      this.view = { kind: "overview", presetId: view.presetId, selected: 1 };
+      this.view = { kind: "overview", presetId: view.presetId, selected: 0 };
       return;
     }
     if (data === "p" || data === "P") {
-      this.view = { kind: "tool-profiles", presetId: view.presetId, selected: 0 };
+      this.view = {
+        kind: "tool-profiles",
+        presetId: view.presetId,
+        selected: 0,
+        returnPolicy: view.policy,
+        returnCursor: view.cursor,
+      };
       return;
     }
     const preset = getPreset(view.presetId);
@@ -677,6 +716,19 @@ class SfMcpConfigPanel implements Focusable {
     }
     if (matchesKey(data, "down")) {
       view.cursor = cycle(view.cursor, tools.length, 1);
+      return;
+    }
+    if (matchesKey(data, "enter") || matchesKey(data, "return")) {
+      const tool = tools[view.cursor];
+      if (tool) {
+        this.view = {
+          kind: "tool-detail",
+          presetId: view.presetId,
+          toolName: tool.name,
+          returnPolicy: view.policy,
+          returnCursor: view.cursor,
+        };
+      }
       return;
     }
     if (matchesKey(data, "left") || matchesKey(data, "right") || matchesKey(data, "space")) {
@@ -690,7 +742,9 @@ class SfMcpConfigPanel implements Focusable {
       );
       return;
     }
-    if (data === "a" || data === "A") this.continueToolPolicy(view.presetId, view.policy);
+    if (data === "s" || data === "S" || data === "a" || data === "A") {
+      this.continueToolPolicy(view.presetId, view.policy);
+    }
   }
 
   private handleToolPolicyReviewInput(data: string): void {
@@ -931,6 +985,35 @@ class SfMcpConfigPanel implements Focusable {
     const state = this.states[this.cursor];
     if (!state) return;
     this.view = { kind: "overview", presetId: state.preset.id, selected: 0 };
+  }
+
+  private openUnifiedConfigurator(state: PresetRuntimeState): void {
+    if (
+      hasReviewedToolPolicy(state.preset) &&
+      ["missing", "managed-enabled", "managed-disabled"].includes(state.managed.status)
+    ) {
+      try {
+        const policy = state.managed.config
+          ? buildToolExposurePolicy(state.preset, "custom", state.managed.config)
+          : buildConflictAwareToolPolicy(state.preset, state.plan);
+        this.view = {
+          kind: "tool-policy",
+          presetId: state.preset.id,
+          policy,
+          cursor: 0,
+        };
+      } catch (error) {
+        this.view = {
+          kind: "result",
+          title: "Unified configuration unavailable",
+          message: error instanceof Error ? error.message : String(error),
+          tone: "warning",
+          needsReload: false,
+        };
+      }
+      return;
+    }
+    this.beginPresetConfiguration(state);
   }
 
   private continueToolPolicy(presetId: McpPresetId, policy: ToolExposurePolicy): void {
@@ -1246,42 +1329,25 @@ class SfMcpConfigPanel implements Focusable {
   }
 }
 
+function exposureLabelForPolicy(policy: ToolExposurePolicy, toolName: string): string {
+  return exposureLabel(policy.exposures[toolName] ?? "hidden");
+}
+
 function overviewOptions(state: PresetRuntimeState): OverviewChoice[] {
-  const configureLabel =
-    state.managed.status === "managed-enabled"
-      ? "Review current configuration"
-      : state.managed.status === "managed-disabled"
-        ? "Enable managed preset"
-        : ["manual", "modified", "managed-outdated", "name-conflict"].includes(state.managed.status)
-          ? "Review configuration"
-          : "Configure connection";
   const options: OverviewChoice[] = [
     {
-      label: "Review tools",
+      label: "Configure MCP",
       description:
-        "Inspect documented and session-observed tools, capabilities, risk, exposure, and runtime metadata without changing configuration.",
+        "Manage connection status, conflict guidance, tool access modes, and review/save from one guided editor.",
+      action: "configure",
+    },
+    {
+      label: "Browse tool details",
+      description:
+        "Inspect documented and session-observed schemas, annotations, and runtime metadata without changing configuration.",
       action: "tools",
     },
   ];
-  if (
-    hasReviewedToolPolicy(state.preset) &&
-    ["missing", "managed-enabled", "managed-disabled"].includes(state.managed.status)
-  ) {
-    options.push({
-      label: "Configure tool exposure",
-      description:
-        "Choose a reviewed profile, then set approved tools to Hidden, Code Mode, Deferred, or Direct.",
-      action: "policy",
-    });
-  }
-  if (hasActiveToolConflicts(state.preset, state.plan)) {
-    options.push({
-      label: "Review tool conflicts",
-      description:
-        "Inspect exact MCP tools, capabilities, enabled SF Pi owners, and deterministic exposure recommendations.",
-      action: "tool-conflicts",
-    });
-  }
   if (state.drift.status === "review") {
     options.push({
       label: "Review contract drift",
@@ -1290,19 +1356,11 @@ function overviewOptions(state: PresetRuntimeState): OverviewChoice[] {
       action: "drift",
     });
   }
-  options.push(
-    {
-      label: configureLabel,
-      description:
-        "Continue to conflict review, connection setup, and an explicit native configuration diff.",
-      action: "configure",
-    },
-    {
-      label: "Back to catalog",
-      description: "Return without changing native MCP configuration.",
-      action: "back",
-    },
-  );
+  options.push({
+    label: "Back to catalog",
+    description: "Return without changing native MCP configuration.",
+    action: "back",
+  });
   return options;
 }
 

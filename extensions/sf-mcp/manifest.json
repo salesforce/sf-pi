@@ -10,7 +10,7 @@
   "events": ["session_start", "before_agent_start"],
   "docs": {
     "intentGroup": "Personalize pi",
-    "summary": "Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The Manager carries reviewed tool contracts for Salesforce DX, standalone Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, MuleSoft DX, and the other published hosted catalogs, with high-contrast exposure states and exact Hidden, Code Mode, Deferred, or Direct policy. It also catalogs the Agentforce Sales ChatGPT sandbox Beta as an SF Pi Alpha whose exact tools and generic-client interoperability remain undocumented. Conflict, drift, adoption, and redacted apply workflows stay fail-closed and preserve user-owned configuration.",
+    "summary": "Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. One unified Configure MCP editor combines connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. The Manager carries reviewed tool contracts for Salesforce DX, standalone Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, MuleSoft DX, and the other published hosted catalogs. It also catalogs the Agentforce Sales ChatGPT sandbox Beta as an SF Pi Alpha whose exact tools and generic-client interoperability remain undocumented. Conflict, drift, adoption, and redacted apply workflows stay fail-closed and preserve user-owned configuration.",
     "primaryFiles": [
       "index.ts",
       "lib/config-panel.ts",
@@ -34,7 +34,7 @@
       "Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.",
       "Pi-normalized server-name collisions require the user to choose the one entry to keep.",
       "Governed presets, including Salesforce DX, Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX, use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.",
-      "Tool policy profiles support Hidden, Code Mode, Deferred, and Direct exposure, with warnings for risky Direct choices and explicit diff review before persistence.",
+      "The unified editor makes Hidden, Code Mode, Deferred, and Direct guidance persistent, while risky Direct choices still warn and every save retains explicit diff review before persistence.",
       "Exact tool conflict recommendations change only MCP exposure; SF MCP never disables an SF Pi capability owner automatically.",
       "Observed additions remain locked hidden until a reviewed preset revision approves them; removed documented tools are unavailable and can be repaired to Hidden on unchanged managed entries.",
       "Agentforce Sales is sandbox-only and experimental in SF Pi; its secret is an environment reference and every operation remains Guardrail-mediated and fail-closed without exact OAuth-org identity.",

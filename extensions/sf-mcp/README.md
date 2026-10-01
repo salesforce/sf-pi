@@ -18,7 +18,9 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 - Versions governed preset contracts and reports observed tool additions or removals.
 - Reviews live contract drift: additions remain locked hidden pending a preset revision, while removed tools become unavailable and can be repaired to Hidden through an explicit diff.
 - Keeps newly discovered tools hidden for presets with an approved tool contract.
+- Provides one unified **Configure MCP** editor for connection status, conflict guidance, tool modes, and review/save.
 - Authors exact per-tool exposure through Recommended, Read-only, All approved, Custom, and Quarantine profiles.
+- Shows numbered tools, available-tool and per-mode counts, color-coded mode badges, inline conflict recommendations, and persistent mode guidance.
 - Supports Pi's Hidden, Code Mode, Deferred, and Direct exposure modes with explicit diff review and warnings for risky Direct choices.
 - Uses `/mcp` for connection state, OAuth, errors, reconnects, and manual runtime review.
 
@@ -52,13 +54,17 @@ Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` pr
 
 ## Configuration
 
-Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. **Configure tool exposure** opens a reviewed profile and per-tool editor; **Configure connection** continues to capability review, setup fields, configuration review, apply, and result states. For a new server, SF MCP carries the selected tool policy through connection setup. For an unchanged managed server, it shows an exact redacted diff and updates only `exposure` and `toolExposure`. Choose global or trusted-project scope before applying a change. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, manual exposure review, and reconnects.
+Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. **Configure MCP** opens one guided editor that combines connection status, reviewed profiles, numbered tools, current exposure, risk, descriptions, and inline conflict recommendations. Use ↑/↓ to select a tool, ←/→ or Space to change its mode, `P` to choose a profile, Enter for full details, and `S` for **Review & Save**. The final review shows the exact redacted native configuration diff before persistence.
+
+For a new server, Review & Save continues through any required connection fields while carrying the selected tool policy forward. For an unchanged managed server, it updates only `exposure` and `toolExposure`. Choose global or trusted-project scope before saving. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, manual exposure review, and reconnects.
+
+The editor explains every mode in place: **Hidden** is unreachable, **Code Mode** is callable from codemode scripts, **Deferred** is loaded on demand through tool search, and **Direct** is declared to the model on every turn.
 
 Governed presets include concise, versioned tool summaries sourced from official documentation. Salesforce DX catalogs the nine GA tools in the configured core toolsets; standalone Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX include their published tool references. The connected server can advertise a subset based on enabled features, toolsets, client support, permissions, or entitlements, and unavailable documented tools remain locked hidden. Custom servers and Agentforce Sales show reviewed capability groups plus live metadata because Salesforce doesn't currently publish an exact Agentforce Sales tool reference. An observed tool absent from an approved contract remains visibly unapproved and inherits hidden exposure.
 
 **Tableau MCP and Tableau Next MCP are distinct.** Tableau MCP connects to Tableau's standalone managed stack at `mcp.tableau.com`; Tableau Next MCP connects to the Salesforce/Core hosted endpoint and its semantic layer. Trailhead MCP connects without authentication and exposes only public learning-content search and retrieval.
 
-**Review tool conflicts** shows the exact tools, capability, active owners, relationship, and recommended exposure. Broad meta-tools explicitly warn that Pi can govern the dispatcher but not individual operations behind it. **Review contract drift** separates observed additions from documented removals. Added tools require a reviewed SF MCP preset revision; removed tools can be repaired to Hidden when the native entry remains unchanged and managed.
+Active tool conflicts appear directly on the affected rows with the enabled SF Pi owners and recommended exposure. Selecting a conflict row expands the reason. Broad meta-tools explicitly warn that Pi can govern the dispatcher but not individual operations behind it. **Review contract drift** remains a separate exceptional workflow because added or removed server tools require explicit repair or a reviewed preset update. Added tools require a reviewed SF MCP preset revision; removed tools can be repaired to Hidden when the native entry remains unchanged and managed.
 
 SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <preset-id>`. Existing manual entries and entries changed outside SF MCP remain user-owned. The Manager can adopt a compatible entry without changing it, or show a redacted field-level diff before an explicit reset. Canonically colliding names require the user to choose the one entry to keep.
 
