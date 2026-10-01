@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "presetId": "salesforce-dx",
+  "package": {
+    "name": "@salesforce/mcp",
+    "version": "0.30.15",
+    "integrity": "sha512-e7XPx9nfeJVJbJCD6GHdsyPZmILWeoUVUZ8e++gRRPZ3K8k+HTU5Ob/5Knt3gGdoeychtIOtKy76ZeeCPqwaUg==",
+    "modifiedAt": "2026-07-09T15:38:02.382Z"
+  },
+  "toolsets": ["orgs", "metadata", "data", "users", "testing"],
+  "allowNonGaTools": false,
+  "tools": [
+    {
+      "name": "assign_permission_set",
+      "descriptionHash": "sha256:442b5ae55d7900c033878d289defeca9cea883a918a02a7fc7bc59b81c044faf",
+      "schemaDescriptionHash": "sha256:2c302453ffab1a46bc6f67c92f13f75d2b846e3971c0fdd1f27c5bc21ab23aba",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "onBehalfOf": {
+            "type": "string"
+          },
+          "permissionSetName": {
+            "type": "string"
+          },
+          "usernameOrAlias": {
+            "type": "string"
+          }
+        },
+        "required": ["permissionSetName", "usernameOrAlias", "directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "deploy_metadata",
+      "descriptionHash": "sha256:9ba5dc44061b03a8cce62ceb6ab8a7e0a898ea827bd13937ec40da2b189999ab",
+      "schemaDescriptionHash": "sha256:e48e67e08e47d1152c0f3485d93afc3259f07cffd949c84f1fb8458bc5060985",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "apexTestLevel": {
+            "enum": ["NoTestRun", "RunLocalTests", "RunAllTestsInOrg"],
+            "type": "string"
+          },
+          "apexTests": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "ignoreConflicts": {
+            "type": "boolean"
+          },
+          "manifest": {
+            "type": "string"
+          },
+          "sourceDir": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "usernameOrAlias": {
+            "type": "string"
+          }
+        },
+        "required": ["usernameOrAlias", "directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "get_username",
+      "descriptionHash": "sha256:43d4de11a6d9fde5ebdcf7f5d13056db560597bcf388685a3978f280e41b3a1d",
+      "schemaDescriptionHash": "sha256:6481ed1de04c3e7abbd19a6f416baf75f6bd4fc2f48732d84c829b85d1acb757",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "defaultDevHub": {
+            "default": false,
+            "type": "boolean"
+          },
+          "defaultTargetOrg": {
+            "default": false,
+            "type": "boolean"
+          },
+          "directory": {
+            "type": "string"
+          }
+        },
+        "required": ["directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_all_orgs",
+      "descriptionHash": "sha256:a085e86a23b0a556539cbd6152e00b694ef6cd82c4f0a8020f9d459a8f43be3f",
+      "schemaDescriptionHash": "sha256:2ecc96b5dc51cfad88dd974864a1fb36eb1f44512d915af1c3ab7762797160d5",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          }
+        },
+        "required": ["directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "resume_tool_operation",
+      "descriptionHash": "sha256:7ab5e6ab48e435ff329eaba986b38d32a70eacc34a3bf4a9a5495707a2d684f1",
+      "schemaDescriptionHash": "sha256:381d9d31f0fb47a8c80b8a34bc50320c5fce497248393119eb6f5022d4deec9b",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "usernameOrAlias": {
+            "type": "string"
+          },
+          "wait": {
+            "default": 30,
+            "type": "number"
+          }
+        },
+        "required": ["jobId", "usernameOrAlias", "directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "retrieve_metadata",
+      "descriptionHash": "sha256:4bad971fa1a8c47a5552a1cf3018f92ea678d357a143e3fa899a600244ae1a91",
+      "schemaDescriptionHash": "sha256:45429e22a6cfb521a5d98bb70a67256844ae2b06a007392212449f9ecd0b9912",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "ignoreConflicts": {
+            "default": false,
+            "type": "boolean"
+          },
+          "manifest": {
+            "type": "string"
+          },
+          "sourceDir": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "usernameOrAlias": {
+            "type": "string"
+          }
+        },
+        "required": ["usernameOrAlias", "directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "run_agent_test",
+      "descriptionHash": "sha256:fe63447f2ca5d2020d4d989eacabd560dc25e213dfd424295288d0cf4c677511",
+      "schemaDescriptionHash": "sha256:6014144b551d534b423980cbf75e4d1bd3739d591b9d97fb9740d87ea4959762",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "agentApiName": {
+            "type": "string"
+          },
+          "async": {
+            "default": false,
+            "type": "boolean"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "usernameOrAlias": {
+            "type": "string"
+          }
+        },
+        "required": ["agentApiName", "usernameOrAlias", "directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "run_apex_test",
+      "descriptionHash": "sha256:26ef7abe325949e985eeb421ba10e544e11508532f27dd543e645e9b05d9bd69",
+      "schemaDescriptionHash": "sha256:d263ce63d3a1e4d1577afc04a14b57d5ad5a8dd1d39dedf5b592944b144f989e",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "async": {
+            "default": false,
+            "type": "boolean"
+          },
+          "classNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "codeCoverage": {
+            "default": false,
+            "type": "boolean"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "methodNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "suiteName": {
+            "type": "string"
+          },
+          "testLevel": {
+            "enum": ["RunLocalTests", "RunAllTestsInOrg", "RunSpecifiedTests"],
+            "type": "string"
+          },
+          "testRunId": {
+            "default": "an id of an in-progress, or completed apex test run",
+            "type": "string"
+          },
+          "usernameOrAlias": {
+            "type": "string"
+          },
+          "verbose": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": ["testLevel", "usernameOrAlias", "directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "run_soql_query",
+      "descriptionHash": "sha256:5e794412a8052e0092ad81a31bc23fc0de48cbdacb924225814cdbb262d06f30",
+      "schemaDescriptionHash": "sha256:c0cad4ef8ba88e7e88da6144dc0ffabbd63c4488afa8dbed893df9390c3bdc06",
+      "parameters": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "usernameOrAlias": {
+            "type": "string"
+          },
+          "useToolingApi": {
+            "type": "boolean"
+          }
+        },
+        "required": ["query", "usernameOrAlias", "directory"],
+        "type": "object"
+      },
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    }
+  ]
+}

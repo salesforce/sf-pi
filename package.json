@@ -113,6 +113,8 @@
     "docs:preview": "vitepress preview docs",
     "e2e:sf-soql": "node --experimental-strip-types scripts/e2e/sf-soql-e2e.ts",
     "e2e:sf-lwc": "node --experimental-strip-types scripts/e2e/sf-lwc-e2e.ts",
+    "e2e:sf-mcp": "node --experimental-strip-types scripts/e2e/sf-mcp-e2e.ts",
+    "e2e:sf-mcp-contract": "node --experimental-strip-types scripts/e2e/sf-mcp-contract-canary.ts",
     "e2e:sf-flow": "node --experimental-strip-types scripts/e2e/sf-flow-e2e.ts",
     "e2e:sf-flow-advanced": "node --experimental-strip-types scripts/e2e/sf-flow-advanced-sweep.ts",
     "e2e:sf-flow-actions": "node --experimental-strip-types scripts/e2e/sf-flow-actions-sweep.ts",

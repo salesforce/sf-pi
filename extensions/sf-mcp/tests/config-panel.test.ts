@@ -14,9 +14,12 @@ import { renderToolPolicyPage } from "../lib/tool-policy-pages.ts";
 import { buildToolExposurePolicy } from "../lib/tool-policy.ts";
 
 const tempDirs: string[] = [];
+const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
 
 afterEach(() => {
   captureObservedMcpTools([]);
+  if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+  else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -33,6 +36,7 @@ type TestPanel = {
 function fixture(mcpRoot?: unknown, panelTheme = theme) {
   const cwd = mkdtempSync(path.join(tmpdir(), "sf-mcp-panel-"));
   tempDirs.push(cwd);
+  process.env.PI_CODING_AGENT_DIR = path.join(cwd, "agent");
   if (mcpRoot) {
     const configDir = path.join(cwd, ".pi");
     mkdirSync(configDir, { recursive: true });

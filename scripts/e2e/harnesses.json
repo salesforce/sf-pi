@@ -130,6 +130,26 @@
       "artifacts": "Temporary project plus LWC diagnostic and Jest artifacts"
     },
     {
+      "script": "e2e:sf-mcp",
+      "entry": "scripts/e2e/sf-mcp-e2e.ts",
+      "title": "SF MCP Salesforce DX live smoke",
+      "summary": "Exercises SF MCP configuration, Pi native MCP discovery, exact reviewed tool exposure, SF Guardrail mediation, and one bounded Salesforce DX MCP query.",
+      "target": "Explicit authorized Salesforce org and explicit Pi model",
+      "posture": "read-only",
+      "artifacts": "Redacted JSON and Markdown reports in a temporary or caller-selected directory",
+      "arguments": "--org <alias> --model <provider/model> [--output-dir <dir>] [--keep-workspace]"
+    },
+    {
+      "script": "e2e:sf-mcp-contract",
+      "entry": "scripts/e2e/sf-mcp-contract-canary.ts",
+      "title": "SF MCP Salesforce DX contract canary",
+      "summary": "Resolves one exact Salesforce MCP package version, captures the normalized Pi runtime tool contract without invoking an org tool, and compares it with the reviewed public-safe baseline.",
+      "target": "npm registry plus an explicit locally authorized Salesforce org for server startup",
+      "posture": "read-only",
+      "artifacts": "Public-safe candidate, drift, and Markdown reports in a temporary or caller-selected directory",
+      "arguments": "--org <alias> [--version latest|x.y.z] [--baseline <file>] [--output-dir <dir>]"
+    },
+    {
       "script": "e2e:sf-soql",
       "entry": "scripts/e2e/sf-soql-e2e.ts",
       "title": "SF SOQL lifecycle harness",
