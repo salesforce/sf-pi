@@ -881,15 +881,15 @@
     ],
     "docs": {
       "intentGroup": "Personalize pi",
-      "summary": "Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its embedded Manager workflow opens each preset with a non-mutating overview and documented tool catalog, merges bounded session-observed metadata, and authors exact reviewed per-tool exposure through Recommended, Read-only, All approved, Custom, or Quarantine profiles. Hidden, Code Mode, Deferred, and Direct choices receive an explicit redacted diff before SF MCP updates an unchanged managed native entry or carries the policy through setup. It preserves manual configuration, keeps unknown tools quarantined, and writes nothing until the user explicitly applies a reviewed change.",
+      "summary": "Provides an opt-in Salesforce MCP preset catalog over Pi's built-in MCP runtime. Its Manager workflow documents each tool, authors exact reviewed exposure policies, maps broad and exact MCP tools to enabled SF Pi capability owners, and offers deterministic native-preferred or keep-both recommendations without disabling any native extension. Runtime contract drift has an explicit review surface: additions remain locked hidden pending a reviewed preset revision, removals become unavailable, and unchanged managed entries can repair removed exposure through a redacted diff. Manual configuration remains user-owned, and SF MCP writes nothing until the user explicitly applies a reviewed change.",
       "primaryFiles": [
         "index.ts",
         "lib/config-panel.ts",
         "lib/presets.ts",
         "lib/conflict-planner.ts",
         "lib/service.ts",
-        "lib/mcp-config.ts",
         "lib/tool-catalog.ts",
+        "lib/tool-conflicts.ts",
         "lib/tool-policy.ts"
       ],
       "stateFiles": [
@@ -909,6 +909,8 @@
         "Pi-normalized server-name collisions require the user to choose the one entry to keep.",
         "Governed hosted presets use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.",
         "Tool policy profiles support Hidden, Code Mode, Deferred, and Direct exposure, with warnings for risky Direct choices and explicit diff review before persistence.",
+        "Exact tool conflict recommendations change only MCP exposure; SF MCP never disables an SF Pi capability owner automatically.",
+        "Observed additions remain locked hidden until a reviewed preset revision approves them; removed documented tools are unavailable and can be repaired to Hidden on unchanged managed entries.",
         "Custom MCP URLs start with no callable tools.",
         "Legacy SObject MCP entries are not managed by SF MCP; if manually configured, their mutation tools remain Guardrail-mediated and fail closed.",
         "MuleSoft secrets are referenced through environment variables and are never stored in native MCP configuration or SF MCP state."
@@ -917,7 +919,7 @@
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5276
+    "srcLoc": 5808
   },
   {
     "id": "sf-ohana-spinner",

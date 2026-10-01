@@ -26,7 +26,7 @@ export const TOOL_POLICY_PROFILES: readonly ToolPolicyProfileOption[] = [
     id: "recommended",
     label: "Recommended",
     description:
-      "Use the reviewed SF Pi default. Phase 2 preserves the current approved Code Mode contract.",
+      "Use the reviewed conflict-aware SF Pi recommendation when enabled capability owners overlap.",
   },
   {
     id: "read-only",

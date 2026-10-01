@@ -114,6 +114,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0126: SF MCP Removes Legacy SObject Presets](./0126-sf-mcp-removes-legacy-sobject-presets.md) — 2026-10-01
 - [0127: SF MCP Tool Contract Discovery](./0127-sf-mcp-tool-contract-discovery.md) — 2026-10-01
 - [0128: SF MCP Reviewed Tool Exposure Policy](./0128-sf-mcp-reviewed-tool-exposure-policy.md) — 2026-10-01
+- [0129: SF MCP Exact Conflict and Drift Governance](./0129-sf-mcp-exact-conflict-and-drift-governance.md) — 2026-10-01
 
 ## Proposed
 

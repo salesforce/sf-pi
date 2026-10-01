@@ -24,8 +24,11 @@ import {
   type ManagedServerInspection,
 } from "./managed-state.ts";
 import { inspectObservedToolDrift, type ObservedToolDrift } from "./observed-tools.ts";
+import { exposedToolConflictOwners, hasActiveToolConflicts } from "./tool-conflicts.ts";
 import {
   applyToolExposurePolicy,
+  buildToolExposurePolicy,
+  hasReviewedToolPolicy,
   validateToolExposurePolicy,
   type ToolExposurePolicy,
 } from "./tool-policy.ts";
@@ -262,11 +265,17 @@ export function buildMcpRoutingGuidelines(cwd: string): string[] {
     ) {
       continue;
     }
-    const owners = effective.plan.conflicts
-      .map((conflict) => conflict.nativeExtensionId)
-      .join(", ");
+    const owners =
+      hasReviewedToolPolicy(preset) && hasActiveToolConflicts(preset, effective.plan)
+        ? exposedToolConflictOwners(
+            preset,
+            effective.plan,
+            buildToolExposurePolicy(preset, "custom", effective.managed.config).exposures,
+          )
+        : effective.plan.conflicts.map((conflict) => conflict.nativeExtensionId).sort();
+    if (owners.length === 0) continue;
     lines.push(
-      `${preset.label} MCP is enabled side-by-side with ${owners}; prefer the specialized SF Pi family tool unless the user explicitly requests MCP behavior or needs an MCP-only capability.`,
+      `${preset.label} MCP is enabled side-by-side with ${owners.join(", ")}; prefer the specialized SF Pi family tool unless the user explicitly requests MCP behavior or needs an MCP-only capability.`,
     );
   }
   return lines;

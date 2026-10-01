@@ -17,6 +17,7 @@ import {
 } from "../lib/service.ts";
 import { buildServerConfig, getPreset } from "../lib/presets.ts";
 import { inspectPresetTools } from "../lib/tool-catalog.ts";
+import { buildConflictAwareToolPolicy } from "../lib/tool-conflicts.ts";
 import { buildToolExposurePolicy } from "../lib/tool-policy.ts";
 
 const tempDirs: string[] = [];
@@ -47,6 +48,28 @@ describe("SF MCP preset service", () => {
     expect(buildMcpRoutingGuidelines(cwd)).toEqual([
       expect.stringContaining("Salesforce DX MCP is enabled side-by-side"),
     ]);
+  });
+
+  it("limits side-by-side routing guidance to conflict owners with exposed tools", () => {
+    const cwd = workspace();
+    const preset = getPreset("headless-360");
+    const state = inspectPresetRuntime(cwd, "project", preset);
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: preset.id,
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+        toolPolicy: buildConflictAwareToolPolicy(preset, state.plan),
+      }).ok,
+    ).toBe(true);
+
+    expect(buildMcpRoutingGuidelines(cwd)).toEqual([
+      expect.stringContaining("side-by-side with sf-soql"),
+    ]);
+    expect(buildMcpRoutingGuidelines(cwd)[0]).not.toContain("sf-apex");
+    expect(buildMcpRoutingGuidelines(cwd)[0]).not.toContain("sf-flow");
   });
 
   it("reports when a project preset would override the same global server name", () => {

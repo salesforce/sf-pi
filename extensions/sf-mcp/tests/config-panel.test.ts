@@ -204,6 +204,78 @@ describe("SF MCP Manager catalog", () => {
     ]);
   });
 
+  it("reviews exact tool conflicts and opens the native-preferred recommendation", () => {
+    const { panel } = fixture();
+
+    moveDown(panel, 5);
+    panel.handleInput("\r"); // Overview.
+    moveDown(panel, 2); // Review tool conflicts.
+    panel.handleInput("\r");
+    const conflictLines = panel.renderContent(70);
+    const conflicts = conflictLines.join("\n");
+    expect(conflicts).toContain("Tool Conflict Review");
+    expect(conflictLines.every((line) => visibleWidth(line) <= 70)).toBe(true);
+    expect(conflicts).toContain("dispatch");
+    expect(conflicts).toContain("sf-soql · sf-apex · sf-flow");
+    expect(conflicts).toContain("Broad meta-tool");
+
+    panel.handleInput("\r"); // Inspect dispatch.
+    const detail = panel.renderContent(110).join("\n");
+    expect(detail).toContain("dispatch Conflict");
+    expect(detail).toContain("Pi can expose or hide the MCP tool");
+    panel.handleInput("\u001b");
+
+    panel.handleInput("N"); // Prefer SF Pi owners.
+    const policy = panel.renderContent(110).join("\n");
+    expect(policy).toContain("Tool Exposure Policy");
+    expect(policy).toContain("RECOMMENDED");
+    expect(policy).toContain("dispatch_readonly");
+    expect(policy).toContain("Deferred");
+  });
+
+  it("reviews runtime drift and repairs removed tools without approving additions", () => {
+    const { cwd, panel } = fixture();
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: "data360",
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+    captureObservedMcpTools([
+      { name: "mcp__salesforce_data360__search", exposure: "codemode" },
+      { name: "mcp__salesforce_data360__unexpected_write", exposure: "hidden" },
+    ]);
+
+    moveDown(panel, 1);
+    panel.handleInput("\r"); // Overview.
+    moveDown(panel, 3); // Review contract drift.
+    panel.handleInput("\r");
+    const driftLines = panel.renderContent(70);
+    const drift = driftLines.join("\n");
+    expect(drift).toContain("Contract Drift Review");
+    expect(driftLines.every((line) => visibleWidth(line) <= 70)).toBe(true);
+    expect(drift).toContain("unexpected_write");
+    expect(drift).toContain("locked hidden");
+    expect(drift).toContain("payload_examples");
+    expect(drift).toContain("unavailable");
+    expect(drift).toContain("preset revision");
+
+    panel.handleInput("R"); // Repair removed exposure.
+    expect(panel.renderContent(110).join("\n")).toContain("Tool Policy Review");
+    panel.handleInput("\r"); // Apply.
+
+    const config = JSON.parse(readFileSync(path.join(cwd, ".pi", "mcp.json"), "utf8"));
+    expect(config.mcpServers["salesforce-data360"].toolExposure).toEqual({
+      search: "codemode",
+      payload_examples: "hidden",
+      execute: "hidden",
+    });
+    expect(config.mcpServers["salesforce-data360"].toolExposure.unexpected_write).toBeUndefined();
+  });
+
   it("keeps overview, tool list, and tool detail width-safe at the Manager minimum", () => {
     const { panel } = fixture();
 
@@ -291,7 +363,8 @@ describe("SF MCP Manager catalog", () => {
 
     moveDown(panel, 1);
     panel.handleInput("\r"); // Open overview.
-    panel.handleInput("\u001b[B"); // Configure.
+    panel.handleInput("\u001b[B"); // Review tool conflicts.
+    panel.handleInput("\u001b[B"); // Review configuration.
     panel.handleInput("\r");
     expect(panel.renderContent(110).join("\n")).toContain("Configuration Review");
     expect(panel.renderContent(110).join("\n")).toContain("Adopt existing entry");
@@ -326,6 +399,7 @@ describe("SF MCP Manager catalog", () => {
     moveDown(panel, 5);
     panel.handleInput("\r"); // Open overview.
     panel.handleInput("\u001b[B"); // Configure tools.
+    panel.handleInput("\u001b[B"); // Review tool conflicts.
     panel.handleInput("\u001b[B"); // Configure connection.
     panel.handleInput("\r");
     expect(panel.renderContent(110).join("\n")).toContain("Capability Review");

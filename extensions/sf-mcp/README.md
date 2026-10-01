@@ -8,13 +8,15 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 - Opens every preset with a non-mutating overview of capabilities, documented tools, risk, support maturity, conflicts, and official documentation.
 - Merges bounded session-observed tool descriptions, input schemas, annotations, and effective exposure after a server connects; runtime metadata is never persisted.
 - Detects semantic overlap with enabled SF Pi family tools.
-- Recommends a complementary profile instead of silently duplicating capabilities.
+- Maps reviewed MCP tools to exact enabled SF Pi capability owners, including broad dispatcher warnings.
+- Offers a deterministic native-preferred recommendation or an explicit keep-both policy without disabling native extensions.
 - Writes explicit, user-reviewed entries to Pi's native global or project `mcp.json`.
 - Publishes each preset's short description for Pi's MCP prompt summary, tool-search ranking, and namespace inspection.
 - Preserves unknown top-level configuration and unrelated servers.
 - Detects server names that collide after Pi normalizes hyphens and underscores.
 - Offers explicit adoption, redacted diff, reset, and canonical-name reconciliation for existing entries.
 - Versions governed preset contracts and reports observed tool additions or removals.
+- Reviews live contract drift: additions remain locked hidden pending a preset revision, while removed tools become unavailable and can be repaired to Hidden through an explicit diff.
 - Keeps newly discovered tools hidden for presets with an approved tool contract.
 - Authors exact per-tool exposure through Recommended, Read-only, All approved, Custom, and Quarantine profiles.
 - Supports Pi's Hidden, Code Mode, Deferred, and Direct exposure modes with explicit diff review and warnings for risky Direct choices.
@@ -27,11 +29,12 @@ The SF MCP extension is enabled by default for discoverability, but **every MCP 
 The default routing policy is:
 
 1. Prefer the specialized SF Pi family tool when it owns the lifecycle.
-2. Expose only complementary MCP tools that add a capability.
-3. Offer full MCP side-by-side exposure only as an explicit advanced choice.
-4. Never disable an SF Pi extension automatically.
+2. Map reviewed MCP tools to exact active owners and recommend Hidden for direct or broad mutation overlap.
+3. Keep complementary discovery tools in Code Mode and partial read overlap Deferred when the reviewed mapping says they add value.
+4. Offer full MCP side-by-side exposure only as an explicit keep-both choice.
+5. Never disable an SF Pi extension automatically.
 
-For example, when the Data 360 preset overlaps the typed SF Data 360 families, the catalog recommends keeping the native lifecycle owner unless the user explicitly needs MCP comparison behavior.
+For example, the Data 360 recommendation keeps `search` and `payload_examples` in Code Mode while hiding broad `execute`. The Headless 360 recommendation hides `dispatch`, keeps discovery tools in Code Mode, and makes `dispatch_readonly` Deferred. Selecting keep-both exposes the complete reviewed contract and adds compact routing guidance for the owners whose conflicting tools remain reachable.
 
 ## Commands
 
@@ -53,6 +56,8 @@ Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first 
 
 Governed hosted presets include concise, versioned tool summaries sourced from the preset's official Salesforce documentation. Servers with package-defined, permission-scoped, or custom tool catalogs show reviewed capability groups before setup and their exact tool metadata after Pi observes a live connection. An observed tool that is absent from the approved preset contract remains visibly unapproved and inherits the server's hidden exposure.
 
+**Review tool conflicts** shows the exact tools, capability, active owners, relationship, and recommended exposure. Broad meta-tools explicitly warn that Pi can govern the dispatcher but not individual operations behind it. **Review contract drift** separates observed additions from documented removals. Added tools require a reviewed SF MCP preset revision; removed tools can be repaired to Hidden when the native entry remains unchanged and managed.
+
 SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <preset-id>`. Existing manual entries and entries changed outside SF MCP remain user-owned. The Manager can adopt a compatible entry without changing it, or show a redacted field-level diff before an explicit reset. Canonically colliding names require the user to choose the one entry to keep.
 
 ## Safety and Data Boundaries
@@ -63,6 +68,8 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - Governed hosted presets use hidden server exposure with an exact reviewed tool policy, so newly discovered tools remain unreachable until a preset revision approves them.
 - Read-only profiles hide every write, destructive, mixed, or unknown-risk tool. Documented tools missing from an observed live contract remain locked hidden.
 - Direct exposure for a non-read tool is allowed only as an explicit custom choice and produces a visible warning before apply.
+- Native-preferred conflict recommendations alter only MCP exposure. They never disable `sf-soql`, `sf-apex`, `sf-flow`, `sf-data360`, or another SF Pi owner.
+- Runtime observation never approves a new tool. Additions require a reviewed preset revision; removed tools remain unavailable and repair only changes their native exposure to Hidden.
 - New custom servers start with `hidden` exposure and no callable tools.
 - OAuth tokens remain in Pi's native MCP credential store.
 - External Client App consumer keys are public client identifiers; client secrets are never requested for Salesforce Hosted MCP presets.
