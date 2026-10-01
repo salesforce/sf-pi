@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.307.1](https://github.com/salesforce/sf-pi/compare/v0.307.0...v0.307.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* **sf-mcp:** remove obsolete resolution parameter ([d9a9cd1](https://github.com/salesforce/sf-pi/commit/d9a9cd1075648399aa361e3d18e695c6d87d2bb6))
+
 ## [0.307.0](https://github.com/salesforce/sf-pi/compare/v0.306.1...v0.307.0) (2026-10-01)
 
 
