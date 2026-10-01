@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.312.0](https://github.com/salesforce/sf-pi/compare/v0.311.0...v0.312.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** add product-grouped Tableau and Trailhead presets ([efe7ba4](https://github.com/salesforce/sf-pi/commit/efe7ba42a903c3d2ebcada8cc1a1e045613299a1))
+
 ## [0.311.0](https://github.com/salesforce/sf-pi/compare/v0.310.0...v0.311.0) (2026-10-01)
 
 
