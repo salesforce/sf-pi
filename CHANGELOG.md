@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.314.0](https://github.com/salesforce/sf-pi/compare/v0.313.0...v0.314.0) (2026-10-01)
+
+
+### Features
+
+* **sf-mcp:** add end-to-end hardening harnesses ([0689621](https://github.com/salesforce/sf-pi/commit/0689621028b7472ce7c7993ea85017a97759ccef))
+
+
+### Security
+
+* **deps:** override vulnerable basic-ftp ([a3eec09](https://github.com/salesforce/sf-pi/commit/a3eec09e36c54a4ce1d0d3fa1f4d20655d61d0d8))
+
 ## [0.313.0](https://github.com/salesforce/sf-pi/compare/v0.312.0...v0.313.0) (2026-10-01)
 
 
