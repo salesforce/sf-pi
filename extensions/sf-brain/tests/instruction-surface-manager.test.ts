@@ -15,13 +15,29 @@ describe("SF Brain Manager actions", () => {
       sfPiVersion: "1.0.0",
     });
 
-    expect(actions).toHaveLength(1);
+    expect(actions.map((action) => action.id)).toEqual([
+      "display-capabilities",
+      "instruction-surface",
+      "visual-response-audit",
+    ]);
     expect(actions[0]).toMatchObject({
+      id: "display-capabilities",
+      label: "Display capabilities",
+      group: "Diagnostics",
+      acceptsScope: false,
+    });
+    expect(actions[1]).toMatchObject({
       id: "instruction-surface",
       label: "Instruction surface",
       group: "Diagnostics",
       acceptsScope: false,
     });
-    expect(actions[0]?.createPanel).toBeTypeOf("function");
+    expect(actions[2]).toMatchObject({
+      id: "visual-response-audit",
+      label: "Visual response audit",
+      group: "Diagnostics",
+      acceptsScope: false,
+    });
+    expect(actions.every((action) => action.createPanel)).toBe(true);
   });
 });

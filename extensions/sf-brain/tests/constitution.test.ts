@@ -19,7 +19,6 @@ import {
   constitutionAddendumPath,
   loadConstitution,
   readBundledConstitution,
-  resolveDisplayCapabilities,
   shouldInjectConstitution,
 } from "../lib/constitution.ts";
 
@@ -138,50 +137,19 @@ describe("Salesforce Engineering Constitution", () => {
     expect(content).toContain("silently enable a disabled capability");
   });
 
-  it("makes simple, visual chat communication part of the bundled baseline", () => {
+  it("makes terminal-safe visual communication part of the bundled baseline", () => {
     const content = loadConstitution({ cliInstalled: true });
 
     expect(content).toContain("7. SIMPLE, VISUAL COMMUNICATION");
     expect(content).toContain("Applies to chat responses only");
-    expect(content).toContain("Mermaid diagram");
+    expect(content).toContain("Use the most specific supported Mermaid form");
+    expect(content).toContain("top-level fenced block");
+    expect(content).toContain("6–8 nodes");
+    expect(content).toContain("Prefer `TD` or `TB`");
+    expect(content).toContain("editable or durable Salesforce diagram");
+    expect(content).toContain("`tldraw_canvas`");
     expect(content).toContain("✅ done/pass");
-    expect(content).not.toContain("<sf_display_fallback>");
-  });
-
-  it("adds only the display fallbacks the user's terminal settings require", () => {
-    const noMermaid = loadConstitution({ cliInstalled: true, mermaid: false });
-    const noEmoji = loadConstitution({ cliInstalled: true, emoji: false });
-
-    expect(noMermaid).toContain("<sf_display_fallback>");
-    expect(noMermaid).toContain("Mermaid rendering is off");
-    expect(noMermaid).not.toContain("Emoji may not render");
-    expect(noEmoji).toContain("Emoji may not render");
-    expect(noEmoji).not.toContain("Mermaid rendering is off");
-  });
-
-  it("resolves display capabilities from existing Pi and SF Pi settings", () => {
-    const cwd = mkdtempSync(path.join(tmpdir(), "sf-brain-cwd-"));
-    try {
-      expect(resolveDisplayCapabilities(cwd, {})).toEqual({ mermaid: true, emoji: true });
-
-      writeFileSync(
-        path.join(tempAgentDir, "settings.json"),
-        JSON.stringify({ markdown: { mermaid: "off" } }),
-      );
-      expect(resolveDisplayCapabilities(cwd, {}).mermaid).toBe(false);
-
-      mkdirSync(path.join(cwd, ".pi"), { recursive: true });
-      writeFileSync(
-        path.join(cwd, ".pi", "settings.json"),
-        JSON.stringify({ markdown: { mermaid: "final" } }),
-      );
-      expect(resolveDisplayCapabilities(cwd, {}).mermaid).toBe(true);
-
-      expect(resolveDisplayCapabilities(cwd, { SF_PI_ASCII_ICONS: "1" }).emoji).toBe(false);
-      expect(resolveDisplayCapabilities(cwd, { TERM_PROGRAM: "Apple_Terminal" }).emoji).toBe(false);
-    } finally {
-      rmSync(cwd, { recursive: true, force: true });
-    }
+    expect(content).not.toContain("<sf_display_capabilities>");
   });
 
   it("does not read the legacy replacement-style SF_KERNEL.md", () => {

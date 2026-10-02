@@ -32,14 +32,17 @@ describe("sf-brain before_agent_start handler", () => {
     expect(brainSource).toMatch(/if \(!shouldInjectConstitution\([\s\S]*?\)\) return;/);
   });
 
-  it("returns persistent hidden custom messages for kernel and extension context", () => {
+  it("returns persistent hidden custom messages for constitution, display, and routing context", () => {
     expect(brainSource).toContain("customType: CONSTITUTION_ENTRY_TYPE");
+    expect(brainSource).toContain("customType: DISPLAY_CAPABILITIES_ENTRY_TYPE");
     expect(brainSource).toContain("customType: SF_PI_ROUTING_ENTRY_TYPE");
-    expect(brainSource.match(/display: false/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(brainSource.match(/display: false/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("passes the session's display capabilities into the constitution", () => {
+  it("refreshes display capabilities independently of the stable constitution", () => {
     expect(brainSource).toContain("resolveDisplayCapabilities(ctx.cwd)");
+    expect(brainSource).toContain("formatDisplayCapabilitiesContext");
+    expect(brainSource).toContain("shouldInjectDisplayCapabilities");
   });
 
   it("reuses the shared sf-environment cache before running detection", () => {

@@ -1,7 +1,7 @@
 {
   "id": "sf-brain",
   "name": "SF Brain",
-  "description": "Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory Instruction Surface diagnostics",
+  "description": "Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory display, instruction, and visual-response diagnostics",
   "category": "assistive",
   "maturity": "stable",
   "defaultEnabled": true,
@@ -9,22 +9,33 @@
   "docs": {
     "intentGroup": "Work safely",
     "agentGuide": "AGENT_GUIDE.md",
-    "summary": "Injects the Salesforce Engineering Constitution, a tiny disabled-capability routing summary, and Gateway GPT-6 Sol-only response guidance; provides a content-safe advisory report of model-visible SF Pi instructions, tools, and external Salesforce skill metadata.",
+    "summary": "Injects the Salesforce Engineering Constitution, mutable terminal display capabilities, a tiny disabled-capability routing summary, and Gateway GPT-6 Sol-only response guidance; provides content-safe display, instruction-surface, and aggregate visual-response diagnostics.",
     "primaryFiles": [
       "index.ts",
       "lib/constitution.ts",
+      "lib/display-capabilities.ts",
       "lib/routing-summary.ts",
-      "lib/instruction-surface-report.ts"
+      "lib/instruction-surface-report.ts",
+      "lib/visual-response-audit.ts"
     ],
     "stateFiles": [
       "<globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md",
       "<project>/.pi/state/sf-brain/instruction-surface/report.{json,md}",
-      "<project>/.pi/state/sf-brain/instruction-behavior/<run>/report.{json,md}"
+      "<project>/.pi/state/sf-brain/instruction-behavior/<run>/report.{json,md}",
+      "<project>/.pi/state/sf-brain/visual-response/<run>/report.{json,md}"
     ],
     "safety": [
       "Never registers tools; the constitution is delivered through the session entry log only.",
       "Always preserves the bundled constitution; user guidance is append-only through <globalAgentDir>/sf-brain/SF_CONSTITUTION_APPEND.md.",
-      "Instruction Surface diagnostics expose counts and public-safe contributor ids only; they never expose prompt, context-file, skill-description, or tool-schema content."
+      "Instruction Surface diagnostics expose counts and public-safe contributor ids only; they never expose prompt, context-file, skill-description, or tool-schema content.",
+      "Visual Response diagnostics are bounded and aggregate-only; they never return transcript text, Mermaid labels, filenames, session ids, workspace paths, credentials, or org details."
+    ],
+    "referenceRoots": [
+      {
+        "path": "docs",
+        "index": "docs/README.md",
+        "role": "current"
+      }
     ]
   }
 }

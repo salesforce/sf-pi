@@ -125,7 +125,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-brain">
   <span class="sfpi-card-kicker">Assistive · on</span>
   <strong>SF Brain</strong>
-  <span>Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory Instruction Surface diagnostics</span>
+  <span>Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory display, instruction, and visual-response diagnostics</span>
   <span class="sfpi-card-meta">Works automatically</span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-guardrail">

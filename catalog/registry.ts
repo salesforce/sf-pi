@@ -39,7 +39,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-brain",
     name: "SF Brain",
-    description: "Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory Instruction Surface diagnostics",
+    description: "Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory display, instruction, and visual-response diagnostics",
     file: "extensions/sf-brain/index.ts",
     category: "assistive",
     maturity: "stable",

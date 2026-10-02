@@ -55,7 +55,10 @@ for (const scenario of scenarios) {
       encoding: "utf8",
       timeout: args.timeoutMs,
     });
-    const observation = readObservation(observationPath);
+    const observation = {
+      ...readObservation(observationPath),
+      response_text: processResult.stdout?.trim() ?? "",
+    };
     const scenarioResult = {
       ...evaluateInstructionBehaviorScenario(scenario, observation),
       process_status: processResult.status,
@@ -166,11 +169,11 @@ function renderMarkdown(report: {
     `- Model: \`${report.model}\``,
     `- Thinking: \`${report.thinking}\``,
     "",
-    "| Scenario | Status | First tool | Expected | Forbidden observed |",
-    "| --- | --- | --- | --- | --- |",
+    "| Scenario | Status | First tool | Expected | Visual contract | Forbidden observed |",
+    "| --- | --- | --- | --- | --- | --- |",
     ...report.results.map(
       (result) =>
-        `| ${result.id} | ${result.status} | ${result.first_tool ?? "none"} | ${result.expected_first_tools.join(", ")} | ${result.forbidden_tools_observed.join(", ") || "none"} |`,
+        `| ${result.id} | ${result.status} | ${result.first_tool ?? "none"} | ${result.expected_first_tools.join(", ") || "none"} | ${result.response_contract ? (result.response_contract.passed ? "passed" : "failed") : "n/a"} | ${result.forbidden_tools_observed.join(", ") || "none"} |`,
     ),
     "",
     "## Notes",

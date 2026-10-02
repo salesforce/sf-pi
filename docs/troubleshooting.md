@@ -231,6 +231,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 - The constitution never appears in model context
 - User guidance does not take effect
+- Mermaid or icon settings look stale
+- A diagram remains source
 - An Instruction Surface baseline is not comparable
 
 **[SF Feedback](./extensions/sf-feedback.md#troubleshooting)**

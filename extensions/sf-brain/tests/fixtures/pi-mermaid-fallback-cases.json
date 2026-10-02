@@ -1,0 +1,32 @@
+[
+  {
+    "id": "supported-terminal-fit",
+    "available_width": 80,
+    "source": "flowchart TD\n  A[Draft] --> B[Review] --> C[Publish]",
+    "expected": "render"
+  },
+  {
+    "id": "supported-but-too-wide",
+    "available_width": 80,
+    "source": "flowchart LR\n  A[First component with a long label] --> B[Second component with a long label] --> C[Third component with a long label] --> D[Fourth component with a long label]",
+    "expected": "too_wide"
+  },
+  {
+    "id": "unsupported-family",
+    "available_width": 80,
+    "source": "gantt\n  title Release plan\n  section Work\n  Build :a1, 2026-01-01, 1d",
+    "expected": "unsupported"
+  },
+  {
+    "id": "supported-but-malformed",
+    "available_width": 80,
+    "source": "stateDiagram-v2\n  A -- B",
+    "expected": "malformed"
+  },
+  {
+    "id": "advisory-parser-warning",
+    "available_width": 80,
+    "source": "flowchart LR\n  A[Start] --> B[Done]\n  \"request\" --> Resolve",
+    "expected": "warning"
+  }
+]

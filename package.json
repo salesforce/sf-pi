@@ -126,6 +126,7 @@
     "e2e:sf-flow-families": "node --experimental-strip-types scripts/e2e/sf-flow-family-sweep.ts",
     "e2e:sf-flow-provision": "node --experimental-strip-types scripts/e2e/sf-flow-provision-test-fixture.ts",
     "instruction-surface:report": "node scripts/instruction-surface-report.mjs",
+    "visual-response:report": "node --experimental-strip-types scripts/visual-response-report.ts",
     "e2e:instruction-behavior": "node --experimental-strip-types scripts/e2e/instruction-behavior/run.ts"
   },
   "peerDependencies": {
@@ -173,6 +174,7 @@
     "@sf-agentscript/language": "3.2.3",
     "@sf-agentscript/lsp": "2.6.33",
     "fast-xml-parser": "^5.7.0",
+    "grok-mermaid": "0.2.3",
     "node-emoji": "^2.2.0",
     "vscode-languageserver-protocol": "^3.18.4"
   },

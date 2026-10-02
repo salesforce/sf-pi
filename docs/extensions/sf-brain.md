@@ -1,16 +1,16 @@
 ---
 title: "SF Brain"
-description: "Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory Instruction Surface diagnostics"
+description: "Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory display, instruction, and visual-response diagnostics"
 editLink: false
 ---
 
 # SF Brain
 
-<p class="sfpi-page-lead">Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory Instruction Surface diagnostics</p>
+<p class="sfpi-page-lead">Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory display, instruction, and visual-response diagnostics</p>
 
 ## What it does
 
-Injects the Salesforce Engineering Constitution, a tiny disabled-capability routing summary, and Gateway GPT-6 Sol-only response guidance; provides a content-safe advisory report of model-visible SF Pi instructions, tools, and external Salesforce skill metadata.
+Injects the Salesforce Engineering Constitution, mutable terminal display capabilities, a tiny disabled-capability routing summary, and Gateway GPT-6 Sol-only response guidance; provides content-safe display, instruction-surface, and aggregate visual-response diagnostics.
 
 ## Start
 
@@ -29,6 +29,7 @@ Open its Manager detail or change its package state with:
 - Never registers tools; the constitution is delivered through the session entry log only.
 - Always preserves the bundled constitution; user guidance is append-only through &lt;globalAgentDir&gt;/sf-brain/SF_CONSTITUTION_APPEND.md.
 - Instruction Surface diagnostics expose counts and public-safe contributor ids only; they never expose prompt, context-file, skill-description, or tool-schema content.
+- Visual Response diagnostics are bounded and aggregate-only; they never return transcript text, Mermaid labels, filenames, session ids, workspace paths, credentials, or org details.
 
 ## Exact reference
 
@@ -52,6 +53,7 @@ Open its Manager detail or change its package state with:
 - [Full extension README](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-brain/README.md)
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-brain)
 - [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-brain/AGENT_GUIDE.md)
+- [Reference index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-brain/docs/README.md)
 
 ## Troubleshooting
 

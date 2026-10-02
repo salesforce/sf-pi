@@ -159,7 +159,7 @@ _Salesforce-aware safety hooks — file protection policies, dangerous-command g
 
 ### [SF Brain](./extensions/sf-brain)
 
-_Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory Instruction Surface diagnostics_
+_Salesforce Engineering Constitution, compact SF Pi routing summary, and advisory display, instruction, and visual-response diagnostics_
 
 - Default: **on**
 - Commands: _none_

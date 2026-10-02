@@ -94,5 +94,91 @@
     "prompt": "BillingAgent version 3 in sandbox alias Dev has no matching eval evidence. Invoke agentscript_lifecycle activate with agent_api_name BillingAgent, version 3, and target_org Dev so the release-evidence gate reports recovery. Do not inspect files or use raw CLI.",
     "expected_first_tools": ["agentscript_lifecycle"],
     "forbidden_tools": ["bash"]
+  },
+  {
+    "id": "visual-sequence",
+    "prompt": "Without using tools, explain how Customer, Store, Payment, and Warehouse interact while an order is placed and shipped. Keep the answer terminal-friendly and use one- or two-word sequence message labels.",
+    "expected_first_tools": [],
+    "response_contract": {
+      "mermaid": "required",
+      "kind": "sequence",
+      "maxWidth": 80,
+      "maxDiagrams": 1,
+      "requireTopLevel": true,
+      "requireZeroWarnings": true
+    }
+  },
+  {
+    "id": "visual-state",
+    "prompt": "Without using tools, explain the lifecycle of an order from cart through pending, paid, shipped, delivered, or cancelled. Keep the answer terminal-friendly.",
+    "expected_first_tools": [],
+    "response_contract": {
+      "mermaid": "required",
+      "kind": "state",
+      "maxWidth": 80,
+      "maxDiagrams": 1,
+      "requireTopLevel": true,
+      "requireZeroWarnings": true
+    }
+  },
+  {
+    "id": "visual-er",
+    "prompt": "Without using tools, explain the relationships among Customer, Order, Order Item, and Product records. Keep the answer terminal-friendly.",
+    "expected_first_tools": [],
+    "response_contract": {
+      "mermaid": "required",
+      "kind": "er",
+      "maxWidth": 80,
+      "maxDiagrams": 1,
+      "requireTopLevel": true,
+      "requireZeroWarnings": true
+    }
+  },
+  {
+    "id": "visual-class",
+    "prompt": "Without using tools, explain a small code structure where Cart creates Order and Order uses PaymentService. Keep the answer terminal-friendly.",
+    "expected_first_tools": [],
+    "response_contract": {
+      "mermaid": "required",
+      "kind": "class",
+      "maxWidth": 80,
+      "maxDiagrams": 1,
+      "requireTopLevel": true,
+      "requireZeroWarnings": true
+    }
+  },
+  {
+    "id": "visual-flowchart",
+    "prompt": "Without using tools, explain a generic three-step review process: draft, approve, publish. Keep the answer terminal-friendly.",
+    "expected_first_tools": [],
+    "response_contract": {
+      "mermaid": "required",
+      "kind": "flowchart",
+      "maxWidth": 80,
+      "maxDiagrams": 1,
+      "requireTopLevel": true,
+      "requireZeroWarnings": true
+    }
+  },
+  {
+    "id": "visual-independent-results",
+    "prompt": "Without using tools, report that formatting, type checking, and unit tests independently passed. Do not describe a process or dependency.",
+    "expected_first_tools": [],
+    "response_contract": {
+      "mermaid": "forbidden"
+    }
+  },
+  {
+    "id": "visual-unsupported-gantt-fallback",
+    "prompt": "Without using tools, show a terminal-friendly dependency view for three sequential release stages. Do not use a Gantt chart because terminal Mermaid does not support it.",
+    "expected_first_tools": [],
+    "response_contract": {
+      "mermaid": "required",
+      "kind": "flowchart",
+      "maxWidth": 80,
+      "maxDiagrams": 1,
+      "requireTopLevel": true,
+      "requireZeroWarnings": true
+    }
   }
 ]

@@ -52,4 +52,56 @@ describe("Instruction Behavior Eval", () => {
       "Ignored 2 leading local context tools before capability routing.",
     );
   });
+
+  it("validates a terminal-safe final response without requiring a tool call", () => {
+    const result = evaluateInstructionBehaviorScenario(
+      {
+        id: "visual-sequence",
+        prompt: "Explain a three-party interaction.",
+        expected_first_tools: [],
+        response_contract: {
+          mermaid: "required",
+          kind: "sequence",
+          maxWidth: 80,
+          maxDiagrams: 1,
+          requireTopLevel: true,
+          requireZeroWarnings: true,
+        },
+      },
+      {
+        calls: [],
+        response_text:
+          "```mermaid\nsequenceDiagram\n  participant A\n  participant B\n  A->>B: Request\n```",
+      },
+    );
+
+    expect(result).toMatchObject({
+      status: "passed",
+      observed_tools: [],
+      response_contract: { passed: true, diagram_count: 1, kinds: ["sequence"] },
+    });
+    expect(result.facts).toContain("No first-tool contract was required.");
+  });
+
+  it("fails a response that uses the wrong Mermaid family", () => {
+    const result = evaluateInstructionBehaviorScenario(
+      {
+        id: "visual-state",
+        prompt: "Explain a lifecycle.",
+        expected_first_tools: [],
+        response_contract: {
+          mermaid: "required",
+          kind: "state",
+          maxWidth: 80,
+        },
+      },
+      {
+        calls: [],
+        response_text: "```mermaid\nflowchart TD\n  A-->B\n```",
+      },
+    );
+
+    expect(result.status).toBe("failed");
+    expect(result.response_contract?.passed).toBe(false);
+  });
 });

@@ -9,6 +9,7 @@
  * - Appends optional user guidance from SF_CONSTITUTION_APPEND.md without
  *   allowing replacement of the bundled baseline.
  * - Re-injects after compaction removes the live constitution entry.
+ * - Refreshes a separate display-capability message when Mermaid/icon settings change.
  * - Adds response-depth guidance only while Gateway GPT-6 Sol is selected.
  *
  * Detection reuses the shared sf-environment cache populated by sf-devbar /
@@ -31,9 +32,14 @@ import {
 import {
   CONSTITUTION_ENTRY_TYPE,
   loadConstitution,
-  resolveDisplayCapabilities,
   shouldInjectConstitution,
 } from "./lib/constitution.ts";
+import {
+  DISPLAY_CAPABILITIES_ENTRY_TYPE,
+  formatDisplayCapabilitiesContext,
+  resolveDisplayCapabilities,
+  shouldInjectDisplayCapabilities,
+} from "./lib/display-capabilities.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
   formatSfPiRoutingSummary,
@@ -60,7 +66,11 @@ export default function (pi: ExtensionAPI) {
       sfPiVersion: SF_PI_VERSION,
     }),
   );
-  registerLatestContextProjection(pi, [CONSTITUTION_ENTRY_TYPE, SF_PI_ROUTING_ENTRY_TYPE]);
+  registerLatestContextProjection(pi, [
+    CONSTITUTION_ENTRY_TYPE,
+    DISPLAY_CAPABILITIES_ENTRY_TYPE,
+    SF_PI_ROUTING_ENTRY_TYPE,
+  ]);
   const exec = buildExecFn(pi);
 
   pi.on("before_agent_start", (event, ctx) => {
@@ -78,15 +88,25 @@ export default function (pi: ExtensionAPI) {
       env = await getSharedSfEnvironment(exec, ctx.cwd);
     }
 
-    const constitution = loadConstitution({
-      cliInstalled: env.cli.installed,
-      ...resolveDisplayCapabilities(ctx.cwd),
-    });
+    const constitution = loadConstitution({ cliInstalled: env.cli.installed });
 
     return {
       message: {
         customType: CONSTITUTION_ENTRY_TYPE,
         content: constitution,
+        display: false,
+      },
+    };
+  });
+
+  pi.on("before_agent_start", async (_event, ctx) => {
+    const content = formatDisplayCapabilitiesContext(resolveDisplayCapabilities(ctx.cwd));
+    if (!shouldInjectDisplayCapabilities(ctx.sessionManager, content)) return;
+
+    return {
+      message: {
+        customType: DISPLAY_CAPABILITIES_ENTRY_TYPE,
+        content,
         display: false,
       },
     };
