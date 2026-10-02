@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.317.0-2026-10-02",
-  "latestVersion": "0.317.0",
+  "revision": "release-0.318.0-2026-10-02",
+  "latestVersion": "0.318.0",
   "announcements": [
     {
-      "id": "release-0.317.0",
+      "id": "release-0.318.0",
       "kind": "update",
-      "title": "sf-pi v0.317.0 — pi: adopt Pi 1.0 runtime",
+      "title": "sf-pi v0.318.0 — sf-brain: harden terminal visual responses",
       "publishedAt": "2026-10-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.317.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.0",
       "severity": "info",
-      "body": "pi: adopt Pi 1.0 runtime"
+      "body": "sf-brain: harden terminal visual responses"
     }
   ]
 }
