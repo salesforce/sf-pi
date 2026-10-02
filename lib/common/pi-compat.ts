@@ -8,24 +8,24 @@
  *   older than our floor, extension factories can crash with cryptic
  *   `ctx.ui.<method> is not a function` or provider schema errors.
  *
- *   Newer stable Pi 0.x releases are different: lack of an audit is not proof
+ *   Newer stable Pi 1.x releases are different: lack of an audit is not proof
  *   of incompatibility. `requirePiVersion()` therefore blocks only known hard
- *   boundaries (too old, prerelease, or Pi 1.x+) and lets newer stable 0.x
+ *   boundaries (too old, prerelease, or Pi 2.x+) and lets newer stable 1.x
  *   releases load with one process-wide forward-compatibility warning.
  */
 import * as PiRuntime from "@earendil-works/pi-coding-agent";
 
 /** Oldest Pi release whose public APIs satisfy every bundled extension. */
-export const MIN_PI_VERSION = "0.99.2";
+export const MIN_PI_VERSION = "1.0.0";
 
 /** Exclusive end of the exact patch range covered by required compatibility CI. */
-export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "0.99.3";
+export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "1.0.1";
 
-/** Future stable Pi 0.x releases may load; Pi 1.x requires an explicit audit. */
-export const HARD_MAX_PI_VERSION_EXCLUSIVE = "1.0.0";
+/** Future stable Pi 1.x releases may load; Pi 2.x requires an explicit audit. */
+export const HARD_MAX_PI_VERSION_EXCLUSIVE = "2.0.0";
 
 /** Exact runtime used by normal development and bounded repair guidance. */
-export const RECOMMENDED_PI_VERSION = "0.99.2";
+export const RECOMMENDED_PI_VERSION = "1.0.0";
 
 export type PiVersionCompatibility =
   "audited" | "forward-compatible" | "too-old" | "prerelease" | "major-version";
@@ -111,7 +111,7 @@ function claimForwardCompatibilityWarning(): boolean {
 
 /**
  * Gate each extension behind the hard runtime boundaries while allowing stable
- * future Pi 0.x releases to load in forward-compatibility mode.
+ * future Pi 1.x releases to load in forward-compatibility mode.
  */
 export function requirePiVersion(
   _pi: unknown,

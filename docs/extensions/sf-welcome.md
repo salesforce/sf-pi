@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Two-column startup splash with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, and release freshness on the left, plus announcements/recommended extensions/recent sessions on the right. Dismissable overlay (default) or persistent header (quietStartup), plus /sf-welcome and /sf-setup-fonts commands.
+Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, release freshness, announcements, recommended extensions, and recent sessions. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.
 
 ## Start
 

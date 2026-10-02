@@ -1362,7 +1362,7 @@
     ],
     "docs": {
       "intentGroup": "Personalize pi",
-      "summary": "Two-column startup splash with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, and release freshness on the left, plus announcements/recommended extensions/recent sessions on the right. Dismissable overlay (default) or persistent header (quietStartup), plus /sf-welcome and /sf-setup-fonts commands.",
+      "summary": "Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, release freshness, announcements, recommended extensions, and recent sessions. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.",
       "primaryFiles": [
         "index.ts",
         "lib/splash-component.ts",
@@ -1384,6 +1384,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6814
+    "srcLoc": 6772
   }
 ]

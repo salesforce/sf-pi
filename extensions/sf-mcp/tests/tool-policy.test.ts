@@ -97,7 +97,11 @@ describe("SF MCP tool exposure policy", () => {
       preset,
       {
         url: "https://api.salesforce.com/platform/mcp/v1/data/sandbox/data360",
-        oauth: { clientId: "public-client", callbackPort: 8765 },
+        oauth: {
+          clientId: "public-client",
+          callbackPort: 8765,
+          authServerMetadataUrl: "https://login.example.test/.well-known/openid-configuration",
+        },
         enabled: false,
         timeout: 120,
         exposure: "codemode",
@@ -106,6 +110,11 @@ describe("SF MCP tool exposure policy", () => {
     );
 
     expect(config).toMatchObject({
+      oauth: {
+        clientId: "public-client",
+        callbackPort: 8765,
+        authServerMetadataUrl: "https://login.example.test/.well-known/openid-configuration",
+      },
       enabled: false,
       timeout: 120,
       exposure: "hidden",

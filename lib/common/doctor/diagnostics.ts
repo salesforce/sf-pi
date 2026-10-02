@@ -122,20 +122,6 @@ export function runDoctorDiagnostics(
     });
   }
 
-  if (
-    effectiveSettings.quietStartup !== true &&
-    welcomeMode !== "header" &&
-    welcomeMode !== "off"
-  ) {
-    issues.push({
-      id: "startup-overlay-enabled",
-      severity: "warn",
-      title: "Full startup splash is enabled",
-      detail: "Users with terminal focus issues can feel stuck behind the welcome overlay.",
-      fix: "Run `/sf-pi doctor fix startup` to enable quiet/header startup.",
-    });
-  }
-
   if (skillCollisions.length > 0) {
     const duplicateCount = skillCollisions.reduce((sum, c) => sum + c.duplicates.length, 0);
     issues.push({
@@ -203,7 +189,7 @@ export function runDoctorDiagnostics(
     piVersion,
     nodeVersion,
     runtime,
-    quietStartup: effectiveSettings.quietStartup === true,
+    quietStartup: isQuietStartup(effectiveSettings.quietStartup),
     welcomeMode,
     safeStartRequested,
     welcomeDisabled,
@@ -234,13 +220,6 @@ export function summarizeStartupDoctorNudge(report: DoctorReport): StartupDoctor
   if (report.issues.some((issue) => issue.id === "herdr-package-duplicate")) {
     pieces.push("duplicate Herdr packages");
   }
-  if (
-    report.quietStartup !== true &&
-    report.welcomeMode !== "header" &&
-    report.welcomeMode !== "off"
-  ) {
-    pieces.push("startup overlay enabled");
-  }
   if (pieces.length === 0 && report.safeStartRequested) pieces.push("safe start active");
 
   return {
@@ -252,12 +231,6 @@ export function summarizeStartupDoctorNudge(report: DoctorReport): StartupDoctor
     message: pieces.join(" · "),
     command: "/sf-pi doctor",
   };
-}
-
-export function shouldForceSafeWelcome(report: DoctorReport): boolean {
-  if (report.welcomeDisabled) return true;
-  if (report.safeStartRequested) return true;
-  return report.issues.some((issue) => issue.severity === "warn" || issue.severity === "error");
 }
 
 export function isWelcomeDisabled(settings?: Record<string, unknown>): boolean {
@@ -272,20 +245,16 @@ export function isWelcomeDisabled(settings?: Record<string, unknown>): boolean {
   return welcome.mode === "off";
 }
 
-export function resolveConfiguredWelcomeMode(cwd: string): "auto" | "overlay" | "header" | "off" {
+export function resolveConfiguredWelcomeMode(cwd: string): "header" | "off" {
   const merged = {
     ...readJsonObject(globalSettingsPath()),
     ...readJsonObject(projectSettingsPath(cwd)),
   };
   if (isTruthyEnv(process.env.SF_PI_SAFE_START)) return "header";
   if (String(process.env.SF_PI_WELCOME ?? "").toLowerCase() === "off") return "off";
-  const envMode = String(process.env.SF_PI_WELCOME ?? "").toLowerCase();
-  if (envMode === "overlay" || envMode === "header" || envMode === "auto") return envMode;
   const sfPi = readObject(merged.sfPi);
   const welcome = readObject(sfPi.welcome);
-  return welcome.mode === "overlay" || welcome.mode === "header" || welcome.mode === "off"
-    ? welcome.mode
-    : "auto";
+  return welcome.mode === "off" ? "off" : "header";
 }
 
 export function discoverSkillLocations(options: {
@@ -867,12 +836,12 @@ export function buildRuntimeUpdateAdvice(input: {
   const lines =
     compatibility === "forward-compatible"
       ? [
-          `Detected pi ${input.piVersion}, newer than the audited <${AUDITED_MAX_PI_VERSION_EXCLUSIVE} range but inside the stable pre-1.0 loadable range.`,
+          `Detected pi ${input.piVersion}, newer than the audited <${AUDITED_MAX_PI_VERSION_EXCLUSIVE} range but inside the stable pre-2.0 loadable range.`,
           "SF Pi is loading in forward-compatibility mode. No downgrade is recommended unless a concrete failure occurs.",
         ]
       : [
           `Detected pi ${input.piVersion} inside the audited >=${MIN_PI_VERSION} <${AUDITED_MAX_PI_VERSION_EXCLUSIVE} window.`,
-          "Pi-native updates are allowed; newer stable pre-1.0 releases load in forward-compatibility mode.",
+          "Pi-native updates are allowed; newer stable pre-2.0 releases load in forward-compatibility mode.",
         ];
   if (input.allPiPaths.length > 1) {
     lines.unshift(
@@ -905,6 +874,10 @@ function readJsonObject(filePath: string): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function isQuietStartup(value: unknown): boolean {
+  return value === true || value === "header";
 }
 
 function readObject(value: unknown): Record<string, unknown> {

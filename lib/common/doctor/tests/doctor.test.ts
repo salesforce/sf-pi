@@ -81,6 +81,21 @@ describe("runDoctorDiagnostics", () => {
     DOCTOR_TEST_TIMEOUT_MS,
   );
 
+  it("accepts Pi's header-only startup mode without warning about the overlay", () => {
+    const home = makeHome();
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+    tempDirs.push(cwd);
+    writeSettings(home, {
+      quietStartup: "header",
+      sfPi: { welcome: { mode: "header" } },
+    });
+
+    const report = runDoctorDiagnostics({ cwd, home });
+
+    expect(report.quietStartup).toBe(true);
+    expect(report.issues.some((issue) => issue.id === "startup-overlay-enabled")).toBe(false);
+  });
+
   it(
     "errors when npm and git Herdr packages are both configured",
     () => {
@@ -118,7 +133,7 @@ describe("doctor fixes", () => {
 
     const disk = JSON.parse(readFileSync(settings, "utf8"));
     expect(disk.theme).toBe("dark");
-    expect(disk.quietStartup).toBe(true);
+    expect(disk.quietStartup).toBe("header");
     expect(disk.sfPi.asciiIcons).toBe(true);
     expect(disk.sfPi.welcome.mode).toBe("header");
   });

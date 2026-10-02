@@ -24,14 +24,15 @@ Wide terminals can show two columns; narrow terminals stack the same content.
 
 ## Configuration
 
-**SF Pi Manager → SF Welcome → Settings** controls startup mode through Pi's
-`quietStartup` preference:
+**SF Pi Manager → SF Welcome → Settings** controls `sfPi.welcome.mode`:
 
-- `header` — compact non-blocking startup surface;
-- `overlay` — full dismissible splash;
-- `off` — no automatic Welcome surface.
+- `header` — compact non-blocking Salesforce startup surface;
+- `off` — no automatic SF Welcome surface.
 
-`SF_PI_SAFE_START=1 pi` uses the non-blocking header for recovery. Glyph policy
+Pi separately owns its native `quietStartup` setting. SF Pi Doctor uses
+`quietStartup: "header"` for recovery so Pi keeps its version and key hints while
+hiding the longer resource listing. `SF_PI_SAFE_START=1 pi` also keeps SF Welcome
+on its non-blocking header. Glyph policy
 can be overridden with `SF_PI_ASCII_ICONS=1`/`0` or `sfPi.asciiIcons`.
 Announcements can be disabled with `SF_PI_ANNOUNCEMENTS=off` or
 `sfPi.announcements=false`.
@@ -70,7 +71,7 @@ inside a Herdr pane, and install the Herdr Pi bridge when needed.
 remove `git:github.com/ogulcancelik/pi-extensions` from `packages[]`, then run
 `/sf-pi doctor`.
 
-**Startup feels noisy:** Select `header` or `off` in Manager settings. Optional
+**Startup feels noisy:** Select `off` in Manager settings. Optional
 integrations should remain calm unless enabled or degraded.
 
 **Content is clipped:** Increase terminal width or report a reproduction. The

@@ -8,10 +8,11 @@
  *   Right column: Announcements, loaded counts, recent sessions,
  *                  recommended extensions, attribution
  *
- * Supports two modes:
- *   - quietStartup: false (default) → Dismissable overlay
- *   - quietStartup: true            → Persistent header above input
- *   (--verbose overrides quietStartup and forces the overlay)
+ * Automatic startup has two SF Welcome modes:
+ *   - sfPi.welcome.mode="header" (default) → Non-blocking header above input
+ *   - sfPi.welcome.mode="off"              → No automatic SF Welcome surface
+ *
+ * Pi's quietStartup setting independently controls Pi's native startup output.
  *
  * Dismissal triggers:
  *   - Any keypress
@@ -372,8 +373,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     data.doctor = startupDoctorNudge;
 
     // Startup is intentionally non-blocking: render as a header so the user
-    // can type while background rows refresh. The full overlay remains useful
-    // for previews/tests but is no longer used on automatic startup.
+    // can type while background rows refresh.
     const welcomeMode = resolveConfiguredWelcomeMode(ctx.cwd);
     if (welcomeMode === "off") return;
     setupHeader(ctx, data, generation);
