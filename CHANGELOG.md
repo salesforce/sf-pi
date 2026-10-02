@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.318.0](https://github.com/salesforce/sf-pi/compare/v0.317.0...v0.318.0) (2026-10-02)
+
+
+### Features
+
+* **sf-brain:** harden terminal visual responses ([70f6747](https://github.com/salesforce/sf-pi/commit/70f6747dc555b488c91454e272abd7209a37c33c))
+
 ## [0.317.0](https://github.com/salesforce/sf-pi/compare/v0.316.0...v0.317.0) (2026-10-02)
 
 
