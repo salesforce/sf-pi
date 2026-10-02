@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.316.0-2026-10-02",
-  "latestVersion": "0.316.0",
+  "revision": "release-0.317.0-2026-10-02",
+  "latestVersion": "0.317.0",
   "announcements": [
     {
-      "id": "release-0.316.0",
+      "id": "release-0.317.0",
       "kind": "update",
-      "title": "sf-pi v0.316.0 — sf-integrate: harden external client OAuth profiles",
+      "title": "sf-pi v0.317.0 — pi: adopt Pi 1.0 runtime",
       "publishedAt": "2026-10-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.316.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.317.0",
       "severity": "info",
-      "body": "sf-integrate: harden external client OAuth profiles"
+      "body": "pi: adopt Pi 1.0 runtime"
     }
   ]
 }
