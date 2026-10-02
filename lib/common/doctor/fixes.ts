@@ -76,7 +76,7 @@ export function repairStartupSettings(settingsFile: string = globalSettingsPath(
   const sfPi = readObject(settings.sfPi);
   const welcome = readObject(sfPi.welcome);
 
-  settings.quietStartup = true;
+  settings.quietStartup = "header";
   settings.sfPi = {
     ...sfPi,
     welcome: {

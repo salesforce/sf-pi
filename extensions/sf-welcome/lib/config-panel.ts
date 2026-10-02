@@ -37,7 +37,7 @@ class SfWelcomeConfigPanel implements Focusable {
       return;
     }
     if (matchesKey(data, "left") || matchesKey(data, "right") || matchesKey(data, "space")) {
-      this.mode = this.mode === "header" ? "overlay" : "header";
+      this.mode = this.mode === "header" ? "off" : "header";
       this.message = "";
       return;
     }
@@ -51,14 +51,14 @@ class SfWelcomeConfigPanel implements Focusable {
     const dirty = this.mode !== this.savedMode;
     return [
       ` ${t.fg("accent", t.bold("SF Welcome Settings"))}`,
-      ` ${t.fg("dim", "Tune the startup welcome surface. --verbose still forces the full overlay.")}`,
+      ` ${t.fg("dim", "Tune the non-blocking Salesforce startup surface.")}`,
       "",
       ` ${t.fg("muted", "Scope:")} ${t.fg("text", this.scope)}`,
       ` ${t.fg("muted", "Current source:")} ${t.fg("dim", this.savedSource)}`,
       ` ${t.fg("muted", "Mode:")} ${t.fg("text", dirty ? "unsaved changes" : "saved")}`,
       "",
       ` ${t.fg("muted", "Startup surface")} ${t.fg(dirty ? "accent" : "text", this.mode)}`,
-      `   ${t.fg("dim", "header = compact non-blocking startup; overlay = full splash when not quiet.")}`,
+      `   ${t.fg("dim", "header = compact non-blocking startup; off = no automatic SF Welcome surface.")}`,
       "",
       ...(this.message ? [` ${t.fg("success", this.message)}`] : []),
       ` ${t.fg("dim", "←/→ toggle · S/Enter save · Esc back")}`,

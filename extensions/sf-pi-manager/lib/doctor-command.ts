@@ -105,7 +105,7 @@ async function handleFix(ctx: ExtensionCommandContext, target: DoctorFixTarget):
   const hasSkillsFix = target === "all" || target === "skills";
 
   const planned: string[] = [];
-  if (hasStartupFix) planned.push("set quietStartup=true and sfPi.welcome.mode=header");
+  if (hasStartupFix) planned.push('set quietStartup="header" and sfPi.welcome.mode=header');
   if (hasSkillsFix) {
     if (report.skillCollisions.length > 0) {
       planned.push(

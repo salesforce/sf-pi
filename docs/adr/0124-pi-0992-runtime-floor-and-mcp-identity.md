@@ -1,8 +1,9 @@
 ---
 id: "0124"
-status: accepted
+status: superseded
 date: 2026-09-30
 supersedes: ["0123"]
+supersededBy: ["0134"]
 ---
 
 # ADR 0124: Pi 0.99.2 Runtime Floor and MCP Identity
