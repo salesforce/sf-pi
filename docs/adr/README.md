@@ -118,6 +118,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0130: SF MCP Published Catalogs and Agentforce Sales](./0130-sf-mcp-published-catalogs-and-agentforce-sales.md) — 2026-10-01
 - [0131: SF Integrate owns hosted MCP org OAuth setup](./0131-sf-integrate-owns-hosted-mcp-org-oauth-setup.md) — 2026-10-01
 - [0132: SF Integrate adds plan-bound outbound credentials](./0132-sf-integrate-adds-plan-bound-outbound-credentials.md) — 2026-10-01
+- [0133: SF Integrate hardens core ECA OAuth profiles](./0133-sf-integrate-hardens-core-eca-oauth-profiles.md) — 2026-10-01
 
 ## Proposed
 

@@ -178,7 +178,11 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Secret entry is unavailable
 - OAuth client credentials remain unconfigured
 - Browser OAuth returns no consent URL
-- JWT planning is blocked
+- Device Flow check-only fails
+- Inbound JWT Bearer planning fails
+- Inbound Client Credentials token exchange fails
+- Token Exchange planning fails
+- Outbound JWT planning is blocked
 - Connection test fails
 
 **[SF LWC](./extensions/sf-lwc.md#troubleshooting)**

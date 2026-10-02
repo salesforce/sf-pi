@@ -6,6 +6,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
 import { integrationErrorResult } from "./errors.ts";
+import { applyInboundSetup, designInboundPlan, verifyInboundSetup } from "./inbound-operations.ts";
 import {
   applySetup,
   designPlan,
@@ -25,6 +26,7 @@ import {
 import { renderIntegrationCall, renderIntegrationResult } from "./render.ts";
 import { resolveSecretInput } from "./secrets.ts";
 import {
+  ECA_OAUTH_FLOWS,
   OUTBOUND_AUTH_TYPES,
   SF_INTEGRATE_ACTIONS,
   type SfIntegrateParams,
@@ -40,7 +42,7 @@ const Params = Type.Object({
     Type.String({ description: "Explicit Salesforce org alias or username." }),
   ),
   direction: Type.Optional(
-    StringEnum(["mcp", "outbound"] as const, {
+    StringEnum(["mcp", "inbound", "outbound"] as const, {
       description: "Integration direction. Defaults to mcp for backward compatibility.",
     }),
   ),
@@ -60,6 +62,38 @@ const Params = Type.Object({
       description:
         "External Client App contact email. Defaults to the authenticated Salesforce user's email.",
     }),
+  ),
+  eca_flow: Type.Optional(
+    StringEnum(ECA_OAUTH_FLOWS, {
+      description: "Generic inbound External Client App OAuth flow profile.",
+    }),
+  ),
+  callback_url: Type.Optional(
+    Type.String({ description: "Absolute OAuth callback URI for direction=inbound." }),
+  ),
+  oauth_scopes: Type.Optional(
+    Type.Array(Type.String(), { description: "Metadata OAuth scope names for the ECA." }),
+  ),
+  client_credentials_user: Type.Optional(
+    Type.String({ description: "Salesforce execution username for ECA Client Credentials." }),
+  ),
+  certificate_file: Type.Optional(
+    Type.String({ description: "Workspace-contained PEM public certificate for ECA JWT Bearer." }),
+  ),
+  eca_permission_set: Type.Optional(
+    Type.String({ description: "Existing Permission Set API name for JWT pre-authorization." }),
+  ),
+  token_exchange_require_secret: Type.Optional(
+    Type.Boolean({ description: "Require the ECA consumer secret for token exchange." }),
+  ),
+  token_exchange_handler: Type.Optional(
+    Type.String({ description: "OauthTokenExchangeHandler developer name." }),
+  ),
+  token_exchange_apex: Type.Optional(
+    Type.String({ description: "Existing Apex class extending Auth.Oauth2TokenExchangeHandler." }),
+  ),
+  token_exchange_user: Type.Optional(
+    Type.String({ description: "Salesforce username that executes the token exchange handler." }),
   ),
   plan_id: Type.Optional(Type.String({ description: "Exact plan ID returned by design.plan." })),
   plan_hash: Type.Optional(
@@ -147,16 +181,21 @@ export function registerSfIntegrateTool(
   pi: ExtensionAPI,
   dependencies?: SfIntegrateToolDependencies,
 ): void {
-  const state: SfIntegrateSessionState = { plans: new Map(), outboundPlans: new Map() };
+  const state: SfIntegrateSessionState = {
+    plans: new Map(),
+    inboundPlans: new Map(),
+    outboundPlans: new Map(),
+  };
   pi.registerTool<typeof Params>({
     name: SF_INTEGRATE_TOOL_NAME,
     label: "SF Integrate",
     description:
-      "Plan, apply, populate, authorize, verify, and test Salesforce integration authentication. Supports Headless 360 External Client Apps plus modern outbound External Credentials and Named Credentials in explicit non-production orgs.",
+      "Plan, apply, populate, authorize, verify, and test Salesforce integration authentication. Supports Headless 360, the core inbound External Client App OAuth matrix, and modern outbound External Credentials and Named Credentials in explicit non-production orgs.",
     promptSnippet:
-      "Set up Salesforce inbound hosted MCP OAuth and outbound Named Credential stacks with plan-bound changes, secret-safe population, and compact proof.",
+      "Set up Salesforce hosted MCP OAuth, generic inbound ECA OAuth profiles, and outbound Named Credential stacks with plan-bound changes and compact proof.",
     promptGuidelines: [
       "Use direction=mcp for Salesforce-side Headless 360 OAuth setup; sf_mcp remains the owner of Pi MCP configuration, exposure, connections, and tokens.",
+      "Use direction=inbound with eca_flow for Authorization Code, PKCE, Client Credentials, Device, JWT Bearer, or Token Exchange ECA profiles. Run plan, check-only-backed apply, then exact readback verification.",
       "Use direction=outbound for modern External Credential + Named Credential stacks. Run design.plan, setup.apply, secret.populate when required, setup.verify, then a GET-only connection.test.",
       "Every org-backed action requires an explicit target_org. Mutations require allow_mutation=true, remain Guardrail-mediated, and refuse production or unknown orgs.",
       "Never pass secret values in tool arguments. secret.populate accepts only a masked TUI prompt or an environment-variable name.",
@@ -182,17 +221,24 @@ export function registerSfIntegrateTool(
           params.direction === "outbound" ||
           (params.plan_id ? state.outboundPlans.has(params.plan_id) : false) ||
           params.action === "connection.test";
+        const inbound =
+          params.direction === "inbound" ||
+          (params.plan_id ? state.inboundPlans.has(params.plan_id) : false);
         switch (params.action) {
           case "org.preflight":
             return orgPreflight(params, session);
           case "design.plan":
             return outbound
               ? designOutboundPlan(params, session, state)
-              : designPlan(params, session, state);
+              : inbound
+                ? designInboundPlan(params, session, state, ctx.cwd)
+                : designPlan(params, session, state);
           case "setup.apply":
             return outbound
               ? applyOutboundSetup(params, session, state, signal)
-              : applySetup(params, session, state, undefined, signal);
+              : inbound
+                ? applyInboundSetup(params, session, state, undefined, signal)
+                : applySetup(params, session, state, undefined, signal);
           case "secret.populate": {
             if (!dependencies) {
               throw new Error("Secure secret entry is unavailable in this runtime.");
@@ -205,7 +251,9 @@ export function registerSfIntegrateTool(
           case "setup.verify":
             return outbound
               ? verifyOutboundSetup(params, session, state)
-              : verifySetup(params, session);
+              : inbound
+                ? verifyInboundSetup(params, session, state)
+                : verifySetup(params, session);
           case "connection.test":
             return testOutboundConnection(params, session, (body) =>
               ctx.executeTool(

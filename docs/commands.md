@@ -107,7 +107,7 @@ _Non-mutating Salesforce workflow plans for the current split Herdr tools._
 
 ### [SF Integrate](./extensions/sf-integrate)
 
-_Plan-bound Salesforce inbound OAuth and outbound modern credential setup, with guarded apply, secret-safe population, resulting-state verification, and bounded connection proof._
+_Plan-bound Salesforce External Client App OAuth and outbound modern credential setup, with check-only validation, guarded apply, secret-safe population, and resulting-state proof._
 
 - Default: **on**
 - Commands: `/sf-integrate`

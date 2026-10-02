@@ -89,7 +89,7 @@ async function handleAction(ctx: ExtensionCommandContext, action: string): Promi
 function statusText(): string {
   return [
     "SF Integrate is installed.",
-    "Use sf_integrate for Headless 360 OAuth and modern outbound Named Credential setup.",
+    "Use sf_integrate for Headless 360, the core inbound ECA OAuth matrix, and modern outbound Named Credential setup.",
     "Use /sf-integrate with no args to open its SF Pi Manager detail page.",
   ].join("\n");
 }

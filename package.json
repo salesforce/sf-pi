@@ -115,6 +115,7 @@
     "e2e:sf-soql": "node --experimental-strip-types scripts/e2e/sf-soql-e2e.ts",
     "e2e:sf-lwc": "node --experimental-strip-types scripts/e2e/sf-lwc-e2e.ts",
     "e2e:sf-integrate": "node --experimental-strip-types scripts/e2e/sf-integrate-e2e.ts",
+    "e2e:sf-integrate-eca-matrix": "node --experimental-strip-types scripts/e2e/sf-integrate-eca-matrix-e2e.ts",
     "e2e:sf-integrate-outbound": "node --experimental-strip-types scripts/e2e/sf-integrate-outbound-e2e.ts",
     "e2e:sf-mcp": "node --experimental-strip-types scripts/e2e/sf-mcp-e2e.ts",
     "e2e:sf-mcp-contract": "node --experimental-strip-types scripts/e2e/sf-mcp-contract-canary.ts",

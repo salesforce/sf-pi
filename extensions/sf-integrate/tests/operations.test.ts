@@ -51,6 +51,7 @@ function emptyInspection(appName = "SfPiHeadless360Mcp"): EcaInspection {
       ExternalClientApplication: false,
       ExtlClntAppGlobalOauthSettings: false,
       ExtlClntAppOauthSettings: false,
+      ExtlClntAppOauthConfigurablePolicies: false,
     },
     metadata_scopes: [],
   };
@@ -63,6 +64,7 @@ function readyInspection(appName = "SfPiHeadless360Mcp"): EcaInspection {
       ExternalClientApplication: true,
       ExtlClntAppGlobalOauthSettings: true,
       ExtlClntAppOauthSettings: true,
+      ExtlClntAppOauthConfigurablePolicies: true,
     },
     metadata_scopes: ["RefreshToken", "MCP"],
     callback_url: "http://localhost:8765/callback",
@@ -94,6 +96,7 @@ function adapter(): IntegrationAdapter {
           "ExternalClientApplication",
           "ExtlClntAppGlobalOauthSettings",
           "ExtlClntAppOauthSettings",
+          "ExtlClntAppOauthConfigurablePolicies",
         ]),
     ),
     inspectEca: vi.fn(async () => {
@@ -109,7 +112,7 @@ describe("SF Integrate operations", () => {
   let state: SfIntegrateSessionState;
 
   beforeEach(() => {
-    state = { plans: new Map(), outboundPlans: new Map() };
+    state = { plans: new Map(), inboundPlans: new Map(), outboundPlans: new Map() };
   });
 
   it("reports explicit non-production ECA readiness", async () => {

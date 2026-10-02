@@ -43,7 +43,11 @@ const externalCredentialName = `${baseName}EC`;
 const namedCredentialName = `${baseName}NC`;
 const permissionSetName = `${baseName}Access`;
 const identityProviderName = `${baseName}Idp`;
-const state: SfIntegrateSessionState = { plans: new Map(), outboundPlans: new Map() };
+const state: SfIntegrateSessionState = {
+  plans: new Map(),
+  inboundPlans: new Map(),
+  outboundPlans: new Map(),
+};
 let planId = "";
 let runError: unknown;
 let cleanupError: unknown;

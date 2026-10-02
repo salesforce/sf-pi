@@ -52,7 +52,7 @@ export function status(): ToolResult {
         },
       ],
       next: [
-        "Run org.preflight with an explicit non-production target_org, then choose direction=mcp or direction=outbound.",
+        "Run org.preflight with an explicit non-production target_org, then choose direction=mcp, direction=inbound, or direction=outbound.",
       ],
     },
     { supported_presets: [SF_MCP_HEADLESS_360_REQUIREMENT.presetId] },
@@ -82,7 +82,7 @@ export async function orgPreflight(
     },
     {
       label: "ECA metadata",
-      value: missing.length ? `missing ${missing.join(", ")}` : "3/3 required types available",
+      value: missing.length ? `missing ${missing.join(", ")}` : "4/4 required types available",
       tone: missing.length ? ("error" as const) : ("success" as const),
     },
   ];
@@ -181,7 +181,7 @@ export async function designPlan(
       summary: `Create one public External Client App named ${appName}.`,
       chips: [
         { label: "create-only", tone: "info" },
-        { label: "3 components", tone: "muted" },
+        { label: "4 components", tone: "muted" },
       ],
       scope: [
         ...orgScope(session),
@@ -193,7 +193,7 @@ export async function designPlan(
           label: "API",
           items: [
             { verb: "SOAP", target: "/metadata/deploy", detail: "checkOnly=true first" },
-            { verb: "SOAP", target: "/metadata/deploy", detail: "exact 3-component create" },
+            { verb: "SOAP", target: "/metadata/deploy", detail: "exact 4-component create" },
           ],
         },
       ],
@@ -320,7 +320,7 @@ export async function applySetup(
           icon: "🛡️",
           title: "Proof",
           rows: [
-            { label: "Components", value: "3/3 present", tone: "success" },
+            { label: "Components", value: "4/4 present", tone: "success" },
             {
               label: "Consumer key",
               value: verification.consumer_key ? "available" : "pending propagation",

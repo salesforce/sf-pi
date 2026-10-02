@@ -62,6 +62,16 @@
       "arguments": "--org <alias> [--apply]"
     },
     {
+      "script": "e2e:sf-integrate-eca-matrix",
+      "entry": "scripts/e2e/sf-integrate-eca-matrix-e2e.ts",
+      "title": "SF Integrate External Client App OAuth matrix",
+      "summary": "Check-only validates the core ECA OAuth profiles and optionally creates, reads back, performs bounded flow handshakes, and cleans up Authorization Code, PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange apps.",
+      "target": "Explicit non-production org with External Client App metadata support and OpenSSL",
+      "posture": "bounded-mutation",
+      "artifacts": "Mode-0600 ECA profile plans and deployment/verification evidence",
+      "arguments": "--org <alias> [--flow <core-flow>] [--apply] [--runtime]"
+    },
+    {
       "script": "e2e:sf-integrate-outbound",
       "entry": "scripts/e2e/sf-integrate-outbound-e2e.ts",
       "title": "SF Integrate outbound credential lifecycle",

@@ -85,10 +85,26 @@ export function assertPlanMatches(
       "plan_hash does not match the current integration plan. Run design.plan again.",
     );
   }
+  if (plan.plan_hash !== hashPlanMaterial(integrationPlanMaterial(plan))) {
+    throw new Error("The integration plan contents changed after planning. Run design.plan again.");
+  }
   if (!input.appName || plan.app_name !== input.appName) {
     throw new Error("app_name does not match the current integration plan.");
   }
   return plan;
+}
+
+function integrationPlanMaterial(plan: IntegrationPlan) {
+  const material: Partial<IntegrationPlan> = { ...plan };
+  delete material.plan_id;
+  delete material.plan_hash;
+  delete material.created_at;
+  delete material.artifact_path;
+  return material;
+}
+
+function hashPlanMaterial(value: unknown): string {
+  return `sha256:${createHash("sha256").update(stableJson(value)).digest("hex")}`;
 }
 
 function stableJson(value: unknown): string {

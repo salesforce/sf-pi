@@ -17,6 +17,15 @@ export const SF_INTEGRATE_ACTIONS = [
   "mcp.handoff",
 ] as const;
 
+export const ECA_OAUTH_FLOWS = [
+  "authorization_code",
+  "authorization_code_pkce",
+  "client_credentials",
+  "device",
+  "jwt_bearer",
+  "token_exchange",
+] as const;
+
 export const OUTBOUND_AUTH_TYPES = [
   "oauth_client_credentials",
   "oauth_jwt_bearer",
@@ -26,7 +35,8 @@ export const OUTBOUND_AUTH_TYPES = [
 
 export type SfIntegrateAction = (typeof SF_INTEGRATE_ACTIONS)[number];
 export type SfIntegrateOutputMode = "summary" | "inline" | "file_only";
-export type IntegrationDirection = "mcp" | "outbound";
+export type IntegrationDirection = "mcp" | "inbound" | "outbound";
+export type EcaOauthFlow = (typeof ECA_OAUTH_FLOWS)[number];
 export type OutboundAuthType = (typeof OUTBOUND_AUTH_TYPES)[number];
 export type PrincipalType = "NamedPrincipal" | "PerUserPrincipal";
 export type SecretSource = "prompt" | "env";
@@ -39,6 +49,16 @@ export interface SfIntegrateParams {
   app_name?: string;
   app_label?: string;
   contact_email?: string;
+  eca_flow?: EcaOauthFlow;
+  callback_url?: string;
+  oauth_scopes?: string[];
+  client_credentials_user?: string;
+  certificate_file?: string;
+  eca_permission_set?: string;
+  token_exchange_require_secret?: boolean;
+  token_exchange_handler?: string;
+  token_exchange_apex?: string;
+  token_exchange_user?: string;
   plan_id?: string;
   plan_hash?: string;
   allow_mutation?: boolean;
@@ -73,14 +93,17 @@ export interface DeployableMetadataSource {
   source: string;
 }
 
+export type IntegrationMetadataType = EcaMetadataType | "OauthTokenExchangeHandler";
+
 export interface IntegrationMetadataSource extends DeployableMetadataSource {
-  type: EcaMetadataType;
+  type: IntegrationMetadataType;
 }
 
 export const ECA_METADATA_TYPES = [
   "ExternalClientApplication",
   "ExtlClntAppGlobalOauthSettings",
   "ExtlClntAppOauthSettings",
+  "ExtlClntAppOauthConfigurablePolicies",
 ] as const;
 
 export type EcaMetadataType = (typeof ECA_METADATA_TYPES)[number];
@@ -140,6 +163,8 @@ export interface EcaInspection {
   application?: Record<string, unknown>;
   global_oauth?: Record<string, unknown>;
   oauth?: Record<string, unknown>;
+  policy?: Record<string, unknown>;
+  token_exchange_handler?: Record<string, unknown>;
   consumer_key?: string;
   callback_url?: string;
   metadata_scopes: string[];
@@ -147,6 +172,46 @@ export interface EcaInspection {
   consumer_secret_optional?: boolean;
   named_user_jwt?: boolean;
   refresh_token_rotation?: boolean;
+  secret_required_for_refresh_token?: boolean;
+  client_credentials_enabled?: boolean;
+  device_flow_enabled?: boolean;
+  token_exchange_enabled?: boolean;
+  token_exchange_secret_required?: boolean;
+  certificate_present?: boolean;
+  client_credentials_user?: string;
+  permitted_users_policy?: string;
+}
+
+export interface InboundIntegrationPlan {
+  schema_version: 1;
+  plan_id: string;
+  plan_hash: string;
+  created_at: string;
+  direction: "inbound";
+  eca_flow: EcaOauthFlow;
+  app_name: string;
+  app_label: string;
+  contact_email: string;
+  target: IntegrationPlanTarget;
+  callback_url: string;
+  metadata_scopes: string[];
+  sources: IntegrationMetadataSource[];
+  expected: {
+    consumer_secret_optional: boolean;
+    pkce_required: boolean;
+    secret_required_for_refresh_token: boolean;
+    client_credentials_enabled: boolean;
+    device_flow_enabled: boolean;
+    token_exchange_enabled: boolean;
+    token_exchange_secret_required: boolean;
+    certificate_present: boolean;
+    client_credentials_user?: string;
+    permitted_users_policy: string;
+    token_exchange_handler?: string;
+    token_exchange_apex?: string;
+    token_exchange_user?: string;
+  };
+  artifact_path?: string;
 }
 
 export interface OutboundInspection {
@@ -186,6 +251,7 @@ export interface IntegrationArtifact {
 
 export interface SfIntegrateSessionState {
   plans: Map<string, IntegrationPlan>;
+  inboundPlans: Map<string, InboundIntegrationPlan>;
   outboundPlans: Map<string, OutboundIntegrationPlan>;
 }
 

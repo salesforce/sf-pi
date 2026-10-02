@@ -210,7 +210,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-integrate",
     name: "SF Integrate",
-    description: "Plan-bound Salesforce inbound OAuth and outbound modern credential setup, with guarded apply, secret-safe population, resulting-state verification, and bounded connection proof.",
+    description: "Plan-bound Salesforce External Client App OAuth and outbound modern credential setup, with check-only validation, guarded apply, secret-safe population, and resulting-state proof.",
     file: "extensions/sf-integrate/index.ts",
     category: "agent-tool",
     maturity: "experimental",

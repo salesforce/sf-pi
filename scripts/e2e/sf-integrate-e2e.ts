@@ -33,7 +33,11 @@ const suffix = Date.now()
   .toString(36)
   .replace(/[^A-Za-z0-9]/gu, "");
 const appName = `SfPiMcpE2E${suffix}`.slice(0, 70);
-const state: SfIntegrateSessionState = { plans: new Map(), outboundPlans: new Map() };
+const state: SfIntegrateSessionState = {
+  plans: new Map(),
+  inboundPlans: new Map(),
+  outboundPlans: new Map(),
+};
 let runError: unknown;
 let cleanupError: unknown;
 

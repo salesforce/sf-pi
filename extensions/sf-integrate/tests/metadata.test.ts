@@ -15,7 +15,7 @@ function source(type: string): string {
 }
 
 describe("Headless 360 External Client App metadata", () => {
-  it("builds the exact three-component public PKCE stack", () => {
+  it("builds the exact four-component public PKCE stack", () => {
     const components = buildHeadlessMcpSources({
       appName: "SfPiHeadless360Mcp",
       appLabel: "SF Pi Headless 360 MCP",
@@ -26,6 +26,7 @@ describe("Headless 360 External Client App metadata", () => {
       "ExternalClientApplication",
       "ExtlClntAppGlobalOauthSettings",
       "ExtlClntAppOauthSettings",
+      "ExtlClntAppOauthConfigurablePolicies",
     ]);
     expect(source("ExtlClntAppGlobalOauthSettings")).toContain(
       `<callbackUrl>${SF_MCP_HEADLESS_360_REQUIREMENT.callbackUrl}</callbackUrl>`,
@@ -44,6 +45,9 @@ describe("Headless 360 External Client App metadata", () => {
     );
     expect(source("ExtlClntAppOauthSettings")).toContain(
       "<commaSeparatedOauthScopes>MCP, RefreshToken</commaSeparatedOauthScopes>",
+    );
+    expect(source("ExtlClntAppOauthConfigurablePolicies")).toContain(
+      "<permittedUsersPolicyType>AllSelfAuthorized</permittedUsersPolicyType>",
     );
   });
 
