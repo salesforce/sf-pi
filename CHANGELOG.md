@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.318.4](https://github.com/salesforce/sf-pi/compare/v0.318.3...v0.318.4) (2026-10-03)
+
+
+### Security
+
+* **deps:** align OSV no-fix exceptions ([043bf31](https://github.com/salesforce/sf-pi/commit/043bf313645242c7e9060aef6cf2465cd3994a4a))
+
 ## [0.318.3](https://github.com/salesforce/sf-pi/compare/v0.318.2...v0.318.3) (2026-10-03)
 
 
