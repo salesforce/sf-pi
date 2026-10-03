@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.319.0](https://github.com/salesforce/sf-pi/compare/v0.318.4...v0.319.0) (2026-10-03)
+
+
+### Features
+
+* **sf-browser:** harden ECA navigation and org handling ([83f49b7](https://github.com/salesforce/sf-pi/commit/83f49b7f7402cbf36fe44660d8b0c3d2c5c5ad70))
+
 ## [0.318.4](https://github.com/salesforce/sf-pi/compare/v0.318.3...v0.318.4) (2026-10-03)
 
 
