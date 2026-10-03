@@ -18,3 +18,16 @@ reason = "Development-only shrinkwrapped Pi dependency; no root override can rep
 id = "GHSA-qhr7-859c-m2p7"
 ignoreUntil = 2026-10-31
 reason = "Development-only shrinkwrapped Pi dependency; no root override can replace it."
+
+# Production no-fix advisories are also checked independently by
+# `npm run audit:production`, with matching exact IDs and expirations.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2026-11-02
+reason = "No patched braces release exists; transitive through fast-glob in @salesforce/apex-node."
+
+[[IgnoredVulns]]
+id = "GHSA-ch52-4w7c-c8xp"
+ignoreUntil = 2026-11-02
+reason = "No patched http-cache-semantics release exists; SF Pi is not a shared HTTP cache."
