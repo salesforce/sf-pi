@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.318.3](https://github.com/salesforce/sf-pi/compare/v0.318.2...v0.318.3) (2026-10-03)
+
+
+### Bug Fixes
+
+* **sf-browser:** honor Power Tool Mode for known orgs ([1eddc2e](https://github.com/salesforce/sf-pi/commit/1eddc2ec1a98f54ce2c2812a9cd96a535aab17b9))
+
 ## [0.318.2](https://github.com/salesforce/sf-pi/compare/v0.318.1...v0.318.2) (2026-10-03)
 
 

@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.318.2-2026-10-03",
-  "latestVersion": "0.318.2",
+  "revision": "release-0.318.3-2026-10-03",
+  "latestVersion": "0.318.3",
   "announcements": [
     {
-      "id": "release-0.318.2",
+      "id": "release-0.318.3",
       "kind": "update",
-      "title": "sf-pi v0.318.2 — sf-llm-gateway: prefer responses for GPT models",
+      "title": "sf-pi v0.318.3 — sf-browser: honor Power Tool Mode for known orgs",
       "publishedAt": "2026-10-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.3",
       "severity": "info",
-      "body": "sf-llm-gateway: prefer responses for GPT models"
+      "body": "sf-browser: honor Power Tool Mode for known orgs"
     }
   ]
 }
