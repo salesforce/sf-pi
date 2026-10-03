@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.318.0-2026-10-02",
-  "latestVersion": "0.318.0",
+  "revision": "release-0.318.1-2026-10-03",
+  "latestVersion": "0.318.1",
   "announcements": [
     {
-      "id": "release-0.318.0",
+      "id": "release-0.318.1",
       "kind": "update",
-      "title": "sf-pi v0.318.0 — sf-brain: harden terminal visual responses",
-      "publishedAt": "2026-10-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.0",
+      "title": "sf-pi v0.318.1 — sf-apex: verify managed trace lifecycle",
+      "publishedAt": "2026-10-03T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.1",
       "severity": "info",
-      "body": "sf-brain: harden terminal visual responses"
+      "body": "sf-apex: verify managed trace lifecycle — deps: govern temporary no-fix advisories"
     }
   ]
 }
