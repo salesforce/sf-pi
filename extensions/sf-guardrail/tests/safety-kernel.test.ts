@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   markLatestBrowserSnapshotStale,
+  recordBrowserSessionTargetOrg,
   writeLatestBrowserSnapshotRefs,
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
@@ -39,6 +40,7 @@ vi.mock("node:fs", async () => {
 });
 
 import { readBundledConfig } from "../lib/config.ts";
+import { shouldPowerToolAutoApprove } from "../lib/power-tool-mode.ts";
 import { evaluateSafety } from "../lib/safety-kernel.ts";
 
 function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvironment {
@@ -997,7 +999,50 @@ describe("Safety Kernel", () => {
     expect(missingDecision?.approvalScope?.detail).toContain("snapshot_status=missing-session");
   });
 
-  it("confirms Salesforce browser committing gestures", async () => {
+  it("resolves the opened browser org so sandbox Power Tool Mode can auto-approve commits", async () => {
+    const sessionId = "guardrail-browser-target-org-test";
+    mockedEnv = env("DevSandbox", "sandbox");
+    recordBrowserSessionTargetOrg(sessionId, "DevSandbox");
+    writeLatestBrowserSnapshotRefs({
+      sessionId,
+      snapshot: '- button "Save" [ref=e12]',
+      url: "https://example--dev.sandbox.my.salesforce.com/lightning/setup/Test/home",
+    });
+
+    const decision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e12", reason: "Click Save", mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId,
+    });
+
+    expect(decision).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-browser-commit",
+      orgAlias: "DevSandbox",
+      orgType: "sandbox",
+      orgResolutionGuessed: false,
+    });
+    expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(true);
+
+    const pressDecision = await evaluateSafety({
+      toolName: "sf_browser_press",
+      input: { key: "Enter", reason: "Submit form", mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId,
+    });
+    expect(pressDecision).toMatchObject({
+      orgAlias: "DevSandbox",
+      orgType: "sandbox",
+      orgResolutionGuessed: false,
+    });
+    expect(shouldPowerToolAutoApprove(pressDecision!, { mode: "all" })).toBe(true);
+  });
+
+  it("keeps untracked Salesforce browser targets fail-closed", async () => {
     const decision = await evaluateSafety({
       toolName: "sf_browser_click",
       input: { ref: "@e12", reason: "Click Save", mutation: true },
@@ -1010,12 +1055,15 @@ describe("Safety Kernel", () => {
       feature: "nativeToolGate",
       ruleId: "native-sf-browser-commit",
       subject: "sf_browser_click @e12",
+      orgType: "production",
+      orgResolutionGuessed: true,
     });
     expect(decision?.approvalScope).toMatchObject({
       operationFamily: "browser commit",
       riskTier: "browser_commit_exact",
       allowSession: false,
     });
+    expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(false);
   });
 
   it("infers Salesforce browser commits from commit-like keys and reasons", async () => {

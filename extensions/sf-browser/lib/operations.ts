@@ -10,7 +10,10 @@ import {
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
-import { markLatestBrowserSnapshotStale } from "../../../lib/common/sf-browser-snapshot-state.ts";
+import {
+  markLatestBrowserSnapshotStale,
+  recordBrowserSessionTargetOrg,
+} from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import {
   commitEvidenceCapture,
@@ -40,6 +43,7 @@ export async function openOrgInAgentBrowser(
   );
   const open = await resolveOpenOrgUrl(pi, ctx, input, signal);
   await runAgentBrowser(pi, ["open", open.url], { cwd: ctx.cwd, signal });
+  recordBrowserSessionTargetOrg(ctx.sessionManager.getSessionId(), open.targetOrg);
   const duration = stopTimer();
   return {
     text: okText([

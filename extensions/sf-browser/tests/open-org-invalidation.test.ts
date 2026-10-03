@@ -51,6 +51,8 @@ describe("openOrgInAgentBrowser", () => {
       ["open", "https://example.my.salesforce.com/secur/frontdoor.jsp?sid=REDACTED"],
       expect.objectContaining({ cwd: "/project" }),
     );
-    expect(findLatestBrowserSnapshotRefLookup(sessionId, "@e7").status).toBe("stale");
+    const lookup = findLatestBrowserSnapshotRefLookup(sessionId, "@e7");
+    expect(lookup.status).toBe("stale");
+    expect(lookup.session?.targetOrg).toBe("DevSandbox");
   });
 });

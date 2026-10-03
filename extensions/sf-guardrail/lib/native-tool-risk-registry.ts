@@ -8,6 +8,7 @@
  */
 import {
   findLatestBrowserSnapshotRefLookup,
+  findLatestBrowserSnapshotSession,
   type BrowserSnapshotRefLookup,
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
@@ -555,6 +556,9 @@ function classifySfBrowserCommit(
       ? findLatestBrowserSnapshotRefLookup(context.sessionId, stringValue(input.ref))
       : undefined;
   const snapshotSignal = snapshotCommitSignal(snapshotLookup);
+  const browserSession =
+    snapshotLookup?.session ?? findLatestBrowserSnapshotSession(context.sessionId);
+  const targetOrg = browserSession?.targetOrg;
   const keyLooksCommitting =
     toolName === "sf_browser_press"
       ? browserPressKeyLooksCommitting(stringValue(input.key))
@@ -609,6 +613,9 @@ function classifySfBrowserCommit(
     ]
       .filter(Boolean)
       .join("; "),
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgUnverified: !targetOrg,
     allowSession: false,
   };
 }

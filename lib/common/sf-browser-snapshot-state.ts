@@ -19,6 +19,7 @@ export interface BrowserSnapshotRefEntry {
 export interface BrowserSnapshotSessionState {
   sessionId: string;
   capturedAt: string;
+  targetOrg?: string;
   url?: string;
   fullSnapshotPath?: string;
   invalidatedAt?: string;
@@ -57,9 +58,11 @@ export function writeLatestBrowserSnapshotRefs(input: {
   fullSnapshotPath?: string;
 }): BrowserSnapshotSessionState {
   const refs = extractBrowserSnapshotRefs(input.snapshot);
+  const previous = store.read().sessions.find((session) => session.sessionId === input.sessionId);
   const next: BrowserSnapshotSessionState = {
     sessionId: input.sessionId,
     capturedAt: new Date().toISOString(),
+    targetOrg: previous?.targetOrg,
     url: input.url,
     fullSnapshotPath: input.fullSnapshotPath,
     refs,
@@ -71,6 +74,35 @@ export function writeLatestBrowserSnapshotRefs(input: {
     ].slice(0, MAX_SESSIONS),
   }));
   return next;
+}
+
+export function recordBrowserSessionTargetOrg(sessionId: string, targetOrg: string): void {
+  const normalizedTarget = targetOrg.trim();
+  if (!sessionId || !normalizedTarget) return;
+  store.update((current) => {
+    const previous = current.sessions.find((session) => session.sessionId === sessionId);
+    const next: BrowserSnapshotSessionState = previous
+      ? { ...previous, targetOrg: normalizedTarget }
+      : {
+          sessionId,
+          capturedAt: new Date().toISOString(),
+          targetOrg: normalizedTarget,
+          refs: [],
+        };
+    return {
+      sessions: [
+        next,
+        ...current.sessions.filter((session) => session.sessionId !== sessionId),
+      ].slice(0, MAX_SESSIONS),
+    };
+  });
+}
+
+export function findLatestBrowserSnapshotSession(
+  sessionId: string | undefined,
+): BrowserSnapshotSessionState | undefined {
+  if (!sessionId) return undefined;
+  return store.read().sessions.find((session) => session.sessionId === sessionId);
 }
 
 export function findLatestBrowserSnapshotRef(
@@ -89,7 +121,7 @@ export function findLatestBrowserSnapshotRefLookup(
   if (!sessionId) return { status: "missing-session" };
   const normalized = normalizeBrowserRef(ref);
   if (!normalized) return { status: "missing-ref" };
-  const session = store.read().sessions.find((entry) => entry.sessionId === sessionId);
+  const session = findLatestBrowserSnapshotSession(sessionId);
   if (!session) return { status: "missing-session" };
   const capturedAtMs = Date.parse(session.capturedAt);
   const ageMs = Number.isFinite(capturedAtMs)
