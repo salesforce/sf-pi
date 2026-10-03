@@ -28,6 +28,7 @@ import {
   normalizeSalesforceResource,
   type SalesforceQueryParams,
 } from "./path.ts";
+import { inferSalesforceOrgType } from "../sf-environment/org-type.ts";
 import type { ConnectionApiVersionSource, OrgType } from "../sf-environment/types.ts";
 
 const DEFAULT_CONNECTION_TIMEOUT_MS = 90_000;
@@ -235,6 +236,8 @@ export async function getCachedSalesforceTarget(
     isSandbox?: boolean;
     isScratch?: boolean;
     isDevHub?: boolean;
+    devHubUsername?: string;
+    expirationDate?: string | null;
     trailExpirationDate?: string | null;
     namespacePrefix?: string | null;
     orgEdition?: string;
@@ -254,7 +257,7 @@ export async function getCachedSalesforceTarget(
     username: fields.username,
     orgId: fields.orgId,
     instanceUrl,
-    orgType: inferOrgType(fields, instanceUrl),
+    orgType: inferSalesforceOrgType({ ...fields, instanceUrl }),
     namespacePrefix: fields.namespacePrefix,
     orgEdition: fields.orgEdition,
     apiVersion,
@@ -476,6 +479,8 @@ async function initializeSalesforceSession(
     isSandbox?: boolean;
     isScratch?: boolean;
     isDevHub?: boolean;
+    devHubUsername?: string;
+    expirationDate?: string | null;
     trailExpirationDate?: string | null;
     namespacePrefix?: string | null;
     orgEdition?: string;
@@ -493,7 +498,7 @@ async function initializeSalesforceSession(
     username: fields.username,
     orgId: fields.orgId,
     instanceUrl,
-    orgType: inferOrgType(fields, instanceUrl),
+    orgType: inferSalesforceOrgType({ ...fields, instanceUrl }),
     namespacePrefix: fields.namespacePrefix,
     orgEdition: fields.orgEdition,
     apiVersion: selection.apiVersion,
@@ -746,36 +751,6 @@ function isValidQueryContinuation(value: unknown, expectedPrefix: string): value
 function appendBounded<T>(target: T[], page: T[] | undefined, maxRows: number): void {
   if (!page?.length || target.length >= maxRows) return;
   target.push(...page.slice(0, maxRows - target.length));
-}
-
-function inferOrgType(
-  fields: {
-    isScratch?: boolean;
-    isSandbox?: boolean;
-    isDevHub?: boolean;
-    trailExpirationDate?: string | null;
-  },
-  instanceUrl: string,
-): OrgType {
-  if (fields.isScratch) return "scratch";
-  if (fields.isSandbox) return "sandbox";
-  try {
-    const hostname = new URL(instanceUrl).hostname.toLowerCase();
-    const labels = hostname.split(".");
-    if (labels.includes("scratch")) return "scratch";
-    if (labels.includes("sandbox")) return "sandbox";
-    if (
-      hostname === "develop.my.salesforce.com" ||
-      hostname.endsWith(".develop.my.salesforce.com")
-    ) {
-      return "developer";
-    }
-  } catch {
-    // Keep evaluating non-URL signals.
-  }
-  if (fields.trailExpirationDate) return "trial";
-  if (fields.isDevHub) return "production";
-  return "unknown";
 }
 
 function safeErrorMessage(error: unknown): string {

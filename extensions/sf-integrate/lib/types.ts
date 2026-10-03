@@ -159,6 +159,7 @@ export interface OutboundIntegrationPlan {
 
 export interface EcaInspection {
   app_name: string;
+  record_id?: string;
   components: Record<EcaMetadataType, boolean>;
   application?: Record<string, unknown>;
   global_oauth?: Record<string, unknown>;

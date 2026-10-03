@@ -196,6 +196,7 @@ export function registerSfIntegrateTool(
     promptGuidelines: [
       "Use direction=mcp for Salesforce-side Headless 360 OAuth setup; sf_mcp remains the owner of Pi MCP configuration, exposure, connections, and tokens.",
       "Use direction=inbound with eca_flow for Authorization Code, PKCE, Client Credentials, Device, JWT Bearer, or Token Exchange ECA profiles. Run plan, check-only-backed apply, then exact readback verification.",
+      "Successful ECA apply, verify, and handoff results include a non-session-bearing Salesforce Setup URL and a navigation.route that sf_browser_open_org can open directly.",
       "Use direction=outbound for modern External Credential + Named Credential stacks. Run design.plan, setup.apply, secret.populate when required, setup.verify, then a GET-only connection.test.",
       "Every org-backed action requires an explicit target_org. Mutations require allow_mutation=true, remain Guardrail-mediated, and refuse production or unknown orgs.",
       "Never pass secret values in tool arguments. secret.populate accepts only a masked TUI prompt or an environment-variable name.",

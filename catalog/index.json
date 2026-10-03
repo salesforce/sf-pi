@@ -205,11 +205,12 @@
     "docs": {
       "intentGroup": "Work with Salesforce orgs",
       "agentGuide": "AGENT_GUIDE.md",
-      "summary": "Salesforce-aware agent-browser affordance layer for UI last-mile work that Salesforce APIs cannot cover. It registers a cache-first /sf-browser panel plus a small hot-path browser tool set, curated Setup Destinations, Browser Evidence, and lazy agent-browser invocation after explicit command/tool intent.",
+      "summary": "Salesforce-aware agent-browser affordance layer for UI last-mile work that Salesforce APIs cannot cover. It registers a cache-first /sf-browser panel plus a small hot-path browser tool set, curated Setup Destinations, verified exact External Client App routes, recognized ambient-overlay dismissal, Browser Evidence, and lazy agent-browser invocation after explicit command/tool intent.",
       "primaryFiles": [
         "index.ts",
         "lib/agent-browser.ts",
         "lib/operations.ts",
+        "lib/overlay-dismissal.ts",
         "lib/salesforce-path-resolver.ts",
         "lib/evidence-report.ts"
       ],
@@ -224,6 +225,7 @@
       "safety": [
         "No startup probes; agent-browser is detected only from /sf-browser doctor or explicit tool/command actions.",
         "Browser Evidence is artifact-first and stored outside the project by default.",
+        "Snapshot overlay dismissal targets only recognized ambient Salesforce assistance surfaces and never clicks arbitrary Close controls.",
         "Snapshots publish compact ref metadata so SF Guardrail can classify committing click refs from the latest accessible label.",
         "Session-bearing Salesforce org-open URLs are passed to agent-browser but not echoed in tool results."
       ],
@@ -238,7 +240,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6098
+    "srcLoc": 6234
   },
   {
     "id": "sf-code-analyzer",
@@ -636,7 +638,7 @@
       "intentGroup": "Work safely",
       "editingRules": "AGENTS.md",
       "contextGlossary": "CONTEXT.md",
-      "summary": "Salesforce-aware safety layer for pi: file-protection policies, AST-matched command gating, org-aware confirmation on production deploys/Apex/DML/destructive REST, native high-value mutation mediation, plus a once-per-session prompt-injection that teaches the LLM the gating categories and validate-first workflow.",
+      "summary": "Salesforce-aware safety layer for pi: file-protection policies, AST-matched command gating, authenticated-fact and trusted-URL org classification, org-aware confirmation on production deploys/Apex/DML/destructive REST, native high-value mutation mediation, plus a once-per-session prompt-injection that teaches the LLM the gating categories and validate-first workflow.",
       "primaryFiles": [
         "index.ts",
         "lib/safety-kernel.ts",
@@ -657,7 +659,7 @@
       "safety": [
         "Fail-closed in headless mode unless SF_GUARDRAIL_ALLOW_HEADLESS=1.",
         "Every block / allow / confirm decision is persisted as an audit entry.",
-        "Power Tool Mode can persistently auto-approve selected confirm-class decisions; production/unknown org auto-approve is a separate opt-in and hard blocks are never bypassed.",
+        "Power Tool Mode can persistently auto-approve selected confirm-class decisions; authenticated developer/scratch/sandbox/trial targets and trusted Salesforce-owned non-production URLs honor that setting, while production/unknown org auto-approve is a separate opt-in and hard blocks are never bypassed.",
         "Operator auto-approve env mode is process-scoped, audited, and does not bypass hard blocks.",
         "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice Agent Script lifecycle, SF Integrate setup and credential population, SF Flow activation/deactivation, Data 360, Apex, Slack Canvas, SF Browser commit surfaces, Salesforce MCP record writes/deletes, Backup and Recover writes, Content writes, Headless 360 dispatch, DX mutations, hosted Data 360 execution, every experimental Agentforce Sales operation, and managed external MCP operations. Legacy SObject and unsupported hosted mutations fail closed.",
         "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."
@@ -666,7 +668,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6197
+    "srcLoc": 6326
   },
   {
     "id": "sf-herdr",
@@ -740,15 +742,15 @@
     "docs": {
       "intentGroup": "Work with Salesforce orgs",
       "agentGuide": "AGENT_GUIDE.md",
-      "summary": "Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The ECA slice supports Headless 360 plus grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.",
+      "summary": "Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The ECA slice supports Headless 360 plus grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, direct Salesforce Setup navigation, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.",
       "primaryFiles": [
         "index.ts",
         "lib/sf-integrate-tool.ts",
         "lib/operations.ts",
         "lib/inbound-operations.ts",
+        "lib/navigation.ts",
         "lib/eca-profiles.ts",
         "lib/outbound-operations.ts",
-        "lib/outbound-api.ts",
         "lib/metadata.ts"
       ],
       "stateFiles": [
@@ -764,6 +766,7 @@
         "Headless 360 is a public PKCE specialization. Generic ECA profiles support the core OAuth flow matrix; PEM public certificates and sensitive global OAuth settings stay in mode-0600 artifacts and ephemeral deploy staging, and private keys are rejected.",
         "Outbound secrets are accepted only through a masked TUI prompt or named environment variable, sent directly to Salesforce, and never written to tool arguments, model output, or artifacts.",
         "SF Integrate never edits mcp.json or stores OAuth tokens. The final client-ID copy remains an explicit handoff to SF MCP and Pi's native MCP OAuth runtime.",
+        "External Client App navigation returns only a non-session-bearing instance Setup URL and a structured SF Browser route; frontdoor login URLs and session identifiers are never returned.",
         "Both slices are create-only and refuse existing-resource drift. The outbound connection proof is GET-only, delegates execution to sf_apex, and never returns the external response body.",
         "Production policies, existing-resource updates, rotations, migration, rollback, and user-selected destructive cleanup remain out of scope."
       ]
@@ -771,7 +774,7 @@
     "entry": "extensions/sf-integrate/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4468
+    "srcLoc": 4553
   },
   {
     "id": "sf-llm-gateway",

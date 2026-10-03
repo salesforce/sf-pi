@@ -43,6 +43,7 @@ export async function openOrgInAgentBrowser(
   );
   const open = await resolveOpenOrgUrl(pi, ctx, input, signal);
   await runAgentBrowser(pi, ["open", open.url], { cwd: ctx.cwd, signal });
+  const navigationCorrection = await correctIgnoredStartPath(pi, ctx.cwd, open.path, signal);
   recordBrowserSessionTargetOrg(ctx.sessionManager.getSessionId(), open.targetOrg);
   const duration = stopTimer();
   return {
@@ -50,6 +51,7 @@ export async function openOrgInAgentBrowser(
       summarizeOpenTarget(open.targetOrg, open.path),
       input.purpose ? `Purpose: ${input.purpose}` : undefined,
       ...formatVerifiedRoute(open.verifiedRoute),
+      navigationCorrection.applied ? "Post-login path correction: applied" : undefined,
       `Duration: ${duration.durationText}`,
       "",
       buildOpenNextSteps(input, open.path),
@@ -61,11 +63,59 @@ export async function openOrgInAgentBrowser(
       setup: input.setup,
       purpose: input.purpose,
       session: "sf-pi",
+      navigationCorrectionApplied: navigationCorrection.applied,
       openGuidance: openGuidanceDetails(input, open.path),
       ...(open.verifiedRoute ? { verifiedRoute: open.verifiedRoute } : {}),
       ...duration,
     },
   };
+}
+
+async function correctIgnoredStartPath(
+  pi: ExtensionAPI,
+  cwd: string,
+  requestedPath: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<{ applied: boolean }> {
+  if (!requestedPath) return { applied: false };
+  const currentUrl = await getCurrentUrl(pi, cwd, signal);
+  if (!currentUrl || urlMatchesPath(currentUrl, requestedPath)) return { applied: false };
+  const correctionUrl = sameOrgUrlForPath(currentUrl, requestedPath);
+  if (!correctionUrl) return { applied: false };
+
+  await runAgentBrowser(pi, ["open", correctionUrl], { cwd, signal });
+  const correctedUrl = await getCurrentUrl(pi, cwd, signal);
+  if (!correctedUrl || !urlMatchesPath(correctedUrl, requestedPath)) {
+    throw new Error(
+      `Salesforce ignored the requested path ${requestedPath} after one same-org correction.`,
+    );
+  }
+  return { applied: true };
+}
+
+function sameOrgUrlForPath(currentUrl: string, requestedPath: string): string | undefined {
+  try {
+    const url = new URL(currentUrl);
+    if (!isSalesforceHost(url.hostname) || !requestedPath.startsWith("/")) return undefined;
+    url.pathname = requestedPath;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function urlMatchesPath(urlValue: string, requestedPath: string): boolean {
+  try {
+    return new URL(urlValue).pathname.replace(/\/$/u, "") === requestedPath.replace(/\/$/u, "");
+  } catch {
+    return false;
+  }
+}
+
+function isSalesforceHost(hostname: string): boolean {
+  return /(?:^|\.)(?:salesforce\.com|force\.com|salesforce-setup\.com)$/iu.test(hostname);
 }
 
 export async function captureEvidence(
@@ -257,6 +307,17 @@ function formatVerifiedRoute(
   const lines = ["Verified route:"];
   if (verifiedRoute.objectApiName) lines.push(`- Object: ${verifiedRoute.objectApiName}`);
   if (verifiedRoute.recordId) lines.push(`- Record: ${verifiedRoute.recordId}`);
+  if (verifiedRoute.externalClientApp) {
+    lines.push(
+      `- External Client App: ${[
+        verifiedRoute.externalClientApp.label,
+        verifiedRoute.externalClientApp.appName,
+        verifiedRoute.externalClientApp.id,
+      ]
+        .filter(Boolean)
+        .join(" / ")}`,
+    );
+  }
   if (verifiedRoute.listView) {
     lines.push(
       `- List view: ${[

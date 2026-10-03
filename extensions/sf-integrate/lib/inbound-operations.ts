@@ -15,6 +15,7 @@ import {
   isCompleteEca,
   missingRequiredMetadataTypes,
 } from "./metadata.ts";
+import { buildEcaSetupNavigation, type EcaSetupNavigation } from "./navigation.ts";
 import type {
   DeployableMetadataSource,
   EcaInspection,
@@ -171,10 +172,15 @@ export async function applyInboundSetup(
     },
   );
   const verified = findings.length === 0;
+  const navigation = buildEcaSetupNavigation(session, inspection);
   return result(
     "setup.apply",
-    `${verified ? "PASS" : "REVIEW"}: ${plan.eca_flow} ECA ${plan.app_name} deployed. Artifact: ${artifact.path}`,
-    inboundCard(session, plan, inspection, findings, artifact.path, verified),
+    [
+      `${verified ? "PASS" : "REVIEW"}: ${plan.eca_flow} ECA ${plan.app_name} deployed.`,
+      `Open in Salesforce: ${navigation.url}`,
+      `Artifact: ${artifact.path}`,
+    ].join("\n"),
+    inboundCard(session, plan, inspection, findings, artifact.path, verified, navigation),
     {
       direction: "inbound",
       app_name: plan.app_name,
@@ -183,6 +189,7 @@ export async function applyInboundSetup(
       findings,
       consumer_key_available: Boolean(inspection.consumer_key),
       artifact: artifact.path,
+      navigation,
     },
     !verified,
   );
@@ -228,10 +235,14 @@ export async function verifyInboundSetup(
     inspection,
   );
   const verified = findings.length === 0;
+  const navigation = buildEcaSetupNavigation(session, inspection);
   return result(
     "setup.verify",
-    `${verified ? "PASS" : "REVIEW"}: ${plan.eca_flow} ECA ${plan.app_name}${findings.length ? ` · ${findings.join("; ")}` : ""}.`,
-    inboundCard(session, plan, inspection, findings, artifact.path, verified),
+    [
+      `${verified ? "PASS" : "REVIEW"}: ${plan.eca_flow} ECA ${plan.app_name}${findings.length ? ` · ${findings.join("; ")}` : ""}.`,
+      `Open in Salesforce: ${navigation.url}`,
+    ].join("\n"),
+    inboundCard(session, plan, inspection, findings, artifact.path, verified, navigation),
     {
       direction: "inbound",
       app_name: plan.app_name,
@@ -239,6 +250,7 @@ export async function verifyInboundSetup(
       verified,
       findings,
       artifact: artifact.path,
+      navigation,
     },
     !verified,
   );
@@ -446,6 +458,7 @@ function inboundCard(
   findings: string[],
   artifactPath: string,
   verified: boolean,
+  navigation: EcaSetupNavigation,
 ): SfPiResultCard {
   return {
     tool: TOOL,
@@ -479,6 +492,7 @@ function inboundCard(
     ],
     artifacts: [{ label: "evidence", path: artifactPath, kind: "json" }],
     next: [
+      `Open the External Client App in Salesforce: ${navigation.url}`,
       verified
         ? "Run the flow-specific handshake proof or retain the app for client configuration."
         : "Resolve the first finding and verify again.",

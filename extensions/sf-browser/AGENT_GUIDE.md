@@ -8,8 +8,8 @@ For repeatable CI regression testing, route users to purpose-built UI testing to
 
 ## Core loop
 
-1. Open the org/path with `sf_browser_open_org`. Prefer a curated `setup` destination or structured `route` when the target is known (for example `setup: "agentforce-agents"` or `route: { type: "record-view", objectApiName: "Account", recordId: "001..." }`) instead of search-and-click navigation. Use `sf_browser_resolve_path` first when you want to preview or disambiguate navigation.
-2. After open/deep-link navigation, prefer `sf_browser_wait` with `lightning: "navigation-ready"`, then run `sf_browser_snapshot` before acting. Snapshot is pi-native by default: `outputMode: "summary"` returns compact decision-oriented context with page URL, surface, tabs, record actions, field edit actions, related lists, object-list controls, quick-action forms, alerts, table/list summaries, and a full raw snapshot artifact.
+1. Open the org/path with `sf_browser_open_org`. Prefer a curated `setup` destination or structured `route` when the target is known (for example `setup: "agentforce-agents"`, `route: { type: "external-client-app", appName: "ExampleEca" }`, or `route: { type: "record-view", objectApiName: "Account", recordId: "001..." }`) instead of search-and-click navigation. The External Client App route resolves the exact Setup record id through Tooling API before opening the detail page. After authentication, SF Browser verifies the requested path and performs at most one same-org direct-path correction when Salesforce ignores the frontdoor start URL. Use `sf_browser_resolve_path` first when you want to preview or disambiguate navigation.
+2. After open/deep-link navigation, prefer `sf_browser_wait` with `lightning: "navigation-ready"`, then run `sf_browser_snapshot` before acting. When the effective `dismissOverlays` setting is enabled (default), snapshots close only recognized ambient overlays such as My Service Journey and security-contact notices before publishing refs. Snapshot is pi-native by default: `outputMode: "summary"` returns compact decision-oriented context with page URL, surface, tabs, record actions, field edit actions, related lists, object-list controls, quick-action forms, alerts, table/list summaries, and a full raw snapshot artifact.
 3. Use refs from the latest snapshot with `sf_browser_click`, `sf_browser_fill`, `sf_browser_select`, or `sf_browser_press`. For code-like editor surfaces where normal fill is insufficient, use `sf_browser_editor` with `action: "detect"`, then read or write by `editorIndex`.
 4. After page-changing actions, run `sf_browser_wait` (`navigation-ready` for navigation, `app-ready` for in-page rerenders, `save-result` after saves), then `sf_browser_snapshot` again.
 5. Capture Browser Evidence with `sf_browser_capture_evidence` when visual confirmation matters.
@@ -27,6 +27,8 @@ Use `/sf-browser evidence [limit]` to list current-session Browser Evidence with
 ## Long-tail escape hatch
 
 SF Browser only wraps the hot path: open, snapshot, click, fill, select, press, editor detect/read/write, wait, and Browser Evidence capture.
+
+Do not replace supported `sf_browser_*` actions with direct `agent-browser` shell commands. Recover through the typed tool diagnostics or report the blocker; direct commands remain separately Guardrail-mediated and are only for capabilities outside the hot path.
 
 For scroll, hover, drag, upload, tabs, state, console, network, eval, trace, video, HAR, or advanced CDP work, use direct `agent-browser` commands. Start with:
 

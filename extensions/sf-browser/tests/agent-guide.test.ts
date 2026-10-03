@@ -15,6 +15,7 @@ describe("SF Browser operating guide index", () => {
     expect(guide).toMatch(/^## Core loop/m);
     expect(guide).not.toMatch(/^## Salesforce UI patterns/m);
     expect(guide).not.toContain("Prefer snapshot refs over CSS selectors");
+    expect(guide).toContain("Do not replace supported `sf_browser_*` actions with direct");
   });
 
   it("moves UI patterns to exactly one child", () => {

@@ -7,14 +7,22 @@
  * verified through Salesforce APIs before the browser navigates.
  */
 import { connectSalesforce, type SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
+import { salesforce15CharId } from "../../../lib/common/salesforce-id.ts";
 import type { SalesforceRoute } from "./salesforce-path-resolver.ts";
 
 export interface VerifiedRouteResult {
   path: string;
   objectApiName?: string;
   recordId?: string;
+  externalClientApp?: VerifiedExternalClientApp;
   listView?: VerifiedListView;
   relatedList?: VerifiedRelatedList;
+}
+
+export interface VerifiedExternalClientApp {
+  id: string;
+  appName: string;
+  label?: string;
 }
 
 export interface VerifiedListView {
@@ -85,6 +93,13 @@ export async function verifySalesforceRoute(
       throw new Error(
         "Data Cloud routes are resolved through the local verified Data Cloud Destination Pack.",
       );
+    case "external-client-app": {
+      const externalClientApp = await resolveExternalClientApp(conn, route.appName);
+      return {
+        path: `/lightning/setup/ManageExternalClientApplication/${salesforce15CharId(externalClientApp.id)}/detail`,
+        externalClientApp,
+      };
+    }
     case "object-list": {
       const object = await verifyObject(conn, route.objectApiName);
       return { path: `/lightning/o/${object.name}/list`, objectApiName: object.name };
@@ -165,6 +180,36 @@ async function verifyRecordExists(
   if (result.totalSize !== 1) {
     throw new Error(`Record ${safeId} was not found or is not accessible on ${objectApiName}.`);
   }
+}
+
+async function resolveExternalClientApp(
+  conn: SalesforceSession,
+  rawAppName: string,
+): Promise<VerifiedExternalClientApp> {
+  const appName = validateApiName(rawAppName, "appName");
+  const result = await conn.query<{
+    Id: string;
+    DeveloperName: string;
+    MasterLabel?: string;
+  }>({
+    soql: `SELECT Id, DeveloperName, MasterLabel FROM ExternalClientApplication WHERE DeveloperName = '${appName}' LIMIT 2`,
+    api: "tooling",
+    maxRows: 2,
+  });
+  if (result.records.length !== 1) {
+    throw new Error(
+      result.records.length > 1
+        ? `External Client App ${appName} is ambiguous.`
+        : `External Client App ${appName} was not found or is not accessible.`,
+    );
+  }
+  const record = result.records[0];
+  if (!record) throw new Error(`External Client App ${appName} was not found.`);
+  return {
+    id: validateSalesforceId(record.Id, "External Client App Id"),
+    appName: record.DeveloperName,
+    ...(record.MasterLabel ? { label: record.MasterLabel } : {}),
+  };
 }
 
 async function resolveListView(

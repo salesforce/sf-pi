@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The ECA slice supports Headless 360 plus grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.
+Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The ECA slice supports Headless 360 plus grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, direct Salesforce Setup navigation, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.
 
 ## Start
 
@@ -36,6 +36,7 @@ Open its Manager detail or change its package state with:
 - Headless 360 is a public PKCE specialization. Generic ECA profiles support the core OAuth flow matrix; PEM public certificates and sensitive global OAuth settings stay in mode-0600 artifacts and ephemeral deploy staging, and private keys are rejected.
 - Outbound secrets are accepted only through a masked TUI prompt or named environment variable, sent directly to Salesforce, and never written to tool arguments, model output, or artifacts.
 - SF Integrate never edits mcp.json or stores OAuth tokens. The final client-ID copy remains an explicit handoff to SF MCP and Pi's native MCP OAuth runtime.
+- External Client App navigation returns only a non-session-bearing instance Setup URL and a structured SF Browser route; frontdoor login URLs and session identifiers are never returned.
 - Both slices are create-only and refuse existing-resource drift. The outbound connection proof is GET-only, delegates execution to sf_apex, and never returns the external response body.
 - Production policies, existing-resource updates, rotations, migration, rollback, and user-selected destructive cleanup remain out of scope.
 

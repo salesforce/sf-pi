@@ -45,7 +45,12 @@ export async function evaluateSafety(
     return evaluateNativeToolRiskWithOrgLookup(subject, input.cwd, input.config);
   }
 
-  const commandRisk = await evaluateCommandRiskWithOrgLookup(subject, input.cwd, input.config);
+  const commandRisk = await evaluateCommandRiskWithOrgLookup(
+    subject,
+    input.cwd,
+    input.config,
+    input.sessionId,
+  );
   if (commandRisk?.kind === "allowListed") return undefined;
   if (commandRisk?.kind === "decision") return commandRisk.decision;
 

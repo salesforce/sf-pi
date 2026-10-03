@@ -19,6 +19,18 @@ describe("ambient overlay dismissal", () => {
     expect(findAmbientOverlayCloseRefs('- button "Close banner" [ref=e145]')).toEqual(["e145"]);
   });
 
+  it("finds the close control for the My Service Journey overlay", () => {
+    const snapshot = [
+      '- heading "My Service Journey" [level=2, ref=e16]',
+      '- button "Minimize" [ref=e19]',
+      '- button "Maximize" [ref=e20]',
+      '- button "Close" [ref=e21]',
+      '- heading "See what you’re missing out on" [level=3, ref=e22]',
+    ].join("\n");
+
+    expect(findAmbientOverlayCloseRefs(snapshot)).toEqual(["e21"]);
+  });
+
   it("does not click generic close buttons without a known ambient marker", () => {
     const snapshot = [
       '- heading "Create Agent" [level=2, ref=e1]',

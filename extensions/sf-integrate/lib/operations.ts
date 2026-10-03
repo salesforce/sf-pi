@@ -10,6 +10,7 @@ import {
   isCompleteEca,
   missingRequiredMetadataTypes,
 } from "./metadata.ts";
+import { buildEcaSetupNavigation, type EcaSetupNavigation } from "./navigation.ts";
 import { assertPlanMatches, buildIntegrationPlan } from "./plans.ts";
 import type {
   EcaInspection,
@@ -284,6 +285,7 @@ export async function applySetup(
     { plan, check: check.raw, deploy: deployed.raw, verification },
   );
   const verified = findings.length === 0;
+  const navigation = buildEcaSetupNavigation(session, verification);
   return result(
     "setup.apply",
     [
@@ -291,6 +293,7 @@ export async function applySetup(
       `Check-only: ${check.status ?? "Succeeded"}`,
       `Deployment: ${deployed.status ?? "Succeeded"}`,
       `Verification: ${verified ? "matched" : findings.join("; ")}`,
+      `Open in Salesforce: ${navigation.url}`,
       `Artifact: ${artifact.path}`,
     ].join("\n"),
     {
@@ -336,6 +339,7 @@ export async function applySetup(
       ],
       artifacts: [{ label: "run", path: artifact.path, kind: "json" }],
       next: [
+        `Open the External Client App in Salesforce: ${navigation.url}`,
         verification.consumer_key
           ? "Run mcp.handoff to copy the client ID into SF MCP."
           : "Wait for app propagation, then run setup.verify or mcp.handoff again.",
@@ -349,6 +353,7 @@ export async function applySetup(
       check_job_id: check.id,
       deploy_job_id: deployed.id,
       artifact: artifact.path,
+      navigation,
     },
     !verified,
   );
@@ -368,16 +373,21 @@ export async function verifySetup(
     inspection,
   );
   const ready = findings.length === 0 && Boolean(inspection.consumer_key);
+  const navigation = buildEcaSetupNavigation(session, inspection);
   return result(
     "setup.verify",
-    `${ready ? "PASS" : "REVIEW"}: ${appName} verification${findings.length ? ` · ${findings.join("; ")}` : ""}.`,
-    verificationCard(session, appName, inspection, findings, ready, artifact.path),
+    [
+      `${ready ? "PASS" : "REVIEW"}: ${appName} verification${findings.length ? ` · ${findings.join("; ")}` : ""}.`,
+      `Open in Salesforce: ${navigation.url}`,
+    ].join("\n"),
+    verificationCard(session, appName, inspection, findings, ready, artifact.path, navigation),
     {
       app_name: appName,
       ready,
       findings,
       consumer_key_available: Boolean(inspection.consumer_key),
       artifact: artifact.path,
+      navigation,
     },
     !ready,
   );
@@ -405,6 +415,7 @@ export async function mcpHandoff(
       `${appName} has no readable consumer key yet. External Client Apps can take time to propagate; run mcp.handoff again later.`,
     );
   }
+  const navigation = buildEcaSetupNavigation(session, inspection);
   const handoff = {
     preset,
     server_name: SF_MCP_HEADLESS_360_REQUIREMENT.serverName,
@@ -412,6 +423,7 @@ export async function mcpHandoff(
     consumer_key: inspection.consumer_key,
     callback_url: SF_MCP_HEADLESS_360_REQUIREMENT.callbackUrl,
     oauth_scopes: [...SF_MCP_HEADLESS_360_REQUIREMENT.oauthScopes],
+    salesforce_setup: navigation,
   };
   const artifact = await writeIntegrationArtifact(
     "handoffs",
@@ -425,6 +437,7 @@ export async function mcpHandoff(
       `Consumer key: ${inspection.consumer_key}`,
       `Callback URL: ${handoff.callback_url}`,
       `Scopes: ${handoff.oauth_scopes.join(" ")}`,
+      `Open in Salesforce: ${navigation.url}`,
       "Next: Open /sf-mcp → Headless 360 → Configure MCP, select the org environment, and paste the consumer key.",
       "Then run /mcp login salesforce-headless-360 after reload.",
       `Artifact: ${artifact.path}`,
@@ -453,9 +466,12 @@ export async function mcpHandoff(
         },
       ],
       artifacts: [{ label: "handoff", path: artifact.path, kind: "json" }],
-      next: ["Open /sf-mcp and paste the consumer key into the Headless 360 setup."],
+      next: [
+        `Open the External Client App in Salesforce: ${navigation.url}`,
+        "Open /sf-mcp and paste the consumer key into the Headless 360 setup.",
+      ],
     },
-    { handoff, artifact: artifact.path },
+    { handoff, artifact: artifact.path, navigation },
   );
 }
 
@@ -466,6 +482,7 @@ function verificationCard(
   findings: string[],
   ready: boolean,
   artifactPath: string,
+  navigation: EcaSetupNavigation,
 ): SfPiResultCard {
   return {
     tool: TOOL,
@@ -510,7 +527,10 @@ function verificationCard(
       },
     ],
     artifacts: [{ label: "verification", path: artifactPath, kind: "json" }],
-    next: [ready ? "Run mcp.handoff." : "Resolve the first finding and verify again."],
+    next: [
+      `Open the External Client App in Salesforce: ${navigation.url}`,
+      ready ? "Run mcp.handoff." : "Resolve the first finding and verify again.",
+    ],
   };
 }
 

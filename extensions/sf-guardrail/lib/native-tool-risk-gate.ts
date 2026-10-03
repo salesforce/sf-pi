@@ -22,7 +22,7 @@ export function evaluateNativeToolRisk(
     ? subject.targetOrgUnverified
       ? unverifiedExternalOrg()
       : subject.targetOrgType
-        ? externalMcpOrg(subject.targetOrgType)
+        ? knownSurfaceOrg(subject.targetOrgType, subject.targetOrgResolutionSource ?? "mcpConfig")
         : resolveOrgContextForTarget(subject.targetOrg, cwd, config.productionAliases)
     : undefined;
   return buildNativeToolDecision(subject, org);
@@ -84,13 +84,16 @@ function buildNativeToolDecision(
   };
 }
 
-function externalMcpOrg(type: "production" | "sandbox"): OrgContext {
+function knownSurfaceOrg(
+  type: Exclude<ClassifiedDecision["orgType"], "unknown" | undefined>,
+  source: "mcpConfig" | "url",
+): OrgContext {
   return {
     alias: undefined,
     type,
     guessed: false,
     explicit: false,
-    source: "mcpConfig",
+    source,
   };
 }
 

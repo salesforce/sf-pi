@@ -35,6 +35,7 @@ async function getConfigAggregatorCtor(): Promise<typeof ConfigAggregatorClass> 
   configAggregatorCtor = mod.ConfigAggregator;
   return configAggregatorCtor;
 }
+import { inferSalesforceOrgType, type OrgTypeSignals } from "./org-type.ts";
 import type {
   CliInfo,
   ConfigInfo,
@@ -283,53 +284,13 @@ export async function detectOrg(
  * Infer org type from the available signals.
  *
  * Detection order (most specific → least):
- *   1. Explicit flags (isScratch, isSandbox)
- *   2. Instance URL patterns (.sandbox., .scratch.)
- *   3. Trial expiration date
- *   4. Default: "production" if it's a DevHub; "unknown" otherwise.
+ *   1. Scratch ownership/expiration and explicit scratch or sandbox flags
+ *   2. Trusted Salesforce instance URL patterns
+ *   3. Dev Hub, trial, and authenticated Organization edition facts
+ *   4. Unknown only when no authoritative signal is available.
  */
-export function inferOrgType(info: {
-  isScratch?: boolean;
-  isSandbox?: boolean;
-  instanceUrl?: string;
-  trailExpirationDate?: string;
-  isDevHub?: boolean;
-}): OrgType {
-  // Explicit flags
-  if (info.isScratch) return "scratch";
-  if (info.isSandbox) return "sandbox";
-
-  // URL patterns. Parse the host before matching so arbitrary text in the
-  // scheme/path/query cannot influence org-type detection.
-  const hostname = getInstanceHostname(info.instanceUrl);
-  if (hostname) {
-    const labels = hostname.split(".");
-    if (labels.includes("sandbox")) return "sandbox";
-    if (labels.includes("scratch")) return "scratch";
-    if (
-      hostname === "develop.my.salesforce.com" ||
-      hostname.endsWith(".develop.my.salesforce.com")
-    ) {
-      return "developer";
-    }
-  }
-
-  // Trial detection
-  if (info.trailExpirationDate) return "trial";
-
-  // If it's a DevHub, it's likely production
-  if (info.isDevHub) return "production";
-
-  return "unknown";
-}
-
-function getInstanceHostname(instanceUrl: string | undefined): string | null {
-  if (!instanceUrl) return null;
-  try {
-    return new URL(instanceUrl).hostname.toLowerCase();
-  } catch {
-    return null;
-  }
+export function inferOrgType(info: OrgTypeSignals): OrgType {
+  return inferSalesforceOrgType(info);
 }
 
 // -------------------------------------------------------------------------------------------------

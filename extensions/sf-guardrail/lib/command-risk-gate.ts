@@ -8,7 +8,12 @@
  */
 import { fingerprintCommand, fingerprintPath } from "./fingerprint.ts";
 import { evaluateCommand } from "./command-gate.ts";
-import { resolveOrgContext, resolveOrgContextWithLookup } from "./org-context.ts";
+import {
+  resolveAgentBrowserOrgContext,
+  resolveAgentBrowserOrgContextWithLookup,
+  resolveOrgContext,
+  resolveOrgContextWithLookup,
+} from "./org-context.ts";
 import { behaviorToAction, resolveRuleBehavior } from "./rule-behavior.ts";
 import { safetyEnvelopeForCommand } from "./safety-envelope.ts";
 import { detectSafeTempCleanup } from "./temp-cleanup.ts";
@@ -21,6 +26,7 @@ export function evaluateCommandRisk(
   subject: ShellCommandSafetySubject,
   cwd: string,
   config: GuardrailConfig,
+  sessionId?: string,
 ): CommandRiskResult | undefined {
   const safeCleanup = detectSafeTempCleanup(subject.command);
   if (safeCleanup) {
@@ -63,7 +69,9 @@ export function evaluateCommandRisk(
   const org =
     outcome.matched.id === "sf-org-delete"
       ? resolveOrgContext(subject.command, cwd, config.productionAliases)
-      : undefined;
+      : outcome.matched.id === "agent-browser-direct"
+        ? resolveAgentBrowserOrgContext(subject.command, cwd, config.productionAliases, sessionId)
+        : undefined;
   const scope = safetyEnvelopeForCommand(outcome.matched.id, subject.command, org);
   return {
     kind: "decision",
@@ -92,24 +100,29 @@ export async function evaluateCommandRiskWithOrgLookup(
   subject: ShellCommandSafetySubject,
   cwd: string,
   config: GuardrailConfig,
+  sessionId?: string,
 ): Promise<CommandRiskResult | undefined> {
-  const fast = evaluateCommandRisk(subject, cwd, config);
+  const fast = evaluateCommandRisk(subject, cwd, config, sessionId);
   if (fast?.kind !== "decision") return fast;
 
   const decision = fast.decision;
   if (
-    decision.ruleId !== "sf-org-delete" ||
+    (decision.ruleId !== "sf-org-delete" && decision.ruleId !== "agent-browser-direct") ||
     !decision.orgResolutionGuessed ||
     !decision.orgCommand
   ) {
     return fast;
   }
 
-  const refinedOrg = await resolveOrgContextWithLookup(
-    decision.orgCommand,
-    cwd,
-    config.productionAliases,
-  );
+  const refinedOrg =
+    decision.ruleId === "agent-browser-direct"
+      ? await resolveAgentBrowserOrgContextWithLookup(
+          decision.orgCommand,
+          cwd,
+          config.productionAliases,
+          sessionId,
+        )
+      : await resolveOrgContextWithLookup(decision.orgCommand, cwd, config.productionAliases);
   const scope = safetyEnvelopeForCommand(decision.ruleId, decision.orgCommand, refinedOrg);
   return {
     kind: "decision",

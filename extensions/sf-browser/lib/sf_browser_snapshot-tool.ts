@@ -6,6 +6,8 @@ import { Type } from "typebox";
 import { writeLatestBrowserSnapshotRefs } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { RAW_AGENT_BROWSER_ESCAPE_HATCH, STALE_REF_HINT } from "./guidance.ts";
+import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
+import { readEffectiveSfBrowserSettings } from "./settings.ts";
 import { snapshotOutputModeFromUnknown, summarizeSnapshot } from "./snapshot-summary.ts";
 import { startTimer } from "./timing.ts";
 import { formatPossiblyLargeOutput, okText, writeBrowserArtifact } from "./tool-support.ts";
@@ -26,6 +28,7 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
     promptSnippet: "Capture compact Salesforce UI snapshots with short-lived agent-browser refs",
     promptGuidelines: [
       "Use sf_browser_snapshot before browser actions and after every Salesforce page-changing click, save, modal open, navigation, tab switch, or Lightning rerender.",
+      "When the effective dismissOverlays setting is enabled, snapshots close only recognized ambient Salesforce overlays before publishing refs.",
       "sf_browser_snapshot defaults to outputMode=summary to avoid context dumps; request outputMode=full only when the summary misses needed refs.",
     ],
     parameters: Type.Object({
@@ -47,6 +50,10 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const stopTimer = startTimer();
+      const settings = readEffectiveSfBrowserSettings(ctx.cwd);
+      const overlayDismissal = settings.dismissOverlays
+        ? await dismissAmbientOverlays(pi, ctx.cwd, signal)
+        : { dismissedRefs: [], snapshotChecked: false };
       const args = ["snapshot"];
       if (params.interactive !== false) args.push("-i");
       if (params.compact !== false) args.push("-c");
@@ -83,6 +90,9 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
       );
       const text = okText([
         body,
+        overlayDismissal.dismissedRefs.length
+          ? `Dismissed ambient overlays: ${overlayDismissal.dismissedRefs.join(", ")}`
+          : undefined,
         `Duration: ${duration.durationText}`,
         "",
         STALE_REF_HINT,
@@ -98,6 +108,7 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
           sessionId,
           focus,
           rawLength: rawSnapshot.length,
+          overlayDismissal,
           ...duration,
         },
       };

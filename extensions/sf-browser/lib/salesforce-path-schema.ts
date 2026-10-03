@@ -18,6 +18,13 @@ export const SalesforceRouteSchema = Type.Union([
     }),
   }),
   Type.Object({
+    type: Type.Literal("external-client-app"),
+    appName: Type.String({
+      description:
+        "External Client App API/developer name. sf_browser_open_org resolves it to the exact Setup detail page through the Tooling API.",
+    }),
+  }),
+  Type.Object({
     type: Type.Literal("object-list"),
     objectApiName: Type.String({ description: "Salesforce object API name, such as Account." }),
   }),

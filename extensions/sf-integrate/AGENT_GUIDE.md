@@ -17,7 +17,8 @@ Use `sf_integrate` for plan-bound integration authentication setup in explicit n
 3. `setup.apply` with the exact plan ID/hash/app name and `allow_mutation=true`
 4. `setup.verify`
 5. `mcp.handoff`
-6. Copy the public consumer key into `/sf-mcp`, reload, then use `/mcp login salesforce-headless-360`
+6. Open the returned non-session-bearing Salesforce Setup URL, or pass the returned `navigation.route` directly to `sf_browser_open_org`, to inspect the exact External Client App.
+7. Copy the public consumer key into `/sf-mcp`, reload, then use `/mcp login salesforce-headless-360`
 
 The generated public client uses `http://localhost:8765/callback`, Metadata API scopes `MCP, RefreshToken`, PKCE, named-user JWT access tokens, and refresh-token rotation. It never needs a client secret.
 
@@ -26,7 +27,7 @@ The generated public client uses `http://localhost:8765/callback`, Metadata API 
 1. Run `design.plan` with `direction=inbound`, an `eca_flow`, exact app name, and flow-specific inputs.
 2. Review the four core components: app, global OAuth settings, OAuth scopes, and org-local OAuth policy. Token Exchange also includes an `OauthTokenExchangeHandler` binding.
 3. Run `setup.apply` with the exact plan identity and `allow_mutation=true`.
-4. Run `setup.verify`; every expected Boolean, callback, scope, certificate state, execution user, and permitted-users policy must match readback.
+4. Run `setup.verify`; every expected Boolean, callback, scope, certificate state, execution user, and permitted-users policy must match readback. Successful apply/verify results include the exact External Client App Setup link when Tooling API exposes its record id, with a manager-page fallback.
 5. Perform the flow-specific client handshake outside the mutation action.
 
 Supported profiles:

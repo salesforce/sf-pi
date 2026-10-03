@@ -14,14 +14,19 @@
  * an in-process Salesforce config/auth/org lookup and caches the result by alias
  * so scratch/sandbox aliases do not repeatedly trigger production prompts.
  */
+import { findLatestBrowserSnapshotSession } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { getCachedSfEnvironment } from "../../../lib/common/sf-environment/shared-runtime.ts";
 import { detectConfig, detectOrg } from "../../../lib/common/sf-environment/detect.ts";
+import {
+  inferNonProductionOrgTypeFromUrl,
+  salesforceOrgHostKey,
+} from "../../../lib/common/sf-environment/org-type.ts";
 import type { ConfigInfo, OrgInfo } from "../../../lib/common/sf-environment/types.ts";
-import { extractTargetOrg, tokenize } from "./bash-ast.ts";
+import { extractTargetOrg, tokenize, tokenizeSimpleCommands } from "./bash-ast.ts";
 import type { OrgTypeFilter } from "./types.ts";
 
 export type OrgResolutionSource =
-  "cache" | "lookup" | "productionAliases" | "mcpConfig" | "guessed";
+  "cache" | "lookup" | "productionAliases" | "mcpConfig" | "url" | "guessed";
 
 export interface OrgContext {
   /** Alias, username, or org id used on the command (or default if unflagged). */
@@ -30,6 +35,8 @@ export interface OrgContext {
   orgId?: string;
   /** Username when detection provides it. */
   username?: string;
+  /** Instance URL when authenticated org facts provide it. */
+  instanceUrl?: string;
   /** Resolved type, biased to "production" when uncertain. */
   type: OrgTypeFilter;
   /** True when we had to guess — callers should warn/audit this. */
@@ -84,6 +91,45 @@ export function resolveOrgContextForTarget(
   }
 
   return guessedProduction(alias, isExplicit);
+}
+
+export function resolveAgentBrowserOrgContext(
+  command: string,
+  cwd: string,
+  productionAliases: string[],
+  sessionId?: string,
+): OrgContext {
+  const targetOrg = trackedBrowserTarget(command, sessionId);
+  if (targetOrg) {
+    const tracked = resolveOrgContextForTarget(targetOrg, cwd, productionAliases);
+    if (
+      !tracked.guessed &&
+      (tracked.source === "productionAliases" || browserUrlsMatchOrg(command, tracked))
+    ) {
+      return tracked;
+    }
+    return guessedProduction(targetOrg, true);
+  }
+  return orgContextFromBrowserUrls(command) ?? guessedProduction(undefined, false);
+}
+
+export async function resolveAgentBrowserOrgContextWithLookup(
+  command: string,
+  cwd: string,
+  productionAliases: string[],
+  sessionId?: string,
+): Promise<OrgContext> {
+  const targetOrg = trackedBrowserTarget(command, sessionId);
+  if (targetOrg) {
+    const resolved = await resolveOrgContextForTargetWithLookup(targetOrg, cwd, productionAliases);
+    if (
+      !resolved.guessed &&
+      (resolved.source === "productionAliases" || browserUrlsMatchOrg(command, resolved))
+    ) {
+      return resolved;
+    }
+  }
+  return orgContextFromBrowserUrls(command, targetOrg) ?? guessedProduction(targetOrg, !!targetOrg);
 }
 
 export async function resolveOrgContextWithLookup(
@@ -157,6 +203,7 @@ function fromOrgInfo(
     alias,
     orgId: org.orgId,
     username: org.username,
+    instanceUrl: org.instanceUrl,
     type: mapped,
     guessed: false,
     explicit,
@@ -175,6 +222,66 @@ async function detectDefaultTargetOrg(): Promise<string | undefined> {
 
 function guessedProduction(alias: string | undefined, explicit: boolean): OrgContext {
   return { alias, type: "production", guessed: true, explicit, source: "guessed" };
+}
+
+function trackedBrowserTarget(command: string, sessionId: string | undefined): string | undefined {
+  if (!usesSfPiBrowserSession(command)) return undefined;
+  return findLatestBrowserSnapshotSession(sessionId)?.targetOrg;
+}
+
+function usesSfPiBrowserSession(command: string): boolean {
+  return agentBrowserArgs(command).some((args) =>
+    args.some(
+      (arg, index) =>
+        arg === "--session=sf-pi" || (arg === "--session" && args[index + 1] === "sf-pi"),
+    ),
+  );
+}
+
+function orgContextFromBrowserUrls(command: string, alias?: string): OrgContext | undefined {
+  const urls = agentBrowserUrls(command);
+  if (!urls.length) return undefined;
+  const keys = new Set(urls.map(salesforceOrgHostKey));
+  const types = new Set(urls.map(inferNonProductionOrgTypeFromUrl));
+  if (keys.has(undefined) || keys.size !== 1 || types.has(undefined) || types.size !== 1) {
+    return undefined;
+  }
+  const type = [...types][0];
+  if (!type) return undefined;
+  return {
+    alias,
+    instanceUrl: urls[0],
+    type,
+    guessed: false,
+    explicit: Boolean(alias),
+    source: "url",
+  };
+}
+
+function browserUrlsMatchOrg(command: string, org: OrgContext): boolean {
+  const urls = agentBrowserUrls(command);
+  if (!urls.length) return true;
+  if (!org.instanceUrl) return false;
+  const orgKey = salesforceOrgHostKey(org.instanceUrl);
+  return Boolean(orgKey) && urls.every((url) => salesforceOrgHostKey(url) === orgKey);
+}
+
+function agentBrowserUrls(command: string): string[] {
+  return agentBrowserArgs(command)
+    .flat()
+    .filter((arg) => /^https:\/\//iu.test(arg));
+}
+
+function agentBrowserArgs(command: string): string[][] {
+  return tokenizeSimpleCommands(command)
+    .map(({ tokens }) => {
+      if (tokens.head === "agent-browser") return tokens.args;
+      if (tokens.head === "npx" && tokens.args[0] === "agent-browser") {
+        return tokens.args.slice(1);
+      }
+      return undefined;
+    })
+    .filter((args): args is string[] => Boolean(args));
 }
 
 function mapOrgType(org: OrgInfo): OrgTypeFilter | "unknown" {

@@ -14,9 +14,11 @@ export interface OverlayDismissalResult {
   snapshotChecked: boolean;
 }
 
-const SECURITY_CONTACT_MARKERS = [
+const AMBIENT_OVERLAY_MARKERS = [
   "Action Required: Security Contact Missing",
   "Security Contact Missing",
+  "My Service Journey",
+  "See what you’re missing out on",
 ] as const;
 
 export async function dismissAmbientOverlays(
@@ -61,12 +63,11 @@ export function findAmbientOverlayCloseRefs(snapshot: string): string[] {
     if (closeBanner) refs.push(closeBanner);
   }
 
-  // The security-contact panel we observed during Agentforce evidence capture
-  // is ambient and obscures screenshots. Only close a generic "Close" button
-  // when it appears close to this known marker.
+  // Known setup-assistance panels are ambient and obscure screenshots. Only
+  // close a generic "Close" button when it appears close to a known marker.
   for (let i = 0; i < lines.length; i += 1) {
-    if (!SECURITY_CONTACT_MARKERS.some((marker) => lines[i]?.includes(marker))) continue;
-    for (const nearby of lines.slice(i, i + 12)) {
+    if (!AMBIENT_OVERLAY_MARKERS.some((marker) => lines[i]?.includes(marker))) continue;
+    for (const nearby of lines.slice(Math.max(0, i - 8), i + 12)) {
       const close = refFromLine(nearby, /button "Close"/);
       if (close) refs.push(close);
     }

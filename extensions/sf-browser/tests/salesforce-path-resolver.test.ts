@@ -42,6 +42,16 @@ describe("salesforce path resolver", () => {
       ok: true,
       path: "/lightning/r/Account/001000000000001AAA/related/Contacts/view",
     });
+    expect(
+      resolveSalesforcePath({
+        route: { type: "external-client-app", appName: "SfPiHeadless360Mcp" } as never,
+      }),
+    ).toMatchObject({
+      ok: true,
+      path: "/lightning/setup/ManageExternalClientApplication/home",
+      kind: "external-client-app",
+      destination: "SfPiHeadless360Mcp",
+    });
   });
 
   it("resolves exact and bounded fuzzy setup destinations", () => {

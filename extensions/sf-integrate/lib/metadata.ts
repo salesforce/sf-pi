@@ -67,11 +67,12 @@ export async function inspectEca(
   session: SalesforceSession,
   appName: string,
 ): Promise<EcaInspection> {
-  const [application, globalOauth, oauth, policy] = await Promise.all([
+  const [application, globalOauth, oauth, policy, recordId] = await Promise.all([
     readComponent(session, "ExternalClientApplication", appName),
     readComponent(session, "ExtlClntAppGlobalOauthSettings", appName),
     readComponent(session, "ExtlClntAppOauthSettings", appName),
     readComponent(session, "ExtlClntAppOauthConfigurablePolicies", appName),
+    resolveEcaRecordId(session, appName),
   ]);
   const scopes = stringValue(oauth?.commaSeparatedOauthScopes)
     ?.split(",")
@@ -79,6 +80,7 @@ export async function inspectEca(
     .filter(Boolean);
   return {
     app_name: appName,
+    record_id: recordId,
     components: {
       ExternalClientApplication: Boolean(application),
       ExtlClntAppGlobalOauthSettings: Boolean(globalOauth),
@@ -105,6 +107,25 @@ export async function inspectEca(
     client_credentials_user: stringValue(policy?.clientCredentialsFlowUser),
     permitted_users_policy: stringValue(policy?.permittedUsersPolicyType),
   };
+}
+
+async function resolveEcaRecordId(
+  session: SalesforceSession,
+  appName: string,
+): Promise<string | undefined> {
+  try {
+    const result = await session.query<{ Id: string }>({
+      soql: `SELECT Id FROM ExternalClientApplication WHERE DeveloperName = '${escapeSoqlLiteral(appName)}' LIMIT 2`,
+      api: "tooling",
+      maxRows: 2,
+    });
+    const id = result.records.length === 1 ? result.records[0]?.Id : undefined;
+    return id && /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/u.test(id) ? id : undefined;
+  } catch {
+    // Metadata verification remains authoritative when the Tooling object is
+    // unavailable. Callers fall back to the External Client App manager link.
+    return undefined;
+  }
 }
 
 export async function inspectTokenExchangeHandler(
@@ -331,6 +352,10 @@ function assertNonProduction(session: SalesforceSession): void {
 
 function validEmail(value: unknown): value is string {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value);
+}
+
+function escapeSoqlLiteral(value: string): string {
+  return value.replace(/\\/gu, "\\\\").replace(/'/gu, "\\'");
 }
 
 function stringValue(value: unknown): string | undefined {

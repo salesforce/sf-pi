@@ -59,7 +59,9 @@ Neither path bypasses hard blocks.
 - Every automatic allow, human allow, session allow, block, timeout, cancel, and
   headless pass becomes an audit entry.
 - Power Tool Mode is off by default, can be limited to selected native families,
-  and requires a separate production/unknown-org opt-in.
+  and requires a separate production/unknown-org opt-in. With `mode=all`, direct
+  browser commands auto-approve only when tracked org facts or a trusted
+  Salesforce-owned URL proves a developer, scratch, sandbox, or trial target.
 - Strictly validated temporary-directory cleanup can be auto-allowed; other
   dangerous commands are confirmed or hard-blocked according to rule behavior.
 - Disabling the extension removes this mediation layer; the Manager calls that
@@ -75,9 +77,7 @@ mediation.
 
 ## Troubleshooting
 
-**Production confirms fire for a sandbox:** Inspect `/sf-guardrail audit` to see
-whether org type came from cache, lookup, a protected alias, or a fail-closed
-guess. Refresh authentication/environment state before changing alias policy.
+**Production confirms fire for a non-production org:** Inspect `/sf-guardrail audit` to see whether org type came from cache, lookup, a trusted URL, a protected alias, or a fail-closed guess. Scratch ownership (`devHubUsername` / expiration), sandbox and Dev Hub flags, Organization edition, and trusted Salesforce-owned non-production hosts are classification evidence. Refresh authentication/environment state before changing alias policy.
 
 **A protected file remains blocked after removing an override:** Bundled rules
 merge by stable id. Add an explicit disabled/no-op override instead of merely

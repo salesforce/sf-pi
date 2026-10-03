@@ -11,6 +11,7 @@ import {
   findLatestBrowserSnapshotSession,
   type BrowserSnapshotRefLookup,
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
+import { inferNonProductionOrgTypeFromUrl } from "../../../lib/common/sf-environment/org-type.ts";
 import { fingerprintText } from "./fingerprint.ts";
 import { classifySfMcpRisk } from "./mcp-tool-risk.ts";
 import type { SafetySubjectContext } from "./safety-subject.ts";
@@ -559,6 +560,9 @@ function classifySfBrowserCommit(
   const browserSession =
     snapshotLookup?.session ?? findLatestBrowserSnapshotSession(context.sessionId);
   const targetOrg = browserSession?.targetOrg;
+  const targetOrgType = targetOrg
+    ? undefined
+    : inferNonProductionOrgTypeFromUrl(browserSession?.url);
   const keyLooksCommitting =
     toolName === "sf_browser_press"
       ? browserPressKeyLooksCommitting(stringValue(input.key))
@@ -615,7 +619,9 @@ function classifySfBrowserCommit(
       .join("; "),
     usesSalesforceOrg: true,
     targetOrg,
-    targetOrgUnverified: !targetOrg,
+    targetOrgType,
+    targetOrgResolutionSource: targetOrgType ? "url" : undefined,
+    targetOrgUnverified: !targetOrg && !targetOrgType,
     allowSession: false,
   };
 }

@@ -50,7 +50,7 @@ mcp.handoff
 - Named-user JWT access tokens enabled
 - Refresh-token rotation enabled
 
-Salesforce generates the consumer key. `mcp.handoff` presents that public identifier for the human-reviewed `/sf-mcp` configuration flow. SF Integrate doesn't edit `mcp.json` or own OAuth tokens.
+Salesforce generates the consumer key. Successful apply, verify, and handoff results include a non-session-bearing Salesforce Setup URL plus an `external-client-app` SF Browser route for direct inspection. `mcp.handoff` presents the public client identifier for the human-reviewed `/sf-mcp` configuration flow. SF Integrate doesn't edit `mcp.json` or own OAuth tokens.
 
 ### Generic External Client Apps
 
@@ -117,6 +117,7 @@ External Auth Identity Provider → External Credential → Named Credential
 - Raw secret values aren't accepted by the tool schema. Secrets come from a masked prompt or named environment variable and are sent directly to Salesforce.
 - Custom API-key External Credential metadata receives check-only validation before deployment.
 - Exact plans, responses, and verification records are mode-`0o600` artifacts under `<globalAgentDir>/sf-pi/sf-integrate/`.
+- ECA navigation links contain only the org instance URL and Setup record path; they never contain frontdoor session credentials.
 - OAuth consent and the GET-only connection probe are explicit actions.
 - Existing-resource update, rotation, migration, rollback, and destructive cleanup aren't model-callable in this phase.
 

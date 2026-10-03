@@ -223,7 +223,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 
 **[SF Guardrail](./extensions/sf-guardrail.md#troubleshooting)**
 
-- Production confirms fire for a sandbox
+- Production confirms fire for a non-production org
 - A protected file remains blocked after removing an override
 - Headless CI is blocked
 - Audit is empty after resume

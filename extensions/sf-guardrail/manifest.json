@@ -14,7 +14,7 @@
     "intentGroup": "Work safely",
     "editingRules": "AGENTS.md",
     "contextGlossary": "CONTEXT.md",
-    "summary": "Salesforce-aware safety layer for pi: file-protection policies, AST-matched command gating, org-aware confirmation on production deploys/Apex/DML/destructive REST, native high-value mutation mediation, plus a once-per-session prompt-injection that teaches the LLM the gating categories and validate-first workflow.",
+    "summary": "Salesforce-aware safety layer for pi: file-protection policies, AST-matched command gating, authenticated-fact and trusted-URL org classification, org-aware confirmation on production deploys/Apex/DML/destructive REST, native high-value mutation mediation, plus a once-per-session prompt-injection that teaches the LLM the gating categories and validate-first workflow.",
     "primaryFiles": [
       "index.ts",
       "lib/safety-kernel.ts",
@@ -30,7 +30,7 @@
     "safety": [
       "Fail-closed in headless mode unless SF_GUARDRAIL_ALLOW_HEADLESS=1.",
       "Every block / allow / confirm decision is persisted as an audit entry.",
-      "Power Tool Mode can persistently auto-approve selected confirm-class decisions; production/unknown org auto-approve is a separate opt-in and hard blocks are never bypassed.",
+      "Power Tool Mode can persistently auto-approve selected confirm-class decisions; authenticated developer/scratch/sandbox/trial targets and trusted Salesforce-owned non-production URLs honor that setting, while production/unknown org auto-approve is a separate opt-in and hard blocks are never bypassed.",
       "Operator auto-approve env mode is process-scoped, audited, and does not bypass hard blocks.",
       "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice Agent Script lifecycle, SF Integrate setup and credential population, SF Flow activation/deactivation, Data 360, Apex, Slack Canvas, SF Browser commit surfaces, Salesforce MCP record writes/deletes, Backup and Recover writes, Content writes, Headless 360 dispatch, DX mutations, hosted Data 360 execution, every experimental Agentforce Sales operation, and managed external MCP operations. Legacy SObject and unsupported hosted mutations fail closed.",
       "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."

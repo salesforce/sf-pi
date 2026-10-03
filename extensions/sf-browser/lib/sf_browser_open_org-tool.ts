@@ -17,6 +17,7 @@ export function registerSfBrowserOpenOrgTool(pi: ExtensionAPI): void {
       "Open the target Salesforce org/path in agent-browser without exposing login URLs",
     promptGuidelines: [
       "Use sf_browser_open_org before Salesforce UI last-mile work, then call sf_browser_snapshot before acting.",
+      "To open one External Client App without search-and-click navigation, use route={type:'external-client-app', appName:'<API name>'}; the route is verified through Tooling API.",
     ],
     parameters: Type.Object({
       target_org: Type.Optional(

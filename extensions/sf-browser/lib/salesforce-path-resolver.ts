@@ -22,6 +22,7 @@ export type SalesforceRoute =
   | { type: "home" }
   | { type: "setup"; destination: string }
   | { type: "data-cloud"; destination: string }
+  | { type: "external-client-app"; appName: string }
   | { type: "object-list"; objectApiName: string }
   | { type: "object-new"; objectApiName: string }
   | { type: "record-view"; objectApiName: string; recordId: string }
@@ -142,6 +143,16 @@ function resolveRoute(route: SalesforceRoute): SalesforcePathResolverResult {
       return resolveSetupPath(route.destination);
     case "data-cloud":
       return resolveDataCloudPath(route.destination);
+    case "external-client-app": {
+      const appName = validateApiName(route.appName, "appName");
+      if (appName.valid === false) return appName.error;
+      return {
+        ok: true,
+        path: "/lightning/setup/ManageExternalClientApplication/home",
+        kind: "external-client-app",
+        destination: appName.value,
+      };
+    }
     case "object-list": {
       const object = validateObjectApiName(route.objectApiName);
       if (object.valid === false) return object.error;
@@ -322,9 +333,16 @@ function compactKey(value: string): string {
 function validateObjectApiName(
   value: string | undefined,
 ): { valid: true; value: string } | { valid: false; error: SalesforcePathResolverResult } {
+  return validateApiName(value, "objectApiName");
+}
+
+function validateApiName(
+  value: string | undefined,
+  field: string,
+): { valid: true; value: string } | { valid: false; error: SalesforcePathResolverResult } {
   const trimmed = value?.trim() ?? "";
   if (!OBJECT_API_NAME_RE.test(trimmed)) {
-    return { valid: false, error: invalidRoute(`Invalid objectApiName ${JSON.stringify(value)}.`) };
+    return { valid: false, error: invalidRoute(`Invalid ${field} ${JSON.stringify(value)}.`) };
   }
   return { valid: true, value: trimmed };
 }

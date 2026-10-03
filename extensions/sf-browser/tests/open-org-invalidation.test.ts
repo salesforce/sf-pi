@@ -28,6 +28,7 @@ vi.mock("../lib/salesforce-open.ts", async (importOriginal) => {
 
 describe("openOrgInAgentBrowser", () => {
   it("invalidates cached snapshot refs before navigating", async () => {
+    vi.mocked(runAgentBrowser).mockClear();
     const sessionId = "sf-browser-open-org-invalidation-test";
     writeLatestBrowserSnapshotRefs({
       sessionId,
@@ -54,5 +55,44 @@ describe("openOrgInAgentBrowser", () => {
     const lookup = findLatestBrowserSnapshotRefLookup(sessionId, "@e7");
     expect(lookup.status).toBe("stale");
     expect(lookup.session?.targetOrg).toBe("DevSandbox");
+  });
+
+  it("corrects the path once when Salesforce frontdoor ignores the requested start URL", async () => {
+    vi.mocked(runAgentBrowser).mockReset();
+    let urlReads = 0;
+    vi.mocked(runAgentBrowser).mockImplementation(async (_pi, args) => {
+      if (args[0] === "get" && args[1] === "url") {
+        urlReads += 1;
+        return {
+          stdout:
+            urlReads === 1
+              ? "https://example.lightning.force.com/lightning/n/devedapp__Welcome"
+              : "https://example.my.salesforce-setup.com/lightning/setup/SetupOneHome/home",
+          stderr: "",
+          code: 0,
+          durationMs: 1,
+          durationText: "1ms",
+        };
+      }
+      return { stdout: "", stderr: "", code: 0, durationMs: 1, durationText: "1ms" };
+    });
+
+    const result = await openOrgInAgentBrowser(
+      {} as ExtensionAPI,
+      {
+        cwd: "/project",
+        sessionManager: { getSessionId: () => "sf-browser-path-correction-test" },
+      } as unknown as ExtensionContext,
+      { path: "/lightning/setup/SetupOneHome/home" },
+      undefined,
+    );
+
+    expect(runAgentBrowser).toHaveBeenCalledWith(
+      expect.anything(),
+      ["open", "https://example.lightning.force.com/lightning/setup/SetupOneHome/home"],
+      expect.objectContaining({ cwd: "/project" }),
+    );
+    expect(result.text).toContain("Post-login path correction: applied");
+    expect(result.details.navigationCorrectionApplied).toBe(true);
   });
 });

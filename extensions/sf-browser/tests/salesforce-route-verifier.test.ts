@@ -16,6 +16,7 @@ function fakeConnection(options?: {
   recordFound?: boolean;
   listViews?: unknown[];
   relatedLists?: unknown[];
+  externalClientApps?: unknown[];
 }) {
   const target = {
     targetOrg: "ExampleOrg",
@@ -30,13 +31,27 @@ function fakeConnection(options?: {
     createable: objectApiName !== "ReadOnly__c",
     queryable: true,
   }));
-  const query = vi.fn(async () => ({
-    totalSize: options?.recordFound === false ? 0 : 1,
-    records: [],
-    done: true,
-    truncated: false,
-    target,
-  }));
+  const query = vi.fn(async (input: { soql: string }) => {
+    if (input.soql.includes("FROM ExternalClientApplication")) {
+      const records = options?.externalClientApps ?? [
+        { Id: "0xI000000000001AAA", DeveloperName: "SfPiHeadless360Mcp" },
+      ];
+      return {
+        totalSize: records.length,
+        records,
+        done: true,
+        truncated: false,
+        target,
+      };
+    }
+    return {
+      totalSize: options?.recordFound === false ? 0 : 1,
+      records: [],
+      done: true,
+      truncated: false,
+      target,
+    };
+  });
   const request = vi.fn(async (input: { path: string }) => {
     const body = input.path.includes("/ui-api/list-info/")
       ? {
@@ -99,6 +114,37 @@ describe("salesforce route verifier", () => {
       api: "rest",
       maxRows: 1,
     });
+  });
+
+  it("resolves an External Client App API name to its exact Setup detail page", async () => {
+    const conn = fakeConnection();
+
+    await expect(
+      verifySalesforceRoute(
+        conn as never,
+        { type: "external-client-app", appName: "SfPiHeadless360Mcp" } as never,
+      ),
+    ).resolves.toMatchObject({
+      path: "/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+      externalClientApp: {
+        id: "0xI000000000001AAA",
+        appName: "SfPiHeadless360Mcp",
+      },
+    });
+    expect(conn.query).toHaveBeenCalledWith({
+      soql: "SELECT Id, DeveloperName, MasterLabel FROM ExternalClientApplication WHERE DeveloperName = 'SfPiHeadless360Mcp' LIMIT 2",
+      api: "tooling",
+      maxRows: 2,
+    });
+  });
+
+  it("fails closed when an External Client App API name is missing", async () => {
+    await expect(
+      verifySalesforceRoute(
+        fakeConnection({ externalClientApps: [] }) as never,
+        { type: "external-client-app", appName: "MissingEca" } as never,
+      ),
+    ).rejects.toThrow("was not found or is not accessible");
   });
 
   it("resolves list views by label, api name, or id", async () => {

@@ -101,12 +101,11 @@ function isProductionLikeDecision(decision: ClassifiedDecision): boolean {
     return true;
   }
 
-  // Browser commits happen inside an authenticated Salesforce UI session, but
-  // their native-tool subjects do not always carry resolvable org metadata.
-  // SOQL exports/history reruns can also disclose prior org data without a
-  // target_org on the replay/export call. Treat those missing-org native
-  // decisions as Unknown Org for Power Tool Mode so the separate
-  // productionUnknown opt-in remains meaningful.
+  // Browser commits and direct browser commands can carry tracked org or
+  // trusted Salesforce URL context. Only decisions still missing that context
+  // reach this branch. SOQL exports/history reruns can also disclose prior org
+  // data without a target_org. Treat those unresolved decisions as Unknown Org
+  // so the separate productionUnknown opt-in remains meaningful.
   const family = nativeToolFamilyForDecision(decision);
   return family === "browser" || family === "soql";
 }

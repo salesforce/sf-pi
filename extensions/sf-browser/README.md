@@ -6,8 +6,8 @@ SF Browser handles Salesforce UI last-mile work that APIs cannot complete. It
 uses [`agent-browser`](https://www.npmjs.com/package/agent-browser) lazily to:
 
 - open authenticated Salesforce pages without exposing session-bearing URLs;
-- resolve curated Setup Destinations and verified structured Lightning routes;
-- capture compact accessibility snapshots and short-lived element refs;
+- resolve curated Setup Destinations and verified structured Lightning routes, including exact External Client App detail pages by API name;
+- capture compact accessibility snapshots and short-lived element refs after dismissing recognized ambient Salesforce overlays;
 - perform small click, fill, select, key, editor, and wait interactions;
 - store private, session-scoped Browser Evidence screenshots and metadata.
 
@@ -36,7 +36,7 @@ The hot path comprises `sf_browser_open_org`, `sf_browser_snapshot`,
 `sf_browser_editor`, `sf_browser_wait`, `sf_browser_capture_evidence`, and
 `sf_browser_resolve_path`.
 
-Snapshots default to compact summaries and save the full tree as an artifact.
+Snapshots default to compact summaries, close recognized ambient overlays when `dismissOverlays` is enabled, and save the full tree as an artifact. Use `route: { type: "external-client-app", appName: "ExampleEca" }` to resolve and open an exact External Client App Setup detail page without search-and-click navigation. Org opening verifies the post-login path and performs at most one same-org correction when Salesforce ignores the requested frontdoor start URL.
 Refs become stale after page changes. Editor writes replace visible content but
 never click Save or Apply. Direct `agent-browser` commands remain the long-tail
 path for scrolling, hover, drag, uploads, tabs, console/network inspection,
@@ -71,6 +71,7 @@ Homebrew installations should be updated through Homebrew. Run
   saves, tab switches, or Lightning rerenders.
 - SF Guardrail can classify committing refs such as Save, Delete, Activate,
   Assign, Submit, or Deploy from the latest snapshot label.
+- Automatic overlay dismissal is allowlisted to recognized ambient Salesforce assistance surfaces; generic workflow modal Close controls are left intact.
 - Browser Evidence is artifact-first and stored outside the project by default.
   Use `artifact` for batches and `thumbnail` only when the model must inspect the
   current screen.

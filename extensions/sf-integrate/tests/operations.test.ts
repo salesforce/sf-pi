@@ -73,6 +73,7 @@ function readyInspection(appName = "SfPiHeadless360Mcp"): EcaInspection {
     named_user_jwt: true,
     refresh_token_rotation: true,
     consumer_key: "public-client-id",
+    record_id: "0xI000000000001AAA",
   };
 }
 
@@ -155,7 +156,17 @@ describe("SF Integrate operations", () => {
       integrationAdapter,
     );
 
-    expect(applied.details).toMatchObject({ ok: true, verified: true });
+    expect(applied.details).toMatchObject({
+      ok: true,
+      verified: true,
+      navigation: {
+        path: "/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+        url: "https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+      },
+    });
+    expect(applied.content[0]?.text).toContain(
+      "Open in Salesforce: https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+    );
     expect(integrationAdapter.deploy).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ checkOnly: true }),
@@ -226,6 +237,14 @@ describe("SF Integrate operations", () => {
 
     expect(handoff.content[0]?.text).toContain("Consumer key: public-client-id");
     expect(handoff.content[0]?.text).toContain("http://localhost:8765/callback");
+    expect(handoff.content[0]?.text).toContain(
+      "Open in Salesforce: https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+    );
+    expect(handoff.details).toMatchObject({
+      navigation: {
+        route: { type: "external-client-app", appName: "SfPiHeadless360Mcp" },
+      },
+    });
     expect(JSON.stringify(handoff)).not.toContain("client_secret");
   });
 });

@@ -153,8 +153,10 @@ export interface NativeToolSafetySubject {
   targetOrgExplicit?: boolean;
   /** True when an external MCP OAuth target cannot be correlated to the active CLI org. */
   targetOrgUnverified?: boolean;
-  /** Environment class proven by a known Salesforce Hosted MCP endpoint. */
-  targetOrgType?: "production" | "sandbox";
+  /** Environment class proven by a known MCP endpoint or trusted Salesforce URL. */
+  targetOrgType?: Exclude<OrgTypeFilter, "unknown">;
+  /** Provenance for targetOrgType when it doesn't come from normal alias lookup. */
+  targetOrgResolutionSource?: Extract<GuardrailOrgResolutionSource, "mcpConfig" | "url">;
   /** False for native operations that should not create session approvals. */
   allowSession?: boolean;
   /** Fail closed before HITL when this native operation resolves to production or unknown. */
@@ -200,6 +202,9 @@ export interface ApprovalScope {
 /** Compatibility alias for the envelope-first redesign vocabulary. */
 export type SafetyEnvelope = ApprovalScope;
 
+export type GuardrailOrgResolutionSource =
+  "cache" | "lookup" | "productionAliases" | "mcpConfig" | "url" | "guessed";
+
 export interface ClassifiedDecision {
   ruleId: string;
   feature: "policies" | "commandGate" | "orgAwareGate" | "nativeToolGate";
@@ -220,7 +225,7 @@ export interface ClassifiedDecision {
   orgId?: string;
   orgUsername?: string;
   orgResolutionGuessed?: boolean;
-  orgResolutionSource?: "cache" | "lookup" | "productionAliases" | "mcpConfig" | "guessed";
+  orgResolutionSource?: GuardrailOrgResolutionSource;
   orgTargetExplicit?: boolean;
   orgCommand?: string;
 }
@@ -252,7 +257,7 @@ export interface DecisionEntryData {
   orgId?: string;
   orgUsername?: string;
   orgResolutionGuessed?: boolean;
-  orgResolutionSource?: "cache" | "lookup" | "productionAliases" | "mcpConfig" | "guessed";
+  orgResolutionSource?: GuardrailOrgResolutionSource;
   approvalScopeLabel?: string;
   approvalScopeDetail?: string;
   approvalRiskTier?: string;

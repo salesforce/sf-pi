@@ -365,16 +365,22 @@ describe("inferOrgType", () => {
     expect(inferOrgType({ isScratch: true })).toBe("scratch");
   });
 
+  it("detects scratch from Dev Hub ownership and scratch expiration auth fields", () => {
+    expect(inferOrgType({ devHubUsername: "hub@example.test" })).toBe("scratch");
+    expect(inferOrgType({ expirationDate: "2026-10-04" })).toBe("scratch");
+  });
+
   it("detects sandbox from URL pattern", () => {
     expect(inferOrgType({ instanceUrl: "https://example--dev.sandbox.my.salesforce.com" })).toBe(
       "sandbox",
     );
   });
 
-  it("detects developer edition from URL pattern", () => {
+  it("detects developer edition from URL pattern or authenticated edition", () => {
     expect(inferOrgType({ instanceUrl: "https://abc-dev-ed.develop.my.salesforce.com" })).toBe(
       "developer",
     );
+    expect(inferOrgType({ orgEdition: "Developer Edition" })).toBe("developer");
   });
 
   it("does not detect developer edition from URL path text", () => {
@@ -387,8 +393,19 @@ describe("inferOrgType", () => {
     expect(inferOrgType({ trailExpirationDate: "2026-04-22T16:08:39.000+0000" })).toBe("trial");
   });
 
-  it("returns production for DevHub", () => {
+  it("returns production for DevHub even when its host is a developer-edition domain", () => {
     expect(inferOrgType({ isDevHub: true })).toBe("production");
+    expect(
+      inferOrgType({
+        isDevHub: true,
+        orgEdition: "Developer Edition",
+        instanceUrl: "https://hub.develop.my.salesforce.com",
+      }),
+    ).toBe("production");
+  });
+
+  it("uses authenticated non-sandbox edition facts to identify production", () => {
+    expect(inferOrgType({ isSandbox: false, orgEdition: "Enterprise Edition" })).toBe("production");
   });
 
   it("returns unknown when no signals", () => {

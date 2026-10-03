@@ -1042,6 +1042,130 @@ describe("Safety Kernel", () => {
     expect(shouldPowerToolAutoApprove(pressDecision!, { mode: "all" })).toBe(true);
   });
 
+  it("lets Power Tool Mode auto-approve direct agent-browser commands for a tracked developer org", async () => {
+    const sessionId = "guardrail-agent-browser-developer-test";
+    recordBrowserSessionTargetOrg(sessionId, "DeveloperOrg");
+    mockedLookup.DeveloperOrg = {
+      detected: true,
+      alias: "DeveloperOrg",
+      username: "developer@example.test",
+      orgId: "example-developer-org-id",
+      instanceUrl: "https://example.develop.my.salesforce.com",
+      orgType: "developer",
+    };
+
+    const decision = await evaluateSafety({
+      toolName: "bash",
+      input: {
+        command:
+          "agent-browser --session sf-pi open https://example.develop.lightning.force.com/lightning/setup/SetupOneHome/home",
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId,
+    });
+
+    expect(decision).toMatchObject({
+      ruleId: "agent-browser-direct",
+      orgAlias: "DeveloperOrg",
+      orgType: "developer",
+      orgResolutionGuessed: false,
+      orgResolutionSource: "lookup",
+    });
+    expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(true);
+  });
+
+  it("keeps a tracked browser alias production-sensitive when settings override it", async () => {
+    const sessionId = "guardrail-agent-browser-production-alias-test";
+    recordBrowserSessionTargetOrg(sessionId, "ProtectedDeveloperOrg");
+    const config = readBundledConfig();
+    config.productionAliases = ["ProtectedDeveloperOrg"];
+
+    const decision = await evaluateSafety({
+      toolName: "bash",
+      input: {
+        command:
+          "agent-browser --session sf-pi open https://example.develop.lightning.force.com/lightning/setup/SetupOneHome/home",
+      },
+      cwd: "/project",
+      config,
+      sessionId,
+    });
+
+    expect(decision).toMatchObject({
+      ruleId: "agent-browser-direct",
+      orgAlias: "ProtectedDeveloperOrg",
+      orgType: "production",
+      orgResolutionGuessed: false,
+      orgResolutionSource: "productionAliases",
+    });
+    expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(false);
+  });
+
+  it("uses trusted Salesforce URL signals for unauthenticated non-production browser targets", async () => {
+    const decision = await evaluateSafety({
+      toolName: "bash",
+      input: {
+        command:
+          "agent-browser open https://example.develop.lightning.force.com/lightning/setup/SetupOneHome/home",
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      ruleId: "agent-browser-direct",
+      orgType: "developer",
+      orgResolutionGuessed: false,
+      orgResolutionSource: "url",
+    });
+    expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(true);
+  });
+
+  it("keeps unauthenticated production-like browser URLs fail-closed", async () => {
+    const decision = await evaluateSafety({
+      toolName: "bash",
+      input: {
+        command: "agent-browser open https://example.my.salesforce.com/lightning/page/home",
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toMatchObject({
+      ruleId: "agent-browser-direct",
+      orgType: "production",
+      orgResolutionGuessed: true,
+      orgResolutionSource: "guessed",
+    });
+    expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(false);
+  });
+
+  it("uses a trusted developer URL for native browser commits without CLI auth", async () => {
+    const sessionId = "guardrail-browser-url-developer-test";
+    writeLatestBrowserSnapshotRefs({
+      sessionId,
+      snapshot: '- button "Save" [ref=e12]',
+      url: "https://example.develop.my.salesforce-setup.com/lightning/setup/Test/home",
+    });
+
+    const decision = await evaluateSafety({
+      toolName: "sf_browser_click",
+      input: { ref: "@e12", reason: "Click Save", mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+      sessionId,
+    });
+
+    expect(decision).toMatchObject({
+      ruleId: "native-sf-browser-commit",
+      orgType: "developer",
+      orgResolutionGuessed: false,
+      orgResolutionSource: "url",
+    });
+    expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(true);
+  });
+
   it("keeps untracked Salesforce browser targets fail-closed", async () => {
     const decision = await evaluateSafety({
       toolName: "sf_browser_click",

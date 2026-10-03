@@ -65,11 +65,11 @@ A **Risk Gate** whose decision depends on the resolved Salesforce org identity a
 _Avoid_: production detector, deploy blocker, org policy engine
 
 **Detected Org Type**:
-The Salesforce org type SF Guardrail receives from SF Pi's Salesforce environment detection: scratch, sandbox, developer, trial, production, or unknown.
+The Salesforce org type SF Guardrail receives from authenticated Salesforce/Core facts such as scratch ownership, sandbox and Dev Hub flags, Organization edition, or a trusted Salesforce-owned non-production instance URL: scratch, sandbox, developer, trial, production, or unknown. Alias wording alone is never evidence.
 _Avoid_: demo type, training type, name-based environment guess
 
 **Unknown Org**:
-A target org whose type cannot be verified from the available Salesforce/Core org facts. SF Guardrail treats it as production for risky operations.
+A target org whose type cannot be verified from authenticated Salesforce/Core facts or a trusted Salesforce-owned non-production URL. SF Guardrail treats it as production for risky operations. A blank Type cell in `sf org list` is not itself an Unknown Org classification.
 _Avoid_: assume sandbox, infer from alias name, demo org guess
 
 **Operation Family**:
