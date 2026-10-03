@@ -25,6 +25,7 @@ Use this guide for multi-step Apex authoring, diagnostics, logs, probes, and tes
 - Use explicit target orgs for mutations and org-dependent tests.
 - Do not guess test classes or methods; use discovery when the target is unclear.
 - Start trace flags before asking the user to reproduce runtime behavior, and stop them when the bounded investigation ends.
+- `trace.start` and `trace.stop` mutate only flags owned by the managed `SF_PI_APEX` debug level, preserve external flags, and return exact resulting-state readback evidence. `trace.start` returns `TRACE_CONFLICT` rather than replacing an external active trace for the same user.
 - Keep raw logs and reports in artifacts. Bring stack traces, limit signals, debug markers, and failing assertions into model context.
 - Raw Salesforce CLI is a fallback only when `sf_apex` lacks the required lifecycle capability.
 

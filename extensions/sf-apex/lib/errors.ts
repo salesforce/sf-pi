@@ -13,7 +13,8 @@ export type ApexErrorCategory =
   | "RUNTIME_EXCEPTION"
   | "TOOLING_API"
   | "TIMEOUT"
-  | "AMBIGUOUS_TARGET";
+  | "AMBIGUOUS_TARGET"
+  | "TRACE_CONFLICT";
 
 export interface ApexErrorInfo {
   category: ApexErrorCategory;
@@ -68,6 +69,14 @@ export function ambiguousTargetError(message: string): ApexStructuredError {
     "AMBIGUOUS_TARGET",
     message,
     "Use class_names for whole classes or fully qualify tests as Class.method / namespace.Class.method.",
+  );
+}
+
+export function traceConflictError(count: number): ApexStructuredError {
+  return new ApexStructuredError(
+    "TRACE_CONFLICT",
+    `${count} external active trace flag(s) already target this user; none were modified.`,
+    "Wait for the external trace to expire or stop it through its owner, then rerun trace.start.",
   );
 }
 

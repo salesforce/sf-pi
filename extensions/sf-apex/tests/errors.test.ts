@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { ambiguousTargetError, classifyApexError } from "../lib/errors.ts";
+import { ambiguousTargetError, classifyApexError, traceConflictError } from "../lib/errors.ts";
 
 describe("classifyApexError", () => {
   it("classifies explicit ambiguous target errors", () => {
@@ -8,6 +8,14 @@ describe("classifyApexError", () => {
 
     expect(result.category).toBe("AMBIGUOUS_TARGET");
     expect(result.next_step).toContain("class_names");
+  });
+
+  it("classifies external trace conflicts with safe recovery", () => {
+    const result = classifyApexError(traceConflictError(1));
+
+    expect(result.category).toBe("TRACE_CONFLICT");
+    expect(result.message).toContain("none were modified");
+    expect(result.next_step).toContain("expire");
   });
 
   it("classifies auth, network, timeout, not found, and tooling errors", () => {

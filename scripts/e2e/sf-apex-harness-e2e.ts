@@ -41,6 +41,13 @@ import {
   testSuites,
   traceStatus,
 } from "../../extensions/sf-apex/lib/operations.ts";
+import {
+  createTooling,
+  currentUserId,
+  deleteTooling,
+  toolingQuery,
+} from "../../extensions/sf-apex/lib/api.ts";
+import { ApexStructuredError } from "../../extensions/sf-apex/lib/errors.ts";
 import type { SfApexSessionState, ToolResult } from "../../extensions/sf-apex/lib/types.ts";
 
 const args = process.argv.slice(2);
@@ -66,6 +73,8 @@ if (!ORG || !HARNESS_CWD) {
 
 let failures = 0;
 let traceStarted = false;
+let sentinelTraceFlagId: string | undefined;
+let sentinelDebugLevelId: string | undefined;
 const state: SfApexSessionState = {};
 
 function section(title: string) {
@@ -110,6 +119,21 @@ function expectSourceArtifacts(name: string, result: ToolResult, minimum: number
       `expected ${minimum} source/artifact item(s), got sources=${sources?.length ?? 0} artifacts=${artifacts?.length ?? 0}`,
     );
   }
+}
+
+function expectTraceVerification(name: string, result: ToolResult) {
+  const verification = result.details?.verification as
+    | { status?: string; observed?: { trace_flag_id?: string; remaining_managed?: number } }
+    | undefined;
+  if (verification?.status !== "verified") {
+    fail(name, `missing verified trace evidence: ${JSON.stringify(verification)}`);
+    return;
+  }
+  ok(
+    name,
+    verification.observed?.trace_flag_id ??
+      `remaining managed=${verification.observed?.remaining_managed ?? "unknown"}`,
+  );
 }
 
 function expectAnonymousSoapEvidence(name: string, result: ToolResult) {
@@ -231,15 +255,42 @@ async function main() {
   );
 
   section("4. Trace lifecycle and SOAP Anonymous Apex probes");
-  expectOk(
-    "trace.start",
-    await startTrace(conn, { action: "trace.start", target_org: ORG, duration_minutes: 10 }, state),
+  await createExternalTraceSentinel(conn);
+  try {
+    await startTrace(conn, { action: "trace.start", target_org: ORG, duration_minutes: 10 }, state);
+    fail("trace.start external conflict", "unexpected success");
+  } catch (error) {
+    if (error instanceof ApexStructuredError && error.category === "TRACE_CONFLICT") {
+      ok("trace.start external conflict", "external flag preserved");
+    } else {
+      fail("trace.start external conflict", error instanceof Error ? error.message : String(error));
+    }
+  }
+  const foreignPreservation = await stopTrace(
+    conn,
+    { action: "trace.stop", target_org: ORG },
+    state,
   );
+  expectTraceVerification("trace.stop preserves external flag", foreignPreservation);
+  if (sentinelTraceFlagId && (await traceFlagExists(conn, sentinelTraceFlagId))) {
+    ok("external sentinel preserved", sentinelTraceFlagId);
+  } else {
+    fail("external sentinel preserved", "sentinel trace flag was removed");
+  }
+  await cleanupExternalTraceSentinel(conn);
+
+  const startResult = await startTrace(
+    conn,
+    { action: "trace.start", target_org: ORG, duration_minutes: 10 },
+    state,
+  );
+  expectOk("trace.start", startResult);
+  expectTraceVerification("trace.start readback", startResult);
   traceStarted = true;
   expectText(
     "trace.status active",
     await traceStatus(conn, { action: "trace.status", target_org: ORG }),
-    "Active Apex trace flags:",
+    "Managed Apex trace flags: 1.",
   );
 
   const smoke = await readFile(
@@ -274,13 +325,56 @@ async function main() {
   else ok("flow smoke", "skipped; pass --flow <FlowApiName> to run Flow.Interview smoke");
 
   section("5. Cleanup");
-  expectOk("trace.stop", await stopTrace(conn, { action: "trace.stop", target_org: ORG }, state));
+  const stopResult = await stopTrace(conn, { action: "trace.stop", target_org: ORG }, state);
+  expectOk("trace.stop", stopResult);
+  expectTraceVerification("trace.stop readback", stopResult);
   traceStarted = false;
   expectText(
     "trace.status final",
     await traceStatus(conn, { action: "trace.status", target_org: ORG }),
-    "Active Apex trace flags: 0.",
+    "Managed Apex trace flags: 0.",
   );
+}
+
+async function createExternalTraceSentinel(conn: SalesforceSession) {
+  const suffix = Date.now().toString(36).toUpperCase();
+  const debugLevelName = `SF_PI_E2E_SENTINEL_${suffix}`;
+  const debugLevel = await createTooling<{ id: string }>(conn, "DebugLevel", {
+    DeveloperName: debugLevelName,
+    MasterLabel: debugLevelName,
+    Language: "en_US",
+    ApexCode: "INFO",
+    System: "INFO",
+  });
+  sentinelDebugLevelId = debugLevel.id;
+  const userId = await currentUserId(conn);
+  const now = new Date();
+  const trace = await createTooling<{ id: string }>(conn, "TraceFlag", {
+    TracedEntityId: userId,
+    LogType: "DEVELOPER_LOG",
+    DebugLevelId: debugLevel.id,
+    StartDate: now.toISOString(),
+    ExpirationDate: new Date(now.getTime() + 10 * 60_000).toISOString(),
+  });
+  sentinelTraceFlagId = trace.id;
+  ok("external sentinel created", trace.id);
+}
+
+async function traceFlagExists(conn: SalesforceSession, traceFlagId: string): Promise<boolean> {
+  const result = await toolingQuery<{ Id: string }>(
+    conn,
+    `SELECT Id FROM TraceFlag WHERE Id = '${traceFlagId}' LIMIT 1`,
+  );
+  return result.records.length === 1;
+}
+
+async function cleanupExternalTraceSentinel(conn: SalesforceSession) {
+  if (sentinelTraceFlagId && (await traceFlagExists(conn, sentinelTraceFlagId))) {
+    await deleteTooling(conn, "TraceFlag", sentinelTraceFlagId);
+  }
+  sentinelTraceFlagId = undefined;
+  if (sentinelDebugLevelId) await deleteTooling(conn, "DebugLevel", sentinelDebugLevelId);
+  sentinelDebugLevelId = undefined;
 }
 
 async function runFailureProbes(conn: SalesforceSession) {
@@ -380,11 +474,14 @@ try {
 } catch (err) {
   fail("fatal", err instanceof Error ? err.message : String(err));
 } finally {
-  if (traceStarted) {
+  if (traceStarted || sentinelTraceFlagId || sentinelDebugLevelId) {
     try {
       const conn = await connectSalesforce({ cwd: HARNESS_CWD, targetOrg: ORG });
-      await stopTrace(conn, { action: "trace.stop", target_org: ORG }, state);
-      ok("trace cleanup after failure");
+      if (traceStarted) {
+        await stopTrace(conn, { action: "trace.stop", target_org: ORG }, state);
+        ok("trace cleanup after failure");
+      }
+      await cleanupExternalTraceSentinel(conn);
     } catch (err) {
       fail("trace cleanup after failure", err instanceof Error ? err.message : String(err));
     }

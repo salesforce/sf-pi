@@ -80,9 +80,18 @@ const Params = Type.Object({
   ),
   body: Type.Optional(Type.String({ description: "Anonymous Apex body or raw Apex log body." })),
   log_id: Type.Optional(Type.String({ description: "ApexLog Id for log.get." })),
-  user_id: Type.Optional(Type.String({ description: "Tooling User Id to trace/read logs for." })),
+  user_id: Type.Optional(
+    Type.String({
+      description: "15- or 18-character Tooling User Id to trace/read logs for.",
+      pattern: "^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$",
+    }),
+  ),
   duration_minutes: Type.Optional(
-    Type.Number({ description: "Trace duration. Default 30, max 120." }),
+    Type.Integer({
+      description: "Trace duration in minutes. Default 30, range 1..120.",
+      minimum: 1,
+      maximum: 120,
+    }),
   ),
   wait_seconds: Type.Optional(
     Type.Number({ description: "Wait window for log.watch/test polling." }),
