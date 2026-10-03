@@ -9,6 +9,7 @@ import {
   getModelFamily,
   inferModelDefinition,
   isPiCatalogBackedGatewayModelId,
+  mergeGatewayModelInfoMaps,
   resolvePreferredModelId,
   toProviderModelConfig,
   type PiModelReference,
@@ -101,6 +102,43 @@ describe("conservative model inference", () => {
     };
 
     expect(toProviderModelConfig(id, undefined, [reference]).api).toBe(api);
+  });
+
+  it.each(["gpt-5.6-sol", "gpt-6-sol"])(
+    "keeps catalog-backed GPT model %s on Responses when discovery declares chat",
+    (id) => {
+      const reference: PiModelReference = {
+        id,
+        name: `Example ${id}`,
+        api: "openai-responses",
+        reasoning: true,
+        input: ["text", "image"],
+        contextWindow: 1_000_000,
+        maxTokens: 128_000,
+      };
+
+      const config = toProviderModelConfig(id, { id, mode: "chat" }, [reference]);
+
+      expect(config.api).toBe("openai-responses");
+      expect(config.reasoning).toBe(true);
+      expect(config.input).toEqual(["text", "image"]);
+    },
+  );
+
+  it("keeps discovery chat authoritative for a non-GPT Responses model", () => {
+    const reference: PiModelReference = {
+      id: "example-responses-model",
+      name: "Example Responses Model",
+      api: "openai-responses",
+      reasoning: true,
+      input: ["text"],
+      contextWindow: 200_000,
+      maxTokens: 64_000,
+    };
+
+    expect(
+      toProviderModelConfig(reference.id, { id: reference.id, mode: "chat" }, [reference]).api,
+    ).toBe("openai-completions");
   });
 
   it("uses Chat Completions for xAI models instead of inheriting Responses transport", () => {
@@ -220,6 +258,36 @@ describe("conservative model inference", () => {
 });
 
 describe("discovered catalog", () => {
+  it("keeps required discovery route mode authoritative while enriching capabilities", () => {
+    expect(
+      mergeGatewayModelInfoMaps(
+        {
+          "example-gpt-model": {
+            id: "example-gpt-model",
+            mode: "chat",
+            maxInputTokens: 256_000,
+          },
+        },
+        {
+          "example-gpt-model": {
+            id: "example-gpt-model",
+            mode: "responses",
+            maxOutputTokens: 16_000,
+            supportsReasoning: true,
+          },
+        },
+      ),
+    ).toEqual({
+      "example-gpt-model": {
+        id: "example-gpt-model",
+        mode: "chat",
+        maxInputTokens: 256_000,
+        maxOutputTokens: 16_000,
+        supportsReasoning: true,
+      },
+    });
+  });
+
   it("recognizes only exact Pi catalog IDs with a reusable Gateway API", () => {
     const reference = getBuiltinProviders()
       .flatMap((provider) => getBuiltinModels(provider))

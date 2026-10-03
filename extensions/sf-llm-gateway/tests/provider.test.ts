@@ -87,12 +87,16 @@ function authController(root = "https://active.example.test/v1"): GatewayProvide
   };
 }
 
+type GatewayModelIdDiscoveryFixture = Omit<GatewayModelIdDiscovery, "modelInfo"> & {
+  modelInfo?: GatewayModelInfoMap;
+};
+
 function fetchers(
-  ids: GatewayModelIdDiscovery = {
+  discovery: GatewayModelIdDiscoveryFixture = {
     ids: ["example-chat-model", "example-claude-model", "example-responses-model"],
     filteredIds: [],
   },
-  modelInfo: GatewayModelInfoMap = {
+  detailedModelInfo: GatewayModelInfoMap = {
     "example-responses-model": {
       id: "example-responses-model",
       mode: "responses",
@@ -104,9 +108,13 @@ function fetchers(
     },
   },
 ): GatewayFetchers {
+  const modelIdDiscovery: GatewayModelIdDiscovery = {
+    ...discovery,
+    modelInfo: discovery.modelInfo ?? {},
+  };
   return {
-    modelIds: vi.fn(async () => ids),
-    modelInfo: vi.fn(async () => modelInfo),
+    modelIds: vi.fn(async () => modelIdDiscovery),
+    modelInfo: vi.fn(async () => detailedModelInfo),
   };
 }
 
@@ -307,6 +315,37 @@ describe("complete native Gateway Provider", () => {
           : "https://active.example.test",
       );
     }
+  });
+
+  it("keeps a catalog-backed GPT model on Responses when discovery declares chat", async () => {
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: fetchers(
+        {
+          ids: ["gpt-5.6-sol"],
+          filteredIds: [],
+          modelInfo: {
+            "gpt-5.6-sol": {
+              id: "gpt-5.6-sol",
+              mode: "chat",
+              maxInputTokens: 1_000_000,
+              maxOutputTokens: 128_000,
+            },
+          },
+        },
+        {},
+      ),
+    });
+    const { models } = await configuredModels(runtime);
+
+    await models.refresh({ allowNetwork: true });
+
+    expect(models.getModel(PROVIDER_NAME, "gpt-5.6-sol")).toMatchObject({
+      api: "openai-responses",
+      baseUrl: "https://gateway.invalid",
+      contextWindow: 1_000_000,
+      maxTokens: 128_000,
+    });
   });
 
   it("reports capability metadata coverage for every published model", async () => {
@@ -621,7 +660,11 @@ describe("complete native Gateway Provider", () => {
     expect(models.getModels(PROVIDER_NAME)).toEqual([]);
     expect((await modelsStore.read(PROVIDER_NAME))?.models).toEqual([]);
 
-    vi.mocked(network.modelIds).mockResolvedValueOnce({ ids: ["restored-model"], filteredIds: [] });
+    vi.mocked(network.modelIds).mockResolvedValueOnce({
+      ids: ["restored-model"],
+      filteredIds: [],
+      modelInfo: {},
+    });
     vi.mocked(network.modelInfo).mockResolvedValueOnce({});
     const restored = await models.refresh({ allowNetwork: true });
 

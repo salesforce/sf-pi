@@ -5,8 +5,10 @@ import {
   createAssistantMessageEventStream,
   normalizeContext,
   type AssistantMessage,
+  type AssistantMessageEventStream,
   type Model,
   type OpenAICompletionsOptions,
+  type OpenAIResponsesOptions,
   type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
 import {
@@ -59,7 +61,7 @@ function terminalButOpenResponsesStreamer(
     (
       _model: Model<"openai-responses">,
       _context: typeof CONTEXT,
-      options?: SimpleStreamOptions,
+      options?: SimpleStreamOptions | OpenAIResponsesOptions,
     ) => {
       const stream = createAssistantMessageEventStream();
       queueMicrotask(async () => {
@@ -82,7 +84,7 @@ function terminalButOpenResponsesStreamer(
 }
 
 async function resultAfterTerminalCloseGuard(
-  stream: ReturnType<typeof streamSfGatewayResponses>,
+  stream: AssistantMessageEventStream,
 ): Promise<AssistantMessage | "still-open"> {
   const outcome = Promise.race([
     stream.result(),
@@ -273,59 +275,70 @@ describe("generic Responses adapter", () => {
     );
   });
 
-  it("finishes a completed response when the provider leaves the stream open", async () => {
-    vi.useFakeTimers();
-    try {
-      const model = { ...responsesModel(), id: "gpt-6-sol" };
-      const completed = {
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "ok" }],
-        api: model.api,
-        provider: model.provider,
-        model: model.id,
-        usage: {
-          input: 10,
-          output: 2,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 12,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        },
-        stopReason: "aborted" as const,
-        rawStopReason: "completed",
-        errorMessage: "Request aborted",
-        timestamp: Date.now(),
-      };
-      const responsesStreamer = terminalButOpenResponsesStreamer(model, completed, [
-        {
-          type: "response.completed",
-          response: { status: "completed", output: [], usage: { total_tokens: 12 } },
-        },
-      ]);
-
-      const stream = streamSfGatewayResponses(
-        model,
-        CONTEXT,
-        { apiKey: "test-key", maxRetries: 0 },
-        { responsesStreamer },
-      );
-      const outcome = resultAfterTerminalCloseGuard(stream);
-
-      await expect(outcome).resolves.toMatchObject({
-        stopReason: "stop",
-        rawStopReason: "completed",
-        usage: { totalTokens: 12 },
-        diagnostics: [
-          {
-            type: "sf-llm-gateway.terminal-close-recovered",
-            details: { graceMs: 1_000 },
+  it.each(["simple", "full"] as const)(
+    "finishes a completed response when the %s provider stream stays open",
+    async (streamKind) => {
+      vi.useFakeTimers();
+      try {
+        const model = { ...responsesModel(), id: "gpt-6-sol" };
+        const completed = {
+          role: "assistant" as const,
+          content: [{ type: "text" as const, text: "ok" }],
+          api: model.api,
+          provider: model.provider,
+          model: model.id,
+          usage: {
+            input: 10,
+            output: 2,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 12,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
           },
-        ],
-      });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
+          stopReason: "aborted" as const,
+          rawStopReason: "completed",
+          errorMessage: "Request aborted",
+          timestamp: Date.now(),
+        };
+        const responsesStreamer = terminalButOpenResponsesStreamer(model, completed, [
+          {
+            type: "response.completed",
+            response: { status: "completed", output: [], usage: { total_tokens: 12 } },
+          },
+        ]);
+
+        const stream =
+          streamKind === "full"
+            ? streamSfGatewayResponsesFull(
+                model,
+                CONTEXT,
+                { apiKey: "test-key", maxRetries: 0 },
+                { responsesStreamer },
+              )
+            : streamSfGatewayResponses(
+                model,
+                CONTEXT,
+                { apiKey: "test-key", maxRetries: 0 },
+                { responsesStreamer },
+              );
+        const outcome = resultAfterTerminalCloseGuard(stream);
+
+        await expect(outcome).resolves.toMatchObject({
+          stopReason: "stop",
+          rawStopReason: "completed",
+          usage: { totalTokens: 12 },
+          diagnostics: [
+            {
+              type: "sf-llm-gateway.terminal-close-recovered",
+              details: { graceMs: 1_000 },
+            },
+          ],
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 
   it("recovers a fully completed tool call but never an unfinished one", async () => {
     vi.useFakeTimers();

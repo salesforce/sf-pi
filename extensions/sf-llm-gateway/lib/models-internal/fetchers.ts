@@ -17,6 +17,8 @@ const MAX_DISCOVERED_MODELS = 64;
 export interface GatewayModelIdDiscovery {
   ids: string[];
   filteredIds: string[];
+  /** Neutral route metadata returned alongside the required model catalog. */
+  modelInfo: GatewayModelInfoMap;
 }
 
 /** Safe, public diagnostic produced by the required model-discovery request. */
@@ -85,9 +87,16 @@ export async function fetchGatewayModelIdDiscovery(
     throw modelDiscoveryHttpError(response.status);
   }
 
-  let json: { data?: Array<{ id?: string }> };
+  let json: {
+    data?: Array<{
+      id?: string;
+      mode?: unknown;
+      max_input_tokens?: unknown;
+      max_output_tokens?: unknown;
+    }>;
+  };
   try {
-    json = (await response.json()) as { data?: Array<{ id?: string }> };
+    json = (await response.json()) as typeof json;
   } catch {
     throw new GatewayModelDiscoveryError(
       "Gateway model discovery returned an invalid response. Run /sf-llm-gateway doctor.",
@@ -96,6 +105,7 @@ export async function fetchGatewayModelIdDiscovery(
 
   const ids: string[] = [];
   const filteredIds: string[] = [];
+  const modelInfo: GatewayModelInfoMap = {};
   const seen = new Set<string>();
   const seenFiltered = new Set<string>();
   for (const entry of json.data || []) {
@@ -111,9 +121,22 @@ export async function fetchGatewayModelIdDiscovery(
     if (seen.has(id)) continue;
     seen.add(id);
     ids.push(id);
+
+    const mode = entry.mode === "chat" || entry.mode === "responses" ? entry.mode : undefined;
+    const maxInputTokens = positiveNumber(entry.max_input_tokens);
+    const maxOutputTokens = positiveNumber(entry.max_output_tokens);
+    if (mode || maxInputTokens || maxOutputTokens) {
+      modelInfo[id] = {
+        id,
+        ...(mode ? { mode } : {}),
+        ...(maxInputTokens ? { maxInputTokens } : {}),
+        ...(maxOutputTokens ? { maxOutputTokens } : {}),
+      };
+    }
+
     if (ids.length >= MAX_DISCOVERED_MODELS) break;
   }
-  return { ids, filteredIds };
+  return { ids, filteredIds, modelInfo };
 }
 
 export async function fetchGatewayModelIds(
@@ -189,6 +212,10 @@ export async function fetchGatewayModelInfoMap(
     if (signal?.aborted) throw error;
     return {};
   }
+}
+
+function positiveNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 export async function fetchWithTimeout(

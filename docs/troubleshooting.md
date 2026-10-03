@@ -110,6 +110,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - A request reports `team_model_access_denied`
 - A request says the provider is not configured
 - A Gateway model is absent after refresh
+- A non-GPT model keeps using an old Chat Completions or Responses route
 - Requests fail while `curl` works on macOS
 - Usage or throttle status is stale
 - Thinking changes after a model switch

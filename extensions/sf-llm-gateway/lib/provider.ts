@@ -22,6 +22,7 @@ import {
   getPortableGatewayModelCompat,
   hasCompleteGatewayModelInfo,
   isPiCatalogBackedGatewayModelId,
+  mergeGatewayModelInfoMaps,
   type GatewayApi,
   type GatewayModelInfoMap,
   type TaggedGatewayModel,
@@ -226,11 +227,12 @@ export function createGatewayProviderRuntime(
   ): Promise<readonly Model<GatewayApi>[]> => {
     const { apiKey, root } = requireRefreshConfig(context);
     try {
-      const [modelIdDiscovery, modelInfo] = await Promise.all([
+      const [modelIdDiscovery, detailedModelInfo] = await Promise.all([
         fetchers.modelIds(root, apiKey, context.signal),
         fetchers.modelInfo(root, apiKey, context.signal),
       ]);
       if (context.signal?.aborted) throw new Error("Gateway model refresh aborted.");
+      const modelInfo = mergeGatewayModelInfoMaps(modelIdDiscovery.modelInfo, detailedModelInfo);
       const callableIds = filterCallableDiscoveredModelIds(modelIdDiscovery.ids);
       const catalogBackedIds = callableIds.filter(isCatalogBackedModelId);
       const filteredIds = [

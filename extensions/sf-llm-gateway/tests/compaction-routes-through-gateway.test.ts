@@ -162,6 +162,7 @@ async function createCompactionSession(
     modelIds: vi.fn(async () => ({
       ids: ["example-chat-model", ...(options.dedicatedCompactionModel ? ["claude-sonnet-5"] : [])],
       filteredIds: [],
+      modelInfo: {},
     })),
     modelInfo: vi.fn(async () => ({})),
   };

@@ -67,7 +67,12 @@ copy.
 2. **Dynamic catalog with exact Pi-backed admission.** The Provider registers
    with no static models. Authenticated discovery supplies candidate IDs, but SF Pi
    publishes only exact IDs with a reusable API in Pi's public built-in catalog.
-   Apply the same filter to Pi-restored cache entries so offline startup cannot
+   Catalog-backed GPT models retain Pi's Responses transport even when discovery
+   declares `chat`; this preserves reasoning and tool-call compatibility verified
+   through the Gateway. For other models, an explicit `chat` or `responses` mode from
+   required `/v1/models` discovery is authoritative; optional `/v1/model/info` enriches
+   capabilities, and public Pi transport is the fallback only when route mode is absent.
+   Apply the same admission filter to Pi-restored cache entries so offline startup cannot
    resurrect unmatched deployments. Never infer aliases from suffixes or copy
    provider identity, cost, headers, or provider-specific compatibility. Preserve
    model-semantic compatibility only when every reusable public transport reference

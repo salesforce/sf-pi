@@ -15,6 +15,7 @@ import {
   fetchWithTimeout,
   hasCompleteGatewayModelInfo,
   isPiCatalogBackedGatewayModelId,
+  mergeGatewayModelInfoMaps,
   toProviderModelConfig,
   type GatewayModelInfoMap,
 } from "./models.ts";
@@ -420,10 +421,11 @@ async function runGatewayCapabilityMetadataCheck(
   timeout.unref?.();
   const url = `${openAiBaseUrl}/model/info`;
   try {
-    const [modelDiscovery, modelInfo] = await Promise.all([
+    const [modelDiscovery, detailedModelInfo] = await Promise.all([
       fetchGatewayModelIdDiscovery(gatewayRoot, apiKey, controller.signal),
       fetchGatewayModelInfoMap(gatewayRoot, apiKey, controller.signal),
     ]);
+    const modelInfo = mergeGatewayModelInfoMaps(modelDiscovery.modelInfo, detailedModelInfo);
     return buildGatewayCapabilityMetadataCheck(modelDiscovery.ids, modelInfo, url);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -117,9 +117,33 @@ export function hasCompleteGatewayModelInfo(
 }
 
 /**
- * Enrichment map built from `/v1/model/info`. Discovery passes this to
- * `buildDiscoveredModelList` so per-model pricing and capability flags can
- * override generic family inference when the gateway reports the field.
+ * Merge required catalog metadata with optional detailed metadata. The route
+ * mode from `/v1/models` stays authoritative because it describes the callable
+ * endpoint exposed to the active credential; `/v1/model/info` enriches the
+ * remaining capability fields when available.
+ */
+export function mergeGatewayModelInfoMaps(
+  discovered: GatewayModelInfoMap,
+  detailed: GatewayModelInfoMap,
+): GatewayModelInfoMap {
+  const merged: GatewayModelInfoMap = {};
+  for (const id of new Set([...Object.keys(discovered), ...Object.keys(detailed)])) {
+    const discoveredInfo = discovered[id];
+    const detailedInfo = detailed[id];
+    const mode = discoveredInfo?.mode ?? detailedInfo?.mode;
+    merged[id] = {
+      ...discoveredInfo,
+      ...detailedInfo,
+      id,
+      ...(mode ? { mode } : {}),
+    };
+  }
+  return merged;
+}
+
+/**
+ * Neutral metadata merged from required `/v1/models` discovery and optional
+ * `/v1/model/info` enrichment before building the provider catalog.
  */
 export type GatewayModelInfoMap = Record<string, GatewayModelInfo>;
 
@@ -263,16 +287,20 @@ export function toProviderModelConfig(
 
   def.contextWindow = Math.min(def.contextWindow, MAX_INHERITED_CONTEXT_WINDOW);
 
+  const catalogBackedGptResponses =
+    def.family === "openai" && apiReference?.api === "openai-responses";
   const api =
-    info?.mode === "responses"
+    catalogBackedGptResponses || info?.mode === "responses"
       ? "openai-responses"
-      : def.family === "xai"
+      : info?.mode === "chat"
         ? "openai-completions"
-        : apiReference && isGatewayApi(apiReference.api)
-          ? apiReference.api
-          : def.family === "anthropic"
-            ? "anthropic-messages"
-            : "openai-completions";
+        : def.family === "xai"
+          ? "openai-completions"
+          : apiReference && isGatewayApi(apiReference.api)
+            ? apiReference.api
+            : def.family === "anthropic"
+              ? "anthropic-messages"
+              : "openai-completions";
 
   const thinkingLevelMap = def.reasoning ? reference?.thinkingLevelMap : undefined;
   const compat =

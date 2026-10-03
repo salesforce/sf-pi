@@ -7,13 +7,18 @@
 
 SF LLM Gateway registers one complete Pi Provider whose authenticated discovery
 IDs are published only when an exact public Pi catalog entry supplies a reusable
-Chat Completions, Responses, or Messages API. Unmatched deployment IDs are
-filtered without interpreting suffixes or backend routing. Pi owns protocol
-streaming, retries, cancellation, thinking selection, credential persistence,
-provider-scoped model caching, and API dispatch. SF Pi owns gateway-root
-normalization, catalog admission, capability-coverage diagnostics, usage,
-bounded terminal error guidance, Gateway terminal-close recovery, and the
-exact-model priority request described below.
+Chat Completions, Responses, or Messages API. Catalog-backed GPT models retain
+Pi's Responses transport even when `/v1/models` declares `chat`, preserving the
+reasoning and tool-call path supported by those models. For other models, an
+explicit `chat` or `responses` mode selects the Gateway route; optional
+`/v1/model/info` metadata enriches capabilities, and the public Pi transport is
+the fallback only when discovery omits a route mode. Unmatched deployment IDs are filtered without
+interpreting suffixes or backend routing. Pi owns protocol streaming, retries,
+cancellation, thinking selection, credential persistence, provider-scoped model
+caching, and API dispatch. SF Pi owns gateway-root normalization, catalog
+admission, capability-coverage diagnostics, usage, bounded terminal error
+guidance, Gateway terminal-close recovery, and the exact-model priority request
+described below.
 
 Startup performs no model-discovery request. Pi restores the last successful
 provider catalog, and SF Pi applies the same exact-match admission policy to the
@@ -91,11 +96,13 @@ other request fields.
 
 A Gateway capability record is considered complete only when it declares the
 route mode, positive input/output limits, vision support, reasoning support, and
-function-calling support. Refresh status shows declared-versus-Pi-catalog model
-counts. Missing or partial `/v1/model/info` is informational and does not disable
-image input from an exact Pi-backed model; users don't need to control Gateway
-metadata. Doctor warns only when an explicit Gateway vision/reasoning declaration
-contradicts Pi, while the explicit `--image` probe verifies the deployed route.
+function-calling support. Required `/v1/models` discovery can supply route mode
+and token limits; optional `/v1/model/info` enriches the remaining fields. Refresh
+status shows declared-versus-Pi-catalog model counts. Missing or partial detailed
+metadata is informational and does not disable image input from an exact Pi-backed
+model; users don't need to control Gateway metadata. Doctor warns only when an
+explicit Gateway vision/reasoning declaration contradicts Pi, while the explicit
+`--image` probe verifies the deployed route.
 
 For Responses routes, SF Pi gives the Gateway one second to close the HTTP body
 after a terminal `response.completed` or `response.incomplete` event. If EOF does
@@ -212,6 +219,11 @@ refresh the catalog.
 with a reusable public Pi catalog API. Ask the Gateway administrator to expose a
 canonical public ID, then refresh after the Pi catalog includes that ID. SF Pi
 does not infer deployment aliases from model names.
+
+**A non-GPT model keeps using an old Chat Completions or Responses route:** Run
+`/sf-llm-gateway refresh`. Offline startup restores the last successful catalog;
+a refresh is required to persist a newly advertised route mode. Catalog-backed
+GPT models intentionally retain Pi's Responses transport.
 
 **Requests fail while `curl` works on macOS:** Node may not trust a private CA
 from the system keychain. Use the confirmed `fix-ca-bundle` action with an

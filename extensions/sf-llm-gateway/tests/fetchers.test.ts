@@ -21,9 +21,19 @@ describe("gateway discovery fetchers", () => {
         new Response(
           JSON.stringify({
             data: [
-              { id: "no-default-models" },
-              { id: "example-chat-model" },
-              { id: "example-responses-model" },
+              { id: "no-default-models", mode: "chat", max_input_tokens: 999 },
+              {
+                id: "example-chat-model",
+                mode: "chat",
+                max_input_tokens: 128_000,
+                max_output_tokens: 8_000,
+              },
+              {
+                id: "example-responses-model",
+                mode: "responses",
+                max_input_tokens: 256_000,
+                max_output_tokens: 16_000,
+              },
             ],
           }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -35,6 +45,20 @@ describe("gateway discovery fetchers", () => {
     ).resolves.toEqual({
       ids: ["example-chat-model", "example-responses-model"],
       filteredIds: ["no-default-models"],
+      modelInfo: {
+        "example-chat-model": {
+          id: "example-chat-model",
+          mode: "chat",
+          maxInputTokens: 128_000,
+          maxOutputTokens: 8_000,
+        },
+        "example-responses-model": {
+          id: "example-responses-model",
+          mode: "responses",
+          maxInputTokens: 256_000,
+          maxOutputTokens: 16_000,
+        },
+      },
     });
     await expect(fetchGatewayModelIds("https://gateway.example.test", "test-key")).resolves.toEqual(
       ["example-chat-model", "example-responses-model"],

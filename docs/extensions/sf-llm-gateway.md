@@ -35,6 +35,7 @@ Open its Manager detail or change its package state with:
 - Extension config stores only non-secret settings; credentials remain Pi-owned.
 - Dedicated compaction accepts only authenticated sf-llm-gateway models, never changes the chat model, and falls back to Pi.
 - Discovery and restored cache entries publish only exact IDs backed by a reusable public Pi catalog API.
+- Catalog-backed GPT models retain Pi's Responses transport even when Gateway discovery declares chat; other models continue to honor discovered route mode.
 - Gateway OpenAI-compatible requests omit the optional prompt_cache_key field without changing other providers; this may reduce cache affinity.
 - Only exact Gateway GPT-5.6 Sol and GPT-6 Sol Responses requests ask for priority; the effective tier is not asserted.
 - Sentinel-only empty access clears stale selectable models; ambiguous discovery failures retain the last-known catalog.
