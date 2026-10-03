@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.318.1-2026-10-03",
-  "latestVersion": "0.318.1",
+  "revision": "release-0.318.2-2026-10-03",
+  "latestVersion": "0.318.2",
   "announcements": [
     {
-      "id": "release-0.318.1",
+      "id": "release-0.318.2",
       "kind": "update",
-      "title": "sf-pi v0.318.1 — sf-apex: verify managed trace lifecycle",
+      "title": "sf-pi v0.318.2 — sf-llm-gateway: prefer responses for GPT models",
       "publishedAt": "2026-10-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.2",
       "severity": "info",
-      "body": "sf-apex: verify managed trace lifecycle — deps: govern temporary no-fix advisories"
+      "body": "sf-llm-gateway: prefer responses for GPT models"
     }
   ]
 }

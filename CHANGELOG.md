@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.318.2](https://github.com/salesforce/sf-pi/compare/v0.318.1...v0.318.2) (2026-10-03)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** prefer responses for GPT models ([5f60d77](https://github.com/salesforce/sf-pi/commit/5f60d775a9ccac30529c4cc5b64a56f42b42b622))
+
 ## [0.318.1](https://github.com/salesforce/sf-pi/compare/v0.318.0...v0.318.1) (2026-10-03)
 
 
