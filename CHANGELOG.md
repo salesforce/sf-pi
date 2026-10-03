@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.318.1](https://github.com/salesforce/sf-pi/compare/v0.318.0...v0.318.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **sf-apex:** verify managed trace lifecycle ([9933daa](https://github.com/salesforce/sf-pi/commit/9933daa7a86b46e033c98791f13169ff3199f7fe))
+
+
+### Security
+
+* **deps:** govern temporary no-fix advisories ([7035a86](https://github.com/salesforce/sf-pi/commit/7035a86bca0d40f504146c007002fbc852f7f51c))
+
 ## [0.318.0](https://github.com/salesforce/sf-pi/compare/v0.317.0...v0.318.0) (2026-10-02)
 
 
