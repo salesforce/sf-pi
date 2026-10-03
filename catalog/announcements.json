@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.318.3-2026-10-03",
-  "latestVersion": "0.318.3",
+  "revision": "release-0.318.4-2026-10-03",
+  "latestVersion": "0.318.4",
   "announcements": [
     {
-      "id": "release-0.318.3",
+      "id": "release-0.318.4",
       "kind": "update",
-      "title": "sf-pi v0.318.3 — sf-browser: honor Power Tool Mode for known orgs",
+      "title": "sf-pi v0.318.4 — deps: align OSV no-fix exceptions",
       "publishedAt": "2026-10-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.3",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.318.4",
       "severity": "info",
-      "body": "sf-browser: honor Power Tool Mode for known orgs"
+      "body": "deps: align OSV no-fix exceptions"
     }
   ]
 }
