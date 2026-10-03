@@ -87,8 +87,10 @@ sf code-analyzer run --rule-selector Recommended --target extensions/sf-guardrai
 
 ## Dependency and lifecycle-script controls
 
-- `npm audit --omit=dev --audit-level=high` runs in CI for production
-  dependencies.
+- `npm run audit:production` runs in CI for production dependencies and fails on
+  high or critical advisories. Exact no-fix exceptions are source-bound and
+  time-limited in `scripts/check-production-audit.mjs`; expired, stale, or new
+  advisories fail closed.
 - OSV scanner gives broader advisory coverage.
 - Dependency review blocks new high-severity dependency issues in PRs.
 - `scripts/check-lifecycle-scripts.mjs` enforces the lifecycle-script allowlist

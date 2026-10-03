@@ -105,7 +105,7 @@ validation.
 This complete inventory is generated from `package.json`; edit that file and run `npm run generate-catalog`.
 
 <details>
-<summary>Show all 67 package scripts</summary>
+<summary>Show all 68 package scripts</summary>
 
 **Generated sources**
 
@@ -202,6 +202,7 @@ This complete inventory is generated from `package.json`; edit that file and run
 
 **Other**
 
+- `npm run audit:production`
 - `npm run visual-response:report`
 
 </details>

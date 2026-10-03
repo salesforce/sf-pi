@@ -142,8 +142,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts --legacy-peer-deps
 
-      - name: Run npm audit (production only, fail on high)
-        run: npm audit --omit=dev --audit-level=high
+      - name: Run governed npm audit (production only, fail on high)
+        run: npm run audit:production
 
   # Solo-maintainer fast path. GitHub Free + private repos cannot use the
   # built-in 'Allow auto-merge' (requires Pro + branch protection), and
