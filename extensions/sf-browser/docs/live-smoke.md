@@ -7,6 +7,7 @@ Replace `my-sandbox` with the intended target org alias. The dev-time harness us
 ```bash
 npm run e2e:sf-browser-harden -- --org my-sandbox --surface public-tools
 npm run e2e:sf-browser-harden -- --org my-sandbox --surface setup-destinations
+npm run e2e:sf-browser-harden -- --org my-sandbox --surface chrome-navigation
 ```
 
 Use `--public-path /lightning/setup/.../home` to verify a candidate path before promoting it into the curated registry.

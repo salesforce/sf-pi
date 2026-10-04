@@ -45,11 +45,11 @@
       "script": "e2e:sf-browser-harden",
       "entry": "scripts/e2e/sf-browser-pack-harden.ts",
       "title": "SF Browser navigation hardening",
-      "summary": "Verifies curated destinations and structured routes through a live headless browser.",
+      "summary": "Verifies curated destinations, structured routes, and closed-loop Salesforce Setup/App Launcher navigation through a live headless browser.",
       "target": "Explicit non-production org",
       "posture": "bounded-mutation",
       "artifacts": "Browser Evidence screenshots plus Markdown and HTML reports",
-      "arguments": "--org <alias> [--surface all] [--mutate]"
+      "arguments": "--org <alias> [--surface all|chrome-navigation] [--mutate]"
     },
     {
       "script": "e2e:sf-integrate",

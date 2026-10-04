@@ -10,6 +10,8 @@
  *                          record-related-list)
  *   - public-tools       : registered resolve → open → wait → snapshot lifecycle
  *                          using the model-facing schemas
+ *   - chrome-navigation  : Setup category/item, top-right Setup, App Launcher,
+ *                          and verified Lightning-app navigation
  *
  * Dev-time only. NOT a runtime tool, NOT in the manifest tool set, NOT in the
  * boot path, NOT in the default `npm test`. It drives a live, headless
@@ -46,6 +48,7 @@ import { findLatestBrowserSnapshotSession } from "../../lib/common/sf-browser-sn
 
 import { connectSalesforce, type SalesforceSession } from "../../lib/common/sf-conn/index.ts";
 import { runAgentBrowser } from "../../extensions/sf-browser/lib/agent-browser.ts";
+import { findExpansionControlByLabel } from "../../extensions/sf-browser/lib/expanded-control.ts";
 import {
   commitEvidenceCapture,
   getEvidenceDir,
@@ -61,12 +64,15 @@ import {
   type LightningWaitModeValue,
 } from "../../extensions/sf-browser/lib/lightning-wait.ts";
 import { openOrgInAgentBrowser } from "../../extensions/sf-browser/lib/operations.ts";
+import { registerSfBrowserNavigateSetupTool } from "../../extensions/sf-browser/lib/sf_browser_navigate_setup-tool.ts";
 import { registerSfBrowserOpenOrgTool } from "../../extensions/sf-browser/lib/sf_browser_open_org-tool.ts";
 import { registerSfBrowserResolvePathTool } from "../../extensions/sf-browser/lib/sf_browser_resolve_path-tool.ts";
+import { registerSfBrowserSetExpandedTool } from "../../extensions/sf-browser/lib/sf_browser_set_expanded-tool.ts";
 import { registerSfBrowserSetToggleTool } from "../../extensions/sf-browser/lib/sf_browser_set_toggle-tool.ts";
 import { registerSfBrowserSnapshotTool } from "../../extensions/sf-browser/lib/sf_browser_snapshot-tool.ts";
 import { registerSfBrowserWaitTool } from "../../extensions/sf-browser/lib/sf_browser_wait-tool.ts";
 import type { SalesforceRoute } from "../../extensions/sf-browser/lib/salesforce-path-resolver.ts";
+import { findSetupCategory } from "../../extensions/sf-browser/lib/setup-navigation.ts";
 import { findToggleInSnapshot } from "../../extensions/sf-browser/lib/toggle-control.ts";
 import { resolveVerifiedRoutePath } from "../../extensions/sf-browser/lib/salesforce-route-verifier.ts";
 import { knownSetupDestinationRecords } from "../../extensions/sf-browser/lib/setup-destinations.ts";
@@ -157,9 +163,11 @@ function registerPublicBrowserTools(): {
     },
   } as unknown as ExtensionAPI;
   registerSfBrowserOpenOrgTool(host);
+  registerSfBrowserNavigateSetupTool(host);
   registerSfBrowserResolvePathTool(host);
   registerSfBrowserWaitTool(host);
   registerSfBrowserSnapshotTool(host);
+  registerSfBrowserSetExpandedTool(host);
   registerSfBrowserSetToggleTool(host);
   return { host, tools };
 }
@@ -168,8 +176,15 @@ function registerPublicBrowserTools(): {
 // CLI args
 // ---------------------------------------------------------------------------
 
-type Surface = "data-cloud" | "setup-destinations" | "routes" | "public-tools";
-const ALL_SURFACES: Surface[] = ["data-cloud", "setup-destinations", "routes", "public-tools"];
+type Surface =
+  "data-cloud" | "setup-destinations" | "routes" | "public-tools" | "chrome-navigation";
+const ALL_SURFACES: Surface[] = [
+  "data-cloud",
+  "setup-destinations",
+  "routes",
+  "public-tools",
+  "chrome-navigation",
+];
 
 interface HarnessOptions {
   targetOrg: string;
@@ -203,7 +218,7 @@ function parseArgs(argv: string[]): HarnessOptions {
   }
   if (!opts.targetOrg) {
     throw new Error(
-      "Usage: sf-browser-pack-harden --org <alias> [--surface all|data-cloud|setup-destinations|routes|public-tools] [--object <ApiName>] [--public-path </lightning/...>] [--mutate] [--classic-toggle] [--limit N]",
+      "Usage: sf-browser-pack-harden --org <alias> [--surface all|data-cloud|setup-destinations|routes|public-tools|chrome-navigation] [--object <ApiName>] [--public-path </lightning/...>] [--mutate] [--classic-toggle] [--limit N]",
     );
   }
   opts.surfaces =
@@ -363,7 +378,7 @@ async function resolveAppPath(targetOrg: string, appDevName: string): Promise<st
     const conn = await connectSalesforce({ cwd: process.cwd(), targetOrg });
     const result = await conn.query<{ DurableId?: string }>({
       soql: `SELECT DurableId FROM AppDefinition WHERE DeveloperName = '${appDevName.replace(/'/g, "")}' LIMIT 1`,
-      api: "tooling",
+      api: "rest",
       maxRows: 1,
     });
     const durableId = result.records[0]?.DurableId;
@@ -402,6 +417,9 @@ async function main(): Promise<void> {
   }
   if (want("public-tools")) {
     results.push(await runPublicToolsSuite(opts.targetOrg, sessionId, opts.publicPath));
+  }
+  if (want("chrome-navigation")) {
+    results.push(...(await runChromeNavigationSuite(opts.targetOrg, sessionId, opts.limit)));
   }
   if (opts.mutate) results.push(await runMutationLifecycle(opts.targetOrg, sessionId));
   if (opts.mutate || opts.classicToggle) {
@@ -504,6 +522,313 @@ async function runPublicToolsSuite(
   } catch (error) {
     return { ...base, outcome: "broken", note: errorText(error) };
   }
+}
+
+async function runChromeNavigationSuite(
+  targetOrg: string,
+  sessionId: string,
+  limit?: number,
+): Promise<EntryResult[]> {
+  const { tools } = registerPublicBrowserTools();
+  const context = {
+    cwd: process.cwd(),
+    sessionManager: { getSessionId: () => sessionId },
+  } as unknown as ExtensionContext;
+  const execute = async (
+    name: string,
+    params: Record<string, unknown>,
+  ): Promise<PublicToolResult> => {
+    const tool = tools.get(name);
+    if (!tool) throw new Error(`Public SF Browser tool ${name} was not registered.`);
+    const result = await tool.execute(
+      `harden-${name}-${Date.now()}`,
+      params,
+      undefined,
+      undefined,
+      context,
+    );
+    if (result.isError || result.details?.ok === false) {
+      const text = result.content
+        ?.map((item) => item.text ?? "")
+        .join("\n")
+        .trim();
+      throw new Error(text || `${name} returned an unsuccessful result.`);
+    }
+    return result;
+  };
+
+  const results: EntryResult[] = [];
+  const categories = [
+    "Custom Code",
+    "Development",
+    "Scale",
+    "Environments",
+    "User Engagement",
+    "Data Mask",
+    "Identity",
+    "Security",
+  ].slice(0, limit ?? Infinity);
+  for (const label of categories) {
+    const id = `chrome-category-${idFromLabel(label)}`;
+    try {
+      await execute("sf_browser_navigate_setup", {
+        target_org: targetOrg,
+        target: { type: "category", label, desiredState: true },
+      });
+      const expandedSession = findLatestBrowserSnapshotSession(sessionId);
+      const expandedSnapshot = expandedSession?.fullSnapshotPath
+        ? readFileSync(expandedSession.fullSnapshotPath, "utf8")
+        : "";
+      const category = findSetupCategory(expandedSnapshot, label);
+      if (!category?.treeRef) throw new Error(`${label} did not publish a fresh tree-item ref.`);
+      const collapsed = await execute("sf_browser_set_expanded", {
+        ref: category.treeRef,
+        desiredState: false,
+        reason: "Navigation hardening expand/collapse proof",
+      });
+      const shot = await screenshot(id, sessionId);
+      results.push({
+        id,
+        label: `${label} category expand/collapse`,
+        surface: "setup-category",
+        group: "chrome-navigation",
+        status: "candidate",
+        path: "/lightning/setup/SetupOneHome/home",
+        outcome: "confirmed",
+        expected: "Category expands and collapses through desired-state public tools",
+        observedOutcome: `expanded:true collapsed:${String(collapsed.details?.observedState)}`,
+        screenshot: path.basename(shot),
+      });
+    } catch (error) {
+      results.push({
+        id,
+        label: `${label} category expand/collapse`,
+        surface: "setup-category",
+        group: "chrome-navigation",
+        status: "candidate",
+        path: "/lightning/setup/SetupOneHome/home",
+        outcome: "broken",
+        expected: "Category expands and collapses through desired-state public tools",
+        note: errorText(error),
+      });
+    }
+  }
+
+  try {
+    const item = await execute("sf_browser_navigate_setup", {
+      target_org: targetOrg,
+      target: { type: "item", label: "Health Check", category: "Security" },
+    });
+    const shot = await screenshot("chrome-setup-item", sessionId);
+    results.push({
+      id: "chrome-setup-item",
+      label: "Security / Health Check",
+      surface: "setup-item",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: String(item.details?.expectedPath ?? ""),
+      outcome: "confirmed",
+      expected: "Exact Setup child navigation with selected item or URL proof",
+      observedOutcome: String(item.details?.status ?? "reached"),
+      observedUrl: String(item.details?.observedUrl ?? ""),
+      screenshot: path.basename(shot),
+    });
+  } catch (error) {
+    results.push({
+      id: "chrome-setup-item",
+      label: "Security / Health Check",
+      surface: "setup-item",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: "",
+      outcome: "broken",
+      expected: "Exact Setup child navigation with selected item or URL proof",
+      note: errorText(error),
+    });
+  }
+
+  try {
+    const tool = tools.get("sf_browser_navigate_setup");
+    if (!tool) throw new Error("Public SF Browser Setup navigation tool was not registered.");
+    const missing = await tool.execute(
+      `harden-sf_browser_navigate_setup-not-found-${Date.now()}`,
+      {
+        target_org: targetOrg,
+        target: { type: "item", label: "Security Center", category: "Security" },
+      },
+      undefined,
+      undefined,
+      context,
+    );
+    if (missing.details?.status !== "not-found" || missing.isError === true) {
+      throw new Error(
+        `Expected non-error not-found, observed ${String(missing.details?.status ?? "unknown")}.`,
+      );
+    }
+    const shot = await screenshot("chrome-setup-item-not-found", sessionId);
+    results.push({
+      id: "chrome-setup-item-not-found",
+      label: "Missing Setup item classification",
+      surface: "setup-item",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: "",
+      outcome: "confirmed",
+      expected: "Unavailable exact item returns typed non-error not-found",
+      observedOutcome: "not-found",
+      screenshot: path.basename(shot),
+    });
+  } catch (error) {
+    results.push({
+      id: "chrome-setup-item-not-found",
+      label: "Missing Setup item classification",
+      surface: "setup-item",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: "",
+      outcome: "broken",
+      expected: "Unavailable exact item returns typed non-error not-found",
+      note: errorText(error),
+    });
+  }
+
+  try {
+    const entry = await execute("sf_browser_navigate_setup", {
+      target_org: targetOrg,
+      target: { type: "global-entry", label: "Setup" },
+    });
+    const shot = await screenshot("chrome-global-setup-entry", sessionId);
+    results.push({
+      id: "chrome-global-setup-entry",
+      label: "Top-right Setup entry",
+      surface: "global-navigation",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: String(entry.details?.expectedPath ?? ""),
+      outcome: "confirmed",
+      expected: "Top-right Setup menu entry reaches its observed href",
+      observedOutcome: String(entry.details?.status ?? "reached"),
+      observedUrl: String(entry.details?.observedUrl ?? ""),
+      screenshot: path.basename(shot),
+    });
+  } catch (error) {
+    results.push({
+      id: "chrome-global-setup-entry",
+      label: "Top-right Setup entry",
+      surface: "global-navigation",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: "",
+      outcome: "broken",
+      expected: "Top-right Setup menu entry reaches its observed href",
+      note: errorText(error),
+    });
+  }
+
+  try {
+    await execute("sf_browser_open_org", {
+      target_org: targetOrg,
+      target: { type: "setup", destination: "setup-home" },
+      purpose: "App Launcher desired-state hardening",
+    });
+    await execute("sf_browser_wait", {
+      condition: { type: "lightning", value: "navigation-ready" },
+      checkpointEvidence: false,
+    });
+    await execute("sf_browser_snapshot", {
+      interactive: true,
+      compact: true,
+      outputMode: "summary",
+      focus: ["App Launcher", "Setup"],
+    });
+    const launcherSession = findLatestBrowserSnapshotSession(sessionId);
+    const launcherSnapshot = launcherSession?.fullSnapshotPath
+      ? readFileSync(launcherSession.fullSnapshotPath, "utf8")
+      : "";
+    const launcher = findExpansionControlByLabel(launcherSnapshot, "App Launcher", "button");
+    if (!launcher) throw new Error("App Launcher did not publish an expandable button ref.");
+    await execute("sf_browser_set_expanded", { ref: launcher.targetRef, desiredState: true });
+    const openedSession = findLatestBrowserSnapshotSession(sessionId);
+    const openedSnapshot = openedSession?.fullSnapshotPath
+      ? readFileSync(openedSession.fullSnapshotPath, "utf8")
+      : "";
+    const openedLauncher = findExpansionControlByLabel(openedSnapshot, "App Launcher", "button");
+    if (!openedLauncher) throw new Error("Open App Launcher did not publish a fresh ref.");
+    const closed = await execute("sf_browser_set_expanded", {
+      ref: openedLauncher.targetRef,
+      desiredState: false,
+    });
+    const shot = await screenshot("chrome-app-launcher", sessionId);
+    results.push({
+      id: "chrome-app-launcher",
+      label: "App Launcher expand/collapse",
+      surface: "global-navigation",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: "/lightning/setup/SetupOneHome/home",
+      outcome: "confirmed",
+      expected: "App Launcher opens and closes through desired-state public tools",
+      observedOutcome: `expanded:true collapsed:${String(closed.details?.observedState)}`,
+      screenshot: path.basename(shot),
+    });
+  } catch (error) {
+    results.push({
+      id: "chrome-app-launcher",
+      label: "App Launcher expand/collapse",
+      surface: "global-navigation",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: "/lightning/setup/SetupOneHome/home",
+      outcome: "broken",
+      expected: "App Launcher opens and closes through desired-state public tools",
+      note: errorText(error),
+    });
+  }
+
+  try {
+    const app = await execute("sf_browser_open_org", {
+      target_org: targetOrg,
+      target: { type: "lightning-app", appDeveloperName: "AppLauncher" },
+      purpose: "Verified Lightning app route hardening",
+    });
+    await execute("sf_browser_wait", {
+      condition: { type: "lightning", value: "app-ready" },
+      checkpointEvidence: false,
+    });
+    const snapshot = await execute("sf_browser_snapshot", {
+      interactive: true,
+      compact: true,
+      outputMode: "summary",
+      focus: ["App Launcher"],
+    });
+    const shot = await screenshot("chrome-lightning-app", sessionId);
+    results.push({
+      id: "chrome-lightning-app",
+      label: "Verified Lightning app route",
+      surface: "lightning-app",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: String(app.details?.path ?? ""),
+      outcome: "confirmed",
+      expected: "AppDefinition-verified route reaches an app-ready surface",
+      observedUrl: String(snapshot.details?.currentUrl ?? ""),
+      screenshot: path.basename(shot),
+    });
+  } catch (error) {
+    results.push({
+      id: "chrome-lightning-app",
+      label: "Verified Lightning app route",
+      surface: "lightning-app",
+      group: "chrome-navigation",
+      status: "candidate",
+      path: "",
+      outcome: "broken",
+      expected: "AppDefinition-verified route reaches an app-ready surface",
+      note: errorText(error),
+    });
+  }
+
+  return results;
 }
 
 /** Generic open -> wait -> screenshot -> classify, shared by every suite. */

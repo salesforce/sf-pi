@@ -31,12 +31,13 @@ frameworks for durable CI regression coverage.
 
 ## Agent tools
 
-The hot path comprises `sf_browser_open_org`, `sf_browser_snapshot`,
-`sf_browser_click`, `sf_browser_fill`, `sf_browser_select`,
-`sf_browser_set_toggle`, `sf_browser_press`, `sf_browser_editor`,
-`sf_browser_wait`, `sf_browser_capture_evidence`, and `sf_browser_resolve_path`.
+The hot path comprises `sf_browser_open_org`, `sf_browser_navigate_setup`,
+`sf_browser_snapshot`, `sf_browser_click`, `sf_browser_fill`,
+`sf_browser_select`, `sf_browser_set_expanded`, `sf_browser_set_toggle`,
+`sf_browser_press`, `sf_browser_editor`, `sf_browser_wait`,
+`sf_browser_capture_evidence`, and `sf_browser_resolve_path`.
 
-Snapshots default to compact summaries, close recognized ambient overlays when `dismissOverlays` is enabled, save the full tree as an artifact, and capture a changed-only visual checkpoint. Open and resolve tools accept one discriminated `target`; use `{ type: "external-client-app", appName: "ExampleEca" }` to resolve an exact Setup detail page. Known paths, home, curated Setup/Data Cloud destinations, object list/new, and record view stay local; routes that require exact org lookup are verified through Salesforce. Same-org navigation reuses the authenticated Salesforce host. Cross-org or cold navigation generates a single-use frontdoor URL in-process through Salesforce's `singleaccess` endpoint; `sf org open` is fallback-only.
+Snapshots default to compact summaries, expose bounded global navigation plus Setup category/link hierarchy, close recognized ambient overlays when `dismissOverlays` is enabled, save the full tree as an artifact, and capture a changed-only visual checkpoint. Open and resolve tools accept one discriminated `target`; use `{ type: "external-client-app", appName: "ExampleEca" }` to resolve an exact Setup detail page or `{ type: "lightning-app", appDeveloperName: "ExampleApp" }` to resolve an org-specific Lightning app path. Known paths, home, curated Setup/Data Cloud destinations, object list/new, and record view stay local; routes that require exact org lookup are verified through Salesforce. `sf_browser_navigate_setup` provides bounded exact-label navigation for long-tail Setup categories and items without persisting a runtime menu crawl. `sf_browser_set_expanded` sets disclosure/menu/tree state idempotently and verifies the resulting state. Same-org navigation reuses the authenticated Salesforce host. Cross-org or cold navigation generates a single-use frontdoor URL in-process through Salesforce's `singleaccess` endpoint; `sf org open` is fallback-only.
 Org opening verifies the requested path and permits one same-org path correction while requiring the authenticated landing host to remain stable. Ref-based actions fail before invoking agent-browser when their latest session-scoped snapshot ref is stale, expired, or missing. `sf_browser_set_toggle` sets checkboxes and switches to an explicit state, verifies that state in a fresh snapshot, captures paired evidence, and uses a narrow keyboard-first adapter for covered Classic Setup iframe controls. Waits accept one discriminated condition and return matched, ambiguous, or timed-out status; conditional timeouts fail closed. Editor writes replace visible content but never click Save or Apply. Direct `agent-browser` commands remain the long-tail
 path for scrolling, hover, drag, uploads, tabs, console/network inspection,
 tracing, video, HAR, or advanced CDP work.

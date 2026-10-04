@@ -119,6 +119,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0132: SF Integrate adds plan-bound outbound credentials](./0132-sf-integrate-adds-plan-bound-outbound-credentials.md) — 2026-10-01
 - [0133: SF Integrate hardens core ECA OAuth profiles](./0133-sf-integrate-hardens-core-eca-oauth-profiles.md) — 2026-10-01
 - [0134: Pi 1.0 Runtime Floor and Native Ownership](./0134-pi-100-runtime-floor-and-native-ownership.md) — 2026-10-02
+- [0135: SF Browser uses bounded semantic navigation for Salesforce Setup chrome](./0135-sf-browser-bounded-semantic-setup-navigation.md) — 2026-10-04
 
 ## Proposed
 

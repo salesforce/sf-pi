@@ -52,6 +52,16 @@ describe("salesforce path resolver", () => {
       kind: "external-client-app",
       destination: "SfPiHeadless360Mcp",
     });
+    expect(
+      resolveSalesforcePath({
+        route: { type: "lightning-app", appDeveloperName: "DataCloud" } as never,
+      }),
+    ).toMatchObject({
+      ok: true,
+      path: "/lightning/app",
+      kind: "lightning-app",
+      destination: "DataCloud",
+    });
   });
 
   it("resolves exact and bounded fuzzy setup destinations", () => {

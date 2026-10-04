@@ -114,6 +114,54 @@ describe("snapshot summary", () => {
     expect(summary).not.toContain("Builder surface");
   });
 
+  it("preserves Setup navigation hierarchy and global Salesforce chrome", () => {
+    const summary = summarizeSnapshot({
+      snapshot: [
+        '- button "App Launcher" [expanded=false, ref=e1]',
+        '- button "Setup" [expanded=true, ref=e2]',
+        '- heading "Setup Menu" [level=2, ref=e3]',
+        '- menuitem "Setup Opens in a new tab" [ref=e4]',
+        '- menuitem "Data Cloud Setup Opens in a new tab" [ref=e5]',
+        '- searchbox "Quick Find" [ref=e6]: Security',
+        '- treeitem "Security" [level=1, expanded=false, ref=e7]',
+        '  - button "Expand" [ref=e8]',
+        '  - link "Security" [ref=e9]',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      url: "https://example.my.salesforce-setup.com/lightning/setup/SetupOneHome/home",
+      focus: ["Security"],
+    });
+
+    expect(summary).toContain("🌐 Global navigation:");
+    expect(summary).toContain("App Launcher · collapsed · e1");
+    expect(summary).toContain("Setup · expanded · e2");
+    expect(summary).toContain('menuitem "Data Cloud Setup Opens in a new tab" [ref=e5]');
+    expect(summary).toContain("🗂️ Setup navigation:");
+    expect(summary).toContain("Quick Find: Security · e6");
+    expect(summary).toContain("Security · collapsed · tree e7 · expansion control e8 · link e9");
+  });
+
+  it("includes visible children for an expanded focused Setup category", () => {
+    const summary = summarizeSnapshot({
+      snapshot: [
+        '- searchbox "Quick Find" [ref=e1]',
+        '- treeitem "Security" [level=1, expanded=true, ref=e2]',
+        '  - button "Collapse" [ref=e3]',
+        '  - link "Security" [ref=e4]',
+        '  - treeitem "CORS" [level=2, ref=e5]',
+        '    - link "CORS" [ref=e6]',
+        '  - treeitem "Health Check" [level=2, ref=e7]',
+        '    - link "Health Check" [ref=e8]',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      focus: ["Security"],
+    });
+
+    expect(summary).toContain("Security · expanded · tree e2 · expansion control e3 · link e4");
+    expect(summary).toContain("Child: CORS · link e6");
+    expect(summary).toContain("Child: Health Check · link e8");
+  });
+
   it("preserves validation alert text in compact summaries", () => {
     const snapshot = [
       "- alert",

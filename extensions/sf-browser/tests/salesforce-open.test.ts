@@ -84,6 +84,7 @@ describe("Salesforce org open route resolution", () => {
 
   it.each([
     { type: "external-client-app", appName: "ExampleEca" },
+    { type: "lightning-app", appDeveloperName: "DataCloud" },
     { type: "list-view", objectApiName: "Account", filterName: "AllAccounts" },
     {
       type: "record-related-list",

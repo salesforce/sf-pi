@@ -489,6 +489,11 @@ function formatVerifiedRoute(verifiedRoute: OpenOrgPlan["verifiedRoute"]): strin
         .join(" / ")}`,
     );
   }
+  if (verifiedRoute.lightningApp) {
+    lines.push(
+      `- Lightning app: ${verifiedRoute.lightningApp.developerName} / ${verifiedRoute.lightningApp.durableId}`,
+    );
+  }
   if (verifiedRoute.listView) {
     lines.push(
       `- List view: ${[

@@ -58,10 +58,12 @@ import { registerSfBrowserCaptureEvidenceTool } from "./lib/sf_browser_capture_e
 import { registerSfBrowserClickTool } from "./lib/sf_browser_click-tool.ts";
 import { registerSfBrowserEditorTool } from "./lib/sf_browser_editor-tool.ts";
 import { registerSfBrowserFillTool } from "./lib/sf_browser_fill-tool.ts";
+import { registerSfBrowserNavigateSetupTool } from "./lib/sf_browser_navigate_setup-tool.ts";
 import { registerSfBrowserOpenOrgTool } from "./lib/sf_browser_open_org-tool.ts";
 import { registerSfBrowserPressTool } from "./lib/sf_browser_press-tool.ts";
 import { registerSfBrowserResolvePathTool } from "./lib/sf_browser_resolve_path-tool.ts";
 import { registerSfBrowserSelectTool } from "./lib/sf_browser_select-tool.ts";
+import { registerSfBrowserSetExpandedTool } from "./lib/sf_browser_set_expanded-tool.ts";
 import { registerSfBrowserSetToggleTool } from "./lib/sf_browser_set_toggle-tool.ts";
 import { registerSfBrowserSnapshotTool } from "./lib/sf_browser_snapshot-tool.ts";
 import { registerSfBrowserWaitTool } from "./lib/sf_browser_wait-tool.ts";
@@ -74,10 +76,12 @@ export default function sfBrowser(pi: ExtensionAPI): void {
   function ensureToolsRegistered(): void {
     if (toolsRegistered) return;
     registerSfBrowserOpenOrgTool(pi);
+    registerSfBrowserNavigateSetupTool(pi);
     registerSfBrowserSnapshotTool(pi);
     registerSfBrowserClickTool(pi);
     registerSfBrowserFillTool(pi);
     registerSfBrowserSelectTool(pi);
+    registerSfBrowserSetExpandedTool(pi);
     registerSfBrowserSetToggleTool(pi);
     registerSfBrowserPressTool(pi);
     registerSfBrowserEditorTool(pi);
@@ -319,10 +323,12 @@ function buildHelpText(): string {
     "",
     "Agent tools:",
     "  sf_browser_open_org          Open one discriminated Salesforce navigation target in the shared agent-browser session.",
+    "  sf_browser_navigate_setup    Navigate exact Setup categories, items, and top-right Setup entries.",
     "  sf_browser_snapshot          Capture compact interactive refs for reasoning.",
     "  sf_browser_click             Click a ref from the latest snapshot.",
     "  sf_browser_fill              Fill a ref from the latest snapshot.",
     "  sf_browser_select            Select values in Salesforce select/listbox refs.",
+    "  sf_browser_set_expanded      Set disclosure/menu/tree expansion state idempotently with visual proof.",
     "  sf_browser_set_toggle        Set checkbox/switch state idempotently with visual proof.",
     "  sf_browser_press             Press keyboard keys such as Enter or Escape.",
     "  sf_browser_editor            Detect/read/write visible editor surfaces; never clicks Save/Apply.",

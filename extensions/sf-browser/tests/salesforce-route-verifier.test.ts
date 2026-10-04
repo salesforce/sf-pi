@@ -17,6 +17,7 @@ function fakeConnection(options?: {
   listViews?: unknown[];
   relatedLists?: unknown[];
   externalClientApps?: unknown[];
+  lightningApps?: unknown[];
 }) {
   const target = {
     targetOrg: "ExampleOrg",
@@ -35,6 +36,18 @@ function fakeConnection(options?: {
     if (input.soql.includes("FROM ExternalClientApplication")) {
       const records = options?.externalClientApps ?? [
         { Id: "0xI000000000001AAA", DeveloperName: "SfPiHeadless360Mcp" },
+      ];
+      return {
+        totalSize: records.length,
+        records,
+        done: true,
+        truncated: false,
+        target,
+      };
+    }
+    if (input.soql.includes("FROM AppDefinition")) {
+      const records = options?.lightningApps ?? [
+        { DurableId: "06m000000000001AAA", DeveloperName: "DataCloud" },
       ];
       return {
         totalSize: records.length,
@@ -136,6 +149,43 @@ describe("salesforce route verifier", () => {
       api: "tooling",
       maxRows: 2,
     });
+  });
+
+  it("resolves a Lightning app developer name to its org-specific app path", async () => {
+    const conn = fakeConnection();
+
+    await expect(
+      verifySalesforceRoute(
+        conn as never,
+        {
+          type: "lightning-app",
+          appDeveloperName: "DataCloud",
+        } as never,
+      ),
+    ).resolves.toMatchObject({
+      path: "/lightning/app/06m000000000001AAA",
+      lightningApp: {
+        durableId: "06m000000000001AAA",
+        developerName: "DataCloud",
+      },
+    });
+    expect(conn.query).toHaveBeenCalledWith({
+      soql: "SELECT DurableId, DeveloperName FROM AppDefinition WHERE DeveloperName = 'DataCloud' LIMIT 2",
+      api: "rest",
+      maxRows: 2,
+    });
+  });
+
+  it("fails closed when a Lightning app developer name is missing", async () => {
+    await expect(
+      verifySalesforceRoute(
+        fakeConnection({ lightningApps: [] }) as never,
+        {
+          type: "lightning-app",
+          appDeveloperName: "MissingApp",
+        } as never,
+      ),
+    ).rejects.toThrow("was not found or is not accessible");
   });
 
   it("fails closed when an External Client App API name is missing", async () => {

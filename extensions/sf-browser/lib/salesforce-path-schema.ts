@@ -25,6 +25,13 @@ export const SalesforceRouteSchema = Type.Union([
     }),
   }),
   Type.Object({
+    type: Type.Literal("lightning-app"),
+    appDeveloperName: Type.String({
+      description:
+        "Lightning app developer name. sf_browser_open_org resolves its org-specific DurableId through the Salesforce AppDefinition API.",
+    }),
+  }),
+  Type.Object({
     type: Type.Literal("object-list"),
     objectApiName: Type.String({ description: "Salesforce object API name, such as Account." }),
   }),

@@ -15,6 +15,7 @@ export interface VerifiedRouteResult {
   objectApiName?: string;
   recordId?: string;
   externalClientApp?: VerifiedExternalClientApp;
+  lightningApp?: VerifiedLightningApp;
   listView?: VerifiedListView;
   relatedList?: VerifiedRelatedList;
 }
@@ -23,6 +24,11 @@ export interface VerifiedExternalClientApp {
   id: string;
   appName: string;
   label?: string;
+}
+
+export interface VerifiedLightningApp {
+  durableId: string;
+  developerName: string;
 }
 
 export interface VerifiedListView {
@@ -98,6 +104,13 @@ export async function verifySalesforceRoute(
       return {
         path: `/lightning/setup/ManageExternalClientApplication/${salesforce15CharId(externalClientApp.id)}/detail`,
         externalClientApp,
+      };
+    }
+    case "lightning-app": {
+      const lightningApp = await resolveLightningApp(conn, route.appDeveloperName);
+      return {
+        path: `/lightning/app/${lightningApp.durableId}`,
+        lightningApp,
       };
     }
     case "object-list": {
@@ -209,6 +222,34 @@ async function resolveExternalClientApp(
     id: validateSalesforceId(record.Id, "External Client App Id"),
     appName: record.DeveloperName,
     ...(record.MasterLabel ? { label: record.MasterLabel } : {}),
+  };
+}
+
+async function resolveLightningApp(
+  conn: SalesforceSession,
+  rawDeveloperName: string,
+): Promise<VerifiedLightningApp> {
+  const developerName = validateApiName(rawDeveloperName, "appDeveloperName");
+  const result = await conn.query<{
+    DurableId: string;
+    DeveloperName: string;
+  }>({
+    soql: `SELECT DurableId, DeveloperName FROM AppDefinition WHERE DeveloperName = '${developerName}' LIMIT 2`,
+    api: "rest",
+    maxRows: 2,
+  });
+  if (result.records.length !== 1) {
+    throw new Error(
+      result.records.length > 1
+        ? `Lightning app ${developerName} is ambiguous.`
+        : `Lightning app ${developerName} was not found or is not accessible.`,
+    );
+  }
+  const record = result.records[0];
+  if (!record) throw new Error(`Lightning app ${developerName} was not found.`);
+  return {
+    durableId: validateSalesforceId(record.DurableId, "Lightning app DurableId"),
+    developerName: record.DeveloperName,
   };
 }
 

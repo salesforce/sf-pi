@@ -17,6 +17,7 @@ export interface SalesforceNavigationPlan {
 
 const VERIFIED_ROUTE_TYPES = new Set<SalesforceRoute["type"]>([
   "external-client-app",
+  "lightning-app",
   "list-view",
   "record-related-list",
 ]);

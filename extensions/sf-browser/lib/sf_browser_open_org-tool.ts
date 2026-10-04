@@ -13,12 +13,12 @@ export function registerSfBrowserOpenOrgTool(pi: ExtensionAPI): void {
     name: SF_BROWSER_OPEN_ORG_TOOL_NAME,
     label: "SF Browser Open Org",
     description:
-      "Open one Salesforce navigation target in the shared agent-browser session without exposing session-bearing login URLs. The target discriminates explicit paths, curated Setup/Data Cloud destinations, records, lists, and exact External Client Apps.",
+      "Open one Salesforce navigation target in the shared agent-browser session without exposing session-bearing login URLs. The target discriminates explicit paths, curated Setup/Data Cloud destinations, verified Lightning apps, records, lists, and exact External Client Apps.",
     promptSnippet:
       "Open the target Salesforce org/path in agent-browser without exposing login URLs",
     promptGuidelines: [
       "Use sf_browser_open_org before Salesforce UI last-mile work, then call sf_browser_snapshot before acting.",
-      "Pass exactly one target object. External Client App, list-view, and related-list targets use org verification; known paths, home, Setup, Data Cloud, object, and record targets resolve locally.",
+      "Pass exactly one target object. Lightning app, External Client App, list-view, and related-list targets use org verification; known paths, home, Setup, Data Cloud, object, and record targets resolve locally.",
     ],
     renderCall: (args, theme) => renderBrowserToolCall(SF_BROWSER_OPEN_ORG_TOOL_NAME, args, theme),
     renderResult: (result, options, theme, context) =>

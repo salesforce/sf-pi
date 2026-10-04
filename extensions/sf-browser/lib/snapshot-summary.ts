@@ -10,6 +10,10 @@
 import { truncateLine } from "@earendil-works/pi-coding-agent";
 import { deriveLightningState, formatLightningState } from "./lightning-state.ts";
 import { redactUrl } from "./redaction.ts";
+import {
+  collectGlobalNavigationSummary,
+  collectSetupNavigationSummary,
+} from "./snapshot-navigation-summary.ts";
 
 export type SnapshotOutputMode = "summary" | "artifact" | "full";
 
@@ -25,7 +29,6 @@ const MAX_FOCUS_LINES = 24;
 const MAX_ALERT_LINES = 12;
 const MAX_ACTION_LINES = 28;
 const MAX_TOGGLE_LINES = 20;
-const MAX_NAV_LINES = 12;
 const MAX_SEMANTIC_LINES = 12;
 const MAX_FIELD_EDIT_LINES = 8;
 const MAX_COLUMNS = 10;
@@ -74,16 +77,15 @@ export function snapshotOutputModeFromUnknown(value: unknown): SnapshotOutputMod
 }
 
 export function summarizeSnapshot(input: SnapshotSummaryInput): string {
-  const lines = input.snapshot
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const rawLines = input.snapshot.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const lines = rawLines.map((line) => line.trim());
   const { focusTerms, ignoredFocusTerms } = normalizeFocusTerms(input.focus ?? []);
   const focusMatches = collectFocusMatches(lines, focusTerms);
   const alerts = collectAlerts(lines, focusMatches);
   const page = summarizePage(lines, input.url, focusTerms);
   const lightningState = formatLightningState(deriveLightningState({ url: input.url, lines }));
   const surface = classifySurface(lines, input.url);
+  const globalNavigation = collectGlobalNavigationSummary(lines);
   const tabs = collectTabs(lines);
   const recordActions = collectRecordActions(lines);
   const fieldEditActions = collectFieldEditActions(lines, focusTerms);
@@ -92,7 +94,7 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
   const quickAction = summarizeQuickAction(lines, input.url);
   const toggles = collectToggles(lines, focusTerms);
   const actions = collectPrimaryActions(lines, alerts, focusTerms);
-  const setupNavigation = collectSetupNavigation(lines, focusMatches);
+  const setupNavigation = collectSetupNavigationSummary(rawLines, focusTerms);
   const tableSummary = summarizeTables(lines, focusTerms);
   const editorHints = collectEditorHints(lines);
 
@@ -106,6 +108,7 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
     ]);
   }
   appendSection(sections, "⚠️ Alerts / validation", alerts);
+  appendSection(sections, "🌐 Global navigation", globalNavigation);
   appendSection(sections, "🧭 Tabs", tabs);
   appendSection(sections, "⚡ Record actions", recordActions);
   appendSection(sections, "✏️ Field edit actions", fieldEditActions);
@@ -122,6 +125,7 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
 
   if (
     !alerts.length &&
+    !globalNavigation.length &&
     !tabs.length &&
     !recordActions.length &&
     !fieldEditActions.length &&
@@ -296,19 +300,6 @@ function collectToggles(lines: string[], focusTerms: string[]): string[] {
     0,
     MAX_TOGGLE_LINES,
   );
-}
-
-function collectSetupNavigation(lines: string[], exclude: string[]): string[] {
-  const excluded = new Set(exclude);
-  const out: string[] = [];
-  for (const line of lines) {
-    if (!isSetupNavigationLine(line)) continue;
-    const formatted = formatLine(line);
-    if (excluded.has(formatted)) continue;
-    out.push(formatted);
-    if (out.length >= MAX_NAV_LINES) break;
-  }
-  return unique(out);
 }
 
 function collectTabs(lines: string[]): string[] {
@@ -572,10 +563,6 @@ function isPrimaryActionLine(line: string): boolean {
   return PRIMARY_ACTION_LABELS.some(
     (primary) => label === primary || label.startsWith(`${primary} `),
   );
-}
-
-function isSetupNavigationLine(line: string): boolean {
-  return /^- treeitem ".*" .*selected/.test(line) || /^- link "SETUP"/.test(line);
 }
 
 function isTableLine(line: string): boolean {

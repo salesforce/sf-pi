@@ -24,6 +24,7 @@ export type SalesforceRoute =
   | { type: "setup"; destination: string }
   | { type: "data-cloud"; destination: string }
   | { type: "external-client-app"; appName: string }
+  | { type: "lightning-app"; appDeveloperName: string }
   | { type: "object-list"; objectApiName: string }
   | { type: "object-new"; objectApiName: string }
   | { type: "record-view"; objectApiName: string; recordId: string }
@@ -162,6 +163,16 @@ function resolveRoute(route: SalesforceRoute): SalesforcePathResolverResult {
         path: "/lightning/setup/ManageExternalClientApplication/home",
         kind: "external-client-app",
         destination: appName.value,
+      };
+    }
+    case "lightning-app": {
+      const appDeveloperName = validateApiName(route.appDeveloperName, "appDeveloperName");
+      if (appDeveloperName.valid === false) return appDeveloperName.error;
+      return {
+        ok: true,
+        path: "/lightning/app",
+        kind: "lightning-app",
+        destination: appDeveloperName.value,
       };
     }
     case "object-list": {
