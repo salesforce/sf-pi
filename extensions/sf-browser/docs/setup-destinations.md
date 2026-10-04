@@ -4,30 +4,39 @@ Setup Destinations are curated, public-safe shortcuts from stable names to Sales
 
 This list is intentionally small. It is not a full Salesforce Setup sitemap. The runtime registry in `lib/setup-destinations.ts` is the source of truth for destination paths plus agent navigation metadata such as suggested waits, expected surfaces, focus terms, and runbook references; this Markdown table is drift-tested against that registry.
 
-| Destination                  | Path                                                    | Use for                                                                         |
-| ---------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `setup-home`                 | `/lightning/setup/SetupOneHome/home`                    | Setup landing page and general navigation starting point.                       |
-| `agentforce-agents`          | `/lightning/setup/EinsteinCopilot/home`                 | Agentforce Agents setup, Agentforce enablement evidence, New Agent entry point. |
-| `app-manager`                | `/lightning/setup/NavigationMenus/home`                 | App Manager / Lightning app list evidence and fallback navigation.              |
-| `certificate-key-management` | `/lightning/setup/CertificatesAndKeysManagement/home`   | Certificates, keys, and API client certificate evidence.                        |
-| `connected-apps`             | `/lightning/setup/ConnectedApplication/home`            | Manage Connected Apps, OAuth usage and policy evidence.                         |
-| `data-cloud-setup`           | `/lightning/setup/CDPSetupHome/home`                    | Data Cloud Setup Home evidence after Data 360 API readiness checks.             |
-| `external-client-apps`       | `/lightning/setup/ManageExternalClientApplication/home` | External Client Apps setup evidence and UI fallback navigation.                 |
-| `flows`                      | `/lightning/setup/Flows/home`                           | Flow list, Flow Builder entry, flow activation evidence.                        |
-| `identity-provider`          | `/lightning/setup/IdpPage/home`                         | Identity Provider setup evidence and fallback navigation.                       |
-| `login-history`              | `/lightning/setup/OrgLoginHistory/home`                 | Login History evidence and identity/security investigation support.             |
-| `my-domain`                  | `/lightning/setup/OrgDomain/home`                       | My Domain rename, provisioning, deployment evidence, and UI-only fallback.      |
-| `named-credentials`          | `/lightning/setup/NamedCredential/home`                 | Named Credentials setup evidence.                                               |
-| `object-manager`             | `/lightning/setup/ObjectManager/home`                   | Object and field setup navigation.                                              |
-| `permission-set-groups`      | `/lightning/setup/PermSetGroups/home`                   | Permission Set Group list and assignment fallback support.                      |
-| `permission-sets`            | `/lightning/setup/PermSets/home`                        | Permission Set list and assignment fallback support.                            |
-| `profiles`                   | `/lightning/setup/EnhancedProfiles/home`                | Profile list/evidence and profile setup navigation.                             |
-| `remote-site-settings`       | `/lightning/setup/SecurityRemoteProxy/home`             | Remote Site Settings evidence and metadata fallback support.                    |
-| `session-settings`           | `/lightning/setup/SecuritySession/home`                 | Session timeout, clickjack, CSP, and related security setting evidence.         |
-| `sharing-settings`           | `/lightning/setup/SecuritySharing/home`                 | Organization-Wide Defaults and sharing-rule evidence.                           |
-| `single-sign-on-settings`    | `/lightning/setup/SingleSignOn/home`                    | SAML / SSO setup evidence and fallback navigation.                              |
-| `trusted-urls`               | `/lightning/setup/SecurityCspTrustedSite/home`          | Trusted URLs / CSP Trusted Sites setup evidence.                                |
-| `users`                      | `/lightning/setup/ManageUsers/home`                     | User records, user access evidence, permission-assignment fallback navigation.  |
+| Destination                    | Path                                                    | Use for                                                                         |
+| ------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `setup-home`                   | `/lightning/setup/SetupOneHome/home`                    | Setup landing page and general navigation starting point.                       |
+| `agentforce-agents`            | `/lightning/setup/EinsteinCopilot/home`                 | Agentforce Agents setup, Agentforce enablement evidence, New Agent entry point. |
+| `app-manager`                  | `/lightning/setup/NavigationMenus/home`                 | App Manager / Lightning app list evidence and fallback navigation.              |
+| `certificate-key-management`   | `/lightning/setup/CertificatesAndKeysManagement/home`   | Certificates, keys, and API client certificate evidence.                        |
+| `connected-apps`               | `/lightning/setup/ConnectedApplication/home`            | Manage Connected Apps, OAuth usage and policy evidence.                         |
+| `data-cloud-setup`             | `/lightning/setup/CDPSetupHome/home`                    | Data Cloud Setup Home evidence after Data 360 API readiness checks.             |
+| `embedded-service-deployments` | `/lightning/setup/EmbeddedServiceDeployments/home`      | Enhanced Chat and Embedded Service deployment setup evidence.                   |
+| `external-client-apps`         | `/lightning/setup/ManageExternalClientApplication/home` | External Client Apps setup evidence and UI fallback navigation.                 |
+| `flows`                        | `/lightning/setup/Flows/home`                           | Flow list, Flow Builder entry, flow activation evidence.                        |
+| `identity-provider`            | `/lightning/setup/IdpPage/home`                         | Identity Provider setup evidence and fallback navigation.                       |
+| `login-history`                | `/lightning/setup/OrgLoginHistory/home`                 | Login History evidence and identity/security investigation support.             |
+| `mcp-servers`                  | `/lightning/setup/McpServer/home`                       | Salesforce Hosted MCP server activation, status, tools, and endpoint evidence.  |
+| `my-domain`                    | `/lightning/setup/OrgDomain/home`                       | My Domain rename, provisioning, deployment evidence, and UI-only fallback.      |
+| `named-credentials`            | `/lightning/setup/NamedCredential/home`                 | Named Credentials setup evidence.                                               |
+| `object-manager`               | `/lightning/setup/ObjectManager/home`                   | Object and field setup navigation.                                              |
+| `permission-set-groups`        | `/lightning/setup/PermSetGroups/home`                   | Permission Set Group list and assignment fallback support.                      |
+| `permission-sets`              | `/lightning/setup/PermSets/home`                        | Permission Set list and assignment fallback support.                            |
+| `profiles`                     | `/lightning/setup/EnhancedProfiles/home`                | Profile list/evidence and profile setup navigation.                             |
+| `remote-site-settings`         | `/lightning/setup/SecurityRemoteProxy/home`             | Remote Site Settings evidence and metadata fallback support.                    |
+| `session-settings`             | `/lightning/setup/SecuritySession/home`                 | Session timeout, clickjack, CSP, and related security setting evidence.         |
+| `sharing-settings`             | `/lightning/setup/SecuritySharing/home`                 | Organization-Wide Defaults and sharing-rule evidence.                           |
+| `single-sign-on-settings`      | `/lightning/setup/SingleSignOn/home`                    | SAML / SSO setup evidence and fallback navigation.                              |
+| `trusted-urls`                 | `/lightning/setup/SecurityCspTrustedSite/home`          | Trusted URLs / CSP Trusted Sites setup evidence.                                |
+| `users`                        | `/lightning/setup/ManageUsers/home`                     | User records, user access evidence, permission-assignment fallback navigation.  |
+
+Exact aliases are intentionally small and map to an existing reviewed destination before fuzzy matching:
+
+- `Manage Connected Apps` → `connected-apps`
+- `Embedded Service` → `embedded-service-deployments`
+- `External Client App Manager` and `Manage External Client Applications` → `external-client-apps`
+- `Hosted MCP Servers` and `Salesforce MCP Servers` → `mcp-servers`
 
 ## Promotion criteria
 
@@ -43,9 +52,9 @@ Add a new destination only when all are true:
 ```json
 {
   "target_org": "my-sandbox",
-  "setup": "agentforce-agents",
+  "target": { "type": "setup", "destination": "agentforce-agents" },
   "purpose": "Verify Agentforce is enabled"
 }
 ```
 
-For unknown or one-off destinations, pass an explicit `path` instead of adding a destination prematurely.
+For unknown or one-off destinations, pass a `{ "type": "path", "path": "/lightning/..." }` target instead of adding a destination prematurely.

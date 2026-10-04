@@ -3,8 +3,8 @@
  * Verified structured Salesforce route resolution for SF Browser.
  *
  * `sf_browser_resolve_path` stays deterministic/local. `sf_browser_open_org`
- * uses this module for structured `route` inputs so partial user intent is
- * verified through Salesforce APIs before the browser navigates.
+ * uses this module only when exact org lookup is required, such as External
+ * Client Apps, list views, and related lists.
  */
 import { connectSalesforce, type SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import { salesforce15CharId } from "../../../lib/common/salesforce-id.ts";

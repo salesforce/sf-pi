@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Salesforce-aware agent-browser affordance layer for UI last-mile work that Salesforce APIs cannot cover. It registers a cache-first /sf-browser panel plus a small hot-path browser tool set, curated Setup Destinations, verified exact External Client App routes, recognized ambient-overlay dismissal, Browser Evidence, and lazy agent-browser invocation after explicit command/tool intent.
+Salesforce-aware agent-browser affordance layer for UI last-mile work that Salesforce APIs cannot cover. It registers a cache-first /sf-browser panel plus a small hot-path browser tool set, one discriminated navigation target and wait condition, local route planning with exact org verification only where required, fresh-ref enforcement, curated Setup Destinations, recognized ambient-overlay dismissal, Browser Evidence, and lazy agent-browser invocation after explicit command/tool intent.
 
 ## Start
 
@@ -33,6 +33,9 @@ Open its Manager detail or change its package state with:
 - No startup probes; agent-browser is detected only from /sf-browser doctor or explicit tool/command actions.
 - Browser Evidence is artifact-first and stored outside the project by default.
 - Snapshot overlay dismissal targets only recognized ambient Salesforce assistance surfaces and never clicks arbitrary Close controls.
+- Known paths, home, Setup, Data Cloud, object-list, object-new, and record-view targets resolve locally; only targets requiring exact org lookup enter Salesforce route verification.
+- Org opening verifies the requested path; on mismatch it reopens the explicit target-org frontdoor once, then allows one direct-path correction while requiring the authenticated landing host to remain stable.
+- Ref-based actions reject stale, expired, missing, or unpublished snapshot refs before invoking agent-browser, and conditional wait timeouts fail closed.
 - Snapshots publish compact ref metadata so SF Guardrail can classify committing click refs from the latest accessible label.
 - Session-bearing Salesforce org-open URLs are passed to agent-browser but not echoed in tool results.
 

@@ -18,6 +18,7 @@ import {
   buildLightningWaitExpression,
   type LightningOutcomeDetails,
   type LightningWaitModeValue,
+  type LightningWaitOutcome,
 } from "./lightning-wait.ts";
 import { captureEvidence } from "./operations.ts";
 import { startTimer } from "./timing.ts";
@@ -26,7 +27,7 @@ import { okText } from "./tool-support.ts";
 export const SF_BROWSER_WAIT_TOOL_NAME = "sf_browser_wait";
 
 const LoadState = StringEnum(["domcontentloaded", "networkidle"] as const, {
-  description: "Load state to wait for.",
+  description: "Browser load state to wait for.",
 });
 
 const CheckpointEvidenceTargetMode = StringEnum(["current", "record-details"] as const, {
@@ -47,10 +48,35 @@ const LightningWaitMode = StringEnum(
   ] as const,
   {
     description:
-      "Salesforce Lightning semantic state to wait for. navigation-ready waits for deep-link URL stabilization plus app readiness; save-result classifies the first visible post-save outcome and is not a success assertion.",
+      "Salesforce Lightning semantic state. save-result classifies the first visible post-save outcome and is not by itself a success assertion.",
   },
 );
 
+const WaitConditionSchema = Type.Union([
+  Type.Object({
+    type: Type.Literal("text"),
+    value: Type.String({ description: "Visible text, such as Saved or Success." }),
+  }),
+  Type.Object({
+    type: Type.Literal("url"),
+    value: Type.String({ description: "URL glob, such as **/lightning/setup/**." }),
+  }),
+  Type.Object({ type: Type.Literal("load"), value: LoadState }),
+  Type.Object({ type: Type.Literal("lightning"), value: LightningWaitMode }),
+  Type.Object({
+    type: Type.Literal("delay"),
+    value: Type.Number({ minimum: 0, description: "Milliseconds to wait. Last resort only." }),
+  }),
+]);
+
+export type WaitCondition =
+  | { type: "text"; value: string }
+  | { type: "url"; value: string }
+  | { type: "load"; value: "domcontentloaded" | "networkidle" }
+  | { type: "lightning"; value: LightningWaitModeValue }
+  | { type: "delay"; value: number };
+
+export type WaitStatus = "matched" | "ambiguous" | "timed_out";
 export type { LightningWaitModeValue, LightningWaitOutcome } from "./lightning-wait.ts";
 
 export interface WaitClassification {
@@ -59,18 +85,25 @@ export interface WaitClassification {
   note?: string;
 }
 
-export function classifyWait(durationMs: number, params: { ms?: number }): WaitClassification {
-  if (typeof params.ms === "number") {
-    return { ambiguous: false, label: "Wait finished" };
-  }
+export function classifyWait(durationMs: number, condition: WaitCondition): WaitClassification {
+  if (condition.type === "delay") return { ambiguous: false, label: "Wait finished" };
   if (durationMs >= DEFAULT_AGENT_BROWSER_TIMEOUT_MS * 0.9) {
     return {
       ambiguous: true,
-      label: "Wait may have timed out",
-      note: "No hard error was returned, but the wait reached the timeout window. Snapshot or verify through API before continuing.",
+      label: "Wait timed out",
+      note: "The conditional wait reached the timeout window without reliable completion evidence. Snapshot or verify through API before continuing.",
     };
   }
   return { ambiguous: false, label: "Wait finished" };
+}
+
+export function classifyWaitStatus(
+  classification: WaitClassification,
+  outcome?: LightningWaitOutcome,
+): WaitStatus {
+  if (classification.ambiguous) return "timed_out";
+  if (outcome === "ambiguous") return "ambiguous";
+  return "matched";
 }
 
 export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
@@ -78,22 +111,15 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
     name: SF_BROWSER_WAIT_TOOL_NAME,
     label: "SF Browser Wait",
     description:
-      "Wait for Salesforce UI progress using expected text, URL pattern, load state, Lightning semantic state, or a last-resort millisecond delay. Prefer text, URL, or Lightning waits over fixed sleeps; long waits are reported as ambiguous when they reach the timeout window.",
-    promptSnippet: "Wait for Salesforce UI text, URL, load state, Lightning state, or delay",
+      "Wait for one Salesforce UI condition: expected text, URL pattern, load state, Lightning semantic state, or a last-resort delay. Conditional timeouts fail closed instead of reporting success.",
+    promptSnippet: "Wait for one discriminated Salesforce browser condition",
     promptGuidelines: [
-      "Prefer semantic text/URL/Lightning waits over milliseconds; save-result classifies an outcome and is never itself a success assertion.",
+      "Pass exactly one condition object. Prefer text, URL, or Lightning conditions over a fixed delay.",
+      "save-result classifies an outcome and is never itself a success assertion.",
       "After ambiguous or timed-out waits, snapshot or verify through API; use the installed Browser guide path declared in <sf_engineering_constitution> for the full interaction loop.",
     ],
     parameters: Type.Object({
-      text: Type.Optional(
-        Type.String({ description: "Visible text to wait for, such as Saved or Success." }),
-      ),
-      url: Type.Optional(
-        Type.String({ description: "URL glob to wait for, such as **/lightning/setup/**." }),
-      ),
-      load: Type.Optional(LoadState),
-      lightning: Type.Optional(LightningWaitMode),
-      ms: Type.Optional(Type.Number({ description: "Milliseconds to wait. Last resort only." })),
+      condition: WaitConditionSchema,
       checkpointEvidence: Type.Optional(
         Type.Boolean({
           description:
@@ -103,19 +129,10 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
       checkpointEvidenceTarget: Type.Optional(CheckpointEvidenceTargetMode),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const modeCount = [params.text, params.url, params.load, params.lightning, params.ms].filter(
-        (value) => value !== undefined && value !== "",
-      ).length;
-      if (modeCount !== 1) {
-        throw new Error(
-          "sf_browser_wait expects exactly one of text, url, load, lightning, or ms.",
-        );
-      }
-
+      const condition = params.condition as WaitCondition;
       const stopTimer = startTimer();
-      const args = buildWaitArgs(params);
       try {
-        await runAgentBrowser(pi, args, { cwd: ctx.cwd, signal });
+        await runAgentBrowser(pi, buildWaitArgs(condition), { cwd: ctx.cwd, signal });
       } catch (error) {
         const duration = stopTimer();
         await throwWithFailureDiagnostics(
@@ -123,7 +140,7 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
           ctx,
           {
             toolName: SF_BROWSER_WAIT_TOOL_NAME,
-            action: `wait for ${describeWait(params)}`,
+            action: `wait for ${describeWait(condition)}`,
             durationMs: duration.durationMs,
           },
           error,
@@ -131,17 +148,19 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
         );
       }
       const duration = stopTimer();
-      const lightningDetails = params.lightning
-        ? await getLightningOutcome(pi, ctx.cwd, params.lightning, signal)
+      const lightningMode = condition.type === "lightning" ? condition.value : undefined;
+      const lightningDetails = lightningMode
+        ? await getLightningOutcome(pi, ctx.cwd, lightningMode, signal)
         : undefined;
-      const classification = classifyWait(duration.durationMs, params);
+      const classification = classifyWait(duration.durationMs, condition);
       const outcome = lightningDetails?.outcome;
-      const ambiguous = classification.ambiguous || outcome === "ambiguous";
+      const status = classifyWaitStatus(classification, outcome);
       const content = [
         {
           type: "text" as const,
           text: okText([
-            `${classification.label}: ${describeWait(params)}.`,
+            `${classification.label}: ${describeWait(condition)}.`,
+            `Status: ${status}.`,
             outcome ? `Outcome: ${outcome}.` : undefined,
             lightningDetails?.matched?.text
               ? `Matched text: ${lightningDetails.matched.text}`
@@ -151,15 +170,21 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
               : undefined,
             `Duration: ${duration.durationText}`,
             classification.note,
-            "Prefer expected text, URL, or Lightning waits over fixed sleeps for Salesforce Lightning pages.",
+            status === "ambiguous"
+              ? "The semantic outcome is ambiguous. Snapshot or verify through API before continuing."
+              : undefined,
+            "Prefer expected text, URL, or Lightning waits over fixed delays for Salesforce Lightning pages.",
             STALE_REF_HINT,
           ]),
         },
       ];
-      const checkpointLabel = checkpointEvidenceLabel(params);
+      const checkpointLabel = checkpointEvidenceLabel({
+        lightning: lightningMode,
+        checkpointEvidence: params.checkpointEvidence,
+      });
       const checkpointTarget = checkpointLabel
         ? ((params.checkpointEvidenceTarget as CheckpointEvidenceTarget | undefined) ??
-          defaultCheckpointEvidenceTarget(params.lightning))
+          defaultCheckpointEvidenceTarget(lightningMode))
         : undefined;
       const checkpointTargetResult = checkpointTarget
         ? await prepareCheckpointEvidenceTarget(pi, {
@@ -174,9 +199,10 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
       return {
         content: checkpoint ? [...content, ...checkpoint.content] : content,
         details: {
-          ok: true,
-          ambiguous,
-          wait: params,
+          ok: status === "matched",
+          status,
+          ambiguous: status !== "matched",
+          condition,
           checkpointEvidence: checkpoint?.details.capture,
           checkpointEvidenceTarget: checkpointTargetResult,
           ...(lightningDetails
@@ -184,37 +210,40 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
             : {}),
           ...duration,
         },
+        ...(status === "timed_out" ? { isError: true } : {}),
       };
     },
   });
 }
 
-export function buildWaitArgs(params: {
-  text?: string;
-  url?: string;
-  load?: string;
-  lightning?: LightningWaitModeValue;
-  ms?: number;
-}): string[] {
-  if (params.text) return ["wait", "--text", params.text];
-  if (params.url) return ["wait", "--url", params.url];
-  if (params.load) return ["wait", "--load", params.load];
-  if (params.lightning) return ["wait", "--fn", buildLightningWaitExpression(params.lightning)];
-  return ["wait", String(Math.max(0, Math.floor(params.ms ?? 0)))];
+export function buildWaitArgs(condition: WaitCondition): string[] {
+  switch (condition.type) {
+    case "text":
+      return ["wait", "--text", condition.value];
+    case "url":
+      return ["wait", "--url", condition.value];
+    case "load":
+      return ["wait", "--load", condition.value];
+    case "lightning":
+      return ["wait", "--fn", buildLightningWaitExpression(condition.value)];
+    case "delay":
+      return ["wait", String(Math.max(0, Math.floor(condition.value)))];
+  }
 }
 
-function describeWait(params: {
-  text?: string;
-  url?: string;
-  load?: string;
-  lightning?: LightningWaitModeValue;
-  ms?: number;
-}): string {
-  if (params.text) return `text ${JSON.stringify(params.text)}`;
-  if (params.url) return `url ${JSON.stringify(params.url)}`;
-  if (params.load) return `load ${params.load}`;
-  if (params.lightning) return `lightning ${params.lightning}`;
-  return `${Math.max(0, Math.floor(params.ms ?? 0))}ms`;
+function describeWait(condition: WaitCondition): string {
+  switch (condition.type) {
+    case "text":
+      return `text ${JSON.stringify(condition.value)}`;
+    case "url":
+      return `url ${JSON.stringify(condition.value)}`;
+    case "load":
+      return `load ${condition.value}`;
+    case "lightning":
+      return `lightning ${condition.value}`;
+    case "delay":
+      return `${Math.max(0, Math.floor(condition.value))}ms`;
+  }
 }
 
 async function getLightningOutcome(

@@ -18,6 +18,7 @@ export type SetupDestinationRecord = {
   id: string;
   path: string;
   label: string;
+  aliases?: readonly string[];
   useFor: string;
   expectedSurface: SetupDestinationExpectedSurface;
   suggestedWait: SetupDestinationSuggestedWait;
@@ -70,6 +71,7 @@ const SETUP_DESTINATION_RECORDS = [
     id: "connected-apps",
     path: "/lightning/setup/ConnectedApplication/home",
     label: "Connected Apps",
+    aliases: ["Manage Connected Apps"],
     useFor: "Manage Connected Apps, OAuth usage and policy evidence.",
     expectedSurface: "Lightning Setup page",
     suggestedWait: { lightning: "navigation-ready" },
@@ -87,9 +89,21 @@ const SETUP_DESTINATION_RECORDS = [
     runbookRefs: ["setup-runbooks.md#data-cloud-setup-and-readiness"],
   },
   {
+    id: "embedded-service-deployments",
+    path: "/lightning/setup/EmbeddedServiceDeployments/home",
+    label: "Embedded Service Deployments",
+    aliases: ["Embedded Service"],
+    useFor: "Enhanced Chat and Embedded Service deployment setup evidence.",
+    expectedSurface: "Lightning Setup page",
+    suggestedWait: { lightning: "navigation-ready" },
+    defaultFocus: ["Embedded Service Deployments", "New Deployment", "Developer Name"],
+    runbookRefs: ["setup-destinations.md"],
+  },
+  {
     id: "external-client-apps",
     path: "/lightning/setup/ManageExternalClientApplication/home",
     label: "External Client Apps",
+    aliases: ["External Client App Manager", "Manage External Client Applications"],
     useFor: "External Client Apps setup evidence and UI fallback navigation.",
     expectedSurface: "Lightning Setup page",
     suggestedWait: { lightning: "navigation-ready" },
@@ -125,6 +139,23 @@ const SETUP_DESTINATION_RECORDS = [
     suggestedWait: { lightning: "navigation-ready" },
     defaultFocus: ["Login History", "Download", "Status"],
     runbookRefs: ["setup-runbooks.md#login-history-evidence"],
+  },
+  {
+    id: "mcp-servers",
+    path: "/lightning/setup/McpServer/home",
+    label: "MCP Servers",
+    aliases: ["Hosted MCP Servers", "Salesforce MCP Servers"],
+    useFor: "Salesforce Hosted MCP server activation, status, tools, and endpoint evidence.",
+    expectedSurface: "Lightning Setup page",
+    suggestedWait: { lightning: "navigation-ready" },
+    defaultFocus: [
+      "MCP Servers",
+      "Salesforce Servers",
+      "External Servers",
+      "Server Status",
+      "Activate",
+    ],
+    runbookRefs: ["setup-destinations.md"],
   },
   {
     id: "my-domain",
@@ -257,7 +288,13 @@ export type SetupDestination = keyof typeof SETUP_DESTINATIONS;
 export function getSetupDestination(value: string | undefined): SetupDestinationRecord | undefined {
   if (!value) return undefined;
   const key = normalizeSetupDestination(value);
-  return SETUP_DESTINATION_RECORDS.find((destination) => destination.id === key);
+  return SETUP_DESTINATION_RECORDS.find(
+    (destination) =>
+      destination.id === key ||
+      normalizeSetupDestination(destination.label) === key ||
+      ("aliases" in destination &&
+        destination.aliases.some((alias) => normalizeSetupDestination(alias) === key)),
+  );
 }
 
 export function getSetupDestinationByPath(

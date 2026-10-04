@@ -18,10 +18,13 @@ vi.mock("../lib/salesforce-open.ts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/salesforce-open.ts")>();
   return {
     ...actual,
-    resolveOpenOrgUrl: vi.fn(async () => ({
+    resolveOpenOrgUrl: vi.fn(async (_pi, _ctx, input) => ({
       url: "https://example.my.salesforce.com/secur/frontdoor.jsp?sid=REDACTED",
       targetOrg: "DevSandbox",
-      path: "/lightning/setup/SetupOneHome/home",
+      path:
+        input.target?.type === "path"
+          ? input.target.path
+          : (input.path ?? "/lightning/setup/SetupOneHome/home"),
     })),
   };
 });
@@ -57,7 +60,7 @@ describe("openOrgInAgentBrowser", () => {
     expect(lookup.session?.targetOrg).toBe("DevSandbox");
   });
 
-  it("corrects the path once when Salesforce frontdoor ignores the requested start URL", async () => {
+  it("reopens the target org once when the shared browser drifts to another Salesforce org", async () => {
     vi.mocked(runAgentBrowser).mockReset();
     let urlReads = 0;
     vi.mocked(runAgentBrowser).mockImplementation(async (_pi, args) => {
@@ -66,6 +69,90 @@ describe("openOrgInAgentBrowser", () => {
         return {
           stdout:
             urlReads === 1
+              ? "https://other-org.my.salesforce-setup.com/lightning/setup/PermSetGroups/home"
+              : "https://example.my.salesforce-setup.com/lightning/setup/SetupOneHome/home",
+          stderr: "",
+          code: 0,
+          durationMs: 1,
+          durationText: "1ms",
+        };
+      }
+      return { stdout: "", stderr: "", code: 0, durationMs: 1, durationText: "1ms" };
+    });
+
+    const result = await openOrgInAgentBrowser(
+      {} as ExtensionAPI,
+      {
+        cwd: "/project",
+        sessionManager: { getSessionId: () => "sf-browser-org-correction-test" },
+      } as unknown as ExtensionContext,
+      { target: { type: "setup", destination: "setup-home" } },
+      undefined,
+    );
+
+    expect(runAgentBrowser).toHaveBeenCalledTimes(4);
+    expect(runAgentBrowser).toHaveBeenNthCalledWith(
+      3,
+      expect.anything(),
+      ["open", "https://example.my.salesforce.com/secur/frontdoor.jsp?sid=REDACTED"],
+      expect.objectContaining({ cwd: "/project" }),
+    );
+    expect(result.text).toContain("Post-login org correction: applied");
+    expect(result.details.orgCorrectionApplied).toBe(true);
+  });
+
+  it("preserves query parameters during one same-org path correction", async () => {
+    vi.mocked(runAgentBrowser).mockReset();
+    let urlReads = 0;
+    vi.mocked(runAgentBrowser).mockImplementation(async (_pi, args) => {
+      if (args[0] === "get" && args[1] === "url") {
+        urlReads += 1;
+        return {
+          stdout:
+            urlReads <= 2
+              ? "https://example.lightning.force.com/lightning/page/home"
+              : "https://example.lightning.force.com/lightning/o/Account/list",
+          stderr: "",
+          code: 0,
+          durationMs: 1,
+          durationText: "1ms",
+        };
+      }
+      return { stdout: "", stderr: "", code: 0, durationMs: 1, durationText: "1ms" };
+    });
+
+    const result = await openOrgInAgentBrowser(
+      {} as ExtensionAPI,
+      {
+        cwd: "/project",
+        sessionManager: { getSessionId: () => "sf-browser-query-correction-test" },
+      } as unknown as ExtensionContext,
+      {
+        target: {
+          type: "path",
+          path: "/lightning/o/Account/list?filterName=__Recent",
+        },
+      },
+      undefined,
+    );
+
+    expect(runAgentBrowser).toHaveBeenCalledWith(
+      expect.anything(),
+      ["open", "https://example.lightning.force.com/lightning/o/Account/list?filterName=__Recent"],
+      expect.objectContaining({ cwd: "/project" }),
+    );
+    expect(result.details.pathCorrectionApplied).toBe(true);
+  });
+
+  it("corrects the path once when Salesforce frontdoor ignores the requested start URL", async () => {
+    vi.mocked(runAgentBrowser).mockReset();
+    let urlReads = 0;
+    vi.mocked(runAgentBrowser).mockImplementation(async (_pi, args) => {
+      if (args[0] === "get" && args[1] === "url") {
+        urlReads += 1;
+        return {
+          stdout:
+            urlReads <= 2
               ? "https://example.lightning.force.com/lightning/n/devedapp__Welcome"
               : "https://example.my.salesforce-setup.com/lightning/setup/SetupOneHome/home",
           stderr: "",

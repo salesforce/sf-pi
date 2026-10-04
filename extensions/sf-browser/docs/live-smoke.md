@@ -2,24 +2,31 @@
 
 Use this checklist after changing SF Browser navigation, waits, snapshots, or Browser Evidence. It exercises read-only browser paths against a connected sandbox/dev org and avoids data mutation.
 
-Replace `my-sandbox` with the intended target org alias.
+Replace `my-sandbox` with the intended target org alias. The dev-time harness uses an isolated agent-browser session and asserts both the observed org host and exact path:
+
+```bash
+npm run e2e:sf-browser-harden -- --org my-sandbox --surface public-tools
+npm run e2e:sf-browser-harden -- --org my-sandbox --surface setup-destinations
+```
+
+Use `--public-path /lightning/setup/.../home` to verify a candidate path before promoting it into the curated registry.
 
 ## 1. Resolve deterministic paths
 
 ```json
-{ "route": { "type": "home" } }
+{ "target": { "type": "home" } }
 ```
 
 Expected: `/lightning/page/home`.
 
 ```json
-{ "setup": "agent force" }
+{ "target": { "type": "setup", "destination": "agent force" } }
 ```
 
 Expected: resolves to `agentforce-agents`.
 
 ```json
-{ "setup": "apps" }
+{ "target": { "type": "setup", "destination": "apps" } }
 ```
 
 Expected: returns multiple candidates and does not guess.
@@ -29,7 +36,7 @@ Expected: returns multiple candidates and does not guess.
 ```json
 {
   "target_org": "my-sandbox",
-  "route": { "type": "object-list", "objectApiName": "Account" },
+  "target": { "type": "object-list", "objectApiName": "Account" },
   "purpose": "SF Browser live smoke: object list"
 }
 ```
@@ -37,7 +44,7 @@ Expected: returns multiple candidates and does not guess.
 Then wait and snapshot:
 
 ```json
-{ "lightning": "app-ready" }
+{ "condition": { "type": "lightning", "value": "app-ready" } }
 ```
 
 ```json
@@ -73,7 +80,7 @@ Expected:
 ```json
 {
   "target_org": "my-sandbox",
-  "route": { "type": "setup", "destination": "agentforce-agents" },
+  "target": { "type": "setup", "destination": "agentforce-agents" },
   "purpose": "SF Browser live smoke: setup route"
 }
 ```
@@ -81,7 +88,7 @@ Expected:
 Then:
 
 ```json
-{ "lightning": "app-ready" }
+{ "condition": { "type": "lightning", "value": "app-ready" } }
 ```
 
 ```json
@@ -99,7 +106,7 @@ Expected snapshot signals:
 ```json
 {
   "target_org": "my-sandbox",
-  "route": { "type": "object-new", "objectApiName": "Account" },
+  "target": { "type": "object-new", "objectApiName": "Account" },
   "purpose": "SF Browser live smoke: object-new route without saving"
 }
 ```
@@ -109,7 +116,7 @@ Then use a wait plus snapshot to inspect the actual org behavior. Do not assume 
 Recommended checks:
 
 ```json
-{ "lightning": "app-ready" }
+{ "condition": { "type": "lightning", "value": "app-ready" } }
 ```
 
 ```json

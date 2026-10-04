@@ -22,6 +22,7 @@ import {
   imageContentFromFile,
   planEvidenceCapture,
 } from "./artifacts.ts";
+import { routeFromInput } from "./navigation-intent.ts";
 import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
 import { getSetupDestination, getSetupDestinationByPath } from "./setup-destinations.ts";
 import { redactUrl } from "./redaction.ts";
@@ -43,7 +44,13 @@ export async function openOrgInAgentBrowser(
   );
   const open = await resolveOpenOrgUrl(pi, ctx, input, signal);
   await runAgentBrowser(pi, ["open", open.url], { cwd: ctx.cwd, signal });
-  const navigationCorrection = await correctIgnoredStartPath(pi, ctx.cwd, open.path, signal);
+  const navigationCorrection = await correctIgnoredStartPath(
+    pi,
+    ctx.cwd,
+    open.url,
+    open.path,
+    signal,
+  );
   recordBrowserSessionTargetOrg(ctx.sessionManager.getSessionId(), open.targetOrg);
   const duration = stopTimer();
   return {
@@ -51,7 +58,8 @@ export async function openOrgInAgentBrowser(
       summarizeOpenTarget(open.targetOrg, open.path),
       input.purpose ? `Purpose: ${input.purpose}` : undefined,
       ...formatVerifiedRoute(open.verifiedRoute),
-      navigationCorrection.applied ? "Post-login path correction: applied" : undefined,
+      navigationCorrection.orgApplied ? "Post-login org correction: applied" : undefined,
+      navigationCorrection.pathApplied ? "Post-login path correction: applied" : undefined,
       `Duration: ${duration.durationText}`,
       "",
       buildOpenNextSteps(input, open.path),
@@ -60,10 +68,14 @@ export async function openOrgInAgentBrowser(
       ok: true,
       targetOrg: open.targetOrg,
       path: open.path,
+      target: input.target,
       setup: input.setup,
       purpose: input.purpose,
       session: "sf-pi",
-      navigationCorrectionApplied: navigationCorrection.applied,
+      navigationCorrectionApplied:
+        navigationCorrection.orgApplied || navigationCorrection.pathApplied,
+      orgCorrectionApplied: navigationCorrection.orgApplied,
+      pathCorrectionApplied: navigationCorrection.pathApplied,
       openGuidance: openGuidanceDetails(input, open.path),
       ...(open.verifiedRoute ? { verifiedRoute: open.verifiedRoute } : {}),
       ...duration,
@@ -74,32 +86,66 @@ export async function openOrgInAgentBrowser(
 async function correctIgnoredStartPath(
   pi: ExtensionAPI,
   cwd: string,
+  loginUrl: string,
   requestedPath: string | undefined,
   signal: AbortSignal | undefined,
-): Promise<{ applied: boolean }> {
-  if (!requestedPath) return { applied: false };
-  const currentUrl = await getCurrentUrl(pi, cwd, signal);
-  if (!currentUrl || urlMatchesPath(currentUrl, requestedPath)) return { applied: false };
+): Promise<{ orgApplied: boolean; pathApplied: boolean }> {
+  let currentUrl = await getCurrentUrl(pi, cwd, signal);
+  if (!currentUrl) return { orgApplied: false, pathApplied: false };
+
+  if (!requestedPath || urlMatchesPath(currentUrl, requestedPath)) {
+    return { orgApplied: false, pathApplied: false };
+  }
+
+  // Reopen the explicit target-org frontdoor once before constructing a direct
+  // path. The authenticated landing host can legitimately differ from the CLI
+  // instance host because Salesforce redirects to My Domain / Lightning hosts.
+  await runAgentBrowser(pi, ["open", loginUrl], { cwd, signal });
+  currentUrl = await getCurrentUrl(pi, cwd, signal);
+  if (!currentUrl) {
+    throw new Error("Salesforce target-org reopen completed without an observable browser URL.");
+  }
+  if (urlMatchesPath(currentUrl, requestedPath)) {
+    return { orgApplied: true, pathApplied: false };
+  }
+
+  const landedOrg = salesforceOrgHostKey(currentUrl);
   const correctionUrl = sameOrgUrlForPath(currentUrl, requestedPath);
-  if (!correctionUrl) return { applied: false };
+  if (!correctionUrl) return { orgApplied: true, pathApplied: false };
 
   await runAgentBrowser(pi, ["open", correctionUrl], { cwd, signal });
   const correctedUrl = await getCurrentUrl(pi, cwd, signal);
-  if (!correctedUrl || !urlMatchesPath(correctedUrl, requestedPath)) {
+  if (
+    !correctedUrl ||
+    !urlMatchesPath(correctedUrl, requestedPath) ||
+    (landedOrg && salesforceOrgHostKey(correctedUrl) !== landedOrg)
+  ) {
     throw new Error(
       `Salesforce ignored the requested path ${requestedPath} after one same-org correction.`,
     );
   }
-  return { applied: true };
+  return { orgApplied: true, pathApplied: true };
+}
+
+function salesforceOrgHostKey(urlValue: string): string | undefined {
+  try {
+    const hostname = new URL(urlValue).hostname.toLowerCase();
+    const suffixes = [".my.salesforce-setup.com", ".my.salesforce.com", ".lightning.force.com"];
+    const suffix = suffixes.find((candidate) => hostname.endsWith(candidate));
+    return suffix ? hostname.slice(0, -suffix.length) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function sameOrgUrlForPath(currentUrl: string, requestedPath: string): string | undefined {
   try {
     const url = new URL(currentUrl);
+    const requested = new URL(requestedPath, "https://sf-pi.invalid");
     if (!isSalesforceHost(url.hostname) || !requestedPath.startsWith("/")) return undefined;
-    url.pathname = requestedPath;
-    url.search = "";
-    url.hash = "";
+    url.pathname = requested.pathname;
+    url.search = requested.search;
+    url.hash = requested.hash;
     return url.toString();
   } catch {
     return undefined;
@@ -108,7 +154,9 @@ function sameOrgUrlForPath(currentUrl: string, requestedPath: string): string | 
 
 function urlMatchesPath(urlValue: string, requestedPath: string): boolean {
   try {
-    return new URL(urlValue).pathname.replace(/\/$/u, "") === requestedPath.replace(/\/$/u, "");
+    const current = new URL(urlValue);
+    const requested = new URL(requestedPath, "https://sf-pi.invalid");
+    return current.pathname.replace(/\/$/u, "") === requested.pathname.replace(/\/$/u, "");
   } catch {
     return false;
   }
@@ -344,11 +392,11 @@ function formatVerifiedRoute(
 }
 
 function buildOpenNextSteps(input: OpenOrgInput, path: string | undefined): string {
-  const setupDestination = getSetupDestination(input.setup) ?? getSetupDestinationByPath(path);
+  const setupDestination = setupDestinationForOpenInput(input, path);
   const wait = setupDestination?.suggestedWait.lightning ?? suggestedWaitForRoute(input, path);
   const focus = setupDestination?.defaultFocus;
   const extra = [
-    `1. Run sf_browser_wait with lightning='${wait}'.`,
+    `1. Run sf_browser_wait with condition={type:'lightning', value:'${wait}'}.`,
     `2. Run sf_browser_snapshot${focus?.length ? ` with focus terms: ${focus.join(", ")}` : ""}.`,
     "3. Use refs from the latest snapshot for click/fill/select/press.",
     "4. After page-changing actions, wait and snapshot again.",
@@ -373,7 +421,7 @@ function openGuidanceDetails(
   input: OpenOrgInput,
   path: string | undefined,
 ): Record<string, unknown> {
-  const setupDestination = getSetupDestination(input.setup) ?? getSetupDestinationByPath(path);
+  const setupDestination = setupDestinationForOpenInput(input, path);
   return {
     suggestedWait: {
       lightning: setupDestination?.suggestedWait.lightning ?? suggestedWaitForRoute(input, path),
@@ -390,10 +438,19 @@ function openGuidanceDetails(
 }
 
 function suggestedWaitForRoute(input: OpenOrgInput, path: string | undefined): string {
-  if (input.route?.type === "record-view") return "record-view";
-  if (input.route?.type === "object-new") return "navigation-ready";
+  const route = routeFromInput(input);
+  if (route?.type === "record-view") return "record-view";
+  if (route?.type === "object-new") return "navigation-ready";
   if (path?.startsWith("/lightning/setup/")) return "navigation-ready";
   return "navigation-ready";
+}
+
+function setupDestinationForOpenInput(
+  input: OpenOrgInput,
+  path: string | undefined,
+): ReturnType<typeof getSetupDestination> {
+  const destination = input.target?.type === "setup" ? input.target.destination : input.setup;
+  return getSetupDestination(destination) ?? getSetupDestinationByPath(path);
 }
 
 function thumbnailPathForMime(plannedPath: string, mimeType: string): string {

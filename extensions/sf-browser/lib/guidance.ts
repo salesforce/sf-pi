@@ -12,8 +12,8 @@ export const SALESFORCE_BROWSER_GUIDANCE = [
   "Run sf_browser_snapshot before acting. Re-snapshot after clicks, saves, modal opens, navigation, tab switches, or Lightning rerenders; refs are short-lived.",
   "Prefer refs from the latest snapshot. If ref-based tools are insufficient, direct agent-browser commands are available for the long tail and are mediated by SF Guardrail when run through Pi.",
   "For Salesforce lookup/combobox controls: fill the visible input, wait for options, snapshot, then click the desired option.",
-  "For Setup pages, prefer curated Setup Destinations over search-and-click navigation when the target path is known.",
-  "After deep-link navigation or opening a Setup Destination, use sf_browser_wait with lightning='navigation-ready'; use app-ready for in-page Lightning rerenders.",
+  "For Setup pages, use one curated target such as {type:'setup', destination:'setup-home'} instead of search-and-click navigation.",
+  "After deep-link navigation or opening a Setup Destination, use sf_browser_wait with condition={type:'lightning', value:'navigation-ready'}; use app-ready for in-page Lightning rerenders.",
   "Capture Browser Evidence with artifact mode for batches and thumbnail mode when the model should inspect the current screen. Keep dismissOverlays enabled unless the overlay is the subject of the evidence.",
 ].join("\n");
 

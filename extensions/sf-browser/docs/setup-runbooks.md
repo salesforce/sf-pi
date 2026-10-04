@@ -21,6 +21,37 @@ Each runbook should answer:
 
 ---
 
+## Verify Salesforce Hosted MCP server activation
+
+**Intent**
+Inspect Salesforce Hosted MCP server availability, activation status, and tool counts without guessing endpoint readiness.
+
+**Primary path**
+Use the hosted MCP endpoint and Pi native `/mcp` status for connection evidence. Use Setup only for server activation/status evidence that the endpoint cannot provide.
+
+**Evidence path**
+
+1. Open `{ "target": { "type": "setup", "destination": "mcp-servers" } }` in the explicit target org.
+2. Wait with `{ "condition": { "type": "lightning", "value": "navigation-ready" } }`.
+3. Snapshot with focus terms `MCP Servers`, `Salesforce Servers`, `Server Status`, `Tools`, and the exact server name.
+4. Treat `Active` in Setup as activation evidence only; independently verify the hosted endpoint and authenticated MCP connection.
+
+**UI Fallback Path**
+Activation is a durable org change. Click Activate only after explicit user intent and Guardrail approval, then wait up to the documented propagation window before checking the hosted endpoint again.
+
+**Known edge cases**
+
+- An active Setup row does not prove OAuth or endpoint readiness.
+- Server activation can take time to propagate.
+- Beta servers can depend on org entitlement and release availability.
+- Official activation guidance: [Activate MCP Servers](https://developer.salesforce.com/docs/platform/hosted-mcp-servers/guide/activate-mcp-servers.html).
+
+**Setup destinations**
+
+- `mcp-servers`
+
+---
+
 ## Change My Domain name
 
 **Intent**
@@ -35,9 +66,9 @@ Use non-UI checks only for context and close-out verification. Do not treat a br
 
 1. Open the Setup Destination:
    ```json
-   { "setup": "my-domain" }
+   { "target": { "type": "setup", "destination": "my-domain" } }
    ```
-2. Wait with `lightning: "navigation-ready"`.
+2. Wait with `condition: { type: "lightning", value: "navigation-ready" }`.
 3. Run `sf_browser_snapshot` with focus terms:
    ```json
    { "focus": ["My Domain", "Check Availability", "Save", "Deploy"] }
@@ -95,7 +126,7 @@ Use a stable API or metadata surface if one is available and verified for the ta
 
 1. Open the Setup Destination:
    ```json
-   { "setup": "agentforce-agents" }
+   { "target": { "type": "setup", "destination": "agentforce-agents" } }
    ```
 2. Wait for `Agentforce Agents`.
 3. Run `sf_browser_snapshot` with focus terms:
@@ -141,7 +172,7 @@ Use SOQL/Data API first for user facts:
 
 1. Open the Setup Destination:
    ```json
-   { "setup": "users" }
+   { "target": { "type": "setup", "destination": "users" } }
    ```
 2. Use the Users setup search/list UI to find the user.
 3. Open the user detail page.

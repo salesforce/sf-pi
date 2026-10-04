@@ -80,7 +80,7 @@ export function registerSfBrowserPressTool(pi: ExtensionAPI): void {
               `Pressed ${params.key}.`,
               params.reason ? `Reason: ${params.reason}` : undefined,
               beforeEvidence
-                ? "Before-mutation Browser Evidence captured. Use sf_browser_wait with lightning='save-result' after the committing action for post-mutation evidence."
+                ? "Before-mutation Browser Evidence captured. Use sf_browser_wait with condition={type:'lightning', value:'save-result'} after the committing action for post-mutation evidence."
                 : undefined,
               `Duration: ${duration.durationText}`,
               STALE_REF_HINT,

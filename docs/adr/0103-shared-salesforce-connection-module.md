@@ -21,12 +21,12 @@ The Module owns target-org resolution, connection creation and reuse, bounded AP
 API-version selection is deterministic:
 
 1. Resolve the target org and any explicit `org-api-version` configuration.
-2. Request the target org's unversioned `/services/data` catalog.
+2. Request the target org's unversioned `/services/data` catalog. Because this GET happens before any business operation, one short delayed bounded retry is allowed for transient 404, 408, 429, or 5xx responses.
 3. When discovery succeeds, select the highest numeric version advertised by the org, even when an older configured value exists.
 4. When discovery fails, use the explicit configured `org-api-version` as a disclosed fallback.
 5. When discovery fails and no configured fallback exists, fail before sending the business operation.
 
-The Module never uses JSforce's implicit API `50.0`, a project `sourceApiVersion`, a hardcoded SF Pi version, or a guessed prior version as request authority. It never retries an already-started business operation under another API version.
+The Module never uses JSforce's implicit API `50.0`, a project `sourceApiVersion`, a hardcoded SF Pi version, or a guessed prior version as request authority. The bounded catalog retry does not authorize a request or change fallback policy, and the Module never retries an already-started business operation under another API version.
 
 Callers provide versionless resource paths. The Module returns target/version provenance with every result and exposes its already-versioned SDK Connection only for genuine SDK, SOAP, or metadata operations. Product-specific hosts such as Agentforce Evaluation or SFAP remain extension-owned Adapters, while their ordinary Salesforce instance REST/SOQL and base org identity use the shared Module.
 

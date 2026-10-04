@@ -5,6 +5,7 @@ import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
+import { requireFreshBrowserRef } from "./ref-freshness.ts";
 import { retryInFrameAction } from "./in-frame-actions.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
@@ -29,6 +30,7 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
       ),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      requireFreshBrowserRef(ctx.sessionManager.getSessionId(), params.ref);
       const stopTimer = startTimer();
       let recoveredIframeRef: string | undefined;
       try {

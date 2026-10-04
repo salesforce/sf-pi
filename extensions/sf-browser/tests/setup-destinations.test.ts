@@ -25,6 +25,9 @@ describe("setup destinations", () => {
     expect(resolveSetupDestination("external-client-apps")).toBe(
       "/lightning/setup/ManageExternalClientApplication/home",
     );
+    expect(resolveSetupDestination("Embedded Service Deployments")).toBe(
+      "/lightning/setup/EmbeddedServiceDeployments/home",
+    );
     expect(resolveSetupDestination("permission set groups")).toBe(
       "/lightning/setup/PermSetGroups/home",
     );
@@ -35,6 +38,20 @@ describe("setup destinations", () => {
       "/lightning/setup/SingleSignOn/home",
     );
     expect(resolveSetupDestination("my domain")).toBe("/lightning/setup/OrgDomain/home");
+    expect(resolveSetupDestination("MCP Servers")).toBe("/lightning/setup/McpServer/home");
+  });
+
+  it("resolves exact destination aliases before bounded fuzzy matching", () => {
+    expect(resolveSetupDestination("External Client App Manager")).toBe(
+      "/lightning/setup/ManageExternalClientApplication/home",
+    );
+    expect(resolveSetupDestination("Manage Connected Apps")).toBe(
+      "/lightning/setup/ConnectedApplication/home",
+    );
+    expect(resolveSetupDestination("Embedded Service")).toBe(
+      "/lightning/setup/EmbeddedServiceDeployments/home",
+    );
+    expect(resolveSetupDestination("Hosted MCP Servers")).toBe("/lightning/setup/McpServer/home");
   });
 
   it("rejects combining setup and path", () => {

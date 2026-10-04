@@ -36,9 +36,8 @@ The hot path comprises `sf_browser_open_org`, `sf_browser_snapshot`,
 `sf_browser_editor`, `sf_browser_wait`, `sf_browser_capture_evidence`, and
 `sf_browser_resolve_path`.
 
-Snapshots default to compact summaries, close recognized ambient overlays when `dismissOverlays` is enabled, and save the full tree as an artifact. Use `route: { type: "external-client-app", appName: "ExampleEca" }` to resolve and open an exact External Client App Setup detail page without search-and-click navigation. Org opening verifies the post-login path and performs at most one same-org correction when Salesforce ignores the requested frontdoor start URL.
-Refs become stale after page changes. Editor writes replace visible content but
-never click Save or Apply. Direct `agent-browser` commands remain the long-tail
+Snapshots default to compact summaries, close recognized ambient overlays when `dismissOverlays` is enabled, and save the full tree as an artifact. Open and resolve tools accept one discriminated `target`; use `{ type: "external-client-app", appName: "ExampleEca" }` to resolve an exact Setup detail page. Known paths, home, curated Setup/Data Cloud destinations, object list/new, and record view stay local; routes that require exact org lookup are verified through Salesforce. Org opening verifies the post-login path and performs at most one same-org correction when Salesforce ignores the requested frontdoor start URL.
+Org opening verifies the requested path; on mismatch it reopens the explicit target-org frontdoor once, then allows one direct-path correction while requiring the authenticated landing host to remain stable. Ref-based actions fail before invoking agent-browser when their latest session-scoped snapshot ref is stale, expired, or missing. Waits accept one discriminated condition and return matched, ambiguous, or timed-out status; conditional timeouts fail closed. Editor writes replace visible content but never click Save or Apply. Direct `agent-browser` commands remain the long-tail
 path for scrolling, hover, drag, uploads, tabs, console/network inspection,
 tracing, video, HAR, or advanced CDP work.
 

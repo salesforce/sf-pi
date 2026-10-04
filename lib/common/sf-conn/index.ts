@@ -37,6 +37,8 @@ const MAX_QUERY_PAGES = 100;
 const API_VERSION_RE = /^\d+(?:\.\d+)?$/;
 const JSFORCE_DEFAULT_API_VERSION = "50.0";
 const SDK_API_VERSION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const API_VERSION_DISCOVERY_MAX_ATTEMPTS = 2;
+const API_VERSION_DISCOVERY_RETRY_DELAY_MS = 250;
 
 let configAggregatorCtor: typeof ConfigAggregatorClass | undefined;
 async function getConfigAggregatorCtor(): Promise<typeof ConfigAggregatorClass> {
@@ -519,14 +521,19 @@ async function selectApiVersion(
   configuredFallback: string | undefined,
 ): Promise<VersionSelection> {
   const instanceUrl = connection.instanceUrl?.replace(/\/$/, "");
-  const discovery = instanceUrl
-    ? await connRequest<unknown>(connection, {
-        method: "GET",
-        url: `${instanceUrl}/services/data`,
-        timeoutMs: DEFAULT_CONNECTION_TIMEOUT_MS,
-        headers: { Accept: "application/json" },
-      })
+  let discovery: ConnResponse<unknown> = instanceUrl
+    ? await discoverLatestApiVersions(connection, instanceUrl)
     : { status: 500, body: { message: "Connection has no instance URL." } };
+  for (
+    let attempt = 1;
+    instanceUrl &&
+    attempt < API_VERSION_DISCOVERY_MAX_ATTEMPTS &&
+    isRetryableApiDiscoveryStatus(discovery.status);
+    attempt += 1
+  ) {
+    await delay(API_VERSION_DISCOVERY_RETRY_DELAY_MS);
+    discovery = await discoverLatestApiVersions(connection, instanceUrl);
+  }
 
   if (discovery.status === 499) throw new SalesforceConnectionAbortedError();
   const latest = discovery.status < 400 ? highestAdvertisedApiVersion(discovery.body) : undefined;
@@ -550,6 +557,26 @@ async function selectApiVersion(
     };
   }
   throw new SalesforceApiVersionDiscoveryError(targetOrg, warning);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function discoverLatestApiVersions(
+  connection: Connection,
+  instanceUrl: string,
+): Promise<ConnResponse<unknown>> {
+  return connRequest<unknown>(connection, {
+    method: "GET",
+    url: `${instanceUrl}/services/data`,
+    timeoutMs: DEFAULT_CONNECTION_TIMEOUT_MS,
+    headers: { Accept: "application/json" },
+  });
+}
+
+function isRetryableApiDiscoveryStatus(status: number): boolean {
+  return status === 404 || status === 408 || status === 429 || status >= 500;
 }
 
 function highestAdvertisedApiVersion(body: unknown): string | undefined {

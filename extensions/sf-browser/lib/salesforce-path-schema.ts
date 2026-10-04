@@ -57,3 +57,14 @@ export const SalesforceRouteSchema = Type.Union([
     }),
   }),
 ]);
+
+export const SalesforceNavigationTargetSchema = Type.Union([
+  Type.Object({
+    type: Type.Literal("path"),
+    path: Type.String({
+      description:
+        "Explicit Salesforce path beginning with /, such as /lightning/setup/SetupOneHome/home.",
+    }),
+  }),
+  SalesforceRouteSchema,
+]);

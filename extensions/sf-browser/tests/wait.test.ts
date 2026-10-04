@@ -1,34 +1,80 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Tests for SF Browser wait result classification. */
-import { describe, expect, it } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildLightningOutcomeExpression,
   buildLightningWaitExpression,
   LIGHTNING_WAIT_HELPERS,
 } from "../lib/lightning-wait.ts";
 import { checkpointEvidenceLabel } from "../lib/evidence-policy.ts";
-import { buildWaitArgs, classifyWait } from "../lib/sf_browser_wait-tool.ts";
+import {
+  buildWaitArgs,
+  classifyWait,
+  classifyWaitStatus,
+  registerSfBrowserWaitTool,
+} from "../lib/sf_browser_wait-tool.ts";
 
 describe("wait classification", () => {
-  it("marks near-timeout conditional waits as ambiguous", () => {
-    const result = classifyWait(59_000, {});
-    expect(result.ambiguous).toBe(true);
-    expect(result.label).toBe("Wait may have timed out");
+  it("exposes one model-facing wait condition instead of mutually exclusive selectors", () => {
+    const registerTool = vi.fn();
+    registerSfBrowserWaitTool({ registerTool } as unknown as ExtensionAPI);
+
+    const schema = registerTool.mock.calls[0]?.[0]?.parameters;
+    expect(schema.required).toContain("condition");
+    expect(schema.properties.condition).toBeDefined();
+    expect(schema.properties.text).toBeUndefined();
+    expect(schema.properties.url).toBeUndefined();
+    expect(schema.properties.load).toBeUndefined();
+    expect(schema.properties.lightning).toBeUndefined();
+    expect(schema.properties.ms).toBeUndefined();
   });
 
-  it("does not mark explicit fixed waits as ambiguous", () => {
-    const result = classifyWait(60_000, { ms: 60_000 });
-    expect(result.ambiguous).toBe(false);
-    expect(result.label).toBe("Wait finished");
+  it("marks near-timeout conditional waits as timed out", () => {
+    const classification = classifyWait(59_000, {
+      type: "lightning",
+      value: "app-ready",
+    });
+    expect(classification.ambiguous).toBe(true);
+    expect(classifyWaitStatus(classification)).toBe("timed_out");
+  });
+
+  it("does not mark explicit fixed delays as ambiguous", () => {
+    const classification = classifyWait(60_000, { type: "delay", value: 60_000 });
+    expect(classification.ambiguous).toBe(false);
+    expect(classifyWaitStatus(classification)).toBe("matched");
+  });
+
+  it("keeps an ambiguous semantic outcome distinct from a timeout", () => {
+    const classification = classifyWait(1_000, {
+      type: "lightning",
+      value: "save-result",
+    });
+    expect(classifyWaitStatus(classification, "ambiguous")).toBe("ambiguous");
   });
 
   it("builds Lightning-aware wait expressions", () => {
-    const args = buildWaitArgs({ lightning: "save-result" });
+    const args = buildWaitArgs({ type: "lightning", value: "save-result" });
 
     expect(args[0]).toBe("wait");
     expect(args[1]).toBe("--fn");
     expect(args[2]).toContain("__sfPiLightningWait");
     expect(args[2]).toContain('"save-result"');
+  });
+
+  it("builds each non-Lightning condition without sibling selectors", () => {
+    expect(buildWaitArgs({ type: "text", value: "Saved" })).toEqual(["wait", "--text", "Saved"]);
+    expect(buildWaitArgs({ type: "url", value: "**/lightning/**" })).toEqual([
+      "wait",
+      "--url",
+      "**/lightning/**",
+    ]);
+    expect(buildWaitArgs({ type: "load", value: "networkidle" })).toEqual([
+      "wait",
+      "--load",
+      "networkidle",
+    ]);
+    expect(buildWaitArgs({ type: "delay", value: 500 })).toEqual(["wait", "500"]);
   });
 
   it("keeps save-result as an outcome classifier expression", () => {
@@ -42,7 +88,7 @@ describe("wait classification", () => {
   });
 
   it("adds navigation-ready for frontdoor/deep-link stabilization", () => {
-    const args = buildWaitArgs({ lightning: "navigation-ready" });
+    const args = buildWaitArgs({ type: "lightning", value: "navigation-ready" });
     const expression = buildLightningOutcomeExpression("navigation-ready");
 
     expect(args[2]).toContain('"navigation-ready"');

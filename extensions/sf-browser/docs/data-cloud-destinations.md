@@ -15,7 +15,7 @@ Navigate with the structured route:
 ```json
 {
   "target_org": "my-org",
-  "route": { "type": "data-cloud", "destination": "data-spaces" }
+  "target": { "type": "data-cloud", "destination": "data-spaces" }
 }
 ```
 

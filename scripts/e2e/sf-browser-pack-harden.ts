@@ -8,6 +8,8 @@
  *   - routes             : structured route templates (home, object-list,
  *                          object-new, and sampled record-view / list-view /
  *                          record-related-list)
+ *   - public-tools       : registered resolve → open → wait → snapshot lifecycle
+ *                          using the model-facing schemas
  *
  * Dev-time only. NOT a runtime tool, NOT in the manifest tool set, NOT in the
  * boot path, NOT in the default `npm test`. It drives a live, headless
@@ -55,7 +57,11 @@ import {
   buildLightningOutcomeExpression,
   type LightningWaitModeValue,
 } from "../../extensions/sf-browser/lib/lightning-wait.ts";
-import { resolveOpenOrgUrl } from "../../extensions/sf-browser/lib/salesforce-open.ts";
+import { openOrgInAgentBrowser } from "../../extensions/sf-browser/lib/operations.ts";
+import { registerSfBrowserOpenOrgTool } from "../../extensions/sf-browser/lib/sf_browser_open_org-tool.ts";
+import { registerSfBrowserResolvePathTool } from "../../extensions/sf-browser/lib/sf_browser_resolve_path-tool.ts";
+import { registerSfBrowserSnapshotTool } from "../../extensions/sf-browser/lib/sf_browser_snapshot-tool.ts";
+import { registerSfBrowserWaitTool } from "../../extensions/sf-browser/lib/sf_browser_wait-tool.ts";
 import type { SalesforceRoute } from "../../extensions/sf-browser/lib/salesforce-path-resolver.ts";
 import { resolveVerifiedRoutePath } from "../../extensions/sf-browser/lib/salesforce-route-verifier.ts";
 import { knownSetupDestinationRecords } from "../../extensions/sf-browser/lib/setup-destinations.ts";
@@ -72,6 +78,8 @@ interface ExecResult {
   stderr: string;
 }
 
+let activeHarnessBrowserSession: string | undefined;
+
 function makeExec() {
   return (
     cmd: string,
@@ -79,7 +87,11 @@ function makeExec() {
     opts?: { cwd?: string; signal?: AbortSignal; timeout?: number },
   ): Promise<ExecResult> =>
     new Promise((resolve) => {
-      const child = spawn(cmd, args, { cwd: opts?.cwd ?? process.cwd() });
+      const effectiveArgs =
+        cmd === "agent-browser" && activeHarnessBrowserSession
+          ? rewriteAgentBrowserSession(args, activeHarnessBrowserSession)
+          : args;
+      const child = spawn(cmd, effectiveArgs, { cwd: opts?.cwd ?? process.cwd() });
       let stdout = "";
       let stderr = "";
       const timer = opts?.timeout
@@ -99,15 +111,59 @@ function makeExec() {
     });
 }
 
+function rewriteAgentBrowserSession(args: string[], sessionName: string): string[] {
+  const rewritten = [...args];
+  for (const option of ["--session", "--session-name"]) {
+    const index = rewritten.indexOf(option);
+    if (index >= 0 && index + 1 < rewritten.length) rewritten[index + 1] = sessionName;
+  }
+  return rewritten;
+}
+
 const pi = { exec: makeExec() } as unknown as ExtensionAPI;
 const ctx = { cwd: process.cwd() } as unknown as ExtensionContext;
+
+interface PublicToolResult {
+  content?: Array<{ type: string; text?: string }>;
+  details?: Record<string, unknown>;
+  isError?: boolean;
+}
+
+interface PublicToolDefinition {
+  name: string;
+  execute(
+    toolCallId: string,
+    params: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+    onUpdate: undefined,
+    context: ExtensionContext,
+  ): Promise<PublicToolResult>;
+}
+
+function registerPublicBrowserTools(): {
+  host: ExtensionAPI;
+  tools: Map<string, PublicToolDefinition>;
+} {
+  const tools = new Map<string, PublicToolDefinition>();
+  const host = {
+    exec: makeExec(),
+    registerTool(definition: PublicToolDefinition) {
+      tools.set(definition.name, definition);
+    },
+  } as unknown as ExtensionAPI;
+  registerSfBrowserOpenOrgTool(host);
+  registerSfBrowserResolvePathTool(host);
+  registerSfBrowserWaitTool(host);
+  registerSfBrowserSnapshotTool(host);
+  return { host, tools };
+}
 
 // ---------------------------------------------------------------------------
 // CLI args
 // ---------------------------------------------------------------------------
 
-type Surface = "data-cloud" | "setup-destinations" | "routes";
-const ALL_SURFACES: Surface[] = ["data-cloud", "setup-destinations", "routes"];
+type Surface = "data-cloud" | "setup-destinations" | "routes" | "public-tools";
+const ALL_SURFACES: Surface[] = ["data-cloud", "setup-destinations", "routes", "public-tools"];
 
 interface HarnessOptions {
   targetOrg: string;
@@ -115,6 +171,7 @@ interface HarnessOptions {
   object: string;
   mutate: boolean;
   limit?: number;
+  publicPath?: string;
 }
 
 function parseArgs(argv: string[]): HarnessOptions {
@@ -129,11 +186,12 @@ function parseArgs(argv: string[]): HarnessOptions {
     else if (arg === "--object") opts.object = argv[++i];
     else if (arg === "--mutate") opts.mutate = true;
     else if (arg === "--limit") opts.limit = Number(argv[++i]);
+    else if (arg === "--public-path") opts.publicPath = argv[++i];
     else if (!arg.startsWith("--") && !opts.targetOrg) opts.targetOrg = arg;
   }
   if (!opts.targetOrg) {
     throw new Error(
-      "Usage: sf-browser-pack-harden --org <alias> [--surface all|data-cloud|setup-destinations|routes] [--object <ApiName>] [--mutate] [--limit N]",
+      "Usage: sf-browser-pack-harden --org <alias> [--surface all|data-cloud|setup-destinations|routes|public-tools] [--object <ApiName>] [--public-path </lightning/...>] [--mutate] [--limit N]",
     );
   }
   opts.surfaces =
@@ -187,8 +245,14 @@ interface NavCheck {
 // ---------------------------------------------------------------------------
 
 async function openPath(targetOrg: string, pathValue: string): Promise<void> {
-  const open = await resolveOpenOrgUrl(pi, ctx, { target_org: targetOrg, path: pathValue });
-  await runAgentBrowser(pi, ["open", open.url], { cwd: ctx.cwd, timeoutMs: 90_000 });
+  await openOrgInAgentBrowser(
+    pi,
+    {
+      cwd: ctx.cwd,
+      sessionManager: { getSessionId: () => activeHarnessBrowserSession ?? "sf-browser-harden" },
+    } as unknown as ExtensionContext,
+    { target_org: targetOrg, target: { type: "path", path: pathValue } },
+  );
 }
 
 /** Apply a Lightning-Aware Wait, then classify the observed outcome. */
@@ -210,16 +274,29 @@ async function waitAndClassify(
   return { outcome: "ambiguous" };
 }
 
-async function currentUrlPath(): Promise<string | undefined> {
+function urlPath(value: string): string | undefined {
   try {
-    const result = await runAgentBrowser(pi, ["eval", "location.pathname"], {
-      cwd: ctx.cwd,
-      timeoutMs: 15_000,
-    });
-    return result.stdout.trim().replace(/^"|"$/g, "") || undefined;
+    return new URL(value, "https://sf-pi.invalid").pathname;
   } catch {
     return undefined;
   }
+}
+
+async function currentUrlValue(): Promise<string | undefined> {
+  try {
+    const result = await runAgentBrowser(pi, ["get", "url"], {
+      cwd: ctx.cwd,
+      timeoutMs: 15_000,
+    });
+    return result.stdout.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function currentUrlPath(): Promise<string | undefined> {
+  const current = await currentUrlValue();
+  return current ? urlPath(current) : undefined;
 }
 
 /** Collect in-app Lightning nav links for the DISCOVER pass. */
@@ -291,6 +368,7 @@ async function resolveAppPath(targetOrg: string, appDevName: string): Promise<st
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   const sessionId = `harden-${timestamp()}`;
+  activeHarnessBrowserSession = sessionId;
   const evidenceDir = getEvidenceDir(sessionId);
   const results: EntryResult[] = [];
 
@@ -309,17 +387,110 @@ async function main(): Promise<void> {
   if (want("routes")) {
     results.push(...(await runRoutesSuite(opts.targetOrg, sessionId, opts.object)));
   }
+  if (want("public-tools")) {
+    results.push(await runPublicToolsSuite(opts.targetOrg, sessionId, opts.publicPath));
+  }
   if (opts.mutate) {
     results.push(await runMutationLifecycle(opts.targetOrg, sessionId));
   }
 
   writeReport(evidenceDir, opts, results);
   printSummary(results, evidenceDir);
+  try {
+    await runAgentBrowser(pi, ["close"], { cwd: ctx.cwd, timeoutMs: 15_000 });
+  } catch {
+    // The report is authoritative; best-effort isolated browser cleanup must not mask it.
+  } finally {
+    activeHarnessBrowserSession = undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Suites
 // ---------------------------------------------------------------------------
+
+async function runPublicToolsSuite(
+  targetOrg: string,
+  sessionId: string,
+  publicPath?: string,
+): Promise<EntryResult> {
+  const { tools } = registerPublicBrowserTools();
+  const execute = async (
+    name: string,
+    params: Record<string, unknown>,
+  ): Promise<PublicToolResult> => {
+    const tool = tools.get(name);
+    if (!tool) throw new Error(`Public SF Browser tool ${name} was not registered.`);
+    const result = await tool.execute(`harden-${name}`, params, undefined, undefined, {
+      cwd: process.cwd(),
+      sessionManager: { getSessionId: () => sessionId },
+    } as unknown as ExtensionContext);
+    if (result.isError || result.details?.ok === false) {
+      const text = result.content
+        ?.map((item) => item.text ?? "")
+        .join("\n")
+        .trim();
+      throw new Error(text || `${name} returned an unsuccessful result.`);
+    }
+    return result;
+  };
+
+  const expectedPath = publicPath ?? "/lightning/setup/SetupOneHome/home";
+  const base = {
+    id: publicPath ? "public-tools-candidate-path" : "public-tools-setup-home",
+    label: publicPath
+      ? "Public tool lifecycle — Candidate Path"
+      : "Public tool lifecycle — Setup Home",
+    surface: "setup-node",
+    group: "public-tools",
+    status: "verified" as const,
+    path: expectedPath,
+    expected: "Registered tools resolve, open, wait, and snapshot through model-facing schemas",
+  };
+  try {
+    const target = publicPath
+      ? ({ type: "path", path: publicPath } as const)
+      : ({ type: "setup", destination: "setup-home" } as const);
+    const resolved = await execute("sf_browser_resolve_path", { target });
+    if (resolved.details?.path !== base.path) {
+      throw new Error(`resolve_path returned ${String(resolved.details?.path)}.`);
+    }
+    const opened = await execute("sf_browser_open_org", {
+      target_org: targetOrg,
+      target,
+      purpose: "SF Browser public-tool hardening",
+    });
+    if (opened.details?.path !== base.path) {
+      throw new Error(`open_org returned ${String(opened.details?.path)}.`);
+    }
+    const waited = await execute("sf_browser_wait", {
+      condition: { type: "lightning", value: "navigation-ready" },
+      checkpointEvidence: false,
+    });
+    const snapshot = await execute("sf_browser_snapshot", {
+      interactive: true,
+      compact: true,
+      maxDepth: 8,
+      outputMode: "summary",
+      focus: ["Setup", "Quick Find", "Object Manager", "MCP Servers"],
+    });
+    const observedUrl = String(snapshot.details?.currentUrl ?? "");
+    if (urlPath(observedUrl) !== expectedPath) {
+      throw new Error(`snapshot observed ${urlPath(observedUrl) ?? "no path"}.`);
+    }
+    const shot = await screenshot(base.id, sessionId);
+    return {
+      ...base,
+      outcome: "confirmed",
+      observedOutcome: String(waited.details?.status ?? "matched"),
+      observedUrl,
+      screenshot: path.basename(shot),
+      note: "Public registerTool interfaces completed resolve → open → wait → snapshot.",
+    };
+  } catch (error) {
+    return { ...base, outcome: "broken", note: errorText(error) };
+  }
+}
 
 /** Generic open -> wait -> screenshot -> classify, shared by every suite. */
 async function verifyNav(
@@ -340,16 +511,21 @@ async function verifyNav(
     await openPath(targetOrg, check.path);
     const observed = await waitAndClassify(check.waitMode);
     const shot = await screenshot(check.id, sessionId);
-    const reachable = observed.outcome !== "ambiguous";
+    const currentUrl = await currentUrlValue();
+    const observedPath = currentUrl ? urlPath(currentUrl) : undefined;
+    const correctPath = observedPath === urlPath(check.path);
+    const reachable = observed.outcome !== "ambiguous" && correctPath;
     return {
       ...base,
-      outcome: reachable ? "confirmed" : "needs-review",
+      outcome: reachable ? "confirmed" : correctPath ? "needs-review" : "broken",
       observedOutcome: observed.outcome,
-      observedUrl: await currentUrlPath(),
+      observedUrl: observedPath,
       screenshot: path.basename(shot),
-      note: reachable
-        ? undefined
-        : "Lightning wait stayed ambiguous; inspect the screenshot before trusting this path.",
+      note: !correctPath
+        ? `Observed ${observedPath ?? "no path"}.`
+        : reachable
+          ? undefined
+          : "Lightning wait stayed ambiguous; inspect the screenshot before trusting this path.",
     };
   } catch (error) {
     return { ...base, outcome: "broken", note: errorText(error) };
@@ -365,17 +541,28 @@ async function runSetupDestinationsSuite(
   const records = knownSetupDestinationRecords().slice(0, limit ?? Infinity);
   const out: EntryResult[] = [];
   for (const d of records) {
-    out.push(
-      await verifyNav(targetOrg, sessionId, {
-        id: `setup-${d.id}`,
-        label: d.label,
-        surface: "setup-node",
-        path: d.path,
-        waitMode: d.suggestedWait.lightning,
-        expectedSurface: d.expectedSurface,
-        group: "setup-destination",
-      }),
-    );
+    const check: NavCheck = {
+      id: `setup-${d.id}`,
+      label: d.label,
+      surface: "setup-node",
+      path: d.path,
+      waitMode: d.suggestedWait.lightning,
+      expectedSurface: d.expectedSurface,
+      group: "setup-destination",
+    };
+    const first = await verifyNav(targetOrg, sessionId, check);
+    if (first.outcome !== "broken") {
+      out.push(first);
+      continue;
+    }
+    const retried = await verifyNav(targetOrg, sessionId, check);
+    out.push({
+      ...retried,
+      note:
+        retried.outcome === "confirmed"
+          ? `Recovered after one bounded retry. First attempt: ${first.note ?? "broken"}`
+          : retried.note,
+    });
   }
   return out;
 }

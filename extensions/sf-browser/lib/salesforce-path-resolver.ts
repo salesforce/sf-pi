@@ -13,6 +13,7 @@ import {
 } from "./data-cloud-pack.ts";
 import {
   formatKnownSetupDestinations,
+  getSetupDestination,
   knownSetupDestinations,
   normalizeSetupDestination,
   resolveSetupDestination,
@@ -34,7 +35,12 @@ export type SalesforceRoute =
       relatedListApiName: string;
     };
 
+export type SalesforceNavigationTarget = { type: "path"; path: string } | SalesforceRoute;
+
 export interface SalesforcePathResolverInput {
+  /** Model-facing single navigation target. */
+  target?: SalesforceNavigationTarget;
+  /** Legacy/internal inputs retained for commands and the hardening harness. */
   path?: string;
   setup?: string;
   route?: SalesforceRoute;
@@ -77,7 +83,7 @@ const OBJECT_API_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 export function resolveSalesforcePath(
   input: SalesforcePathResolverInput,
 ): SalesforcePathResolverResult {
-  const targetCount = [input.path, input.setup, input.route].filter(
+  const targetCount = [input.target, input.path, input.setup, input.route].filter(
     (value) => value !== undefined && value !== "",
   ).length;
   if (targetCount === 0) {
@@ -95,6 +101,11 @@ export function resolveSalesforcePath(
     };
   }
 
+  if (input.target) {
+    return input.target.type === "path"
+      ? resolveExplicitPath(input.target.path)
+      : resolveRoute(input.target);
+  }
   if (input.path) return resolveExplicitPath(input.path);
   if (input.setup) return resolveSetupPath(input.setup);
   return resolveRoute(input.route as SalesforceRoute);
@@ -238,14 +249,13 @@ function resolveDataCloudPath(rawDestination: string | undefined): SalesforcePat
 function resolveSetupPath(rawDestination: string | undefined): SalesforcePathResolverResult {
   if (!rawDestination?.trim()) return invalidRoute("Setup destination is required.");
 
-  const exact = resolveSetupDestination(rawDestination);
-  const normalized = normalizeSetupDestination(rawDestination);
+  const exact = getSetupDestination(rawDestination);
   if (exact) {
     return {
       ok: true,
-      path: exact,
+      path: exact.path,
       kind: "setup",
-      destination: normalized,
+      destination: exact.id,
       confidence: 1,
     };
   }

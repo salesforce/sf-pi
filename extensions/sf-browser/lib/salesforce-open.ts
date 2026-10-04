@@ -15,15 +15,20 @@ import {
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import { DEFAULT_SF_OPEN_TIMEOUT_MS } from "./constants.ts";
 import { redactText, redactUrl } from "./redaction.ts";
+import { planSalesforceNavigation } from "./navigation-intent.ts";
 import {
   isResolvedSalesforcePath,
   resolveSalesforcePath,
+  type SalesforceNavigationTarget,
   type SalesforceRoute,
 } from "./salesforce-path-resolver.ts";
 import { resolveVerifiedRoutePath, type VerifiedRouteResult } from "./salesforce-route-verifier.ts";
 
 export interface OpenOrgInput {
   target_org?: string;
+  /** Model-facing single navigation target. */
+  target?: SalesforceNavigationTarget;
+  /** Legacy/internal inputs retained for commands and the hardening harness. */
   path?: string;
   setup?: string;
   route?: SalesforceRoute;
@@ -87,8 +92,9 @@ export async function resolveTargetOrg(
 }
 
 export function resolveOpenPath(input: OpenOrgInput): string | undefined {
-  if (!input.path && !input.setup && !input.route) return undefined;
+  if (!input.target && !input.path && !input.setup && !input.route) return undefined;
   const result = resolveSalesforcePath({
+    target: input.target,
     path: input.path,
     setup: input.setup,
     route: input.route,
@@ -102,11 +108,15 @@ async function resolveOpenPathForBrowser(
   input: OpenOrgInput,
   cwd: string,
 ): Promise<{ path?: string; verifiedRoute?: VerifiedRouteResult }> {
-  if (!input.route) return { path: resolveOpenPath(input) };
-  // Data Cloud routes resolve against the local verified Destination Pack, like
-  // setup destinations; they are known Lightning paths and need no API check.
-  if (input.route.type === "data-cloud") return { path: resolveOpenPath(input) };
-  const verifiedRoute = await resolveVerifiedRoutePath(targetOrg, input.route, cwd);
+  if (!input.target && !input.route) return { path: resolveOpenPath(input) };
+  const plan = planSalesforceNavigation({
+    target: input.target,
+    path: input.path,
+    setup: input.setup,
+    route: input.route,
+  });
+  if (plan.resolution === "local" || !plan.route) return { path: plan.path };
+  const verifiedRoute = await resolveVerifiedRoutePath(targetOrg, plan.route, cwd);
   return { path: verifiedRoute.path, verifiedRoute };
 }
 

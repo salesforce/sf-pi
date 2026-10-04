@@ -87,6 +87,13 @@ function versionsResponse(...versions: string[]): Response {
   );
 }
 
+function discoveryErrorResponse(status = 503): Response {
+  return new Response(JSON.stringify({ message: "unavailable" }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 beforeEach(() => {
   clearSalesforceConnectionCache();
   configGetInfoMock.mockReset();
@@ -163,6 +170,63 @@ describe("connectSalesforce version selection", () => {
     );
   });
 
+  test("retries one transient latest-version discovery failure before selecting org latest", async () => {
+    const conn = fakeConnection();
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "route not ready" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(versionsResponse("67.0", "68.0"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const sf = await connectSalesforce({ cwd: "/workspace" });
+
+    expect(sf.target).toMatchObject({
+      apiVersion: "68.0",
+      maxApiVersion: "68.0",
+      versionSource: "org-latest",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(conn.setApiVersion).toHaveBeenCalledWith("68.0");
+  });
+
+  test("fails closed after one bounded retry when discovery remains unavailable", async () => {
+    const conn = fakeConnection();
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(discoveryErrorResponse()));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(connectSalesforce({ cwd: "/workspace" })).rejects.toBeInstanceOf(
+      SalesforceApiVersionDiscoveryError,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(conn.setApiVersion).not.toHaveBeenCalled();
+  });
+
+  test("does not retry non-transient discovery errors", async () => {
+    const conn = fakeConnection();
+    orgCreateMock.mockResolvedValue(fakeOrg(conn));
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ message: "bad request" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(connectSalesforce({ cwd: "/workspace" })).rejects.toBeInstanceOf(
+      SalesforceApiVersionDiscoveryError,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   test("prefers org latest over a configured org-api-version", async () => {
     mockConfig("ExampleOrg", "62.0");
     const conn = fakeConnection("62.0");
@@ -186,12 +250,7 @@ describe("connectSalesforce version selection", () => {
     orgCreateMock.mockResolvedValue(fakeOrg(conn));
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ message: "unavailable" }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
+      vi.fn().mockImplementation(() => Promise.resolve(discoveryErrorResponse())),
     );
 
     const sf = await connectSalesforce({ cwd: "/workspace" });
@@ -211,12 +270,7 @@ describe("connectSalesforce version selection", () => {
     orgCreateMock.mockResolvedValue(fakeOrg(conn));
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ message: "unavailable" }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
+      vi.fn().mockImplementation(() => Promise.resolve(discoveryErrorResponse())),
     );
 
     await expect(connectSalesforce({ cwd: "/workspace" })).rejects.toMatchObject({
@@ -293,7 +347,10 @@ describe("connectSalesforce version selection", () => {
     mockConfig("ExampleOrg", " v62.0 ");
     const conn = fakeConnection();
     orgCreateMock.mockResolvedValue(fakeOrg(conn));
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("unavailable", { status: 503 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => Promise.resolve(discoveryErrorResponse())),
+    );
 
     const configured = await connectSalesforce({ cwd: "/workspace" });
     expect(configured.target.apiVersion).toBe("62.0");
@@ -459,7 +516,10 @@ describe("Salesforce connection cache and refresh", () => {
     orgCreateMock
       .mockResolvedValueOnce(fakeOrg(fakeConnection()))
       .mockResolvedValueOnce(fakeOrg(fakeConnection()));
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("unavailable", { status: 503 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => Promise.resolve(discoveryErrorResponse())),
+    );
 
     const first = await connectSalesforce({ cwd: "/workspace" });
     targetOrg = "SecondOrg";
@@ -501,7 +561,8 @@ describe("Salesforce connection cache and refresh", () => {
       .mockResolvedValueOnce(fakeOrg(secondConn));
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(new Response("unavailable", { status: 503 }))
+      .mockResolvedValueOnce(discoveryErrorResponse())
+      .mockResolvedValueOnce(discoveryErrorResponse())
       .mockResolvedValueOnce(versionsResponse("67.0"));
     vi.stubGlobal("fetch", fetchMock);
 

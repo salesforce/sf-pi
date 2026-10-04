@@ -40,7 +40,7 @@ export function formatApexGuruSetupRunbook(targetOrg?: string): string {
     "- Capture Browser Evidence when no setup entry is visible, before any enablement click, and after any approved change.",
     "",
     "Suggested SF Browser steps after approval:",
-    `1. Open Setup in ${targetOrg ?? "the target org"} with sf_browser_open_org(setup='setup-home').`,
+    `1. Open Setup in ${targetOrg ?? "the target org"} with sf_browser_open_org(target={type:'setup', destination:'setup-home'}).`,
     "2. Search Quick Find for Scale Center, Scale Insights, and ApexGuru Insights.",
     "3. If no destination is visible, capture evidence and stop with an explanation.",
     "4. If a destination is visible, navigate to it and capture evidence.",

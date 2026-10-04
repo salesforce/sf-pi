@@ -11,6 +11,7 @@ import {
 import { evidenceLabelForMutationBefore, shouldCaptureMutationBefore } from "./evidence-policy.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
+import { requireFreshBrowserRef } from "./ref-freshness.ts";
 import { retryInFrameAction } from "./in-frame-actions.ts";
 import { captureEvidence } from "./operations.ts";
 import { startTimer } from "./timing.ts";
@@ -41,6 +42,7 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
       ),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      requireFreshBrowserRef(ctx.sessionManager.getSessionId(), params.ref);
       const stopTimer = startTimer();
       const beforeEvidence = shouldCaptureMutationBefore(params)
         ? await captureEvidence(
@@ -106,7 +108,7 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
               `Clicked ${params.ref}.`,
               params.reason ? `Reason: ${params.reason}` : undefined,
               beforeEvidence
-                ? "Before-mutation Browser Evidence captured. Use sf_browser_wait with lightning='save-result' after the committing action for post-mutation evidence."
+                ? "Before-mutation Browser Evidence captured. Use sf_browser_wait with condition={type:'lightning', value:'save-result'} after the committing action for post-mutation evidence."
                 : undefined,
               recoveredIframeRef
                 ? `Recovered covered-element failure by retrying inside frame ${recoveredIframeRef}.`
