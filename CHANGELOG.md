@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.320.0](https://github.com/salesforce/sf-pi/compare/v0.319.0...v0.320.0) (2026-10-04)
+
+
+### Features
+
+* **sf-mcp:** add plan-bound agent configuration ([1e6976d](https://github.com/salesforce/sf-pi/commit/1e6976d31ae6038b7542a5071b504ca6c6fc2325))
+
 ## [0.319.0](https://github.com/salesforce/sf-pi/compare/v0.318.4...v0.319.0) (2026-10-03)
 
 

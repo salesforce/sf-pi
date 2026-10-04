@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.319.0-2026-10-03",
-  "latestVersion": "0.319.0",
+  "revision": "release-0.320.0-2026-10-04",
+  "latestVersion": "0.320.0",
   "announcements": [
     {
-      "id": "release-0.319.0",
+      "id": "release-0.320.0",
       "kind": "update",
-      "title": "sf-pi v0.319.0 — sf-browser: harden ECA navigation and org handling",
-      "publishedAt": "2026-10-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.319.0",
+      "title": "sf-pi v0.320.0 — sf-mcp: add plan-bound agent configuration",
+      "publishedAt": "2026-10-04T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.320.0",
       "severity": "info",
-      "body": "sf-browser: harden ECA navigation and org handling"
+      "body": "sf-mcp: add plan-bound agent configuration"
     }
   ]
 }
