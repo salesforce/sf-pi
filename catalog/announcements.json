@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.321.0-2026-10-04",
-  "latestVersion": "0.321.0",
+  "revision": "release-0.322.0-2026-10-04",
+  "latestVersion": "0.322.0",
   "announcements": [
     {
-      "id": "release-0.321.0",
+      "id": "release-0.322.0",
       "kind": "update",
-      "title": "sf-pi v0.321.0 — sf-browser: harden navigation reliability",
+      "title": "sf-pi v0.322.0 — sf-browser: harden visual verification and setup controls",
       "publishedAt": "2026-10-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.321.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.322.0",
       "severity": "info",
-      "body": "sf-browser: harden navigation reliability"
+      "body": "sf-browser: harden visual verification and setup controls"
     }
   ]
 }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.322.0](https://github.com/salesforce/sf-pi/compare/v0.321.0...v0.322.0) (2026-10-04)
+
+
+### Features
+
+* **sf-browser:** harden visual verification and setup controls ([e16fe7e](https://github.com/salesforce/sf-pi/commit/e16fe7e1663581f6cd0db431c059149d6ed017af))
+
 ## [0.321.0](https://github.com/salesforce/sf-pi/compare/v0.320.0...v0.321.0) (2026-10-04)
 
 
