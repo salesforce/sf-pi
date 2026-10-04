@@ -3,7 +3,8 @@
  * sf-mcp behavior contract
  *
  * SF MCP is a catalog and conflict-aware installer for Pi's native MCP runtime.
- * It never connects an MCP server itself and registers no model-callable tools.
+ * It never connects an MCP server itself; its model tool only plans and writes
+ * reviewed native configuration while Pi continues to own transport and OAuth.
  *
  * Behavior matrix:
  *
@@ -39,6 +40,7 @@ import { formatConflictPlan } from "./lib/conflict-planner.ts";
 import { mcpConfigPath } from "./lib/mcp-config.ts";
 import { captureObservedMcpTools } from "./lib/observed-tools.ts";
 import { SALESFORCE_MCP_PRESETS, getPreset } from "./lib/presets.ts";
+import { registerSfMcpTool } from "./lib/sf-mcp-tool.ts";
 import {
   buildMcpRoutingGuidelines,
   inspectPresetRuntime,
@@ -91,6 +93,7 @@ const ACTIONS: SfPiCommandAction<SfMcpAction>[] = [
 export default function sfMcp(pi: ExtensionAPI): void {
   if (!requirePiVersion(pi, "sf-mcp")) return;
 
+  registerSfMcpTool(pi);
   let routingGuidelines: string[] = [];
   pi.on("session_start", (_event, ctx) => {
     captureObservedMcpTools(pi.getAllTools());
@@ -268,7 +271,7 @@ function renderStatus(cwd: string, scope: "global" | "project"): string {
 function renderHelp(): string {
   return [
     "SF MCP is a conflict-aware catalog for Pi's built-in MCP runtime.",
-    "It does not implement MCP transport, OAuth, connection management, or agent tools.",
+    "Its sf_mcp tool plans native configuration; Pi still owns transport, OAuth, connections, and tokens.",
     "",
     "Commands:",
     "  /sf-mcp                         Open SF MCP in the Manager",

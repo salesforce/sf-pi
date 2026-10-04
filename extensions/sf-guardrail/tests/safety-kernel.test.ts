@@ -500,6 +500,68 @@ describe("Safety Kernel", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("confirms plan-bound sf_mcp native configuration mutations", async () => {
+    const configure = await evaluateSafety({
+      toolName: "sf_mcp",
+      input: {
+        action: "configure.apply",
+        scope: "global",
+        preset_id: "headless-360",
+        plan_id: "plan_example",
+        plan_hash: "sha256:example",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const disable = await evaluateSafety({
+      toolName: "sf_mcp",
+      input: {
+        action: "disable.apply",
+        scope: "global",
+        preset_id: "headless-360",
+        plan_id: "plan_disable",
+        plan_hash: "sha256:disable",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(configure).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-mcp-config",
+      approvalScope: {
+        operationFamily: "mcp configuration",
+        riskTier: "mcp_configuration_mutation_exact",
+        allowSession: false,
+      },
+    });
+    expect(disable).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-mcp-config",
+      approvalScope: {
+        operationFamily: "mcp configuration disable",
+        riskTier: "mcp_configuration_disable_exact",
+        allowSession: false,
+      },
+    });
+    expect(configure?.fingerprint).not.toBe(disable?.fingerprint);
+  });
+
+  it("does not mediate read-only sf_mcp actions", async () => {
+    await expect(
+      evaluateSafety({
+        toolName: "sf_mcp",
+        input: { action: "status", scope: "global", preset_id: "headless-360" },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it("confirms mutating sf_flow lifecycle actions with exact action fingerprints", async () => {
     mockedEnv = env("FlowLifecycleDev", "developer");
 

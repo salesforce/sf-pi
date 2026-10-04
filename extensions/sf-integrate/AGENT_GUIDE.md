@@ -18,7 +18,8 @@ Use `sf_integrate` for plan-bound integration authentication setup in explicit n
 4. `setup.verify`
 5. `mcp.handoff`
 6. Open the returned non-session-bearing Salesforce Setup URL, or pass the returned `navigation.route` directly to `sf_browser_open_org`, to inspect the exact External Client App.
-7. Copy the public consumer key into `/sf-mcp`, reload, then use `/mcp login salesforce-headless-360`
+7. Pass the public consumer key to `sf_mcp` with `status`, `configure.plan`, and exact `configure.apply`; use `login.handoff` after resulting-state verification. The interactive `/sf-mcp` Manager remains available for custom tool exposure.
+8. Reload Pi, run the returned `/mcp login salesforce-headless-360` command, and complete human OAuth consent.
 
 The generated public client uses `http://localhost:8765/callback`, Metadata API scopes `MCP, RefreshToken`, PKCE, named-user JWT access tokens, and refresh-token rotation. It never needs a client secret.
 

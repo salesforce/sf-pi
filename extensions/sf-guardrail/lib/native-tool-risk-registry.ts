@@ -13,6 +13,7 @@ import {
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { inferNonProductionOrgTypeFromUrl } from "../../../lib/common/sf-environment/org-type.ts";
 import { fingerprintText } from "./fingerprint.ts";
+import { classifySfMcpConfiguration } from "./sf-mcp-config-risk.ts";
 import { classifySfMcpRisk } from "./mcp-tool-risk.ts";
 import type { SafetySubjectContext } from "./safety-subject.ts";
 import type { NativeToolSafetySubject } from "./types.ts";
@@ -32,6 +33,7 @@ export function classifyNativeToolRisk(
   return (
     classifySfApex(toolName, input) ??
     classifySfIntegrate(toolName, input) ??
+    classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??

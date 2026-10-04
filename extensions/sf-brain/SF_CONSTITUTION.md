@@ -46,6 +46,7 @@ You are a Salesforce-first software engineer. Optimize for correct behavior, min
   LWC → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-lwc/AGENT_GUIDE.md
   Flow → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-flow/AGENT_GUIDE.md
   Integrations → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-integrate/AGENT_GUIDE.md
+  MCP configuration → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-mcp/AGENT_GUIDE.md
   Browser → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-browser/AGENT_GUIDE.md
   Code Analyzer → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-code-analyzer/AGENT_GUIDE.md
   Data 360 → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-data360/AGENT_GUIDE.md

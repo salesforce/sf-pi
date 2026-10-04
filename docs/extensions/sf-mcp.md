@@ -1,16 +1,16 @@
 ---
 title: "SF MCP"
-description: "Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime"
+description: "Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime"
 editLink: false
 ---
 
 # SF MCP
 
-<p class="sfpi-page-lead">Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime</p>
+<p class="sfpi-page-lead">Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime</p>
 
 ## What it does
 
-Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. One unified Configure MCP editor combines connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. The Manager carries reviewed tool contracts for Salesforce DX, standalone Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, MuleSoft DX, and the other published hosted catalogs. It also catalogs the Agentforce Sales ChatGPT sandbox Beta as an SF Pi Alpha whose exact tools and generic-client interoperability remain undocumented. Conflict, drift, adoption, and redacted apply workflows stay fail-closed and preserve user-owned configuration.
+Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status, review source-bound redacted configuration plans, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. The unified Configure MCP editor remains available for interactive connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.
 
 ## Start
 
@@ -30,8 +30,9 @@ Open its Manager detail or change its package state with:
 
 ## Safety notes
 
-- No Salesforce MCP server is configured, connected, launched, or exposed by default.
-- Pi's built-in MCP extension owns transport, OAuth, tokens, connections, exposure, resources, and readiness.
+- No Salesforce MCP server is configured, connected, launched, or exposed by default; status and plan actions are non-mutating.
+- configure.apply and disable.apply require an exact session-bound plan id/hash, unchanged source state, explicit scope, allow_mutation=true, and SF Guardrail approval.
+- Pi's built-in MCP extension owns transport, OAuth, tokens, connections, exposure, resources, and readiness; login.handoff never performs human OAuth consent.
 - Direct capability overlaps default to native SF Pi owners; complementary profiles use hidden-by-default server exposure with exact approved tools.
 - Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.
 - Pi-normalized server-name collisions require the user to choose the one entry to keep.
@@ -52,11 +53,11 @@ Open its Manager detail or change its package state with:
 
 - **Extension id:** `sf-mcp`
 - **Intent:** Personalize pi
-- **Category:** Assistive
+- **Category:** Agent Tool
 - **Maturity:** experimental
 - **Default state:** on
 - **Commands:** `/sf-mcp`
-- **LLM tools:** _none_
+- **LLM tools:** `sf_mcp`
 - **Providers:** _none_
 - **Events/hooks:** `session_start`, `before_agent_start`
 
@@ -66,3 +67,4 @@ Open its Manager detail or change its package state with:
 
 - [Full extension README](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-mcp/README.md)
 - [Source folder](https://github.com/salesforce/sf-pi/tree/main/extensions/sf-mcp)
+- [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-mcp/AGENT_GUIDE.md)

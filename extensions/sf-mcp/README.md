@@ -1,6 +1,6 @@
 # SF MCP
 
-SF MCP makes Salesforce-published MCP servers easy to discover and configure while leaving the MCP runtime entirely with Pi.
+SF MCP makes Salesforce-published MCP servers easy to discover and configure while leaving the MCP runtime entirely with Pi. It supports both an interactive Manager workflow and a plan-bound `sf_mcp` agent tool.
 
 ## What It Does
 
@@ -11,6 +11,7 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 - Maps reviewed MCP tools to exact enabled SF Pi capability owners, including broad dispatcher warnings.
 - Offers a deterministic native-preferred recommendation or an explicit keep-both policy without disabling native extensions.
 - Writes explicit, user-reviewed entries to Pi's native global or project `mcp.json`.
+- Lets agents inspect status, produce source-bound redacted plans, apply exact reviewed entries through SF Guardrail, disable unchanged managed entries, and return a human OAuth login handoff.
 - Publishes each preset's short description for Pi's MCP prompt summary, tool-search ranking, and namespace inspection.
 - Preserves unknown top-level configuration and unrelated servers.
 - Detects server names that collide after Pi normalizes hyphens and underscores.
@@ -52,6 +53,18 @@ For example, the Data 360 recommendation keeps `search` and `payload_examples` i
 
 Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` prepares Pi's built-in `/mcp` manager after installation.
 
+## Agent tool
+
+The `sf_mcp` family tool supports this lifecycle:
+
+1. `status` — inspect one preset or the catalog in explicit global or trusted-project scope.
+2. `configure.plan` — build an exact redacted diff from the current native entry and a reviewed preset/profile.
+3. `configure.apply` — apply only the matching session-bound plan when the source state is unchanged, `allow_mutation=true`, and SF Guardrail approves.
+4. `login.handoff` — return the exact `/mcp login <server>` command after resulting-state verification. Pi and the user still own browser consent and tokens.
+5. `disable.plan` then `disable.apply` — disable only an unchanged SF MCP-managed entry through the same plan-bound checks.
+
+The public External Client App consumer key can be passed as `oauth_client_id`; client secrets and OAuth tokens are never accepted. Custom per-tool exposure remains an interactive Manager workflow, while the agent tool supports the reviewed Recommended, Read-only, All approved, and Quarantine profiles.
+
 ## Configuration
 
 Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. **Configure MCP** opens one guided editor that combines connection status, reviewed profiles, numbered tools, current exposure, risk, descriptions, and inline conflict recommendations. Use ↑/↓ to select a tool, ←/→ or Space to change its mode, `P` to choose a profile, Enter for full details, and `S` for **Review & Save**. The final review shows the exact redacted native configuration diff before persistence.
@@ -70,7 +83,8 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 
 ## Safety and Data Boundaries
 
-- The catalog is local and performs no network request or subprocess launch at startup.
+- The catalog and agent tool register locally and perform no network request or subprocess launch at startup.
+- Agent configuration applies require an exact session-bound plan id/hash, unchanged source state, explicit scope, `allow_mutation=true`, and SF Guardrail approval.
 - MCP servers, tools, OAuth, and resources remain off until explicit setup.
 - Complementary profiles hide overlapping tools rather than merely deferring them.
 - Governed hosted presets use hidden server exposure with an exact reviewed tool policy, so newly discovered tools remain unreachable until a preset revision approves them.
@@ -165,6 +179,7 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 extensions/sf-mcp/
   lib/                        ← implementation modules
   tests/                      ← Behavior Proofs and test fixtures
+  AGENT_GUIDE.md              ← agent operating guide
   index.ts                    ← Pi extension entry point
   manifest.json               ← source-of-truth extension metadata
   README.md                   ← human behavior and usage

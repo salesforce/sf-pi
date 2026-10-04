@@ -175,9 +175,9 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-llm-gateway</code></span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-mcp">
-  <span class="sfpi-card-kicker">Assistive · on</span>
+  <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF MCP</strong>
-  <span>Conflict-aware Salesforce MCP preset catalog for Pi's native MCP runtime</span>
+  <span>Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-mcp</code></span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-ohana-spinner">

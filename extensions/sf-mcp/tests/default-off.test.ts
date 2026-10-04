@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import sfMcp from "../index.ts";
 
 describe("SF MCP default-off contract", () => {
-  it("registers only the catalog control surface and no MCP server or model tool", () => {
+  it("registers the plan-bound control surfaces without starting an MCP server", () => {
     const pi = {
       registerCommand: vi.fn(),
       registerTool: vi.fn(),
@@ -16,7 +16,7 @@ describe("SF MCP default-off contract", () => {
     sfMcp(pi as never);
 
     expect(pi.registerCommand).toHaveBeenCalledWith("sf-mcp", expect.anything());
-    expect(pi.registerTool).not.toHaveBeenCalled();
+    expect(pi.registerTool).toHaveBeenCalledWith(expect.objectContaining({ name: "sf_mcp" }));
     expect(pi.registerMcpServer).not.toHaveBeenCalled();
   });
 });
