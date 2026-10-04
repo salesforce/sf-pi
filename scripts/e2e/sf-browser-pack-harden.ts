@@ -31,15 +31,18 @@
  *
  *   node --experimental-strip-types scripts/e2e/sf-browser-pack-harden.ts --org <alias>
  *   node --experimental-strip-types scripts/e2e/sf-browser-pack-harden.ts --org <alias> --mutate
+ *   node --experimental-strip-types scripts/e2e/sf-browser-pack-harden.ts --org <alias> --surface public-tools --classic-toggle
  *
  * See ADR 0030 and the CONTEXT.md term Navigation Hardening Harness.
  */
 
 import { spawn } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+
+import { findLatestBrowserSnapshotSession } from "../../lib/common/sf-browser-snapshot-state.ts";
 
 import { connectSalesforce, type SalesforceSession } from "../../lib/common/sf-conn/index.ts";
 import { runAgentBrowser } from "../../extensions/sf-browser/lib/agent-browser.ts";
@@ -60,9 +63,11 @@ import {
 import { openOrgInAgentBrowser } from "../../extensions/sf-browser/lib/operations.ts";
 import { registerSfBrowserOpenOrgTool } from "../../extensions/sf-browser/lib/sf_browser_open_org-tool.ts";
 import { registerSfBrowserResolvePathTool } from "../../extensions/sf-browser/lib/sf_browser_resolve_path-tool.ts";
+import { registerSfBrowserSetToggleTool } from "../../extensions/sf-browser/lib/sf_browser_set_toggle-tool.ts";
 import { registerSfBrowserSnapshotTool } from "../../extensions/sf-browser/lib/sf_browser_snapshot-tool.ts";
 import { registerSfBrowserWaitTool } from "../../extensions/sf-browser/lib/sf_browser_wait-tool.ts";
 import type { SalesforceRoute } from "../../extensions/sf-browser/lib/salesforce-path-resolver.ts";
+import { findToggleInSnapshot } from "../../extensions/sf-browser/lib/toggle-control.ts";
 import { resolveVerifiedRoutePath } from "../../extensions/sf-browser/lib/salesforce-route-verifier.ts";
 import { knownSetupDestinationRecords } from "../../extensions/sf-browser/lib/setup-destinations.ts";
 import { markdownTableCell } from "../lib/text-escape.mjs";
@@ -155,6 +160,7 @@ function registerPublicBrowserTools(): {
   registerSfBrowserResolvePathTool(host);
   registerSfBrowserWaitTool(host);
   registerSfBrowserSnapshotTool(host);
+  registerSfBrowserSetToggleTool(host);
   return { host, tools };
 }
 
@@ -170,12 +176,17 @@ interface HarnessOptions {
   surfaces: Surface[];
   object: string;
   mutate: boolean;
+  classicToggle: boolean;
   limit?: number;
   publicPath?: string;
 }
 
 function parseArgs(argv: string[]): HarnessOptions {
-  const opts: Partial<HarnessOptions> = { mutate: false, object: "Account" };
+  const opts: Partial<HarnessOptions> = {
+    mutate: false,
+    classicToggle: false,
+    object: "Account",
+  };
   let surface = "all";
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -185,13 +196,14 @@ function parseArgs(argv: string[]): HarnessOptions {
       surface = argv[++i]; // back-compat alias (e.g. --pack data-cloud)
     else if (arg === "--object") opts.object = argv[++i];
     else if (arg === "--mutate") opts.mutate = true;
+    else if (arg === "--classic-toggle") opts.classicToggle = true;
     else if (arg === "--limit") opts.limit = Number(argv[++i]);
     else if (arg === "--public-path") opts.publicPath = argv[++i];
     else if (!arg.startsWith("--") && !opts.targetOrg) opts.targetOrg = arg;
   }
   if (!opts.targetOrg) {
     throw new Error(
-      "Usage: sf-browser-pack-harden --org <alias> [--surface all|data-cloud|setup-destinations|routes|public-tools] [--object <ApiName>] [--public-path </lightning/...>] [--mutate] [--limit N]",
+      "Usage: sf-browser-pack-harden --org <alias> [--surface all|data-cloud|setup-destinations|routes|public-tools] [--object <ApiName>] [--public-path </lightning/...>] [--mutate] [--classic-toggle] [--limit N]",
     );
   }
   opts.surfaces =
@@ -370,6 +382,7 @@ async function main(): Promise<void> {
   const sessionId = `harden-${timestamp()}`;
   activeHarnessBrowserSession = sessionId;
   const evidenceDir = getEvidenceDir(sessionId);
+  mkdirSync(evidenceDir, { recursive: true });
   const results: EntryResult[] = [];
 
   console.log(
@@ -390,8 +403,9 @@ async function main(): Promise<void> {
   if (want("public-tools")) {
     results.push(await runPublicToolsSuite(opts.targetOrg, sessionId, opts.publicPath));
   }
-  if (opts.mutate) {
-    results.push(await runMutationLifecycle(opts.targetOrg, sessionId));
+  if (opts.mutate) results.push(await runMutationLifecycle(opts.targetOrg, sessionId));
+  if (opts.mutate || opts.classicToggle) {
+    results.push(await runClassicToggleLifecycle(opts.targetOrg, sessionId));
   }
 
   writeReport(evidenceDir, opts, results);
@@ -485,7 +499,7 @@ async function runPublicToolsSuite(
       observedOutcome: String(waited.details?.status ?? "matched"),
       observedUrl,
       screenshot: path.basename(shot),
-      note: "Public registerTool interfaces completed resolve → open → wait → snapshot.",
+      note: `Public registerTool interfaces completed resolve → open → wait → snapshot using ${String(opened.details?.openMethod ?? "unknown open method")} (open ${String(opened.details?.durationText ?? "n/a")}; snapshot ${String(snapshot.details?.durationText ?? "n/a")}; classic polls ${String(snapshot.details?.classicSetupPolls ?? 0)}).`,
     };
   } catch (error) {
     return { ...base, outcome: "broken", note: errorText(error) };
@@ -1034,6 +1048,108 @@ async function runMutationLifecycle(targetOrg: string, sessionId: string): Promi
   }
 }
 
+async function runClassicToggleLifecycle(
+  targetOrg: string,
+  sessionId: string,
+): Promise<EntryResult> {
+  const id = "classic-toggle-lifecycle";
+  const pathValue = "/lightning/setup/SecuritySession/home";
+  const label = "Disable session timeout warning popup";
+  const { tools } = registerPublicBrowserTools();
+  const context = {
+    cwd: process.cwd(),
+    sessionManager: { getSessionId: () => sessionId },
+  } as unknown as ExtensionContext;
+  const execute = async (
+    name: string,
+    params: Record<string, unknown>,
+  ): Promise<PublicToolResult> => {
+    const tool = tools.get(name);
+    if (!tool) throw new Error(`Public SF Browser tool ${name} was not registered.`);
+    const result = await tool.execute(
+      `harden-${name}-${Date.now()}`,
+      params,
+      undefined,
+      undefined,
+      context,
+    );
+    if (result.isError || result.details?.ok === false) {
+      const text = result.content
+        ?.map((item) => item.text ?? "")
+        .join("\n")
+        .trim();
+      throw new Error(text || `${name} returned an unsuccessful result.`);
+    }
+    return result;
+  };
+
+  try {
+    const opened = await execute("sf_browser_open_org", {
+      target_org: targetOrg,
+      target: { type: "path", path: pathValue },
+      purpose: "Reversible Classic Setup toggle hardening",
+    });
+    await execute("sf_browser_wait", {
+      condition: { type: "lightning", value: "navigation-ready" },
+      checkpointEvidence: false,
+    });
+    const snapshot = await execute("sf_browser_snapshot", {
+      interactive: true,
+      compact: true,
+      outputMode: "summary",
+      focus: [label, "Save"],
+    });
+    const fullSnapshotPath = String(snapshot.details?.fullSnapshotPath ?? "");
+    const rawSnapshot = readFileSync(fullSnapshotPath, "utf8");
+    const initial = findToggleInSnapshot(rawSnapshot, label);
+    if (!initial || initial.disabled)
+      throw new Error(`Editable toggle ${JSON.stringify(label)} was not found.`);
+
+    const changed = await execute("sf_browser_set_toggle", {
+      ref: initial.ref,
+      desiredState: !initial.checked,
+      reason: "Reversible no-save hardening probe",
+    });
+    const latest = findLatestBrowserSnapshotSession(sessionId);
+    const currentRef = latest?.refs.find((entry) => entry.label === label)?.ref;
+    if (!currentRef)
+      throw new Error("Fresh toggle ref was not published after the first state change.");
+    const restored = await execute("sf_browser_set_toggle", {
+      ref: currentRef,
+      desiredState: initial.checked,
+      reason: "Restore original no-save form state",
+    });
+    const after = restored.details?.afterActionEvidence as { path?: string } | undefined;
+    const recovered = changed.details?.recoveredClassicSetup === true;
+    const restoredState = restored.details?.observedState === initial.checked;
+    return {
+      id,
+      label: "Classic Setup toggle lifecycle (reversible, no-save)",
+      surface: "setup-node",
+      group: "mutation",
+      status: "candidate",
+      path: pathValue,
+      outcome: recovered && restoredState ? "confirmed" : "needs-review",
+      expected: "Classic Setup iframe checkbox with original state restored",
+      observedOutcome: `open:${String(opened.details?.openMethod ?? "unknown")}(${String(opened.details?.durationText ?? "n/a")}) classic-adapter:${recovered ? "used" : "not-used"} restored:${restoredState}`,
+      screenshot: after?.path ? path.basename(after.path) : undefined,
+      note: "Toggled one Session Settings checkbox, verified it, restored the original form state, and did not click Save.",
+    };
+  } catch (error) {
+    return {
+      id,
+      label: "Classic Setup toggle lifecycle (reversible, no-save)",
+      surface: "setup-node",
+      group: "mutation",
+      status: "candidate",
+      path: pathValue,
+      outcome: "broken",
+      expected: "Classic Setup iframe checkbox with original state restored",
+      note: errorText(error),
+    };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Report + summary
 // ---------------------------------------------------------------------------
@@ -1190,7 +1306,9 @@ function timestamp(): string {
 }
 
 function errorText(error: unknown): string {
-  return error instanceof Error ? error.message.split("\n")[0] : String(error);
+  const message = error instanceof Error ? error.message : String(error);
+  const compact = message.replace(/\s+/gu, " ").trim();
+  return compact.length > 1000 ? `${compact.slice(0, 999)}…` : compact;
 }
 
 function escapeHtml(value: string): string {

@@ -5,6 +5,9 @@ import { runAgentBrowser } from "./agent-browser.ts";
 import { classifyBrowserFailure } from "./failure-diagnostics.ts";
 import { redactText } from "./redaction.ts";
 
+const rememberedFrameUrls = new Map<string, Map<string, string>>();
+const MAX_REMEMBERED_FRAME_SESSIONS = 25;
+
 export interface InFrameRetryPlan {
   iframeRef: string;
   targetRef: string;
@@ -41,6 +44,127 @@ export function findInFrameRetryPlan(
     }
   }
   return undefined;
+}
+
+export async function expandMissingIframeSnapshots(
+  pi: ExtensionAPI,
+  input: {
+    cwd: string;
+    snapshot: string;
+    sessionId?: string;
+    currentUrl?: string;
+    maxFrames?: number;
+  },
+  signal: AbortSignal | undefined,
+): Promise<{ snapshot: string; expandedFrameRefs: string[] }> {
+  const lines = input.snapshot.split(/\r?\n/u);
+  const expandedFrameRefs: string[] = [];
+  const output: string[] = [];
+  const maxFrames = Math.max(1, Math.min(3, input.maxFrames ?? 2));
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    output.push(line);
+    const ref = extractRef(line);
+    if (!ref || !isIframeLine(line)) continue;
+
+    if (input.sessionId) {
+      try {
+        const frameUrl = await runAgentBrowser(pi, ["get", "attr", `@${ref}`, "src"], {
+          cwd: input.cwd,
+          signal,
+          timeoutMs: 10_000,
+        });
+        rememberFrameUrl(input.sessionId, ref, frameUrl.stdout.trim());
+      } catch {
+        // The scoped snapshot remains useful even when the iframe URL is unavailable.
+      }
+    }
+
+    const next = lines[index + 1];
+    const alreadyExpanded = next !== undefined && leadingSpaces(next) > leadingSpaces(line);
+    if (alreadyExpanded || expandedFrameRefs.length >= maxFrames) continue;
+
+    let childSnapshot = "";
+    try {
+      await runAgentBrowser(pi, ["frame", `@${ref}`], {
+        cwd: input.cwd,
+        signal,
+        timeoutMs: 15_000,
+      });
+      if (input.sessionId && !readRememberedFrameUrl(input.sessionId, ref)) {
+        try {
+          const scopedUrl = await runAgentBrowser(pi, ["get", "url"], {
+            cwd: input.cwd,
+            signal,
+            timeoutMs: 10_000,
+          });
+          if (scopedUrl.stdout.trim() !== input.currentUrl) {
+            rememberFrameUrl(input.sessionId, ref, scopedUrl.stdout.trim());
+          }
+        } catch {
+          // Frame snapshots remain useful when the scoped URL is unavailable.
+        }
+      }
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const child = await runAgentBrowser(pi, ["snapshot", "-i", "-c"], {
+          cwd: input.cwd,
+          signal,
+          timeoutMs: 15_000,
+        });
+        childSnapshot = child.stdout.trim();
+        if (/\bref=e\d+\b/u.test(childSnapshot)) break;
+        if (attempt < 3) {
+          await runAgentBrowser(pi, ["wait", "250"], {
+            cwd: input.cwd,
+            signal,
+            timeoutMs: 5_000,
+          });
+        }
+      }
+    } catch {
+      childSnapshot = "";
+    } finally {
+      try {
+        await runAgentBrowser(pi, ["frame", "main"], {
+          cwd: input.cwd,
+          signal,
+          timeoutMs: 15_000,
+        });
+      } catch {
+        // Best effort: the next browser command will fail closed if main context was not restored.
+      }
+    }
+
+    if (!/\bref=e\d+\b/u.test(childSnapshot) || childSnapshot === input.snapshot.trim()) continue;
+    output.push(...childSnapshot.split(/\r?\n/u).map((childLine) => `  ${childLine}`));
+    expandedFrameRefs.push(ref);
+  }
+
+  return { snapshot: output.join("\n"), expandedFrameRefs };
+}
+
+export function readRememberedFrameUrl(
+  sessionId: string | undefined,
+  frameRef: string | undefined,
+): string | undefined {
+  if (!sessionId || !frameRef) return undefined;
+  return rememberedFrameUrls.get(sessionId)?.get(normalizeRef(frameRef) ?? "");
+}
+
+function rememberFrameUrl(sessionId: string, frameRef: string, frameUrl: string): void {
+  if (!/^https:\/\//iu.test(frameUrl)) return;
+  let urls = rememberedFrameUrls.get(sessionId);
+  if (!urls) {
+    urls = new Map<string, string>();
+    rememberedFrameUrls.set(sessionId, urls);
+    while (rememberedFrameUrls.size > MAX_REMEMBERED_FRAME_SESSIONS) {
+      const oldest = rememberedFrameUrls.keys().next().value as string | undefined;
+      if (!oldest) break;
+      rememberedFrameUrls.delete(oldest);
+    }
+  }
+  urls.set(normalizeRef(frameRef) ?? frameRef, frameUrl);
 }
 
 export async function retryInFrameAction(

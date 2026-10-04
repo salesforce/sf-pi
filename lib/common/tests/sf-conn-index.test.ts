@@ -24,6 +24,7 @@ import {
   beginSalesforceConnectionSession,
   clearSalesforceConnectionCache,
   connectSalesforce,
+  generateSalesforceFrontdoorUrl,
   getCachedSalesforceTarget,
   salesforceSessionForConnection,
 } from "../sf-conn/index.ts";
@@ -69,7 +70,13 @@ function fakeConnection(initialVersion = "50.0"): FakeConnection {
 }
 
 function fakeOrg(conn: FakeConnection) {
-  return { getConnection: () => conn };
+  return {
+    getConnection: () => conn,
+    getFrontDoorUrl: vi.fn(
+      async (path?: string) =>
+        `https://example.my.salesforce.com/singleaccess${path ? `?path=${encodeURIComponent(path)}` : ""}`,
+    ),
+  };
 }
 
 function mockConfig(targetOrg?: string, apiVersion?: string): void {
@@ -109,6 +116,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
   clearSalesforceConnectionCache();
+});
+
+describe("in-process Salesforce browser access", () => {
+  test("generates a single-use frontdoor URL without API discovery or a subprocess", async () => {
+    const conn = fakeConnection();
+    const org = fakeOrg(conn);
+    orgCreateMock.mockResolvedValue(org);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const url = await generateSalesforceFrontdoorUrl({
+      cwd: "/workspace",
+      targetOrg: "ExampleOrg",
+      path: "/lightning/setup/SetupOneHome/home",
+    });
+
+    expect(url).toContain("/singleaccess");
+    expect(org.getFrontDoorUrl).toHaveBeenCalledWith("/lightning/setup/SetupOneHome/home");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(conn.setApiVersion).not.toHaveBeenCalled();
+  });
 });
 
 describe("getCachedSalesforceTarget presentation state", () => {

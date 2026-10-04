@@ -8,6 +8,7 @@
  */
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
+import { generateSalesforceFrontdoorUrl } from "../../../lib/common/sf-conn/index.ts";
 import {
   getCachedSfEnvironment,
   getSharedSfEnvironment,
@@ -35,11 +36,34 @@ export interface OpenOrgInput {
   purpose?: string;
 }
 
-export interface OpenOrgUrlResult {
+export type SalesforceOrgOpenMethod =
+  "same-org-direct" | "in-process-singleaccess" | "sf-cli-fallback";
+
+export interface OpenOrgPlan {
   targetOrg: string;
   path?: string;
-  url: string;
   verifiedRoute?: VerifiedRouteResult;
+}
+
+export interface OpenOrgUrlResult extends OpenOrgPlan {
+  url: string;
+  openMethod: SalesforceOrgOpenMethod;
+  fallbackReason?: string;
+}
+
+export async function resolveOpenOrgPlan(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  input: OpenOrgInput,
+): Promise<OpenOrgPlan> {
+  const targetOrg = await resolveTargetOrg(pi, ctx, input.target_org);
+  if (!targetOrg) {
+    throw new Error(
+      "No Salesforce target org is configured. Pass target_org or set sf config target-org.",
+    );
+  }
+  const resolvedPath = await resolveOpenPathForBrowser(targetOrg, input, ctx.cwd);
+  return { targetOrg, path: resolvedPath.path, verifiedRoute: resolvedPath.verifiedRoute };
 }
 
 export async function resolveOpenOrgUrl(
@@ -48,31 +72,24 @@ export async function resolveOpenOrgUrl(
   input: OpenOrgInput,
   signal?: AbortSignal,
 ): Promise<OpenOrgUrlResult> {
-  const targetOrg = await resolveTargetOrg(pi, ctx, input.target_org);
-  if (!targetOrg) {
-    throw new Error(
-      "No Salesforce target org is configured. Pass target_org or set sf config target-org.",
-    );
+  return resolveOpenOrgUrlFromPlan(pi, ctx, await resolveOpenOrgPlan(pi, ctx, input), signal);
+}
+
+export async function resolveOpenOrgUrlFromPlan(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  plan: OpenOrgPlan,
+  signal?: AbortSignal,
+): Promise<OpenOrgUrlResult> {
+  try {
+    const url = await resolveInProcessFrontdoorUrl(ctx.cwd, plan.targetOrg, plan.path, signal);
+    return { ...plan, url, openMethod: "in-process-singleaccess" };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    const fallbackReason = conciseFallbackReason(error);
+    const url = await resolveSfCliFallbackUrl(pi, ctx, plan.targetOrg, plan.path, signal);
+    return { ...plan, url, openMethod: "sf-cli-fallback", fallbackReason };
   }
-
-  const resolvedPath = await resolveOpenPathForBrowser(targetOrg, input, ctx.cwd);
-  const pathValue = resolvedPath.path;
-  const args = ["org", "open", "--url-only", "--json", "-o", targetOrg];
-  if (pathValue) args.push("--path", pathValue);
-
-  const result = await pi.exec("sf", args, {
-    cwd: ctx.cwd,
-    signal,
-    timeout: DEFAULT_SF_OPEN_TIMEOUT_MS,
-  });
-  if (result.code !== 0) {
-    const details = redactText([result.stderr, result.stdout].filter(Boolean).join("\n").trim());
-    throw new Error(`sf org open failed for ${targetOrg}.\n${details}`);
-  }
-
-  const url = extractUrlFromSfOpen(result.stdout);
-  if (!url) throw new Error("sf org open did not return a URL in JSON output.");
-  return { targetOrg, path: pathValue, url, verifiedRoute: resolvedPath.verifiedRoute };
 }
 
 export async function resolveTargetOrg(
@@ -118,6 +135,80 @@ async function resolveOpenPathForBrowser(
   if (plan.resolution === "local" || !plan.route) return { path: plan.path };
   const verifiedRoute = await resolveVerifiedRoutePath(targetOrg, plan.route, cwd);
   return { path: verifiedRoute.path, verifiedRoute };
+}
+
+async function resolveInProcessFrontdoorUrl(
+  cwd: string,
+  targetOrg: string,
+  pathValue: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<string> {
+  const url = await generateSalesforceFrontdoorUrl({
+    cwd,
+    targetOrg,
+    path: pathValue,
+    signal,
+    timeoutMs: DEFAULT_SF_OPEN_TIMEOUT_MS,
+  });
+  if (!/^https:\/\//iu.test(url)) {
+    throw new Error("Salesforce single-access URL response was not an HTTPS URL.");
+  }
+  return url;
+}
+
+async function resolveSfCliFallbackUrl(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  targetOrg: string,
+  pathValue: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<string> {
+  const args = ["org", "open", "--url-only", "--json", "-o", targetOrg];
+  if (pathValue) args.push("--path", pathValue);
+  const result = await pi.exec("sf", args, {
+    cwd: ctx.cwd,
+    signal,
+    timeout: DEFAULT_SF_OPEN_TIMEOUT_MS,
+  });
+  if (result.code !== 0) {
+    const details = formatSfCliOpenFailure(result.stdout, result.stderr);
+    throw new Error(`sf org open fallback failed for ${targetOrg}.\n${details}`);
+  }
+  const url = extractUrlFromSfOpen(result.stdout);
+  if (!url) throw new Error("sf org open fallback did not return a URL in JSON output.");
+  return url;
+}
+
+function formatSfCliOpenFailure(stdout: string, stderr: string): string {
+  for (const raw of [stdout, stderr]) {
+    try {
+      const parsed = JSON.parse(raw) as {
+        name?: unknown;
+        message?: unknown;
+        actions?: unknown;
+      };
+      const name = typeof parsed.name === "string" ? parsed.name : undefined;
+      const message = typeof parsed.message === "string" ? parsed.message : undefined;
+      const actions = Array.isArray(parsed.actions)
+        ? parsed.actions.filter((item): item is string => typeof item === "string").slice(0, 3)
+        : [];
+      const lines = [name, message, ...actions.map((action) => `Recovery: ${action}`)].filter(
+        (line): line is string => Boolean(line),
+      );
+      if (lines.length) return redactText(lines.join("\n"));
+    } catch {
+      // Fall through to bounded plain-text output.
+    }
+  }
+  const text = redactText([stderr, stdout].filter(Boolean).join("\n").trim());
+  return text.length > 1_000 ? `${text.slice(0, 999)}…` : text;
+}
+
+function conciseFallbackReason(error: unknown): string {
+  const message = redactText(error instanceof Error ? error.message : String(error))
+    .replace(/\s+/gu, " ")
+    .trim();
+  return message.length > 300 ? `${message.slice(0, 299)}…` : message;
 }
 
 export function summarizeOpenTarget(targetOrg: string, pathValue: string | undefined): string {

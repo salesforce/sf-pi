@@ -63,7 +63,12 @@ export function classifyBrowserFailure(message: string): BrowserFailureKind {
   if (/command timed out after|agent-browser.*timed out|browser command timed out/i.test(message)) {
     return "browser-runtime-timeout";
   }
-  if (/timeout|timed out|deadline|exceeded/i.test(message)) return "timeout";
+  if (
+    /\btimed out\b|\btimeout(?:\s+\d+ms|\s+exceeded|\s+waiting|\s+after)\b|deadline|exceeded/iu.test(
+      message,
+    )
+  )
+    return "timeout";
   if (
     /navigation|net::|frame was detached|execution context was destroyed|target closed/i.test(
       message,
@@ -83,7 +88,7 @@ export function recoveryHint(kind: BrowserFailureKind): string {
     case "stale-ref":
       return "The page likely rerendered and invalidated the ref. Run sf_browser_snapshot and retry with a fresh ref.";
     case "covered-element":
-      return "The target is covered by another Salesforce UI layer. If it is an ambient overlay, dismiss it or capture evidence with dismissOverlays enabled. If the cover is a Classic Setup frame host such as force-aloha-page, use the same-origin iframe escape hatch with direct agent-browser commands until SF Browser can retry in-frame automatically.";
+      return "The target is covered by another Salesforce UI layer. If it is an ambient overlay, dismiss it or capture evidence with dismissOverlays enabled. Checkbox and switch controls should use sf_browser_set_toggle, which includes the keyboard-first Classic Setup adapter. Other ref actions report the outcome of their automatic in-frame retry.";
     case "element-not-found":
       return "The target element was not found or was not interactable. Snapshot with focus terms, check overlays/modals, then retry with a visible ref.";
     case "timeout":

@@ -22,9 +22,30 @@ describe("snapshot summary", () => {
     expect(summary).toContain("📍 Page:");
     expect(summary).toContain("Full snapshot: /tmp/snapshot.txt");
     expect(summary).toContain('heading "Agentforce Agents"');
-    expect(summary).toContain('switch "label" [checked=true, ref=e189]');
+    expect(summary).toContain("label: ON · editable · Agentforce Agents · e189");
     expect(summary).toContain('button "New Agent" [ref=e175]');
     expect(summary).toContain("Rows: Demo Greeter");
+  });
+
+  it("renders toggles as explicit state and prioritizes focused commit controls", () => {
+    const noisyToggles = Array.from(
+      { length: 32 },
+      (_, index) => `- checkbox "Setting ${index}" [checked=false, ref=e${index + 10}]`,
+    );
+    const summary = summarizeSnapshot({
+      snapshot: [
+        '- heading "Session Timeout" [level=3, ref=e1]',
+        ...noisyToggles,
+        '- checkbox "Force logout" [checked=true, disabled, ref=e90]',
+        '- button " Save " [ref=e91]',
+      ].join("\n"),
+      fullSnapshotPath: "/tmp/snapshot.txt",
+      focus: ["Save", "Force logout"],
+    });
+
+    expect(summary).toContain("🎚 Toggles:");
+    expect(summary).toContain("Force logout: ON · disabled · Session Timeout · e90");
+    expect(summary).toContain('button " Save " [ref=e91]');
   });
 
   it("classifies URLs and Salesforce surfaces", () => {

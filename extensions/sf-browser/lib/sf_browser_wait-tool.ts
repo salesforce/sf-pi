@@ -5,6 +5,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { DEFAULT_AGENT_BROWSER_TIMEOUT_MS } from "./constants.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { renderBrowserToolCall, renderBrowserToolResult } from "./browser-render.ts";
 import { checkpointEvidenceLabel } from "./evidence-policy.ts";
 import {
   defaultCheckpointEvidenceTarget,
@@ -20,7 +21,7 @@ import {
   type LightningWaitModeValue,
   type LightningWaitOutcome,
 } from "./lightning-wait.ts";
-import { captureEvidence } from "./operations.ts";
+import { captureVisualCheckpoint } from "./operations.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -118,6 +119,9 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
       "save-result classifies an outcome and is never itself a success assertion.",
       "After ambiguous or timed-out waits, snapshot or verify through API; use the installed Browser guide path declared in <sf_engineering_constitution> for the full interaction loop.",
     ],
+    renderCall: (args, theme) => renderBrowserToolCall(SF_BROWSER_WAIT_TOOL_NAME, args, theme),
+    renderResult: (result, options, theme, context) =>
+      renderBrowserToolResult(SF_BROWSER_WAIT_TOOL_NAME, result, options, theme, context),
     parameters: Type.Object({
       condition: WaitConditionSchema,
       checkpointEvidence: Type.Optional(
@@ -128,7 +132,7 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
       ),
       checkpointEvidenceTarget: Type.Optional(CheckpointEvidenceTargetMode),
     }),
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
       const condition = params.condition as WaitCondition;
       const stopTimer = startTimer();
       try {
@@ -194,7 +198,18 @@ export function registerSfBrowserWaitTool(pi: ExtensionAPI): void {
           })
         : undefined;
       const checkpoint = checkpointLabel
-        ? await captureEvidence(pi, ctx, { label: checkpointLabel, imageMode: "thumbnail" }, signal)
+        ? await captureVisualCheckpoint(
+            pi,
+            ctx,
+            {
+              label: checkpointLabel,
+              imageMode: "thumbnail",
+              stepId: toolCallId,
+              phase: "checkpoint",
+              toolName: SF_BROWSER_WAIT_TOOL_NAME,
+            },
+            signal,
+          )
         : undefined;
       return {
         content: checkpoint ? [...content, ...checkpoint.content] : content,

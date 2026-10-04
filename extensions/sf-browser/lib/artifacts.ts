@@ -21,6 +21,9 @@ export interface BrowserEvidenceCapture {
   id: number;
   label: string;
   path: string;
+  stepId?: string;
+  phase?: string;
+  toolName?: string;
   thumbnailPath?: string;
   createdAt: string;
   imageMode: EvidenceImageMode;

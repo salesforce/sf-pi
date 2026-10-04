@@ -3,6 +3,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
+import { renderBrowserToolCall, renderBrowserToolResult } from "./browser-render.ts";
 import { captureEvidence } from "./operations.ts";
 import { readEffectiveSfBrowserSettings } from "./settings.ts";
 
@@ -24,6 +25,16 @@ export function registerSfBrowserCaptureEvidenceTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_browser_capture_evidence with imageMode=thumbnail when the model should inspect the current screen; use imageMode=artifact for repeated or batch captures.",
     ],
+    renderCall: (args, theme) =>
+      renderBrowserToolCall(SF_BROWSER_CAPTURE_EVIDENCE_TOOL_NAME, args, theme),
+    renderResult: (result, options, theme, context) =>
+      renderBrowserToolResult(
+        SF_BROWSER_CAPTURE_EVIDENCE_TOOL_NAME,
+        result,
+        options,
+        theme,
+        context,
+      ),
     parameters: Type.Object({
       label: Type.Optional(
         Type.String({ description: "Short public-safe label for the evidence file." }),
@@ -78,7 +89,7 @@ export function registerSfBrowserCaptureEvidenceTool(pi: ExtensionAPI): void {
         }),
       ),
     }),
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
       const settings = readEffectiveSfBrowserSettings(ctx.cwd);
       return captureEvidence(
         pi,
@@ -88,6 +99,9 @@ export function registerSfBrowserCaptureEvidenceTool(pi: ExtensionAPI): void {
           dismissOverlays: settings.dismissOverlays,
           includeSetupAuditTrail: settings.includeSetupAuditTrail,
           ...(params as Record<string, unknown>),
+          stepId: toolCallId,
+          phase: "explicit",
+          toolName: SF_BROWSER_CAPTURE_EVIDENCE_TOOL_NAME,
         },
         signal,
       );

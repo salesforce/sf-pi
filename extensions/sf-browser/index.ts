@@ -62,6 +62,7 @@ import { registerSfBrowserOpenOrgTool } from "./lib/sf_browser_open_org-tool.ts"
 import { registerSfBrowserPressTool } from "./lib/sf_browser_press-tool.ts";
 import { registerSfBrowserResolvePathTool } from "./lib/sf_browser_resolve_path-tool.ts";
 import { registerSfBrowserSelectTool } from "./lib/sf_browser_select-tool.ts";
+import { registerSfBrowserSetToggleTool } from "./lib/sf_browser_set_toggle-tool.ts";
 import { registerSfBrowserSnapshotTool } from "./lib/sf_browser_snapshot-tool.ts";
 import { registerSfBrowserWaitTool } from "./lib/sf_browser_wait-tool.ts";
 
@@ -77,6 +78,7 @@ export default function sfBrowser(pi: ExtensionAPI): void {
     registerSfBrowserClickTool(pi);
     registerSfBrowserFillTool(pi);
     registerSfBrowserSelectTool(pi);
+    registerSfBrowserSetToggleTool(pi);
     registerSfBrowserPressTool(pi);
     registerSfBrowserEditorTool(pi);
     registerSfBrowserWaitTool(pi);
@@ -321,6 +323,7 @@ function buildHelpText(): string {
     "  sf_browser_click             Click a ref from the latest snapshot.",
     "  sf_browser_fill              Fill a ref from the latest snapshot.",
     "  sf_browser_select            Select values in Salesforce select/listbox refs.",
+    "  sf_browser_set_toggle        Set checkbox/switch state idempotently with visual proof.",
     "  sf_browser_press             Press keyboard keys such as Enter or Escape.",
     "  sf_browser_editor            Detect/read/write visible editor surfaces; never clicks Save/Apply.",
     "  sf_browser_wait              Wait for one text, URL, load, Lightning, or delay condition with structured status.",

@@ -11,6 +11,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import {
+  findLatestBrowserSnapshotSession,
   markLatestBrowserSnapshotStale,
   recordBrowserSessionTargetOrg,
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
@@ -25,9 +26,16 @@ import {
 import { routeFromInput } from "./navigation-intent.ts";
 import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
 import { getSetupDestination, getSetupDestinationByPath } from "./setup-destinations.ts";
-import { redactUrl } from "./redaction.ts";
+import { redactText, redactUrl } from "./redaction.ts";
 import { fetchSetupAuditTrail, summarizeSetupAuditTrail } from "./setup-audit-trail.ts";
-import { resolveOpenOrgUrl, summarizeOpenTarget, type OpenOrgInput } from "./salesforce-open.ts";
+import {
+  resolveOpenOrgPlan,
+  resolveOpenOrgUrlFromPlan,
+  summarizeOpenTarget,
+  type OpenOrgInput,
+  type OpenOrgPlan,
+  type SalesforceOrgOpenMethod,
+} from "./salesforce-open.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -38,36 +46,44 @@ export async function openOrgInAgentBrowser(
   signal?: AbortSignal,
 ): Promise<{ text: string; details: Record<string, unknown> }> {
   const stopTimer = startTimer();
-  markLatestBrowserSnapshotStale(
-    ctx.sessionManager.getSessionId(),
-    "sf_browser_open_org navigation",
-  );
-  const open = await resolveOpenOrgUrl(pi, ctx, input, signal);
-  await runAgentBrowser(pi, ["open", open.url], { cwd: ctx.cwd, signal });
-  const navigationCorrection = await correctIgnoredStartPath(
-    pi,
-    ctx.cwd,
-    open.url,
-    open.path,
-    signal,
-  );
-  recordBrowserSessionTargetOrg(ctx.sessionManager.getSessionId(), open.targetOrg);
+  const sessionId = ctx.sessionManager.getSessionId();
+  const plan = await resolveOpenOrgPlan(pi, ctx, input);
+  const previous = findLatestBrowserSnapshotSession(sessionId);
+  markLatestBrowserSnapshotStale(sessionId, "sf_browser_open_org navigation");
+
+  const direct =
+    previous?.targetOrg === plan.targetOrg && plan.path
+      ? await trySameOrgDirectNavigation(pi, ctx.cwd, plan.path, signal)
+      : undefined;
+  let openMethod: SalesforceOrgOpenMethod = "same-org-direct";
+  let fallbackReason: string | undefined;
+  let navigationCorrection = { orgApplied: false, pathApplied: false };
+  if (!direct?.ok) {
+    const open = await resolveOpenOrgUrlFromPlan(pi, ctx, plan, signal);
+    openMethod = open.openMethod;
+    fallbackReason = direct?.reason ?? open.fallbackReason;
+    await runAgentBrowser(pi, ["open", open.url], { cwd: ctx.cwd, signal });
+    navigationCorrection = await correctIgnoredStartPath(pi, ctx.cwd, open.url, open.path, signal);
+  }
+  recordBrowserSessionTargetOrg(sessionId, plan.targetOrg);
   const duration = stopTimer();
   return {
     text: okText([
-      summarizeOpenTarget(open.targetOrg, open.path),
+      summarizeOpenTarget(plan.targetOrg, plan.path),
       input.purpose ? `Purpose: ${input.purpose}` : undefined,
-      ...formatVerifiedRoute(open.verifiedRoute),
+      `Open method: ${formatOpenMethod(openMethod)}`,
+      fallbackReason ? `Fallback reason: ${fallbackReason}` : undefined,
+      ...formatVerifiedRoute(plan.verifiedRoute),
       navigationCorrection.orgApplied ? "Post-login org correction: applied" : undefined,
       navigationCorrection.pathApplied ? "Post-login path correction: applied" : undefined,
       `Duration: ${duration.durationText}`,
       "",
-      buildOpenNextSteps(input, open.path),
+      buildOpenNextSteps(input, plan.path),
     ]),
     details: {
       ok: true,
-      targetOrg: open.targetOrg,
-      path: open.path,
+      targetOrg: plan.targetOrg,
+      path: plan.path,
       target: input.target,
       setup: input.setup,
       purpose: input.purpose,
@@ -76,11 +92,47 @@ export async function openOrgInAgentBrowser(
         navigationCorrection.orgApplied || navigationCorrection.pathApplied,
       orgCorrectionApplied: navigationCorrection.orgApplied,
       pathCorrectionApplied: navigationCorrection.pathApplied,
-      openGuidance: openGuidanceDetails(input, open.path),
-      ...(open.verifiedRoute ? { verifiedRoute: open.verifiedRoute } : {}),
+      openMethod,
+      fallbackReason,
+      openGuidance: openGuidanceDetails(input, plan.path),
+      ...(plan.verifiedRoute ? { verifiedRoute: plan.verifiedRoute } : {}),
       ...duration,
     },
   };
+}
+
+async function trySameOrgDirectNavigation(
+  pi: ExtensionAPI,
+  cwd: string,
+  requestedPath: string,
+  signal: AbortSignal | undefined,
+): Promise<{ ok: boolean; reason?: string }> {
+  const currentUrl = await getCurrentUrl(pi, cwd, signal);
+  const directUrl = currentUrl ? sameOrgUrlForPath(currentUrl, requestedPath) : undefined;
+  if (!currentUrl || !directUrl) {
+    return { ok: false, reason: "Same-org direct navigation had no verified Salesforce host." };
+  }
+  const expectedOrg = salesforceOrgHostKey(currentUrl);
+  try {
+    await runAgentBrowser(pi, ["open", directUrl], { cwd, signal });
+    const observedUrl = await getCurrentUrl(pi, cwd, signal);
+    if (
+      observedUrl &&
+      urlMatchesPath(observedUrl, requestedPath) &&
+      (!expectedOrg || salesforceOrgHostKey(observedUrl) === expectedOrg)
+    ) {
+      return { ok: true };
+    }
+    return { ok: false, reason: "Same-org direct navigation did not reach the requested path." };
+  } catch {
+    return { ok: false, reason: "Same-org direct navigation failed; regenerated org access." };
+  }
+}
+
+function formatOpenMethod(method: SalesforceOrgOpenMethod): string {
+  if (method === "same-org-direct") return "same-org direct path";
+  if (method === "in-process-singleaccess") return "in-process Salesforce single-access URL";
+  return "sf org open fallback";
 }
 
 async function correctIgnoredStartPath(
@@ -180,6 +232,13 @@ export async function captureEvidence(
     viewportWidth?: number;
     viewportHeight?: number;
     deviceScaleFactor?: number;
+    /** Internal visual-timeline metadata; not exposed by the public evidence tool schema. */
+    stepId?: string;
+    phase?: string;
+    toolName?: string;
+    ifChanged?: boolean;
+    forceThumbnail?: boolean;
+    currentUrl?: string;
   },
   signal?: AbortSignal,
 ): Promise<{ content: Array<TextContent | ImageContent>; details: Record<string, unknown> }> {
@@ -204,7 +263,37 @@ export async function captureEvidence(
     scrolledToRef = input.scrollToRef;
   }
 
-  await runAgentBrowser(pi, ["screenshot", planned.path], { cwd: ctx.cwd, signal });
+  await runAgentBrowser(
+    pi,
+    ["screenshot", planned.path, ...(input.ifChanged ? ["--if-changed"] : [])],
+    { cwd: ctx.cwd, signal },
+  );
+  if (!existsSync(planned.path) && input.ifChanged) {
+    const duration = stopTimer();
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: okText([
+            "Visual checkpoint skipped: the page image did not change.",
+            `Label: ${planned.label}`,
+            `Duration: ${duration.durationText}`,
+          ]),
+        },
+      ],
+      details: {
+        ok: true,
+        unchanged: true,
+        sessionId,
+        label: planned.label,
+        imageMode: mode,
+        viewport,
+        overlayDismissal,
+        scrolledToRef,
+        ...duration,
+      },
+    };
+  }
   if (!existsSync(planned.path)) {
     return buildMissingScreenshotCaptureResult({
       sessionId,
@@ -221,7 +310,7 @@ export async function captureEvidence(
   let image: ImageContent | null = null;
   let thumbnailPath: string | undefined;
   let dimensionNote: string | undefined;
-  if (mode === "thumbnail") {
+  if (mode === "thumbnail" || input.forceThumbnail) {
     const resized = await resizeImage(readFileSync(planned.path), "image/png", {
       maxWidth: viewport?.width ?? 1440,
       maxHeight: viewport?.height ?? 1000,
@@ -231,14 +320,16 @@ export async function captureEvidence(
     if (resized) {
       thumbnailPath = thumbnailPathForMime(planned.thumbnailPath, resized.mimeType);
       writeFileSync(thumbnailPath, Buffer.from(resized.data, "base64"));
-      image = { type: "image", data: resized.data, mimeType: resized.mimeType };
+      if (mode === "thumbnail") {
+        image = { type: "image", data: resized.data, mimeType: resized.mimeType };
+      }
       dimensionNote = formatDimensionNote(resized);
     }
   } else if (mode === "full") {
     image = imageContentFromFile(planned.path, "image/png");
   }
 
-  const currentUrl = await getCurrentUrl(pi, ctx.cwd, signal);
+  const currentUrl = input.currentUrl ?? (await getCurrentUrl(pi, ctx.cwd, signal));
   const setupAuditTrail = input.includeSetupAuditTrail
     ? await fetchSetupAuditTrail(
         pi,
@@ -253,6 +344,9 @@ export async function captureEvidence(
       id: planned.id,
       label: planned.label,
       path: planned.path,
+      stepId: input.stepId,
+      phase: input.phase,
+      toolName: input.toolName,
       thumbnailPath,
       createdAt: new Date().toISOString(),
       imageMode: mode,
@@ -291,6 +385,37 @@ export async function captureEvidence(
     content,
     details: { ok: true, sessionId, capture, overlayDismissal, scrolledToRef, ...duration },
   };
+}
+
+export async function captureVisualCheckpoint(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  input: Parameters<typeof captureEvidence>[2],
+  signal?: AbortSignal,
+): Promise<Awaited<ReturnType<typeof captureEvidence>>> {
+  try {
+    return await captureEvidence(pi, ctx, input, signal);
+  } catch (error) {
+    const message = redactText(error instanceof Error ? error.message : String(error))
+      .replace(/\s+/gu, " ")
+      .trim();
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: okText([
+            "Visual checkpoint unavailable; the browser action itself completed.",
+            message ? `Evidence issue: ${message}` : undefined,
+          ]),
+        },
+      ],
+      details: {
+        ok: false,
+        code: "visual-checkpoint-failed",
+        evidenceError: message,
+      },
+    };
+  }
 }
 
 export function formatMissingScreenshotCaptureText(input: {
@@ -348,9 +473,7 @@ function buildMissingScreenshotCaptureResult(input: {
   };
 }
 
-function formatVerifiedRoute(
-  verifiedRoute: Awaited<ReturnType<typeof resolveOpenOrgUrl>>["verifiedRoute"],
-): string[] {
+function formatVerifiedRoute(verifiedRoute: OpenOrgPlan["verifiedRoute"]): string[] {
   if (!verifiedRoute) return [];
   const lines = ["Verified route:"];
   if (verifiedRoute.objectApiName) lines.push(`- Object: ${verifiedRoute.objectApiName}`);

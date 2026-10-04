@@ -101,6 +101,14 @@ export interface GetCachedSalesforceTargetOptions {
   timeoutMs?: number;
 }
 
+export interface GenerateSalesforceFrontdoorUrlOptions {
+  cwd: string;
+  targetOrg?: string;
+  path?: string;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
 export interface SalesforceRequestInput {
   method: HttpMethod;
   /** Data resource by default; use instance scope only for non-data routes such as SOAP. */
@@ -265,6 +273,37 @@ export async function getCachedSalesforceTarget(
     apiVersion,
     apiVersionSource: classifyCachedApiVersion(apiVersion, fields, config.configuredApiVersion),
   });
+}
+
+/**
+ * Generate a single-use Salesforce UI Bridge URL entirely in-process.
+ *
+ * This intentionally reuses the shared SDK Org cache without initializing API
+ * version discovery: browser authentication needs Org.getFrontDoorUrl(), not a
+ * REST data session. Callers must never return the generated URL to model or
+ * user output because it is session-bearing and single-use.
+ */
+export async function generateSalesforceFrontdoorUrl(
+  options: GenerateSalesforceFrontdoorUrlOptions,
+): Promise<string> {
+  if (options.signal?.aborted) throw new SalesforceConnectionAbortedError();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_CONNECTION_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
+  const config = await waitForCaller(
+    resolveConnectionConfig(options.cwd, options.targetOrg),
+    remainingCallerTime(deadline, timeoutMs),
+    options.signal,
+  );
+  const org = await orgFromAlias(config.targetOrg, {
+    cacheKey: connectionCacheKey(options.cwd, config.targetOrg),
+    timeoutMs: remainingCallerTime(deadline, timeoutMs),
+    signal: options.signal,
+  });
+  return waitForCaller(
+    org.getFrontDoorUrl(options.path),
+    remainingCallerTime(deadline, timeoutMs),
+    options.signal,
+  );
 }
 
 /** Return the shared session's already-versioned SDK Connection for SDK-specific adapters. */

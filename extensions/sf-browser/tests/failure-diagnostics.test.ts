@@ -16,6 +16,9 @@ describe("failure diagnostics", () => {
 
   it("classifies common browser failure kinds", () => {
     expect(classifyBrowserFailure("Timeout 25000ms exceeded")).toBe("timeout");
+    expect(classifyBrowserFailure('Could not verify "Disable timeout warning popup"')).toBe(
+      "unknown",
+    );
     expect(classifyBrowserFailure("execution context was destroyed during navigation")).toBe(
       "navigation",
     );
@@ -54,8 +57,8 @@ describe("failure diagnostics", () => {
 
   it("returns recovery hints for known failure kinds", () => {
     expect(recoveryHint("stale-ref")).toContain("fresh ref");
-    expect(recoveryHint("covered-element")).toContain("Classic Setup frame host");
-    expect(recoveryHint("covered-element")).toContain("force-aloha-page");
+    expect(recoveryHint("covered-element")).toContain("sf_browser_set_toggle");
+    expect(recoveryHint("covered-element")).toContain("Classic Setup adapter");
     expect(recoveryHint("timeout")).toContain("timed out");
     expect(recoveryHint("browser-runtime-timeout")).toContain("runtime may be wedged");
     expect(recoveryHint("browser-runtime-timeout")).toContain("Salesforce org alias");

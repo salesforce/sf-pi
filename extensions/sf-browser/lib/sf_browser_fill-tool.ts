@@ -3,10 +3,12 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { renderBrowserToolCall, renderBrowserToolResult } from "./browser-render.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
 import { requireFreshBrowserRef } from "./ref-freshness.ts";
 import { retryInFrameAction } from "./in-frame-actions.ts";
+import { captureVisualCheckpoint } from "./operations.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -22,6 +24,9 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_browser_fill for normal text inputs. For Salesforce lookup or combobox controls, fill, wait for options, snapshot, then click the option ref.",
     ],
+    renderCall: (args, theme) => renderBrowserToolCall(SF_BROWSER_FILL_TOOL_NAME, args, theme),
+    renderResult: (result, options, theme, context) =>
+      renderBrowserToolResult(SF_BROWSER_FILL_TOOL_NAME, result, options, theme, context),
     parameters: Type.Object({
       ref: Type.String({ description: "Input ref from sf_browser_snapshot, for example @e4." }),
       value: Type.String({ description: "Value to fill." }),
@@ -29,7 +34,7 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
         Type.Boolean({ description: "When true, redact the filled value from tool output." }),
       ),
     }),
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
       requireFreshBrowserRef(ctx.sessionManager.getSessionId(), params.ref);
       const stopTimer = startTimer();
       let recoveredIframeRef: string | undefined;
@@ -56,11 +61,30 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
               ref: params.ref,
               durationMs: duration.durationMs,
             },
-            error,
+            "error" in retry && retry.error
+              ? new Error(
+                  `${error instanceof Error ? error.message : String(error)}\nAutomatic in-frame retry failed: ${retry.error}`,
+                )
+              : error,
             signal,
           );
         }
       }
+      const afterActionEvidence = await captureVisualCheckpoint(
+        pi,
+        ctx,
+        {
+          label: `after-fill-${params.ref}`,
+          imageMode: "artifact",
+          dismissOverlays: false,
+          ifChanged: true,
+          forceThumbnail: true,
+          stepId: toolCallId,
+          phase: "after-action",
+          toolName: SF_BROWSER_FILL_TOOL_NAME,
+        },
+        signal,
+      );
       const duration = stopTimer();
       const valueText = params.secret ? "<redacted>" : params.value;
       return {
@@ -83,6 +107,8 @@ export function registerSfBrowserFillTool(pi: ExtensionAPI): void {
           ref: params.ref,
           secret: params.secret === true,
           recoveredIframeRef,
+          afterActionEvidence: afterActionEvidence.details.capture,
+          visualUnchanged: afterActionEvidence.details.unchanged === true,
           ...duration,
         },
       };

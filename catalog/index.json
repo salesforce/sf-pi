@@ -192,6 +192,7 @@
       "sf_browser_click",
       "sf_browser_fill",
       "sf_browser_select",
+      "sf_browser_set_toggle",
       "sf_browser_press",
       "sf_browser_editor",
       "sf_browser_wait",
@@ -205,16 +206,16 @@
     "docs": {
       "intentGroup": "Work with Salesforce orgs",
       "agentGuide": "AGENT_GUIDE.md",
-      "summary": "Salesforce-aware agent-browser affordance layer for UI last-mile work that Salesforce APIs cannot cover. It registers a cache-first /sf-browser panel plus a small hot-path browser tool set, one discriminated navigation target and wait condition, local route planning with exact org verification only where required, fresh-ref enforcement, curated Setup Destinations, recognized ambient-overlay dismissal, Browser Evidence, and lazy agent-browser invocation after explicit command/tool intent.",
+      "summary": "Salesforce-aware agent-browser affordance layer for UI last-mile work that Salesforce APIs cannot cover. It registers a cache-first /sf-browser panel plus a small hot-path browser tool set, one discriminated navigation target and wait condition, in-process single-access org opening with same-org direct navigation and CLI fallback, local route planning with exact org verification only where required, fresh-ref enforcement, idempotent toggle state changes, curated Setup Destinations, recognized ambient-overlay dismissal, changed-only Browser Evidence, compact result cards, and lazy agent-browser invocation after explicit command/tool intent.",
       "primaryFiles": [
         "index.ts",
         "lib/agent-browser.ts",
-        "lib/navigation-intent.ts",
-        "lib/ref-freshness.ts",
         "lib/operations.ts",
+        "lib/toggle-control.ts",
+        "lib/browser-render.ts",
         "lib/overlay-dismissal.ts",
         "lib/salesforce-path-resolver.ts",
-        "lib/evidence-report.ts"
+        "lib/salesforce-open.ts"
       ],
       "stateFiles": [
         "<globalAgentDir>/sf-pi/browser-artifacts/sessions/<session-id>/index.json",
@@ -229,9 +230,11 @@
         "Browser Evidence is artifact-first and stored outside the project by default.",
         "Snapshot overlay dismissal targets only recognized ambient Salesforce assistance surfaces and never clicks arbitrary Close controls.",
         "Known paths, home, Setup, Data Cloud, object-list, object-new, and record-view targets resolve locally; only targets requiring exact org lookup enter Salesforce route verification.",
-        "Org opening verifies the requested path; on mismatch it reopens the explicit target-org frontdoor once, then allows one direct-path correction while requiring the authenticated landing host to remain stable.",
+        "Same-org navigation reuses the authenticated Salesforce host; cold and cross-org navigation generates a single-use URL in-process through Salesforce singleaccess, with sf org open retained only as a bounded fallback.",
+        "Org opening verifies the requested path and allows one direct-path correction while requiring the authenticated landing host to remain stable.",
         "Ref-based actions reject stale, expired, missing, or unpublished snapshot refs before invoking agent-browser, and conditional wait timeouts fail closed.",
         "Snapshots publish compact ref metadata so SF Guardrail can classify committing click refs from the latest accessible label.",
+        "Toggle operations require an explicit desired state, capture before/after evidence, verify a fresh observed state, and never claim pending-save state is persisted.",
         "Session-bearing Salesforce org-open URLs are passed to agent-browser but not echoed in tool results."
       ],
       "referenceRoots": [
@@ -245,7 +248,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6434
+    "srcLoc": 7989
   },
   {
     "id": "sf-code-analyzer",

@@ -3,6 +3,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { markLatestBrowserSnapshotStale } from "../../../lib/common/sf-browser-snapshot-state.ts";
+import { renderBrowserToolCall, renderBrowserToolResult } from "./browser-render.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import {
   type AcceptedBrowserDialog,
@@ -13,7 +14,7 @@ import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { STALE_REF_HINT } from "./guidance.ts";
 import { requireFreshBrowserRef } from "./ref-freshness.ts";
 import { retryInFrameAction } from "./in-frame-actions.ts";
-import { captureEvidence } from "./operations.ts";
+import { captureEvidence, captureVisualCheckpoint } from "./operations.ts";
 import { startTimer } from "./timing.ts";
 import { okText } from "./tool-support.ts";
 
@@ -29,6 +30,9 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_browser_click only with refs from the latest sf_browser_snapshot; wait and snapshot again after page-changing Salesforce clicks.",
     ],
+    renderCall: (args, theme) => renderBrowserToolCall(SF_BROWSER_CLICK_TOOL_NAME, args, theme),
+    renderResult: (result, options, theme, context) =>
+      renderBrowserToolResult(SF_BROWSER_CLICK_TOOL_NAME, result, options, theme, context),
     parameters: Type.Object({
       ref: Type.String({ description: "Element ref from sf_browser_snapshot, for example @e3." }),
       reason: Type.Optional(
@@ -41,7 +45,7 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
         }),
       ),
     }),
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
       requireFreshBrowserRef(ctx.sessionManager.getSessionId(), params.ref);
       const stopTimer = startTimer();
       const beforeEvidence = shouldCaptureMutationBefore(params)
@@ -50,7 +54,11 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
             ctx,
             {
               label: evidenceLabelForMutationBefore("click", params.ref),
-              imageMode: "thumbnail",
+              imageMode: "artifact",
+              forceThumbnail: true,
+              stepId: toolCallId,
+              phase: "before",
+              toolName: SF_BROWSER_CLICK_TOOL_NAME,
             },
             signal,
           )
@@ -89,7 +97,11 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
               ref: params.ref,
               durationMs: duration.durationMs,
             },
-            error,
+            "error" in retry && retry.error
+              ? new Error(
+                  `${error instanceof Error ? error.message : String(error)}\nAutomatic in-frame retry failed: ${retry.error}`,
+                )
+              : error,
             signal,
           );
         }
@@ -98,10 +110,24 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
         ctx.sessionManager.getSessionId(),
         `sf_browser_click ${params.ref}`,
       );
+      const afterActionEvidence = await captureVisualCheckpoint(
+        pi,
+        ctx,
+        {
+          label: `after-click-${params.ref}`,
+          imageMode: "artifact",
+          dismissOverlays: false,
+          ifChanged: true,
+          forceThumbnail: true,
+          stepId: toolCallId,
+          phase: "after-action",
+          toolName: SF_BROWSER_CLICK_TOOL_NAME,
+        },
+        signal,
+      );
       const duration = stopTimer();
       return {
         content: [
-          ...(beforeEvidence?.content ?? []),
           {
             type: "text" as const,
             text: okText([
@@ -125,6 +151,8 @@ export function registerSfBrowserClickTool(pi: ExtensionAPI): void {
           reason: params.reason,
           mutation: params.mutation,
           beforeMutationEvidence: beforeEvidence?.details.capture,
+          afterActionEvidence: afterActionEvidence.details.capture,
+          visualUnchanged: afterActionEvidence.details.unchanged === true,
           recoveredIframeRef,
           acceptedDialogs,
           ...duration,

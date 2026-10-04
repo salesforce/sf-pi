@@ -4,9 +4,12 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { writeLatestBrowserSnapshotRefs } from "../../../lib/common/sf-browser-snapshot-state.ts";
+import { renderBrowserToolCall, renderBrowserToolResult } from "./browser-render.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
 import { RAW_AGENT_BROWSER_ESCAPE_HATCH, STALE_REF_HINT } from "./guidance.ts";
+import { expandMissingIframeSnapshots } from "./in-frame-actions.ts";
 import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
+import { captureVisualCheckpoint } from "./operations.ts";
 import { readEffectiveSfBrowserSettings } from "./settings.ts";
 import { snapshotOutputModeFromUnknown, summarizeSnapshot } from "./snapshot-summary.ts";
 import { startTimer } from "./timing.ts";
@@ -31,6 +34,9 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
       "When the effective dismissOverlays setting is enabled, snapshots close only recognized ambient Salesforce overlays before publishing refs.",
       "sf_browser_snapshot defaults to outputMode=summary to avoid context dumps; request outputMode=full only when the summary misses needed refs.",
     ],
+    renderCall: (args, theme) => renderBrowserToolCall(SF_BROWSER_SNAPSHOT_TOOL_NAME, args, theme),
+    renderResult: (result, options, theme, context) =>
+      renderBrowserToolResult(SF_BROWSER_SNAPSHOT_TOOL_NAME, result, options, theme, context),
     parameters: Type.Object({
       interactive: Type.Optional(
         Type.Boolean({ description: "Only include interactive elements. Defaults to true." }),
@@ -48,7 +54,7 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
         }),
       ),
     }),
-    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
       const stopTimer = startTimer();
       const settings = readEffectiveSfBrowserSettings(ctx.cwd);
       const overlayDismissal = settings.dismissOverlays
@@ -64,7 +70,19 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
       const result = await runAgentBrowser(pi, args, { cwd: ctx.cwd, signal });
       const currentUrl = await getCurrentUrl(pi, ctx.cwd, signal);
       const sessionId = ctx.sessionManager.getSessionId();
-      const rawSnapshot = result.stdout.trim();
+      const settledSnapshot = await settleClassicSetupSnapshot(
+        pi,
+        ctx.cwd,
+        currentUrl,
+        result.stdout.trim(),
+        signal,
+      );
+      const expandedFrames = await expandMissingIframeSnapshots(
+        pi,
+        { cwd: ctx.cwd, snapshot: settledSnapshot.snapshot, sessionId, currentUrl },
+        signal,
+      );
+      const rawSnapshot = expandedFrames.snapshot;
       const fullSnapshotPath = writeBrowserArtifact(rawSnapshot, {
         label: "snapshot",
         extension: "txt",
@@ -78,7 +96,6 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
       });
       const outputMode = snapshotOutputModeFromUnknown(params.outputMode);
       const focus = Array.isArray(params.focus) ? params.focus : [];
-      const duration = stopTimer();
 
       const body = buildSnapshotBody(
         rawSnapshot,
@@ -88,10 +105,30 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
         currentUrl,
         sessionId,
       );
+      const visualEvidence = await captureVisualCheckpoint(
+        pi,
+        ctx,
+        {
+          label: "snapshot-current-page",
+          imageMode: "artifact",
+          dismissOverlays: false,
+          ifChanged: true,
+          forceThumbnail: true,
+          currentUrl,
+          stepId: toolCallId,
+          phase: "observed",
+          toolName: SF_BROWSER_SNAPSHOT_TOOL_NAME,
+        },
+        signal,
+      );
+      const duration = stopTimer();
       const text = okText([
         body,
         overlayDismissal.dismissedRefs.length
           ? `Dismissed ambient overlays: ${overlayDismissal.dismissedRefs.join(", ")}`
+          : undefined,
+        expandedFrames.expandedFrameRefs.length
+          ? `Expanded iframe controls: ${expandedFrames.expandedFrameRefs.join(", ")}`
           : undefined,
         `Duration: ${duration.durationText}`,
         "",
@@ -109,6 +146,10 @@ export function registerSfBrowserSnapshotTool(pi: ExtensionAPI): void {
           focus,
           rawLength: rawSnapshot.length,
           overlayDismissal,
+          expandedFrameRefs: expandedFrames.expandedFrameRefs,
+          classicSetupPolls: settledSnapshot.polls,
+          evidence: visualEvidence.details.capture,
+          visualUnchanged: visualEvidence.details.unchanged === true,
           ...duration,
         },
       };
@@ -150,6 +191,77 @@ function buildSnapshotBody(
   }
 
   return summarizeSnapshot({ snapshot: rawSnapshot, fullSnapshotPath, focus, url });
+}
+
+export type SetupSnapshotClassification = "iframe" | "native-content" | "empty";
+
+export function classifySetupSnapshot(snapshot: string): SetupSnapshotClassification {
+  if (/^\s*- Iframe\b/imu.test(snapshot)) return "iframe";
+  for (const rawLine of snapshot.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (
+      /^- (checkbox|switch|textbox|listbox|columnheader|rowheader|gridcell|cell|table|grid)\b/iu.test(
+        line,
+      )
+    ) {
+      return "native-content";
+    }
+    if (/^- combobox\b/iu.test(line) && !/"(?:Search Setup|Quick Find)"/iu.test(line)) {
+      return "native-content";
+    }
+    if (
+      /^- button "\s*(?:New|Save|Create|Add|Edit|Delete|Assign|Activate|Enable|Disable|View)\b/iu.test(
+        line,
+      )
+    ) {
+      return "native-content";
+    }
+  }
+  return "empty";
+}
+
+async function settleClassicSetupSnapshot(
+  pi: ExtensionAPI,
+  cwd: string,
+  currentUrl: string | undefined,
+  initialSnapshot: string,
+  signal: AbortSignal | undefined,
+): Promise<{ snapshot: string; polls: number }> {
+  if (!/\/lightning\/setup\//iu.test(currentUrl ?? "")) {
+    return { snapshot: initialSnapshot, polls: 0 };
+  }
+  const initialKind = classifySetupSnapshot(initialSnapshot);
+  if (initialKind !== "empty") return { snapshot: initialSnapshot, polls: 0 };
+
+  try {
+    const host = await runAgentBrowser(
+      pi,
+      [
+        "eval",
+        `(() => { const host = document.querySelector('force-aloha-page'); if (!host) return false; const style = getComputedStyle(host); const rect = host.getBoundingClientRect(); return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0 && host.getAttribute('aria-hidden') !== 'true'; })()`,
+      ],
+      { cwd, signal, timeoutMs: 10_000 },
+    );
+    if (host.stdout.trim() !== "true") return { snapshot: initialSnapshot, polls: 0 };
+  } catch {
+    return { snapshot: initialSnapshot, polls: 0 };
+  }
+
+  for (let polls = 1; polls <= 8; polls += 1) {
+    if (polls > 1) {
+      await runAgentBrowser(pi, ["wait", "250"], { cwd, signal, timeoutMs: 5_000 });
+    }
+    const refreshed = await runAgentBrowser(pi, ["snapshot", "-i", "-c"], {
+      cwd,
+      signal,
+      timeoutMs: 15_000,
+    });
+    const snapshot = refreshed.stdout.trim();
+    const kind = classifySetupSnapshot(snapshot);
+    if (kind === "iframe") return { snapshot, polls };
+    if (kind === "native-content") return { snapshot: initialSnapshot, polls };
+  }
+  return { snapshot: initialSnapshot, polls: 8 };
 }
 
 async function getCurrentUrl(

@@ -24,6 +24,7 @@ const MAX_LINE_BYTES = 260;
 const MAX_FOCUS_LINES = 24;
 const MAX_ALERT_LINES = 12;
 const MAX_ACTION_LINES = 28;
+const MAX_TOGGLE_LINES = 20;
 const MAX_NAV_LINES = 12;
 const MAX_SEMANTIC_LINES = 12;
 const MAX_FIELD_EDIT_LINES = 8;
@@ -89,7 +90,8 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
   const relatedLists = collectRelatedLists(lines, input.url);
   const objectListControls = collectObjectListControls(lines, input.url);
   const quickAction = summarizeQuickAction(lines, input.url);
-  const actions = collectPrimaryActions(lines, alerts);
+  const toggles = collectToggles(lines, focusTerms);
+  const actions = collectPrimaryActions(lines, alerts, focusTerms);
   const setupNavigation = collectSetupNavigation(lines, focusMatches);
   const tableSummary = summarizeTables(lines, focusTerms);
   const editorHints = collectEditorHints(lines);
@@ -110,6 +112,7 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
   appendSection(sections, "🔗 Related lists", relatedLists);
   appendSection(sections, "📋 Object list controls", objectListControls);
   appendSection(sections, "⚡ Quick action", quickAction);
+  appendSection(sections, "🎚 Toggles", toggles);
   appendSection(sections, "🎯 Primary actions", actions);
   appendSection(sections, "🗂️ Setup navigation", setupNavigation);
   appendSection(sections, "📊 Tables / lists", tableSummary);
@@ -125,6 +128,7 @@ export function summarizeSnapshot(input: SnapshotSummaryInput): string {
     !relatedLists.length &&
     !objectListControls.length &&
     !quickAction.length &&
+    !toggles.length &&
     !actions.length &&
     !setupNavigation.length &&
     !tableSummary.length &&
@@ -247,18 +251,51 @@ function collectAlerts(lines: string[], exclude: string[]): string[] {
   return unique(out);
 }
 
-function collectPrimaryActions(lines: string[], exclude: string[]): string[] {
+function collectPrimaryActions(lines: string[], exclude: string[], focusTerms: string[]): string[] {
   const excluded = new Set(exclude);
-  const out: string[] = [];
-  for (const line of lines) {
+  const candidates = lines.filter((line) => {
     const formatted = formatLine(line);
-    if (excluded.has(formatted)) continue;
-    if (isGlobalChromeLine(line)) continue;
-    if (!isPrimaryActionLine(line)) continue;
-    out.push(formatted);
-    if (out.length >= MAX_ACTION_LINES) break;
+    return !excluded.has(formatted) && !isGlobalChromeLine(line) && isPrimaryActionLine(line);
+  });
+  const focused = candidates.filter((line) =>
+    focusTerms.some((term) => line.toLowerCase().includes(term.toLowerCase())),
+  );
+  const commits = candidates.filter((line) =>
+    /^(Save|Cancel|Apply|Submit)$/iu.test(extractQuotedName(line).trim()),
+  );
+  return unique([...focused, ...commits, ...candidates].map(formatLine)).slice(0, MAX_ACTION_LINES);
+}
+
+function collectToggles(lines: string[], focusTerms: string[]): string[] {
+  const toggles: Array<{ line: string; summary: string }> = [];
+  let section: string | undefined;
+  for (const line of lines) {
+    if (/^- heading /.test(line)) section = extractQuotedName(line).trim() || section;
+    const match = line.match(/^- (checkbox|switch) "([^"]+)" \[([^\]]+)\]/iu);
+    if (!match) continue;
+    const attributes = match[3] ?? "";
+    const checked = attributes.match(/\bchecked=(true|false)\b/iu)?.[1];
+    if (!checked) continue;
+    const ref = extractRef(line);
+    toggles.push({
+      line,
+      summary: [
+        `${(match[2] ?? "Toggle").trim()}: ${checked === "true" ? "ON" : "OFF"}`,
+        /\bdisabled\b/iu.test(attributes) ? "disabled" : "editable",
+        section,
+        ref,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    });
   }
-  return unique(out);
+  const focused = toggles.filter((toggle) =>
+    focusTerms.some((term) => toggle.line.toLowerCase().includes(term.toLowerCase())),
+  );
+  return unique([...focused, ...toggles].map((toggle) => toggle.summary)).slice(
+    0,
+    MAX_TOGGLE_LINES,
+  );
 }
 
 function collectSetupNavigation(lines: string[], exclude: string[]): string[] {
@@ -528,9 +565,9 @@ function extractRef(line: string): string | undefined {
 }
 
 function isPrimaryActionLine(line: string): boolean {
-  if (/^- (switch|checkbox|combobox|searchbox|textbox|listbox) /.test(line)) return true;
+  if (/^- (combobox|searchbox|textbox|listbox) /.test(line)) return true;
   if (!/^- (button|link) /.test(line)) return false;
-  const label = extractQuotedName(line);
+  const label = extractQuotedName(line).trim();
   if (!label) return false;
   return PRIMARY_ACTION_LABELS.some(
     (primary) => label === primary || label.startsWith(`${primary} `),

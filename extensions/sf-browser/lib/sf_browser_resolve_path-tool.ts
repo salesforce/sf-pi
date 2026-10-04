@@ -2,6 +2,7 @@
 /** Structured Salesforce route/path resolver tool for SF Browser. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { renderBrowserToolCall, renderBrowserToolResult } from "./browser-render.ts";
 import { isResolvedSalesforcePath, resolveSalesforcePath } from "./salesforce-path-resolver.ts";
 import { SalesforceNavigationTargetSchema } from "./salesforce-path-schema.ts";
 import { getSetupDestination } from "./setup-destinations.ts";
@@ -21,6 +22,10 @@ export function registerSfBrowserResolvePathTool(pi: ExtensionAPI): void {
       "Use sf_browser_resolve_path when you want to preview or disambiguate Salesforce navigation before opening the browser.",
       "For fuzzy Setup Destination matches, ask the user to choose when the tool returns candidates instead of guessing.",
     ],
+    renderCall: (args, theme) =>
+      renderBrowserToolCall(SF_BROWSER_RESOLVE_PATH_TOOL_NAME, args, theme),
+    renderResult: (result, options, theme, context) =>
+      renderBrowserToolResult(SF_BROWSER_RESOLVE_PATH_TOOL_NAME, result, options, theme, context),
     parameters: Type.Object({
       target: SalesforceNavigationTargetSchema,
     }),
