@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.323.0](https://github.com/salesforce/sf-pi/compare/v0.322.0...v0.323.0) (2026-10-04)
+
+
+### Features
+
+* **sf-browser:** harden Setup and app navigation ([e8a93dc](https://github.com/salesforce/sf-pi/commit/e8a93dc52e3343951606d4104c1d29aaff13df6c))
+
 ## [0.322.0](https://github.com/salesforce/sf-pi/compare/v0.321.0...v0.322.0) (2026-10-04)
 
 
