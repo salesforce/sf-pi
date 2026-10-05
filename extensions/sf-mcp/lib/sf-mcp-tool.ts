@@ -11,15 +11,20 @@ import {
   inspectPresetRuntime,
   setManagedPresetEnabled,
   summarizeConfigDiff,
+  updateManagedPresetToolPolicy,
 } from "./service.ts";
-import { buildConflictAwareToolPolicy } from "./tool-conflicts.ts";
+import { buildConflictAwareToolPolicy, inspectActiveToolConflicts } from "./tool-conflicts.ts";
 import {
+  applyToolExposurePolicy,
   buildToolExposurePolicy,
+  customizeToolExposure,
   hasReviewedToolPolicy,
+  type ToolExposureMode,
   type ToolPolicyProfile,
   type ToolExposurePolicy,
 } from "./tool-policy.ts";
 import {
+  approvedToolsForResolution,
   buildServerConfig,
   getPreset,
   SALESFORCE_MCP_PRESETS,
@@ -30,6 +35,11 @@ import {
 
 const SF_MCP_ACTIONS = [
   "status",
+  "conflicts",
+  "connection.plan",
+  "connection.apply",
+  "tools.plan",
+  "tools.apply",
   "configure.plan",
   "configure.apply",
   "disable.plan",
@@ -39,6 +49,7 @@ const SF_MCP_ACTIONS = [
 const SCOPES = ["global", "project"] as const;
 const CONFIGURE_RESOLUTIONS = ["enable", "complement-native", "side-by-side"] as const;
 const TOOL_PROFILES = ["recommended", "read-only", "all-approved", "quarantine"] as const;
+const TOOL_EXPOSURES = ["hidden", "codemode", "deferred", "direct"] as const;
 const ENVIRONMENTS = ["production", "sandbox"] as const;
 const REGIONS = ["US", "EU", "PROD_US", "PROD_EU", "PROD_CA", "PROD_JP"] as const;
 
@@ -56,8 +67,10 @@ interface SfMcpParams {
   region?: PresetSetup["region"];
   tenant_id?: string;
   marketing_client_id?: string;
+  server_url?: string;
   custom_url?: string;
   tool_profile?: Exclude<ToolPolicyProfile, "custom">;
+  tool_overrides?: Record<string, ToolExposureMode>;
   replace_existing?: boolean;
   plan_id?: string;
   plan_hash?: string;
@@ -65,7 +78,7 @@ interface SfMcpParams {
 }
 
 interface PlanBase {
-  kind: "configure" | "disable";
+  kind: "configure" | "connection" | "tools" | "disable";
   planId: string;
   planHash: string;
   cwd: string;
@@ -86,11 +99,28 @@ interface ConfigurePlan extends PlanBase {
   diff: string[];
 }
 
+interface ConnectionPlan extends PlanBase {
+  kind: "connection";
+  resolution: ConfigureResolution;
+  setup: PresetSetup;
+  toolPolicy?: ToolExposurePolicy;
+  replaceExisting: boolean;
+  proposedConfig: McpServerConfig;
+  diff: string[];
+}
+
+interface ToolsPlan extends PlanBase {
+  kind: "tools";
+  policy: ToolExposurePolicy;
+  proposedConfig: McpServerConfig;
+  diff: string[];
+}
+
 interface DisablePlan extends PlanBase {
   kind: "disable";
 }
 
-type SfMcpPlan = ConfigurePlan | DisablePlan;
+type SfMcpPlan = ConfigurePlan | ConnectionPlan | ToolsPlan | DisablePlan;
 
 const Params = Type.Object({
   action: StringEnum(SF_MCP_ACTIONS, { description: "SF MCP configuration lifecycle action." }),
@@ -113,17 +143,23 @@ const Params = Type.Object({
     }),
   ),
   oauth_client_id: Type.Optional(
-    Type.String({ description: "Public External Client App consumer key." }),
+    Type.String({ description: "Public OAuth client identifier for the selected preset." }),
   ),
   region: Type.Optional(StringEnum(REGIONS, { description: "Preset-specific service region." })),
   tenant_id: Type.Optional(Type.String({ description: "Preset-specific tenant id." })),
   marketing_client_id: Type.Optional(
     Type.String({ description: "Marketing Cloud public client identifier." }),
   ),
+  server_url: Type.Optional(Type.String({ description: "Preset-specific HTTPS MCP server URL." })),
   custom_url: Type.Optional(Type.String({ description: "HTTPS URL for the custom preset." })),
   tool_profile: Type.Optional(
     StringEnum(TOOL_PROFILES, {
       description: "Reviewed per-tool exposure profile. Defaults to recommended.",
+    }),
+  ),
+  tool_overrides: Type.Optional(
+    Type.Record(Type.String(), StringEnum(TOOL_EXPOSURES), {
+      description: "Exact reviewed tool-name exposure overrides for tools.plan.",
     }),
   ),
   replace_existing: Type.Optional(
@@ -149,11 +185,11 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
     name: "sf_mcp",
     label: "SF MCP",
     description:
-      "Inspect, plan, apply, disable, and hand off Salesforce MCP presets to Pi's native MCP runtime. Durable configuration is source-bound, diff-reviewed, and Guardrail-mediated; OAuth consent remains human-controlled.",
+      "Inspect, plan, apply, disable, and hand off Salesforce MCP presets to Pi's native MCP runtime. Connection/authentication and tool access can be planned independently; durable configuration is source-bound, diff-reviewed, and Guardrail-mediated.",
     promptSnippet:
-      "Configure reviewed Salesforce MCP presets in Pi after Salesforce-side OAuth setup, without directly editing mcp.json.",
+      "Configure reviewed Salesforce MCP connections and tool access in Pi without directly editing mcp.json.",
     promptGuidelines: [
-      "Use status before configuring a preset, then configure.plan followed by configure.apply with the exact plan_id and plan_hash.",
+      "Use status first. Prefer connection.plan/apply for URL and authentication, then tools.plan/apply for reviewed exposure; configure.plan/apply remains the combined compatibility path.",
       "Use sf_integrate for Salesforce-side External Client App setup. Pass only the public consumer key to sf_mcp as oauth_client_id.",
       "Mutating applies require an explicit global or trusted-project scope plus allow_mutation=true and remain SF Guardrail-mediated.",
       "Use the recommended tool profile unless the user explicitly requests another reviewed exposure profile.",
@@ -168,6 +204,31 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
         switch (params.action) {
           case "status":
             return statusResult(ctx.cwd, scope, params.preset_id);
+          case "conflicts":
+            return conflictsResult(ctx.cwd, scope, params);
+          case "connection.plan": {
+            const plan = createConnectionPlan(ctx.cwd, scope, params);
+            plans.set(plan.planId, plan);
+            return connectionPlanResult(
+              plan,
+              inspectPresetRuntime(ctx.cwd, scope, getPreset(plan.presetId)),
+            );
+          }
+          case "connection.apply": {
+            requireMutationIntent(params);
+            const plan = requirePlan(plans, params, "connection", ctx.cwd, scope);
+            return applyConnectionPlan(plans, plan);
+          }
+          case "tools.plan": {
+            const plan = createToolsPlan(ctx.cwd, scope, params);
+            plans.set(plan.planId, plan);
+            return toolsPlanResult(plan);
+          }
+          case "tools.apply": {
+            requireMutationIntent(params);
+            const plan = requirePlan(plans, params, "tools", ctx.cwd, scope);
+            return applyToolsPlan(plans, plan);
+          }
           case "configure.plan": {
             const plan = createConfigurePlan(ctx.cwd, scope, params);
             plans.set(plan.planId, plan);
@@ -229,6 +290,270 @@ function statusResult(cwd: string, scope: SfMcpScope, presetId?: string) {
   return successResult(body, { ok: true, action: "status", scope, presets: rows });
 }
 
+function conflictsResult(cwd: string, scope: SfMcpScope, params: SfMcpParams) {
+  const preset = requiredPreset(params);
+  const state = inspectPresetRuntime(cwd, scope, preset);
+  const conflicts = inspectActiveToolConflicts(preset, state.plan);
+  const body = [
+    `${preset.label} tool conflicts — ${scope} scope`,
+    conflicts.length === 0
+      ? "No exact reviewed tool conflicts are active."
+      : `${conflicts.length} exact reviewed conflict${conflicts.length === 1 ? "" : "s"}:`,
+    ...conflicts.map(
+      (conflict) =>
+        `- ${conflict.toolName}: ${conflict.owners.join(", ")} · recommended ${conflict.recommendedExposure}`,
+    ),
+    `Recommendation: ${state.plan.recommendation.summary}`,
+  ].join("\n");
+  return successResult(body, {
+    ok: true,
+    action: "conflicts",
+    scope,
+    presetId: preset.id,
+    recommendation: state.plan.recommendation,
+    conflicts,
+  });
+}
+
+function createConnectionPlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): ConnectionPlan {
+  const preset = requiredPreset(params);
+  const state = inspectPresetRuntime(cwd, scope, preset);
+  assertPlannableState(
+    state.managed.status,
+    state.managed.message,
+    params.replace_existing === true,
+  );
+  const resolution = params.resolution ?? connectionResolution(state);
+  const setup = presetSetup(params);
+  const toolPolicy = hasReviewedToolPolicy(preset)
+    ? state.managed.config
+      ? buildToolExposurePolicy(preset, "custom", state.managed.config)
+      : buildToolExposurePolicy(preset, "quarantine")
+    : undefined;
+  const proposedConfig = buildServerConfig(preset, resolution, setup, toolPolicy?.exposures);
+  const diff = summarizeConfigDiff(state.managed.config ?? state.managed.override, proposedConfig);
+  const sourceVersion = sourceVersionFor(cwd, scope, preset);
+  const replaceExisting = params.replace_existing === true;
+  const willChange =
+    state.managed.status !== "managed-enabled" ||
+    !state.managed.config ||
+    fingerprintConfig(state.managed.config) !== fingerprintConfig(proposedConfig);
+  const identity = planIdentity({
+    kind: "connection",
+    cwd,
+    scope,
+    presetId: preset.id,
+    presetRevision: preset.revision,
+    resolution,
+    setup,
+    toolPolicy: toolPolicy?.exposures,
+    replaceExisting,
+    proposedConfig,
+    sourceVersion,
+  });
+  return {
+    kind: "connection",
+    ...identity,
+    cwd,
+    scope,
+    presetId: preset.id,
+    presetRevision: preset.revision,
+    sourceVersion,
+    willChange,
+    resolution,
+    setup,
+    toolPolicy,
+    replaceExisting,
+    proposedConfig,
+    diff,
+  };
+}
+
+function connectionPlanResult(
+  plan: ConnectionPlan,
+  state: ReturnType<typeof inspectPresetRuntime>,
+) {
+  return configurationPlanResult("connection.plan", plan, state, [
+    "Tool access: preserved when managed; otherwise all reviewed tools start Hidden.",
+  ]);
+}
+
+function applyConnectionPlan(plans: Map<string, SfMcpPlan>, plan: ConnectionPlan) {
+  assertCurrentSource(plan);
+  if (!plan.willChange) {
+    plans.delete(plan.planId);
+    return successResult(
+      `${getPreset(plan.presetId).label} connection already matches the reviewed plan.`,
+      {
+        ok: true,
+        action: "connection.apply",
+        scope: plan.scope,
+        presetId: plan.presetId,
+        changed: false,
+        verified: true,
+        reloadRequired: false,
+      },
+    );
+  }
+  const result = installPreset({
+    cwd: plan.cwd,
+    scope: plan.scope,
+    presetId: plan.presetId,
+    resolution: plan.resolution,
+    setup: plan.setup,
+    replaceExisting: plan.replaceExisting,
+    toolPolicy: plan.toolPolicy,
+  });
+  if (!result.ok) throw new Error(result.message);
+  const verified = inspectPresetRuntime(plan.cwd, plan.scope, getPreset(plan.presetId));
+  if (
+    verified.managed.status !== "managed-enabled" ||
+    !verified.managed.config ||
+    fingerprintConfig(verified.managed.config) !== fingerprintConfig(plan.proposedConfig)
+  ) {
+    throw new Error(
+      `${getPreset(plan.presetId).label} connection was written but exact resulting-state verification failed.`,
+    );
+  }
+  plans.delete(plan.planId);
+  return successResult(`${result.message}\nVerification: matched.`, {
+    ok: true,
+    action: "connection.apply",
+    scope: plan.scope,
+    presetId: plan.presetId,
+    changed: result.changed,
+    verified: true,
+    reloadRequired: result.reloadRequired,
+  });
+}
+
+function createToolsPlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): ToolsPlan {
+  const preset = requiredPreset(params);
+  const state = inspectPresetRuntime(cwd, scope, preset);
+  if (
+    (state.managed.status !== "managed-enabled" && state.managed.status !== "managed-disabled") ||
+    !state.managed.config
+  ) {
+    throw new Error(
+      `${preset.label} connection must be an unchanged managed entry before planning tool access.`,
+    );
+  }
+  let policy = reviewedToolPolicy(preset, state.plan, params.tool_profile ?? "recommended");
+  if (!policy) {
+    throw new Error(
+      `${preset.label} has no reviewed exact tool contract; its tools remain Hidden.`,
+    );
+  }
+  for (const [toolName, exposure] of Object.entries(params.tool_overrides ?? {})) {
+    policy = customizeToolExposure(preset, policy, toolName, exposure);
+  }
+  const proposedConfig = applyToolExposurePolicy(
+    preset,
+    state.managed.config,
+    policy,
+    approvedToolsForResolution(preset, state.managed.record?.resolution ?? "enable"),
+  );
+  const diff = summarizeConfigDiff(state.managed.config, proposedConfig);
+  const sourceVersion = sourceVersionFor(cwd, scope, preset);
+  const willChange = fingerprintConfig(state.managed.config) !== fingerprintConfig(proposedConfig);
+  const identity = planIdentity({
+    kind: "tools",
+    cwd,
+    scope,
+    presetId: preset.id,
+    presetRevision: preset.revision,
+    policy,
+    proposedConfig,
+    sourceVersion,
+  });
+  return {
+    kind: "tools",
+    ...identity,
+    cwd,
+    scope,
+    presetId: preset.id,
+    presetRevision: preset.revision,
+    sourceVersion,
+    willChange,
+    policy,
+    proposedConfig,
+    diff,
+  };
+}
+
+function toolsPlanResult(plan: ToolsPlan) {
+  return successResult(
+    [
+      `REVIEW: ${getPreset(plan.presetId).label} MCP tool-access plan.`,
+      `Plan ID: ${plan.planId}`,
+      `Plan hash: ${plan.planHash}`,
+      `Scope: ${plan.scope}`,
+      `Profile: ${plan.policy.profile}`,
+      `Change required: ${plan.willChange ? "yes" : "no"}`,
+      "Changes:",
+      ...(plan.diff.length ? plan.diff.map((line) => `- ${line}`) : ["- none"]),
+    ].join("\n"),
+    {
+      ok: true,
+      action: "tools.plan",
+      scope: plan.scope,
+      presetId: plan.presetId,
+      planId: plan.planId,
+      planHash: plan.planHash,
+      sourceVersion: plan.sourceVersion,
+      willChange: plan.willChange,
+      profile: plan.policy.profile,
+      exposures: plan.policy.exposures,
+      diff: plan.diff,
+    },
+  );
+}
+
+function applyToolsPlan(plans: Map<string, SfMcpPlan>, plan: ToolsPlan) {
+  assertCurrentSource(plan);
+  if (!plan.willChange) {
+    plans.delete(plan.planId);
+    return successResult(
+      `${getPreset(plan.presetId).label} tool access already matches the reviewed plan.`,
+      {
+        ok: true,
+        action: "tools.apply",
+        scope: plan.scope,
+        presetId: plan.presetId,
+        changed: false,
+        verified: true,
+        reloadRequired: false,
+      },
+    );
+  }
+  const result = updateManagedPresetToolPolicy({
+    cwd: plan.cwd,
+    scope: plan.scope,
+    presetId: plan.presetId,
+    policy: plan.policy,
+  });
+  if (!result.ok) throw new Error(result.message);
+  const verified = inspectPresetRuntime(plan.cwd, plan.scope, getPreset(plan.presetId));
+  if (
+    !verified.managed.config ||
+    fingerprintConfig(verified.managed.config) !== fingerprintConfig(plan.proposedConfig)
+  ) {
+    throw new Error(
+      `${getPreset(plan.presetId).label} tool access was written but exact resulting-state verification failed.`,
+    );
+  }
+  plans.delete(plan.planId);
+  return successResult(`${result.message}\nVerification: matched.`, {
+    ok: true,
+    action: "tools.apply",
+    scope: plan.scope,
+    presetId: plan.presetId,
+    changed: result.changed,
+    verified: true,
+    reloadRequired: result.reloadRequired,
+  });
+}
+
 function createConfigurePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): ConfigurePlan {
   const preset = requiredPreset(params);
   const resolution = requiredResolution(params);
@@ -280,14 +605,24 @@ function createConfigurePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams
 }
 
 function configurePlanResult(plan: ConfigurePlan, state: ReturnType<typeof inspectPresetRuntime>) {
+  return configurationPlanResult("configure.plan", plan, state);
+}
+
+function configurationPlanResult(
+  action: "configure.plan" | "connection.plan",
+  plan: ConfigurePlan | ConnectionPlan,
+  state: ReturnType<typeof inspectPresetRuntime>,
+  notes: string[] = [],
+) {
   const lines = [
-    `REVIEW: ${state.preset.label} MCP configuration plan.`,
+    `REVIEW: ${state.preset.label} MCP ${action === "connection.plan" ? "connection" : "configuration"} plan.`,
     `Plan ID: ${plan.planId}`,
     `Plan hash: ${plan.planHash}`,
     `Scope: ${plan.scope}`,
     `Resolution: ${plan.resolution}`,
     `Native config: ${mcpConfigPath(plan.cwd, plan.scope)}`,
     `Change required: ${plan.willChange ? "yes" : "no"}`,
+    ...notes,
     ...(state.scopeConflict ? [`Warning: ${state.scopeConflict.message}`] : []),
     ...(state.managed.status === "project-override"
       ? [
@@ -299,7 +634,7 @@ function configurePlanResult(plan: ConfigurePlan, state: ReturnType<typeof inspe
   ];
   return successResult(lines.join("\n"), {
     ok: true,
-    action: "configure.plan",
+    action,
     scope: plan.scope,
     presetId: plan.presetId,
     planId: plan.planId,
@@ -538,12 +873,22 @@ function presetSetup(params: SfMcpParams): PresetSetup {
     region: params.region,
     tenantId: trimmed(params.tenant_id),
     marketingClientId: trimmed(params.marketing_client_id),
+    serverUrl: trimmed(params.server_url),
     customUrl: trimmed(params.custom_url),
   };
 }
 
 function requiredPreset(params: SfMcpParams): McpPreset {
   return getPreset(requiredText(params.preset_id, "preset_id"));
+}
+
+function connectionResolution(state: ReturnType<typeof inspectPresetRuntime>): ConfigureResolution {
+  const current = state.managed.record?.resolution;
+  if (current && current !== "native-only") return current;
+  if (state.plan.conflicts.length === 0) return "enable";
+  return state.plan.recommendation.resolution === "complement-native"
+    ? "complement-native"
+    : "side-by-side";
 }
 
 function requiredResolution(params: SfMcpParams): ConfigureResolution {

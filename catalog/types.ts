@@ -26,6 +26,11 @@ export type ConfigPanelResult = {
   needsReload?: boolean;
 };
 
+export type ConfigPanelFocusable = Focusable & {
+  /** Zero-based rendered row the Manager should keep visible during panel navigation. */
+  getActiveRow?: () => number | undefined;
+};
+
 export type ConfigPanelFactory = (
   theme: Theme,
   cwd: string,
@@ -33,7 +38,7 @@ export type ConfigPanelFactory = (
   done: (result: ConfigPanelResult | undefined) => void,
   tui?: TUI,
   ctx?: ExtensionCommandContext,
-) => Focusable;
+) => ConfigPanelFocusable;
 
 // -------------------------------------------------------------------------------------------------
 // Extension definition

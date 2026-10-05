@@ -9,14 +9,27 @@ export function classifySfMcpConfiguration(
 ): NativeToolSafetySubject | undefined {
   if (toolName !== "sf_mcp") return undefined;
   const action = stringValue(input.action);
-  if (action !== "configure.apply" && action !== "disable.apply") return undefined;
+  if (
+    action !== "configure.apply" &&
+    action !== "connection.apply" &&
+    action !== "tools.apply" &&
+    action !== "disable.apply"
+  ) {
+    return undefined;
+  }
 
   const presetId = stringValue(input.preset_id) ?? "unspecified preset";
   const scope = stringValue(input.scope) ?? "unspecified scope";
   const planId = stringValue(input.plan_id) ?? "missing-plan";
   const planHash = stringValue(input.plan_hash) ?? "missing-hash";
   const disabling = action === "disable.apply";
-  const operationFamily = disabling ? "mcp configuration disable" : "mcp configuration";
+  const operationFamily = disabling
+    ? "mcp configuration disable"
+    : action === "connection.apply"
+      ? "mcp connection configuration"
+      : action === "tools.apply"
+        ? "mcp tool access configuration"
+        : "mcp configuration";
   const riskTier = disabling
     ? "mcp_configuration_disable_exact"
     : "mcp_configuration_mutation_exact";

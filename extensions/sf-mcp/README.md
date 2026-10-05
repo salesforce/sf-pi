@@ -20,9 +20,9 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 - Versions governed preset contracts and reports observed tool additions or removals.
 - Reviews live contract drift: additions remain locked hidden pending a preset revision, while removed tools become unavailable and can be repaired to Hidden through an explicit diff.
 - Keeps newly discovered tools hidden for presets with an approved tool contract.
-- Provides one unified **Configure MCP** editor for connection status, conflict guidance, tool modes, and review/save.
+- Separates **Connection & authentication**, **Tool access**, and **Tool conflict review** so transport fields, exposure policy, and overlap decisions are not crowded into one page.
 - Authors exact per-tool exposure through Recommended, Read-only, All approved, Custom, and Quarantine profiles.
-- Shows numbered tools, available-tool and per-mode counts, color-coded mode badges, inline conflict recommendations, and persistent mode guidance.
+- Shows numbered tools, available-tool and per-mode counts, color-coded mode badges, compact conflict badges, and an on-demand mode reference.
 - Supports Pi's Hidden, Code Mode, Deferred, and Direct exposure modes with explicit diff review and warnings for risky Direct choices.
 - Uses `/mcp` for connection state, OAuth, errors, reconnects, and manual runtime review.
 
@@ -59,20 +59,26 @@ Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` pr
 The `sf_mcp` family tool supports this lifecycle:
 
 1. `status` — inspect one preset or the catalog in explicit global or trusted-project scope.
-2. `configure.plan` — build an exact redacted diff from the current native entry and a reviewed preset/profile.
-3. `configure.apply` — apply only the matching session-bound plan when the source state is unchanged, `allow_mutation=true`, and SF Guardrail approves.
+2. `conflicts` — inspect exact reviewed tool overlaps and the current recommendation.
+3. `connection.plan` then `connection.apply` — configure URL or command, environment, and authentication while preserving existing managed tool access; new connections start Hidden.
 4. `login.handoff` — return the exact `/mcp login <server>` command after resulting-state verification. Pi and the user still own browser consent and tokens.
-5. `disable.plan` then `disable.apply` — disable only an unchanged SF MCP-managed entry through the same plan-bound checks.
+5. `tools.plan` then `tools.apply` — apply a reviewed profile plus optional exact `tool_overrides` without changing connection fields.
+6. `disable.plan` then `disable.apply` — disable only an unchanged SF MCP-managed entry through the same plan-bound checks.
 
-The public External Client App consumer key can be passed as `oauth_client_id`; client secrets and OAuth tokens are never accepted. Custom per-tool exposure remains an interactive Manager workflow, while the agent tool supports the reviewed Recommended, Read-only, All approved, and Quarantine profiles.
+`configure.plan` and `configure.apply` remain as a combined compatibility path. Public client identifiers can be passed through preset-specific fields; raw client secrets and OAuth tokens are never accepted. Secret-bearing products use environment references.
 
 ## Configuration
 
-Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. **Configure MCP** opens one guided editor that combines connection status, reviewed profiles, numbered tools, current exposure, risk, descriptions, and inline conflict recommendations. Use ↑/↓ to select a tool, ←/→ or Space to change its mode, `P` to choose a profile, Enter for full details, and `S` for **Review & Save**. The final review shows the exact redacted native configuration diff before persistence.
+Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview with four focused routes:
 
-For a new server, Review & Save continues through any required connection fields while carrying the selected tool policy forward. For an unchanged managed server, it updates only `exposure` and `toolExposure`. Choose global or trusted-project scope before saving. A partial project override remains Pi-managed and opens `/mcp` guidance instead of being mistaken for a complete manual server. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, project overrides, manual exposure review, and reconnects.
+- **Connection & authentication** configures URL or command, environment, and OAuth fields. New reviewed connections are saved in Quarantine, with every tool Hidden.
+- **Tool access** changes only `exposure` and `toolExposure`. Use ↑/↓ to select a tool, ←/→ or Space to change its mode, `P` to choose a profile, `?` for mode help, Enter for full details, and `S` for **Review & Save**.
+- **Review tool conflicts** shows exact affected tools, SF Pi owners, and recommendations without repeating long conflict paragraphs in the main editor.
+- **Browse tool details** shows schemas, annotations, descriptions, and session-observed metadata without mutation.
 
-The editor explains every mode in place: **Hidden** is unreachable, **Code Mode** is callable from codemode scripts, **Deferred** is loaded on demand through tool search, and **Direct** is declared to the model on every turn.
+Choose global or trusted-project scope before saving. A partial project override remains Pi-managed and opens `/mcp` guidance instead of being mistaken for a complete manual server. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, project overrides, manual runtime review, and reconnects.
+
+The mode reference defines **Hidden** as unreachable, **Code Mode** as callable from codemode scripts, **Deferred** as loaded on demand through tool search, and **Direct** as declared to the model on every turn.
 
 Governed presets include concise, versioned tool summaries sourced from official documentation. Salesforce DX catalogs the nine GA tools in the configured core toolsets; standalone Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX include their published tool references. The connected server can advertise a subset based on enabled features, toolsets, client support, permissions, or entitlements, and unavailable documented tools remain locked hidden. Custom servers and Agentforce Sales show reviewed capability groups plus live metadata because Salesforce doesn't currently publish an exact Agentforce Sales tool reference. An observed tool absent from an approved contract remains visibly unapproved and inherits hidden exposure.
 
@@ -97,7 +103,9 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - OAuth tokens, including standalone Tableau OAuth, remain in Pi's native MCP credential store.
 - Trailhead MCP requires no authentication and is restricted to its two documented read-only public-content tools.
 - External Client App consumer keys are public client identifiers. Standard hosted presets don't request client secrets.
-- Agentforce Sales references `AGENTFORCE_SALES_CLIENT_SECRET`; MuleSoft references `ANYPOINT_CLIENT_ID` and `ANYPOINT_CLIENT_SECRET`. Secret values are never copied into SF MCP state.
+- Agentforce Sales references `AGENTFORCE_SALES_CLIENT_SECRET`, Slack references `SLACK_MCP_CLIENT_SECRET`, and MuleSoft references `ANYPOINT_CLIENT_ID` and `ANYPOINT_CLIENT_SECRET`. Secret values are never copied into SF MCP state.
+- Slack and Informatica connections start with server exposure Hidden because their public references don't provide stable exact tool-name contracts. Session observation never promotes those tools.
+- B2C Commerce uses the GA `@salesforce/b2c-dx-mcp` package and an exact reviewed allowlist; live instance credentials remain owned by the B2C toolchain rather than SF MCP.
 - Backup and Recover writes, Content writes, Headless 360 dispatch, hosted Data 360 execution, and managed external operations pass through SF Guardrail. Every experimental Agentforce Sales operation fails closed because exact OAuth-org identity is unavailable. Hosted mutation targets without exact identity evidence remain fail-closed.
 - The legacy SObject Reads, Mutations, Deletes, and All servers are intentionally absent from the SF MCP catalog. Existing native Pi entries are left untouched and remain visible in `/mcp`; users remove them there if desired. Legacy SObject mutation calls remain Guardrail-mediated and fail closed.
 
@@ -151,6 +159,19 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 
 - Agentforce Sales (**SF Pi Alpha**; Salesforce documents the Beta sandbox endpoint for ChatGPT, while generic Pi interoperability and the exact tools remain undocumented)
 
+### Slack
+
+- Slack MCP (**SF Pi Alpha**; connection support is available, while tools stay quarantined until Slack publishes or SF Pi captures a stable reviewed exact contract)
+
+### Informatica
+
+- Informatica Catalog Discovery (**SF Pi Alpha**; pod-specific OAuth 2.1 connection, unreviewed exact tool contract)
+- Informatica Data Exploration (**SF Pi Alpha**; pod-specific OAuth 2.1 connection, unreviewed exact tool contract)
+
+### Commerce
+
+- B2C Commerce MCP (GA `@salesforce/b2c-dx-mcp` package with a reviewed exact tool contract)
+
 ### Custom
 
 - Custom Salesforce MCP quarantine entry
@@ -171,6 +192,9 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 - [Marketing Cloud Engagement MCP tool reference](https://developer.salesforce.com/docs/marketing/mce-mcp/references/mce-mcp-tools/mce-mcp-tools.html)
 - [MuleSoft DX MCP tool reference](https://docs.mulesoft.com/mulesoft-mcp-server/reference-mcp-tools)
 - [Agentforce Sales ChatGPT sandbox setup](https://help.salesforce.com/s/articleView?id=sales.test_sales_chatgpt_sandbox.htm&type=5)
+- [Slack MCP server](https://docs.slack.dev/ai/slack-mcp-server)
+- [Informatica MCP OAuth and connector setup](https://www.informatica.com/blogs/powering-your-enterprise-ai-with-informatica-plugin-for-claude.html)
+- [B2C Commerce MCP](https://salesforcecommercecloud.github.io/b2c-developer-tooling/mcp/)
 
 ## File Structure
 

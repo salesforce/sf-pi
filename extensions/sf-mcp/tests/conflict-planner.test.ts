@@ -139,6 +139,85 @@ describe("SF MCP capability conflict planning", () => {
     expect(getPresetToolCatalog(preset).capabilities.length).toBeGreaterThan(3);
   });
 
+  it("builds Slack in quarantine with environment-referenced confidential OAuth", () => {
+    const preset = getPreset("slack");
+    const config = buildServerConfig(preset, "complement-native", {
+      oauthClientId: "slack-client",
+    });
+
+    expect(config).toEqual({
+      url: "https://mcp.slack.com/mcp",
+      oauth: {
+        clientId: "slack-client",
+        clientSecret: "${SLACK_MCP_CLIENT_SECRET}",
+        callbackPort: 8765,
+      },
+      description: preset.description,
+      exposure: "hidden",
+      timeout: 120,
+    });
+    expect(hasReviewedToolPolicy(preset)).toBe(false);
+    expect(planPresetConflicts(preset, new Set(["sf-slack"])).conflicts[0]).toMatchObject({
+      nativeExtensionId: "sf-slack",
+      relationship: "direct",
+    });
+    expect(isPresetConfigCompatible(preset, config)).toEqual({ compatible: true });
+  });
+
+  it("builds pod-specific Informatica public OAuth connections in quarantine", () => {
+    const catalog = getPreset("informatica-catalog");
+    const exploration = getPreset("informatica-data-exploration");
+    const catalogConfig = buildServerConfig(catalog, "enable", {
+      serverUrl: "https://mcp.dm-us.informaticacloud.com/mcp-servers/public/cdgccatalogdiscovery",
+      oauthClientId: "catalog-client",
+    });
+    const explorationConfig = buildServerConfig(exploration, "enable", {
+      serverUrl: "https://mcp.dm-us.informaticacloud.com/mcp-servers/public/dataexplorationagent",
+      oauthClientId: "exploration-client",
+    });
+
+    expect(catalogConfig).toMatchObject({
+      exposure: "hidden",
+      oauth: { clientId: "catalog-client", callbackPort: 8765 },
+    });
+    expect(explorationConfig).toMatchObject({
+      exposure: "hidden",
+      oauth: { clientId: "exploration-client", callbackPort: 8765 },
+    });
+    expect(() =>
+      buildServerConfig(catalog, "enable", {
+        serverUrl: "https://example.com/mcp-servers/public/cdgccatalogdiscovery",
+        oauthClientId: "catalog-client",
+      }),
+    ).toThrow(/pod-specific/i);
+    expect(isPresetConfigCompatible(catalog, catalogConfig)).toEqual({ compatible: true });
+    expect(isPresetConfigCompatible(exploration, explorationConfig)).toEqual({ compatible: true });
+  });
+
+  it("catalogs the GA B2C Commerce MCP package with a reviewed tool contract", () => {
+    const preset = getPreset("b2c-commerce");
+    const config = buildServerConfig(preset, "enable");
+    const tools = getPresetToolCatalog(preset).tools.map((tool) => tool.name);
+
+    expect(config).toMatchObject({
+      command: "npx",
+      args: ["-y", "@salesforce/b2c-dx-mcp@latest"],
+      exposure: "hidden",
+    });
+    expect(tools).toHaveLength(36);
+    expect(tools).toEqual(
+      expect.arrayContaining([
+        "skills_read",
+        "docs_search",
+        "cartridge_deploy",
+        "scapi_execute",
+        "mrt_bundle_push",
+        "cip_query",
+      ]),
+    );
+    expect(isPresetConfigCompatible(preset, config)).toEqual({ compatible: true });
+  });
+
   it("generates exact hidden-by-default policies for the expanded catalogs", () => {
     const cases = [
       ["salesforce-dx", {}],

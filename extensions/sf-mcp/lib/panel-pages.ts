@@ -32,6 +32,11 @@ export type PresetOverviewOption = {
   description: string;
 };
 
+export type ConnectionOption = {
+  label: string;
+  description: string;
+};
+
 export function renderCatalogPage(input: {
   theme: Theme;
   width: number;
@@ -149,11 +154,8 @@ export function renderPresetOverviewPage(input: {
       `    ${t.fg("success", "✓")} ${t.fg("text", "No active SF Pi capability overlap detected")}`,
     );
   } else {
-    lines.push(`    ${t.fg("warning", "⚠")} ${t.fg("warning", conflicts.join(" · "))}`);
     lines.push(
-      ...wrapText(state.plan.recommendation.summary, Math.max(24, width - 8)).map(
-        (line) => `      ${t.fg("dim", line)}`,
-      ),
+      `    ${t.fg("warning", "⚠")} ${t.fg("warning", `${conflicts.length} active capability overlap${conflicts.length === 1 ? "" : "s"} · review before enabling tools`)}`,
     );
   }
   if (state.drift.status === "review") {
@@ -386,6 +388,81 @@ export function renderReconcilePage(input: {
   return lines;
 }
 
+export function renderConnectionPage(input: {
+  theme: Theme;
+  width: number;
+  state: PresetRuntimeState;
+  options: readonly ConnectionOption[];
+  selected: number;
+}): string[] {
+  const { theme: t, width, state } = input;
+  const config = state.managed.config ?? state.managed.override;
+  const status = plainStatus(state.managed.status);
+  const lines = [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${state.preset.label} › Connection & Authentication`))}`,
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "CONNECTION")}`,
+    `    Status             ${t.fg(state.managed.status === "managed-enabled" ? "success" : "warning", status.toUpperCase())}`,
+    `    Server             ${t.fg("text", state.managed.configuredName ?? state.preset.serverName)}`,
+    `    Transport          ${t.fg("text", state.preset.transport)}`,
+    ...wrapText(
+      config ? describeTransport(config as McpServerConfig) : "Not configured",
+      Math.max(24, width - 24),
+    ).map((line, index) =>
+      index === 0
+        ? `    Endpoint           ${t.fg("dim", line)}`
+        : `                       ${t.fg("dim", line)}`,
+    ),
+    `    Authentication     ${t.fg("text", describeAuthentication(config as McpServerConfig | undefined))}`,
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "BOUNDARY")}`,
+    `    ${t.fg("success", "✓")} Connection changes are reviewed separately from tool access`,
+    `    ${t.fg("success", "✓")} OAuth consent and tokens remain owned by Pi`,
+    `    ${t.fg("success", "✓")} New connections start with tools hidden`,
+    "",
+    ` ${t.fg("muted", "Actions")}`,
+    "",
+  ];
+  for (let index = 0; index < input.options.length; index++) {
+    const option = input.options[index];
+    if (!option) continue;
+    const selected = index === input.selected;
+    lines.push(
+      ` ${selected ? t.fg("accent", "❯") : " "} ${selected ? t.fg("accent", t.bold(option.label)) : t.fg("text", option.label)}`,
+      ...wrapText(option.description, Math.max(24, width - 5)).map(
+        (line) => `   ${t.fg("dim", line)}`,
+      ),
+      "",
+    );
+  }
+  lines.push(` ${t.fg("dim", "↑/↓ choose · Enter continue · Esc overview")}`);
+  return lines;
+}
+
+export function renderToolAccessUnavailablePage(input: {
+  theme: Theme;
+  width: number;
+  preset: McpPreset;
+  title: string;
+  message: string;
+  observedTools: number;
+}): string[] {
+  const { theme: t, width } = input;
+  return [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › Tool Access`))}`,
+    "",
+    ` ${t.fg("warning", t.bold(input.title))}`,
+    ...wrapText(input.message, Math.max(24, width - 3)).map((line) => ` ${t.fg("dim", line)}`),
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "SAFETY")}`,
+    `    ${t.fg("text", `${input.observedTools} tool${input.observedTools === 1 ? "" : "s"} observed in this session`)}`,
+    `    ${t.fg("success", "✓")} Unreviewed tools remain Hidden`,
+    `    ${t.fg("success", "✓")} Connection settings remain unchanged`,
+    "",
+    ` ${t.fg("dim", "Enter/Esc back to overview")}`,
+  ];
+}
+
 export function renderSetupPage(input: {
   theme: Theme;
   width: number;
@@ -607,15 +684,27 @@ function splitToken(value: string, width: number): string[] {
   return chunks;
 }
 
+function describeAuthentication(config: McpServerConfig | undefined): string {
+  if (!config) return "Not configured";
+  if ("oauth" in config && config.oauth) {
+    const secret = config.oauth.clientSecret ? " · secret environment reference" : "";
+    return `OAuth client configured${secret}`;
+  }
+  if ("env" in config && config.env && Object.keys(config.env).length > 0) {
+    return "Environment references";
+  }
+  return "None required or server-managed";
+}
+
 function configuredToolExposure(
   config: McpServerConfig | undefined,
   toolName: string,
   observedExposure?: string,
 ): string {
-  if (!config) return observedExposure ?? "not configured";
+  if (!config) return displayExposure(observedExposure) ?? "not configured";
   const entries = Object.entries(config.toolExposure ?? {});
   const exact = entries.find(([pattern]) => pattern === toolName)?.[1];
-  if (exact) return exact;
+  if (exact) return displayExposure(exact) ?? exact;
   for (const [pattern, exposure] of entries) {
     if (!pattern.includes("*")) continue;
     const expression = new RegExp(
@@ -624,9 +713,16 @@ function configuredToolExposure(
         .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
         .join(".*")}$`,
     );
-    if (expression.test(toolName)) return exposure;
+    if (expression.test(toolName)) return displayExposure(exposure) ?? exposure;
   }
-  return observedExposure ?? config.exposure ?? "codemode";
+  return displayExposure(observedExposure ?? config.exposure) ?? "Code Mode";
+}
+
+function displayExposure(value: string | undefined): string | undefined {
+  if (value === "hidden" || value === "codemode" || value === "deferred" || value === "direct") {
+    return exposureLabel(value);
+  }
+  return value;
 }
 
 function renderAnnotations(theme: Theme, tool: McpToolDetail, width: number): string[] {

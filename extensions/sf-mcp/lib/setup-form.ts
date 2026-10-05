@@ -6,7 +6,7 @@ import { SF_MCP_HEADLESS_360_REQUIREMENT } from "../../../lib/common/sf-mcp-oaut
 import type { McpPreset, PresetSetup } from "./presets.ts";
 
 type ChoiceKey = "environment" | "region";
-type TextKey = "oauthClientId" | "tenantId" | "marketingClientId" | "customUrl";
+type TextKey = "oauthClientId" | "tenantId" | "marketingClientId" | "serverUrl" | "customUrl";
 type Control =
   | { kind: "choice"; key: ChoiceKey; label: string; help: string; options: ChoiceOption[] }
   | { kind: "text"; key: TextKey; label: string; help: string; input: Input }
@@ -251,6 +251,35 @@ function setupControls(theme: Theme, preset: McpPreset): Control[] {
         "External Client App consumer key",
         "Set AGENTFORCE_SALES_CLIENT_SECRET in the environment. SF Pi uses a loopback callback; Salesforce currently documents this Beta endpoint for ChatGPT, so generic-client interoperability is experimental.",
         "Paste consumer key",
+      ),
+    );
+  } else if (preset.setup === "slack-oauth") {
+    controls.push(
+      textControl(
+        theme,
+        "oauthClientId",
+        "Slack OAuth client ID",
+        "Use an internal or directory-published Slack app. Set SLACK_MCP_CLIENT_SECRET in the environment and register http://127.0.0.1:8765/callback.",
+        "Slack client ID",
+      ),
+    );
+  } else if (preset.setup === "informatica-oauth") {
+    controls.push(
+      textControl(
+        theme,
+        "serverUrl",
+        "Informatica MCP server URL",
+        preset.id === "informatica-catalog"
+          ? "Pod-specific HTTPS endpoint ending in /mcp-servers/public/cdgccatalogdiscovery."
+          : "Pod-specific HTTPS endpoint ending in /mcp-servers/public/dataexplorationagent.",
+        "https://mcp.<pod>.informaticacloud.com/...",
+      ),
+      textControl(
+        theme,
+        "oauthClientId",
+        "Informatica OAuth 2.1 client ID",
+        "Create a Public OAuth 2.1 client in IDMC and register http://127.0.0.1:8765/callback.",
+        "OAuth client ID",
       ),
     );
   } else if (preset.setup === "marketing-cloud") {

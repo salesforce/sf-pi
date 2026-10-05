@@ -52,6 +52,8 @@ import {
 type ConfigPanel = Component &
   Focusable & {
     renderContent?: (width: number) => string[];
+    /** Zero-based rendered row that should remain visible during keyboard navigation. */
+    getActiveRow?: () => number | undefined;
   };
 
 const LIST_MAX_TERMINAL_FRACTION = 0.85;
@@ -153,6 +155,7 @@ export class SfPiOverlayComponent implements Focusable {
   private configPanelReloadNeeded = false;
   private detailScrollOffset = 0;
   private panelScrollOffset = 0;
+  private panelFollowActiveRow = true;
   private scope: ManagerScope;
   private actionInFlight = false;
   private closeDetailOnBack = false;
@@ -224,6 +227,7 @@ export class SfPiOverlayComponent implements Focusable {
         return;
       }
       if (this.activePanel) {
+        this.panelFollowActiveRow = true;
         this.activePanel.focused = this.focused;
         this.activePanel.handleInput?.(data);
       } else if (matchesKey(data, "escape")) {
@@ -594,7 +598,11 @@ export class SfPiOverlayComponent implements Focusable {
     const footerRows = 2;
     const viewportRows = Math.max(1, maxRows - lines.length - footerRows);
     const maxOffset = Math.max(0, contentRows.length - viewportRows);
-    this.panelScrollOffset = Math.max(0, Math.min(this.panelScrollOffset, maxOffset));
+    const activeRow = this.activePanel?.getActiveRow?.();
+    this.panelScrollOffset =
+      this.panelFollowActiveRow && activeRow !== undefined
+        ? this.clampDetailScrollOffset(this.panelScrollOffset, activeRow, viewportRows, maxOffset)
+        : Math.max(0, Math.min(this.panelScrollOffset, maxOffset));
     const visibleRows = contentRows.slice(
       this.panelScrollOffset,
       this.panelScrollOffset + viewportRows,
@@ -670,6 +678,7 @@ export class SfPiOverlayComponent implements Focusable {
     this.activePanelExtId = extensionId;
     this.activePanel = null;
     this.panelScrollOffset = 0;
+    this.panelFollowActiveRow = true;
     this.view = { kind: "settings", extensionId };
     this.attachConfigPanel(extensionId);
   }
@@ -678,6 +687,7 @@ export class SfPiOverlayComponent implements Focusable {
     this.activePanelExtId = extensionId;
     this.activePanel = null;
     this.panelScrollOffset = 0;
+    this.panelFollowActiveRow = true;
     this.view = { kind: "managerAction", extensionId, label: action.label };
     this.attachManagerActionPanel(extensionId, action);
   }
@@ -789,18 +799,22 @@ export class SfPiOverlayComponent implements Focusable {
 
   private handlePanelScrollInput(data: string): boolean {
     if (matchesKey(data, "pageUp")) {
+      this.panelFollowActiveRow = false;
       this.panelScrollOffset = Math.max(0, this.panelScrollOffset - this.panelPageStep());
       return true;
     }
     if (matchesKey(data, "pageDown")) {
+      this.panelFollowActiveRow = false;
       this.panelScrollOffset += this.panelPageStep();
       return true;
     }
     if (matchesKey(data, "home")) {
+      this.panelFollowActiveRow = false;
       this.panelScrollOffset = 0;
       return true;
     }
     if (matchesKey(data, "end")) {
+      this.panelFollowActiveRow = false;
       this.panelScrollOffset = Number.MAX_SAFE_INTEGER;
       return true;
     }

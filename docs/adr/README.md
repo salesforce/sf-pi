@@ -120,6 +120,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0133: SF Integrate hardens core ECA OAuth profiles](./0133-sf-integrate-hardens-core-eca-oauth-profiles.md) — 2026-10-01
 - [0135: SF Browser uses bounded semantic navigation for Salesforce Setup chrome](./0135-sf-browser-bounded-semantic-setup-navigation.md) — 2026-10-04
 - [0136: Pi 1.0.2 audit edge and runtime delegation](./0136-pi-102-audit-edge-and-runtime-delegation.md) — 2026-10-04
+- [0137: SF MCP Separates Connection and Tool Access](./0137-sf-mcp-separated-configuration-and-product-families.md) — 2026-10-04
 
 ## Proposed
 

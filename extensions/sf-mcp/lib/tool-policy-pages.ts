@@ -76,7 +76,7 @@ export function renderToolPolicyPage(input: {
   const counts = countExposures(policy);
   const available = tools.length - policy.unavailable.length;
   const lines = [
-    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › Configure MCP`))}`,
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › Tool Access`))}`,
     "",
   ];
   if (input.connection) {
@@ -152,17 +152,10 @@ export function renderToolPolicyPage(input: {
     if (conflict) {
       lines.push(
         ...wrapText(
-          `⚠ CONFLICT with ${conflict.owners.join(" · ")} · Recommended ${exposureLabel(conflict.recommendedExposure)}`,
+          `⚠ overlaps ${conflict.owners.join(" · ")} · recommended ${exposureLabel(conflict.recommendedExposure)}`,
           descriptionWidth,
         ).map((line) => `    ${t.fg("warning", line)}`),
       );
-      if (selected) {
-        lines.push(
-          ...wrapText(conflict.reason, descriptionWidth).map(
-            (line) => `      ${t.fg("dim", line)}`,
-          ),
-        );
-      }
     }
     if (selected) {
       const warning = warnings.find((item) => item.startsWith(`${tool.name} `));
@@ -185,24 +178,47 @@ export function renderToolPolicyPage(input: {
       "",
     );
   }
+  const selectedTool = tools[input.cursor];
+  const selectedExposure = selectedTool
+    ? (policy.exposures[selectedTool.name] ?? "hidden")
+    : "hidden";
   lines.push(
-    ` ${t.fg("accent", "▰")} ${t.fg("muted", "TOOL ACCESS MODES")}`,
-    ...renderModeGuidance(t, "hidden", "Off; the model cannot call this tool.", contentWidth),
-    ...renderModeGuidance(
-      t,
-      "codemode",
-      "Callable from codemode scripts; not declared directly.",
-      contentWidth,
-    ),
-    ...renderModeGuidance(t, "deferred", "Loaded on demand through tool search.", contentWidth),
-    ...renderModeGuidance(t, "direct", "Always declared to the model on every turn.", contentWidth),
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "SELECTED MODE")}`,
+    ...wrapText(
+      `${exposureLabel(selectedExposure)} — ${modeDescription(selectedExposure)}`,
+      Math.max(24, contentWidth - 4),
+    ).map((line) => `    ${t.fg("dim", line)}`),
     "",
     ...wrapText(
-      "↑/↓ Select · ←/→ or Space Change mode · Enter Details · P Profiles · S Review & Save · Esc Overview",
+      "↑/↓ Select · ←/→ or Space Change mode · Enter Details · P Profiles · ? Mode help · S Review & Save · Esc Overview",
       Math.max(24, contentWidth - 1),
     ).map((line) => ` ${t.fg("accent", line)}`),
   );
   return lines;
+}
+
+export function renderToolModeHelpPage(input: {
+  theme: Theme;
+  width: number;
+  preset: McpPreset;
+}): string[] {
+  const { theme: t, width } = input;
+  const contentWidth = Math.max(24, width - 3);
+  return [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › Tool Access Modes`))}`,
+    "",
+    ` ${t.fg("muted", "Choose the narrowest exposure that supports the intended workflow.")}`,
+    "",
+    ...renderModeGuidance(t, "hidden", modeDescription("hidden"), contentWidth),
+    "",
+    ...renderModeGuidance(t, "codemode", modeDescription("codemode"), contentWidth),
+    "",
+    ...renderModeGuidance(t, "deferred", modeDescription("deferred"), contentWidth),
+    "",
+    ...renderModeGuidance(t, "direct", modeDescription("direct"), contentWidth),
+    "",
+    ` ${t.fg("dim", "Enter/Esc back to tool access")}`,
+  ];
 }
 
 export function renderToolPolicyReviewPage(input: {
@@ -261,6 +277,19 @@ export function renderToolPolicyReviewPage(input: {
     ` ${t.fg("dim", "←/→ or ↑/↓ choose · Enter save · Esc back")}`,
   );
   return lines;
+}
+
+function modeDescription(mode: ToolExposureMode): string {
+  switch (mode) {
+    case "codemode":
+      return "Callable from codemode scripts; not declared directly.";
+    case "deferred":
+      return "Loaded on demand through tool search.";
+    case "direct":
+      return "Always declared to the model on every turn.";
+    default:
+      return "Off; the model cannot call this tool.";
+  }
 }
 
 function renderModeGuidance(

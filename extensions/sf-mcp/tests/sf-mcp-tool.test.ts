@@ -120,6 +120,83 @@ describe("sf_mcp tool", () => {
     });
   });
 
+  it("plans connection and tool access independently", async () => {
+    const cwd = workspace();
+    const tool = registeredTool();
+
+    const connection = await execute(tool, cwd, {
+      action: "connection.plan",
+      scope: "global",
+      preset_id: "headless-360",
+      environment: "sandbox",
+      oauth_client_id: "public-consumer-key",
+    });
+    expect(connection).toMatchObject({
+      details: {
+        ok: true,
+        action: "connection.plan",
+        presetId: "headless-360",
+      },
+    });
+    const connected = await execute(tool, cwd, {
+      action: "connection.apply",
+      scope: "global",
+      preset_id: "headless-360",
+      plan_id: connection.details.planId,
+      plan_hash: connection.details.planHash,
+      allow_mutation: true,
+    });
+    expect(connected).toMatchObject({
+      details: { ok: true, action: "connection.apply", verified: true },
+    });
+    let config = JSON.parse(readFileSync(mcpConfigPath(cwd, "global"), "utf8"));
+    expect(Object.values(config.mcpServers["salesforce-headless-360"].toolExposure)).toEqual([
+      "hidden",
+      "hidden",
+      "hidden",
+      "hidden",
+    ]);
+
+    const tools = await execute(tool, cwd, {
+      action: "tools.plan",
+      scope: "global",
+      preset_id: "headless-360",
+      tool_profile: "recommended",
+      tool_overrides: { dispatch_readonly: "direct" },
+    });
+    expect(tools).toMatchObject({
+      details: {
+        ok: true,
+        action: "tools.plan",
+        profile: "custom",
+        exposures: {
+          discover: "codemode",
+          describe: "codemode",
+          dispatch: "hidden",
+          dispatch_readonly: "direct",
+        },
+      },
+    });
+    const exposed = await execute(tool, cwd, {
+      action: "tools.apply",
+      scope: "global",
+      preset_id: "headless-360",
+      plan_id: tools.details.planId,
+      plan_hash: tools.details.planHash,
+      allow_mutation: true,
+    });
+    expect(exposed).toMatchObject({
+      details: { ok: true, action: "tools.apply", verified: true },
+    });
+    config = JSON.parse(readFileSync(mcpConfigPath(cwd, "global"), "utf8"));
+    expect(config.mcpServers["salesforce-headless-360"].toolExposure).toEqual({
+      discover: "codemode",
+      describe: "codemode",
+      dispatch: "hidden",
+      dispatch_readonly: "direct",
+    });
+  });
+
   it("rejects a source-bound configure plan after the target entry changes", async () => {
     const cwd = workspace();
     const tool = registeredTool();

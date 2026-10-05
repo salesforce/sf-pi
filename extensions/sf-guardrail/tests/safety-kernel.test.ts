@@ -514,6 +514,32 @@ describe("Safety Kernel", () => {
       cwd: "/project",
       config: readBundledConfig(),
     });
+    const connection = await evaluateSafety({
+      toolName: "sf_mcp",
+      input: {
+        action: "connection.apply",
+        scope: "global",
+        preset_id: "headless-360",
+        plan_id: "plan_connection",
+        plan_hash: "sha256:connection",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const tools = await evaluateSafety({
+      toolName: "sf_mcp",
+      input: {
+        action: "tools.apply",
+        scope: "global",
+        preset_id: "headless-360",
+        plan_id: "plan_tools",
+        plan_hash: "sha256:tools",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
     const disable = await evaluateSafety({
       toolName: "sf_mcp",
       input: {
@@ -538,6 +564,26 @@ describe("Safety Kernel", () => {
         allowSession: false,
       },
     });
+    expect(connection).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-mcp-config",
+      approvalScope: {
+        operationFamily: "mcp connection configuration",
+        riskTier: "mcp_configuration_mutation_exact",
+        allowSession: false,
+      },
+    });
+    expect(tools).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-mcp-config",
+      approvalScope: {
+        operationFamily: "mcp tool access configuration",
+        riskTier: "mcp_configuration_mutation_exact",
+        allowSession: false,
+      },
+    });
     expect(disable).toMatchObject({
       action: "confirm",
       feature: "nativeToolGate",
@@ -548,14 +594,16 @@ describe("Safety Kernel", () => {
         allowSession: false,
       },
     });
-    expect(configure?.fingerprint).not.toBe(disable?.fingerprint);
+    expect(configure?.fingerprint).not.toBe(connection?.fingerprint);
+    expect(connection?.fingerprint).not.toBe(tools?.fingerprint);
+    expect(tools?.fingerprint).not.toBe(disable?.fingerprint);
   });
 
   it("does not mediate read-only sf_mcp actions", async () => {
     await expect(
       evaluateSafety({
         toolName: "sf_mcp",
-        input: { action: "status", scope: "global", preset_id: "headless-360" },
+        input: { action: "conflicts", scope: "global", preset_id: "headless-360" },
         cwd: "/project",
         config: readBundledConfig(),
       }),

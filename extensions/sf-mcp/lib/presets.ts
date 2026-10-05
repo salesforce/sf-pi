@@ -2,6 +2,7 @@
 /** Salesforce-published MCP presets and their deliberately small capability claims. */
 import { SF_MCP_HEADLESS_360_REQUIREMENT } from "../../../lib/common/sf-mcp-oauth-requirements.ts";
 import type { McpExposure, McpServerConfig } from "./mcp-config.ts";
+import { B2C_COMMERCE_TOOLS } from "./tool-contracts-b2c.ts";
 import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
 import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
 import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
@@ -20,6 +21,10 @@ export type McpPresetId =
   | "marketing-cloud"
   | "mulesoft-dx"
   | "agentforce-sales"
+  | "slack"
+  | "informatica-catalog"
+  | "informatica-data-exploration"
+  | "b2c-commerce"
   | "custom-salesforce"
   | "trailhead";
 
@@ -30,6 +35,9 @@ export type McpPresetCategory =
   | "Marketing Cloud"
   | "MuleSoft"
   | "Agentforce"
+  | "Slack"
+  | "Informatica"
+  | "Commerce"
   | "Custom"
   | "Trailhead";
 
@@ -57,12 +65,15 @@ export interface McpPreset {
     | "marketing-cloud"
     | "mulesoft-env"
     | "agentforce-sales-oauth"
+    | "slack-oauth"
+    | "informatica-oauth"
     | "custom-url";
   risk: "read" | "write" | "delete" | "mixed";
   support: "ga" | "beta" | "alpha";
   supportNote?: string;
   docsUrl: string;
   approvedTools?: readonly string[];
+  defaultExposure?: McpExposure;
   overlaps: McpPresetOverlap[];
 }
 
@@ -74,6 +85,7 @@ export interface PresetSetup {
   region?: "US" | "EU" | "PROD_US" | "PROD_EU" | "PROD_CA" | "PROD_JP";
   tenantId?: string;
   marketingClientId?: string;
+  serverUrl?: string;
   customUrl?: string;
 }
 
@@ -442,6 +454,90 @@ const PRESETS: readonly McpPreset[] = [
     ],
   },
   {
+    id: "slack",
+    serverName: "slack",
+    category: "Slack",
+    label: "Slack MCP",
+    icon: "#",
+    description:
+      "Search and work with Slack messages, channels, files, canvases, users, reactions, and lists.",
+    transport: "http",
+    setup: "slack-oauth",
+    risk: "mixed",
+    support: "alpha",
+    revision: 1,
+    supportNote:
+      "Alpha in SF Pi: Slack publishes the capability surface but not a stable exact tool-name contract. The connection starts quarantined until a reviewed contract is available.",
+    docsUrl: "https://docs.slack.dev/ai/slack-mcp-server",
+    defaultExposure: "hidden",
+    overlaps: [
+      {
+        nativeExtensionId: "sf-slack",
+        relationship: "direct",
+        capabilities: ["slack.search", "slack.messaging", "slack.canvases"],
+        reason:
+          "Slack MCP overlaps SF Slack research, message delivery, scheduling, files, users, channels, and canvases.",
+      },
+    ],
+  },
+  {
+    id: "informatica-catalog",
+    serverName: "informatica-catalog-discovery",
+    category: "Informatica",
+    label: "Informatica Catalog Discovery",
+    icon: "I",
+    description:
+      "Discover governed IDMC catalog assets, metadata, lineage, classifications, and business context.",
+    transport: "http",
+    setup: "informatica-oauth",
+    risk: "read",
+    support: "alpha",
+    revision: 1,
+    supportNote:
+      "Alpha in SF Pi: the pod-specific OAuth flow is documented, but Informatica does not publish a stable exact tool-name contract for this connector.",
+    docsUrl:
+      "https://www.informatica.com/blogs/powering-your-enterprise-ai-with-informatica-plugin-for-claude.html",
+    defaultExposure: "hidden",
+    overlaps: [],
+  },
+  {
+    id: "informatica-data-exploration",
+    serverName: "informatica-data-exploration",
+    category: "Informatica",
+    label: "Informatica Data Exploration",
+    icon: "I",
+    description:
+      "Explore governed datasets and attribute telemetry through the CLAIRE Data Exploration Agent.",
+    transport: "http",
+    setup: "informatica-oauth",
+    risk: "read",
+    support: "alpha",
+    revision: 1,
+    supportNote:
+      "Alpha in SF Pi: the pod-specific OAuth flow is documented, but Informatica does not publish a stable exact tool-name contract for this connector.",
+    docsUrl:
+      "https://www.informatica.com/blogs/powering-your-enterprise-ai-with-informatica-plugin-for-claude.html",
+    defaultExposure: "hidden",
+    overlaps: [],
+  },
+  {
+    id: "b2c-commerce",
+    serverName: "salesforce-b2c-commerce",
+    category: "Commerce",
+    label: "B2C Commerce",
+    icon: "C",
+    description:
+      "B2C Commerce documentation, development guidance, diagnostics, deployment, SCAPI, and analytics tools.",
+    transport: "stdio",
+    setup: "ready",
+    risk: "mixed",
+    support: "ga",
+    revision: 1,
+    docsUrl: "https://salesforcecommercecloud.github.io/b2c-developer-tooling/mcp/",
+    approvedTools: B2C_COMMERCE_TOOLS.map((tool) => tool.name),
+    overlaps: [],
+  },
+  {
     id: "custom-salesforce",
     serverName: "salesforce-custom",
     category: "Custom",
@@ -550,6 +646,20 @@ export function buildServerConfig(
     );
   }
 
+  if (preset.id === "b2c-commerce") {
+    return withReviewedToolExposure(
+      preset,
+      resolution,
+      {
+        command: "npx",
+        args: ["-y", "@salesforce/b2c-dx-mcp@latest"],
+        description: preset.description,
+        timeout: 120,
+      },
+      toolExposure,
+    );
+  }
+
   if (preset.id === "mulesoft-dx") {
     return withReviewedToolExposure(
       preset,
@@ -600,6 +710,35 @@ export function buildServerConfig(
       },
       description: preset.description,
       exposure: "codemode",
+      timeout: 120,
+    };
+  }
+
+  if (preset.id === "slack") {
+    const clientId = required(setup.oauthClientId, "Slack OAuth client ID");
+    return {
+      url: "https://mcp.slack.com/mcp",
+      oauth: {
+        clientId,
+        clientSecret: "${SLACK_MCP_CLIENT_SECRET}",
+        callbackPort: 8765,
+      },
+      description: preset.description,
+      exposure: "hidden",
+      timeout: 120,
+    };
+  }
+
+  if (preset.id === "informatica-catalog" || preset.id === "informatica-data-exploration") {
+    const clientId = required(setup.oauthClientId, "Informatica OAuth 2.1 client ID");
+    return {
+      url: validatedInformaticaUrl(
+        required(setup.serverUrl, "Informatica MCP server URL"),
+        preset.id,
+      ),
+      oauth: { clientId, callbackPort: 8765 },
+      description: preset.description,
+      exposure: "hidden",
       timeout: 120,
     };
   }
@@ -661,7 +800,7 @@ function withReviewedToolExposure(
   toolExposure?: Readonly<Record<string, McpExposure>>,
 ): McpServerConfig {
   const approved = approvedToolsForResolution(preset, resolution);
-  if (!approved) return { ...base, exposure: "codemode" };
+  if (!approved) return { ...base, exposure: preset.defaultExposure ?? "codemode" };
   const configuredExposure = toolExposure
     ? validateToolExposure(preset, approved, toolExposure)
     : Object.fromEntries(approved.map((tool) => [tool, "codemode"] as const));
@@ -714,6 +853,21 @@ export function isPresetConfigCompatible(
       : {
           compatible: false,
           reason: "The Salesforce DX entry does not use its reviewed per-tool exposure contract.",
+        };
+  }
+  if (preset.id === "b2c-commerce") {
+    const packageMatches =
+      "command" in config &&
+      config.command === "npx" &&
+      (config.args ?? []).includes("@salesforce/b2c-dx-mcp@latest");
+    if (!packageMatches) {
+      return { compatible: false, reason: "The command is not the B2C Commerce MCP package." };
+    }
+    return hasApprovedToolExposure(preset, config)
+      ? { compatible: true }
+      : {
+          compatible: false,
+          reason: "The B2C Commerce entry does not use its reviewed per-tool exposure contract.",
         };
   }
   if (preset.id === "mulesoft-dx") {
@@ -794,6 +948,34 @@ export function isPresetConfigCompatible(
           reason: "The entry is not the documented Agentforce Sales sandbox endpoint.",
         };
   }
+  if (preset.id === "slack") {
+    return "url" in config &&
+      config.url === "https://mcp.slack.com/mcp" &&
+      !!config.oauth?.clientId &&
+      config.oauth.clientSecret === "${SLACK_MCP_CLIENT_SECRET}" &&
+      config.exposure === "hidden"
+      ? { compatible: true }
+      : { compatible: false, reason: "The entry is not the reviewed Slack MCP connection." };
+  }
+  if (preset.id === "informatica-catalog" || preset.id === "informatica-data-exploration") {
+    try {
+      if (!("url" in config) || !config.url || !config.oauth?.clientId) {
+        throw new Error("missing URL or client ID");
+      }
+      validatedInformaticaUrl(config.url, preset.id);
+      return config.exposure === "hidden"
+        ? { compatible: true }
+        : {
+            compatible: false,
+            reason: "The unreviewed Informatica tool contract must stay Hidden.",
+          };
+    } catch {
+      return {
+        compatible: false,
+        reason: "The entry is not the documented Informatica MCP endpoint.",
+      };
+    }
+  }
   if (!("url" in config) || !config.url) {
     return { compatible: false, reason: "The entry is not a hosted MCP URL." };
   }
@@ -838,6 +1020,35 @@ function hasApprovedToolExposure(
     approved.length === configured.length &&
     approved.every((name, index) => name === configured[index])
   );
+}
+
+function validatedInformaticaUrl(
+  value: string,
+  presetId: "informatica-catalog" | "informatica-data-exploration",
+): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Informatica MCP server URL must be a valid URL.");
+  }
+  const expectedPath =
+    presetId === "informatica-catalog"
+      ? "/mcp-servers/public/cdgccatalogdiscovery"
+      : "/mcp-servers/public/dataexplorationagent";
+  if (
+    url.protocol !== "https:" ||
+    !url.hostname.endsWith(".informaticacloud.com") ||
+    url.pathname.replace(/\/$/, "") !== expectedPath
+  ) {
+    throw new Error(
+      `Informatica ${presetId === "informatica-catalog" ? "Catalog Discovery" : "Data Exploration"} URL must use the documented pod-specific ${expectedPath} endpoint.`,
+    );
+  }
+  url.pathname = expectedPath;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
 }
 
 function validatedCustomUrl(value: string): string {

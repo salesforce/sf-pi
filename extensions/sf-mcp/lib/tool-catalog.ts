@@ -3,6 +3,7 @@
 import { getObservedMcpTools, type ObservedMcpTool } from "./observed-tools.ts";
 import type { McpPreset, McpPresetId } from "./presets.ts";
 import { defineTools, type DocumentedMcpTool, type McpToolRisk } from "./tool-contract-types.ts";
+import { B2C_COMMERCE_TOOLS } from "./tool-contracts-b2c.ts";
 import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
 import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
 import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
@@ -660,6 +661,44 @@ const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
     ],
     tools: EMPTY_TOOLS,
     note: "Salesforce documents this Beta server for the Agentforce Sales ChatGPT app but does not publish an exact tool reference. Tools appear after connection and remain outside the reviewed per-tool policy until Salesforce publishes their contract.",
+  },
+  slack: {
+    capabilities: [
+      "Workspace search",
+      "Messages and channels",
+      "Files and canvases",
+      "Users, reactions, and lists",
+    ],
+    tools: EMPTY_TOOLS,
+    note: "Slack publishes its capability surface but not a stable exact tool-name contract. The connection starts Hidden; observed tools remain quarantined pending a reviewed contract.",
+  },
+  "informatica-catalog": {
+    capabilities: [
+      "Governed catalog discovery",
+      "Metadata and lineage",
+      "Classifications and business context",
+    ],
+    tools: EMPTY_TOOLS,
+    note: "The pod-specific OAuth connection is documented, but the exact tool-name contract is not. Observed tools remain quarantined pending review.",
+  },
+  "informatica-data-exploration": {
+    capabilities: [
+      "Governed dataset exploration",
+      "Attribute telemetry",
+      "CLAIRE-assisted data analysis",
+    ],
+    tools: EMPTY_TOOLS,
+    note: "The pod-specific OAuth connection is documented, but the exact tool-name contract is not. Observed tools remain quarantined pending review.",
+  },
+  "b2c-commerce": {
+    capabilities: [
+      "B2C Commerce documentation and skills",
+      "Cartridge and Managed Runtime deployment",
+      "Diagnostics and script debugging",
+      "SCAPI, WebDAV, and Commerce analytics",
+    ],
+    tools: B2C_COMMERCE_TOOLS,
+    note: "This reviewed contract follows the GA @salesforce/b2c-dx-mcp package. Tool availability still depends on local project configuration and B2C Commerce credentials.",
   },
   "custom-salesforce": {
     capabilities: ["Runtime-declared custom capabilities"],

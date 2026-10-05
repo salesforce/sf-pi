@@ -328,6 +328,55 @@ describe("extension detail helpers", () => {
     expect(second).not.toContain("row 1");
   });
 
+  it("keeps the active settings row visible during panel navigation", async () => {
+    let activeRow = 0;
+    const configFactory = vi.fn(() => ({
+      focused: false,
+      handleInput: (data: string) => {
+        if (data === "\x1b[B") activeRow = 23;
+      },
+      invalidate: () => undefined,
+      render: () => [],
+      renderContent: () => Array.from({ length: 24 }, (_, i) => ` row ${i + 1}`),
+      getActiveRow: () => activeRow,
+    }));
+    const custom = {
+      id: "sf-test",
+      name: "SF Test",
+      description: "Test extension",
+      file: "extensions/sf-test/index.ts",
+      category: "assistive",
+      defaultEnabled: true,
+      enabled: true,
+      configurable: true,
+      getConfigPanel: async () => configFactory as never,
+    } as never;
+    const overlay = new SfPiOverlayComponent(
+      stubTheme,
+      "0.0.0-test",
+      PACKAGE_ROOT,
+      "/tmp/project",
+      [custom],
+      [custom],
+      "global",
+      () => 12,
+      () => undefined,
+      {} as never,
+      {} as never,
+      () => [],
+      () => undefined,
+      { extensionId: "sf-test", view: "settings" },
+    );
+
+    await Promise.resolve();
+    expect(overlay.render(100).join("\n")).toContain("row 1");
+
+    overlay.handleInput("\x1b[B");
+    const navigated = overlay.render(100).join("\n");
+    expect(navigated).toContain("row 24");
+    expect(navigated).not.toContain("row 1");
+  });
+
   it("closes direct deep-linked extension details on escape instead of returning to the list", () => {
     const states = buildExtensionStates(new Set());
     let closed = false;

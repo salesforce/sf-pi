@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status, review source-bound redacted configuration plans, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. Pi-native project overrides are recognized without being mistaken for complete manual servers and remain editable through /mcp unless explicitly reset. The unified Configure MCP editor remains available for interactive connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.
+Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status and conflicts, configure connection/authentication separately from reviewed tool exposure, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. Pi-native project overrides are recognized without being mistaken for complete manual servers and remain editable through /mcp unless explicitly reset. Interactive Connection & Authentication, Tool Access, and Tool Conflict Review pages replace the former unified editor. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.
 
 ## Start
 
@@ -38,14 +38,16 @@ Open its Manager detail or change its package state with:
 - Pi-native project overrides preserve the matching global transport and credentials, remain editable through /mcp, and are replaced with full project presets only after an explicit reviewed reset.
 - Pi-normalized server-name collisions require the user to choose the one entry to keep.
 - Governed presets, including Salesforce DX, Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX, use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.
-- The unified editor makes Hidden, Code Mode, Deferred, and Direct guidance persistent, while risky Direct choices still warn and every save retains explicit diff review before persistence.
+- Connection and authentication are configured separately from Tool Access; risky Direct choices still warn and every save retains explicit diff review before persistence.
 - Exact tool conflict recommendations change only MCP exposure; SF MCP never disables an SF Pi capability owner automatically.
 - Observed additions remain locked hidden until a reviewed preset revision approves them; removed documented tools are unavailable and can be repaired to Hidden on unchanged managed entries.
 - Agentforce Sales is sandbox-only and experimental in SF Pi; its secret is an environment reference and every operation remains Guardrail-mediated and fail-closed without exact OAuth-org identity.
 - Standalone Tableau uses Pi-native OAuth against Tableau's managed endpoint; Trailhead uses its published no-auth, read-only public-content endpoint.
 - Custom MCP URLs start with no callable tools.
 - Legacy SObject MCP entries are not managed by SF MCP; if manually configured, their mutation tools remain Guardrail-mediated and fail closed.
-- Agentforce Sales and MuleSoft secrets are referenced through environment variables and are never stored in native MCP configuration or SF MCP state.
+- Agentforce Sales, Slack, and MuleSoft secrets are referenced through environment variables and are never stored in SF MCP managed state.
+- Slack and Informatica connections start quarantined because their public references do not publish stable exact tool-name contracts; observed tools remain Hidden pending a reviewed preset revision.
+- B2C Commerce uses the GA @salesforce/b2c-dx-mcp package with a versioned reviewed tool contract and hidden-by-default exposure.
 
 ## Exact reference
 

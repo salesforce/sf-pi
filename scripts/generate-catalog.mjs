@@ -533,7 +533,7 @@ function generateRegistryTs(manifests) {
     "// Regenerate: npm run generate-catalog",
     "",
     "// Re-export shared types so existing imports from catalog/registry.ts keep working.",
-    'export type { ConfigPanelResult, ConfigPanelFactory, SfPiExtension, ExtensionManifest } from "./types.ts";',
+    'export type { ConfigPanelResult, ConfigPanelFocusable, ConfigPanelFactory, SfPiExtension, ExtensionManifest } from "./types.ts";',
     'import type { SfPiExtension } from "./types.ts";',
     "",
     "export const SF_PI_REGISTRY: readonly SfPiExtension[] = [",
