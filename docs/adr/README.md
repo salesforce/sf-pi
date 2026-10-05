@@ -119,8 +119,8 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0132: SF Integrate adds plan-bound outbound credentials](./0132-sf-integrate-adds-plan-bound-outbound-credentials.md) — 2026-10-01
 - [0133: SF Integrate hardens core ECA OAuth profiles](./0133-sf-integrate-hardens-core-eca-oauth-profiles.md) — 2026-10-01
 - [0135: SF Browser uses bounded semantic navigation for Salesforce Setup chrome](./0135-sf-browser-bounded-semantic-setup-navigation.md) — 2026-10-04
-- [0136: Pi 1.0.2 audit edge and runtime delegation](./0136-pi-102-audit-edge-and-runtime-delegation.md) — 2026-10-04
 - [0137: SF MCP Separates Connection and Tool Access](./0137-sf-mcp-separated-configuration-and-product-families.md) — 2026-10-04
+- [0138: Pi 1.0.3 audit edge](./0138-pi-103-audit-edge.md) — 2026-10-05
 
 ## Proposed
 
@@ -150,6 +150,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0124: Pi 0.99.2 Runtime Floor and MCP Identity](./0124-pi-0992-runtime-floor-and-mcp-identity.md) — 2026-09-30 — superseded by [ADR 0134](./0134-pi-100-runtime-floor-and-native-ownership.md)
 - [0125: SF MCP Exact Target Attestation](./0125-sf-mcp-exact-target-attestation.md) — 2026-10-01 — superseded by [ADR 0126](./0126-sf-mcp-removes-legacy-sobject-presets.md)
 - [0134: Pi 1.0 Runtime Floor and Native Ownership](./0134-pi-100-runtime-floor-and-native-ownership.md) — 2026-10-02 — superseded by [ADR 0136](./0136-pi-102-audit-edge-and-runtime-delegation.md)
+- [0136: Pi 1.0.2 audit edge and runtime delegation](./0136-pi-102-audit-edge-and-runtime-delegation.md) — 2026-10-04 — superseded by [ADR 0138](./0138-pi-103-audit-edge.md)
 
 ### Rejected
 

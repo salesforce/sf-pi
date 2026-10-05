@@ -1,8 +1,9 @@
 ---
 id: "0136"
-status: accepted
+status: superseded
 date: 2026-10-04
 supersedes: ["0134"]
+supersededBy: ["0138"]
 ---
 
 # ADR 0136: Pi 1.0.2 audit edge and runtime delegation
