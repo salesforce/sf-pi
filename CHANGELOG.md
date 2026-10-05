@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.326.0](https://github.com/salesforce/sf-pi/compare/v0.325.0...v0.326.0) (2026-10-05)
+
+
+### Features
+
+* **sf-agentscript:** add voice workflow hardening ([cd5a5cc](https://github.com/salesforce/sf-pi/commit/cd5a5cc8a3354512e0a404952530d3d760d6a28f))
+
 ## [0.325.0](https://github.com/salesforce/sf-pi/compare/v0.324.0...v0.325.0) (2026-10-05)
 
 
