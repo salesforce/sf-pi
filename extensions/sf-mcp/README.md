@@ -14,6 +14,7 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 - Lets agents inspect status, produce source-bound redacted plans, apply exact reviewed entries through SF Guardrail, disable unchanged managed entries, and return a human OAuth login handoff.
 - Publishes each preset's short description for Pi's MCP prompt summary, tool-search ranking, and namespace inspection.
 - Preserves unknown top-level configuration and unrelated servers.
+- Recognizes Pi project overrides that change only a global server's enabled state or exposure; ordinary override editing stays in Pi's native `/mcp` surface, and SF MCP replaces one only after an explicit reviewed reset.
 - Detects server names that collide after Pi normalizes hyphens and underscores.
 - Offers explicit adoption, redacted diff, reset, and canonical-name reconciliation for existing entries.
 - Versions governed preset contracts and reports observed tool additions or removals.
@@ -69,7 +70,7 @@ The public External Client App consumer key can be passed as `oauth_client_id`; 
 
 Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview. **Configure MCP** opens one guided editor that combines connection status, reviewed profiles, numbered tools, current exposure, risk, descriptions, and inline conflict recommendations. Use ↑/↓ to select a tool, ←/→ or Space to change its mode, `P` to choose a profile, Enter for full details, and `S` for **Review & Save**. The final review shows the exact redacted native configuration diff before persistence.
 
-For a new server, Review & Save continues through any required connection fields while carrying the selected tool policy forward. For an unchanged managed server, it updates only `exposure` and `toolExposure`. Choose global or trusted-project scope before saving. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, manual exposure review, and reconnects.
+For a new server, Review & Save continues through any required connection fields while carrying the selected tool policy forward. For an unchanged managed server, it updates only `exposure` and `toolExposure`. Choose global or trusted-project scope before saving. A partial project override remains Pi-managed and opens `/mcp` guidance instead of being mistaken for a complete manual server. Hosted Salesforce servers collect only the environment and External Client App consumer key needed to generate native Pi configuration. Use `/mcp` after reload for OAuth sign-in, connection diagnostics, project overrides, manual exposure review, and reconnects.
 
 The editor explains every mode in place: **Hidden** is unreachable, **Code Mode** is callable from codemode scripts, **Deferred** is loaded on demand through tool search, and **Direct** is declared to the model on every turn.
 

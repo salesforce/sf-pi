@@ -7,9 +7,10 @@ Pi + SALESFORCE wordmark and cache-first readiness information.
 
 The default header summarizes the active model, optional gateway usage,
 Salesforce CLI and API context, Apex/LWC/Agent Script LSP readiness, Node runtime,
-Herdr, Browser, Code Analyzer, fonts, local review tools, release freshness,
+Herdr, Browser, Code Analyzer, fonts, local review tools, SF Pi package freshness,
 privacy posture, announcements, recommended packages, skill sources, and recent
-sessions. Slack stays hidden until configured. SF Docs appears when the extension
+sessions. Pi owns Pi Runtime release checks and update guidance. Slack stays hidden
+until configured. SF Docs appears when the extension
 is enabled and reports connected, setup needed, or not configured.
 
 Wide terminals can show two columns; narrow terminals stack the same content.

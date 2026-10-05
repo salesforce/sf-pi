@@ -1,16 +1,16 @@
 ---
 title: "SF Welcome"
-description: "Salesforce-branded splash screen with environment status, release freshness, and community info"
+description: "Salesforce-branded splash screen with environment status, SF Pi release freshness, and community info"
 editLink: false
 ---
 
 # SF Welcome
 
-<p class="sfpi-page-lead">Salesforce-branded splash screen with environment status, release freshness, and community info</p>
+<p class="sfpi-page-lead">Salesforce-branded splash screen with environment status, SF Pi release freshness, and community info</p>
 
 ## What it does
 
-Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, release freshness, announcements, recommended extensions, and recent sessions. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.
+Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, SF Pi package freshness, announcements, recommended extensions, and recent sessions. Pi owns Pi Runtime release checks and updates. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.
 
 ## Start
 

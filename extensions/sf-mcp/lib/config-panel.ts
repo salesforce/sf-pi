@@ -1104,6 +1104,18 @@ class SfMcpConfigPanel implements Focusable {
       };
       return;
     }
+    if (state.managed.status === "project-override") {
+      this.view = {
+        kind: "result",
+        title: "Project override is Pi-managed",
+        message:
+          state.managed.message ??
+          "Use Pi's native /mcp surface to change this project override, or explicitly reset it to a full project preset.",
+        tone: "warning",
+        needsReload: false,
+      };
+      return;
+    }
     if (state.managed.status === "managed-enabled") {
       this.view = {
         kind: "result",

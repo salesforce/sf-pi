@@ -697,6 +697,8 @@ function plainStatus(status: ManagedServerStatus): string {
       return "manual configuration";
     case "modified":
       return "review changes";
+    case "project-override":
+      return "project override";
     case "managed-outdated":
       return "preset update available";
     case "name-conflict":
@@ -718,6 +720,7 @@ function renderStatus(theme: Theme, status: ManagedServerStatus, preset: McpPres
   if (status === "managed-disabled") return theme.fg("muted", "○ DISABLED");
   if (status === "manual") return theme.fg("warning", "◐ MANUAL CONFIG");
   if (status === "modified") return theme.fg("warning", "▲ REVIEW CHANGES");
+  if (status === "project-override") return theme.fg("muted", "◐ PROJECT OVERRIDE");
   if (status === "managed-outdated") return theme.fg("warning", "▲ PRESET UPDATE");
   if (status === "name-conflict") return theme.fg("error", "● NAME CONFLICT");
   if (status === "invalid-config") return theme.fg("error", "● INVALID CONFIG");
@@ -737,7 +740,9 @@ function renderAction(theme: Theme, status: ManagedServerStatus): string {
   ) {
     return theme.fg("warning", "Enter Review");
   }
-  if (status === "invalid-config") return theme.fg("warning", "Open /mcp");
+  if (status === "project-override" || status === "invalid-config") {
+    return theme.fg("warning", "Open /mcp");
+  }
   return theme.fg("accent", "Enter Set up");
 }
 
@@ -751,6 +756,9 @@ function selectedDetail(state: PresetRuntimeState): string {
   }
   if (state.managed.status === "modified") {
     return "Managed entry changed outside SF MCP; review it before repair.";
+  }
+  if (state.managed.status === "project-override") {
+    return state.managed.message ?? "Pi applies a project override to the matching global entry.";
   }
   if (state.managed.status === "managed-outdated") {
     return "A newer reviewed preset revision is available.";

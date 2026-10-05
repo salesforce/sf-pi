@@ -15,8 +15,17 @@ import { globalAgentPath, projectConfigPath } from "../../../lib/common/pi-paths
 
 export type { McpExposure, McpServerConfig };
 
+/** Pi 1.0.1+ project entry that changes only a global server's local policy. */
+export interface McpServerOverride {
+  enabled?: boolean;
+  exposure?: McpExposure;
+  toolExposure?: Record<string, McpExposure>;
+}
+
+type McpConfigEntry = McpServerConfig | McpServerOverride;
+
 interface McpFileRoot extends Record<string, unknown> {
-  mcpServers?: Record<string, McpServerConfig>;
+  mcpServers?: Record<string, McpConfigEntry>;
 }
 
 export type McpConfigInspection =
@@ -26,6 +35,7 @@ export type McpConfigInspection =
       path: string;
       root: McpFileRoot;
       servers: Record<string, McpServerConfig>;
+      overrides: Record<string, McpServerOverride>;
     }
   | {
       ok: false;
@@ -58,7 +68,7 @@ export function mcpConfigPath(cwd: string, scope: "global" | "project"): string 
 
 export function inspectMcpConfig(filePath: string): McpConfigInspection {
   if (!existsSync(filePath)) {
-    return { ok: true, exists: false, path: filePath, root: {}, servers: {} };
+    return { ok: true, exists: false, path: filePath, root: {}, servers: {}, overrides: {} };
   }
 
   let raw: string;
@@ -108,12 +118,21 @@ export function inspectMcpConfig(filePath: string): McpConfigInspection {
     };
   }
 
+  const entries = (servers ?? {}) as Record<string, unknown>;
+  const completeServers: Record<string, McpServerConfig> = {};
+  const overrides: Record<string, McpServerOverride> = {};
+  for (const [name, entry] of Object.entries(entries)) {
+    if (isMcpServerOverride(entry)) overrides[name] = entry;
+    else completeServers[name] = entry as McpServerConfig;
+  }
+
   return {
     ok: true,
     exists: true,
     path: filePath,
     root: parsed as McpFileRoot,
-    servers: (servers ?? {}) as Record<string, McpServerConfig>,
+    servers: completeServers,
+    overrides,
   };
 }
 
@@ -122,7 +141,7 @@ export function canonicalMcpServerName(serverName: string): string {
 }
 
 export function findCanonicalMcpServerNames(
-  servers: Readonly<Record<string, McpServerConfig>>,
+  servers: Readonly<Record<string, unknown>>,
   serverName: string,
 ): string[] {
   const canonical = canonicalMcpServerName(serverName);
@@ -136,7 +155,8 @@ export function upsertMcpServer(
 ): McpConfigMutationResult {
   const inspected = inspectMcpConfig(filePath);
   if (inspected.ok === false) return inspectionFailure(inspected);
-  const matches = findCanonicalMcpServerNames(inspected.servers, serverName);
+  const entries = allMcpEntries(inspected);
+  const matches = findCanonicalMcpServerNames(entries, serverName);
   if (matches.length > 0) {
     const exact = matches.includes(serverName);
     return {
@@ -151,7 +171,7 @@ export function upsertMcpServer(
 
   const root: McpFileRoot = {
     ...inspected.root,
-    mcpServers: { ...inspected.servers, [serverName]: config },
+    mcpServers: { ...entries, [serverName]: config },
   };
   const write = writeMcpRoot(filePath, root);
   return write.ok ? { ok: true, created: true, path: filePath } : write;
@@ -164,7 +184,8 @@ export function replaceMcpServer(
 ): McpConfigMutationResult {
   const inspected = inspectMcpConfig(filePath);
   if (inspected.ok === false) return inspectionFailure(inspected);
-  if (!Object.hasOwn(inspected.servers, serverName)) {
+  const entries = allMcpEntries(inspected);
+  if (!Object.hasOwn(entries, serverName)) {
     return {
       ok: false,
       path: filePath,
@@ -175,7 +196,7 @@ export function replaceMcpServer(
 
   const root: McpFileRoot = {
     ...inspected.root,
-    mcpServers: { ...inspected.servers, [serverName]: config },
+    mcpServers: { ...entries, [serverName]: config },
   };
   const write = writeMcpRoot(filePath, root);
   return write.ok ? { ok: true, created: false, path: filePath } : write;
@@ -188,7 +209,8 @@ export function removeCanonicalMcpServerDuplicates(
 ): McpConfigMutationResult {
   const inspected = inspectMcpConfig(filePath);
   if (inspected.ok === false) return inspectionFailure(inspected);
-  const matches = findCanonicalMcpServerNames(inspected.servers, serverName);
+  const entries = allMcpEntries(inspected);
+  const matches = findCanonicalMcpServerNames(entries, serverName);
   if (!matches.includes(keepName)) {
     return {
       ok: false,
@@ -197,11 +219,10 @@ export function removeCanonicalMcpServerDuplicates(
       message: `${keepName} is not a canonical match for ${serverName} in ${filePath}.`,
     };
   }
-  const servers = { ...inspected.servers };
   for (const name of matches) {
-    if (name !== keepName) delete servers[name];
+    if (name !== keepName) delete entries[name];
   }
-  const write = writeMcpRoot(filePath, { ...inspected.root, mcpServers: servers });
+  const write = writeMcpRoot(filePath, { ...inspected.root, mcpServers: entries });
   return write.ok ? { ok: true, created: false, path: filePath } : write;
 }
 
@@ -212,7 +233,8 @@ export function setMcpServerEnabled(
 ): McpConfigMutationResult {
   const inspected = inspectMcpConfig(filePath);
   if (inspected.ok === false) return inspectionFailure(inspected);
-  const current = inspected.servers[serverName];
+  const entries = allMcpEntries(inspected);
+  const current = entries[serverName];
   if (!current) {
     return {
       ok: false,
@@ -225,7 +247,7 @@ export function setMcpServerEnabled(
   const root: McpFileRoot = {
     ...inspected.root,
     mcpServers: {
-      ...inspected.servers,
+      ...entries,
       [serverName]: { ...current, enabled },
     },
   };
@@ -272,6 +294,32 @@ function inspectionFailure(
     reason: inspected.reason,
     message: inspected.message,
   };
+}
+
+function allMcpEntries(
+  inspected: Extract<McpConfigInspection, { ok: true }>,
+): Record<string, McpConfigEntry> {
+  return { ...inspected.servers, ...inspected.overrides };
+}
+
+function isMcpServerOverride(value: unknown): value is McpServerOverride {
+  if (!isRecord(value)) return false;
+  if ("command" in value || "url" in value || "type" in value) return false;
+  const keys = Object.keys(value);
+  if (!keys.every((key) => key === "enabled" || key === "exposure" || key === "toolExposure")) {
+    return false;
+  }
+  if (value.enabled !== undefined && typeof value.enabled !== "boolean") return false;
+  if (value.exposure !== undefined && !isMcpExposure(value.exposure)) return false;
+  if (value.toolExposure !== undefined) {
+    if (!isRecord(value.toolExposure)) return false;
+    if (!Object.values(value.toolExposure).every(isMcpExposure)) return false;
+  }
+  return true;
+}
+
+function isMcpExposure(value: unknown): value is McpExposure {
+  return value === "codemode" || value === "deferred" || value === "direct" || value === "hidden";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

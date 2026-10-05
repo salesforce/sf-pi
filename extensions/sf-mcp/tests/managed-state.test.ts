@@ -37,6 +37,7 @@ describe("SF MCP managed preset state", () => {
         serverName: "salesforce-dx",
         presetId: "salesforce-dx",
         presetRevision: 1,
+        scope: "global",
       }).status,
     ).toBe("manual");
 
@@ -51,6 +52,7 @@ describe("SF MCP managed preset state", () => {
         serverName: "salesforce-dx",
         presetId: "salesforce-dx",
         presetRevision: 1,
+        scope: "global",
       }).status,
     ).toBe("managed-enabled");
 
@@ -59,6 +61,7 @@ describe("SF MCP managed preset state", () => {
         serverName: "salesforce-dx",
         presetId: "salesforce-dx",
         presetRevision: 2,
+        scope: "global",
       }).status,
     ).toBe("managed-outdated");
 
@@ -68,6 +71,7 @@ describe("SF MCP managed preset state", () => {
         serverName: "salesforce-dx",
         presetId: "salesforce-dx",
         presetRevision: 2,
+        scope: "global",
       }).status,
     ).toBe("modified");
   });

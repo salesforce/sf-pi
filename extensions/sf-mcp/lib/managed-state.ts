@@ -6,6 +6,7 @@ import {
   findCanonicalMcpServerNames,
   inspectMcpConfig,
   type McpServerConfig,
+  type McpServerOverride,
 } from "./mcp-config.ts";
 import type { McpPresetId, McpResolution } from "./presets.ts";
 
@@ -27,6 +28,7 @@ export type ManagedServerStatus =
   | "managed-disabled"
   | "managed-outdated"
   | "modified"
+  | "project-override"
   | "name-conflict"
   | "invalid-config";
 
@@ -35,6 +37,7 @@ export interface ManagedServerInspection {
   configuredName?: string;
   conflictingNames?: string[];
   config?: McpServerConfig;
+  override?: McpServerOverride;
   record?: ManagedServerRecord;
   message?: string;
 }
@@ -97,13 +100,19 @@ export function forgetManagedServer(store: StateStore<ManagedState>, serverName:
 export function inspectManagedServer(
   mcpFile: string,
   store: StateStore<ManagedState>,
-  input: { serverName: string; presetId: McpPresetId; presetRevision: number },
+  input: {
+    serverName: string;
+    presetId: McpPresetId;
+    presetRevision: number;
+    scope: "global" | "project";
+  },
 ): ManagedServerInspection {
   const inspected = inspectMcpConfig(mcpFile);
   if (inspected.ok === false) {
     return { status: "invalid-config", message: inspected.message };
   }
-  const matches = findCanonicalMcpServerNames(inspected.servers, input.serverName);
+  const entries = { ...inspected.servers, ...inspected.overrides };
+  const matches = findCanonicalMcpServerNames(entries, input.serverName);
   if (matches.length === 0) return { status: "missing" };
   if (matches.length > 1) {
     return {
@@ -115,6 +124,24 @@ export function inspectManagedServer(
 
   const configuredName = matches[0];
   if (!configuredName) return { status: "missing" };
+  const override = inspected.overrides[configuredName];
+  if (override) {
+    if (input.scope !== "project") {
+      return {
+        status: "invalid-config",
+        configuredName,
+        message: `${configuredName} is an MCP project override, but it is stored in the global MCP configuration.`,
+      };
+    }
+    return {
+      status: "project-override",
+      configuredName,
+      override,
+      message:
+        "Pi applies this project override to the matching global server. Use Pi's native /mcp surface to change or remove the override, or explicitly reset it to a full project preset.",
+    };
+  }
+
   const config = inspected.servers[configuredName];
   if (!config) return { status: "missing" };
   const record = normalizeState(store.read()).servers[configuredName];

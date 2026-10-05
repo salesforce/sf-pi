@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Render-level checks for the sf-pi / Pi release freshness rows. */
+/** Render-level checks for the SF Pi package freshness row. */
 import { describe, expect, it } from "vitest";
 import type { ReleaseStatusInfo, SplashData } from "../lib/types.ts";
 
@@ -39,13 +39,6 @@ function baseData(overrides: Partial<SplashData> = {}): SplashData {
       freshness: "latest",
       loading: false,
     },
-    piRelease: {
-      installedVersion: "0.75.4",
-      latestVersion: "0.75.4",
-      freshness: "latest",
-      loading: false,
-      updateCommand: "/sf-pi doctor runtime",
-    },
     ...overrides,
   };
 }
@@ -75,7 +68,7 @@ function findStatusLine(rendered: string, label: string): string {
   return line;
 }
 
-describe("release freshness splash rows", () => {
+describe("release freshness splash row", () => {
   it("replaces the old top sf-pi Extensions row with a compact sf-pi release row", async () => {
     const rendered = await render(baseData());
 
@@ -86,27 +79,19 @@ describe("release freshness splash rows", () => {
     expect(sfPi).toContain("2/3 extensions active");
   });
 
-  it("shows installed versions while freshness is still checking", async () => {
+  it("shows the installed SF Pi version while freshness is still checking", async () => {
     const checking: ReleaseStatusInfo = {
-      installedVersion: "0.75.4",
+      installedVersion: "0.141.1",
       freshness: "checking",
       loading: true,
-      updateCommand: "/sf-pi doctor runtime",
     };
-    const rendered = await render(
-      baseData({
-        sfPiRelease: { installedVersion: "0.141.1", freshness: "checking", loading: true },
-        piRelease: checking,
-      }),
-    );
+    const rendered = await render(baseData({ sfPiRelease: checking }));
 
     expect(findStatusLine(rendered, "sf-pi")).toContain("checking latest");
     expect(findStatusLine(rendered, "sf-pi")).toContain("v0.141.1");
-    expect(findStatusLine(rendered, "Pi")).toContain("checking latest");
-    expect(findStatusLine(rendered, "Pi")).toContain("v0.75.4");
   });
 
-  it("renders update hints only for update-available rows", async () => {
+  it("renders an update hint only for an available SF Pi package update", async () => {
     const rendered = await render(
       baseData({
         sfPiRelease: {
@@ -116,141 +101,16 @@ describe("release freshness splash rows", () => {
           loading: false,
           updateCommand: "pi update git:github.com/salesforce/sf-pi",
         },
-        piRelease: {
-          installedVersion: "0.75.3",
-          latestVersion: "0.75.4",
-          freshness: "update-available",
-          loading: false,
-          updateCommand: "/sf-pi doctor runtime",
-        },
       }),
     );
 
     expect(findStatusLine(rendered, "sf-pi")).toContain("update available");
     expect(rendered).toContain("→ pi update git:github.com/salesforce/sf-pi");
-    expect(findStatusLine(rendered, "Pi")).toContain("update available");
-    expect(rendered).toContain("→ /sf-pi doctor runtime");
   });
 
-  it("shows latest allowed wording when npm cooldown filters a newer Pi release", async () => {
-    const rendered = await render(
-      baseData({
-        piRelease: {
-          installedVersion: "0.75.1",
-          latestVersion: "0.75.1",
-          absoluteLatestVersion: "0.75.4",
-          policyVisibleLatestVersion: "0.75.1",
-          cooldownActive: true,
-          freshness: "latest",
-          loading: false,
-          updateCommand: "/sf-pi doctor runtime",
-        },
-      }),
-    );
+  it("leaves Pi Runtime release checks and update guidance to Pi", async () => {
+    const rendered = await render(baseData());
 
-    const pi = findStatusLine(rendered, "Pi");
-    expect(pi).toContain("latest allowed [cooldown active]");
-    expect(pi).toContain("v0.75.1");
-    expect(rendered).not.toContain("→ /sf-pi doctor runtime");
-  });
-
-  it("shows an available future stable Pi as forward-compatible", async () => {
-    const rendered = await render(
-      baseData({
-        piRelease: {
-          installedVersion: "0.84.0",
-          latestVersion: "0.86.0",
-          forwardCompatibility: true,
-          freshness: "update-available",
-          loading: false,
-          updateCommand: "pi update --self",
-        },
-      }),
-    );
-
-    const pi = findStatusLine(rendered, "Pi");
-    expect(pi).toContain("update available [forward]");
-    expect(pi).toContain("v0.84.0 → v0.86.0");
-    expect(rendered).toContain("→ pi update --self");
-  });
-
-  it("shows when the installed Pi is running in forward-compatibility mode", async () => {
-    const rendered = await render(
-      baseData({
-        piRelease: {
-          installedVersion: "0.86.0",
-          latestVersion: "0.86.0",
-          forwardCompatibility: true,
-          freshness: "latest",
-          loading: false,
-          updateCommand: "pi update --self",
-        },
-      }),
-    );
-
-    const pi = findStatusLine(rendered, "Pi");
-    expect(pi).toContain("latest [forward]");
-    expect(pi).toContain("v0.86.0");
-  });
-
-  it("shows when a Pi major release remains blocked", async () => {
-    const rendered = await render(
-      baseData({
-        piRelease: {
-          installedVersion: "0.82.0",
-          latestVersion: "0.82.0",
-          absoluteLatestVersion: "1.0.0",
-          supportWindowLimited: true,
-          freshness: "latest",
-          loading: false,
-          updateCommand: "/sf-pi doctor runtime",
-        },
-      }),
-    );
-
-    const pi = findStatusLine(rendered, "Pi");
-    expect(pi).toContain("latest supported [update blocked]");
-    expect(pi).toContain("v0.82.0");
-    expect(rendered).not.toContain("→ /sf-pi doctor runtime");
-  });
-
-  it("treats skipped Pi checks as informational rather than update warnings", async () => {
-    const rendered = await render(
-      baseData({
-        piRelease: {
-          installedVersion: "0.75.4",
-          freshness: "unknown",
-          loading: false,
-          checkSkipped: true,
-          skipReason: "offline",
-          updateCommand: "/sf-pi doctor runtime",
-        },
-      }),
-    );
-
-    const pi = findStatusLine(rendered, "Pi");
-    expect(pi).toContain("installed");
-    expect(pi).toContain("latest check skipped");
-    expect(pi).not.toContain("update available");
-  });
-
-  it("does not render Pi Runtime release-note bullets in SF Welcome", async () => {
-    const data = baseData() as SplashData & {
-      whatsNew: {
-        fromVersion: string;
-        toVersion: string;
-        bullets: Array<{ text: string; section: "feature" }>;
-      };
-    };
-    data.whatsNew = {
-      fromVersion: "0.79.3",
-      toVersion: "0.79.4",
-      bullets: [{ text: "Automatic first-run theme selection", section: "feature" }],
-    };
-    const rendered = await render(data);
-
-    expect(rendered).toContain("Pi");
-    expect(rendered).not.toContain("What's New");
-    expect(rendered).not.toContain("Automatic first-run theme selection");
+    expect(() => findStatusLine(rendered, "Pi")).toThrow("Could not find Pi status row");
   });
 });

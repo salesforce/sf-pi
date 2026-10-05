@@ -317,6 +317,8 @@ function statusLabel(status: ReturnType<typeof inspectPresetRuntime>["managed"][
       return "manual config";
     case "modified":
       return "review changes";
+    case "project-override":
+      return "project override";
     case "managed-outdated":
       return "preset update";
     case "name-conflict":

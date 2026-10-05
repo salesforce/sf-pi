@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status, review source-bound redacted configuration plans, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. The unified Configure MCP editor remains available for interactive connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.
+Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status, review source-bound redacted configuration plans, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. Pi-native project overrides are recognized without being mistaken for complete manual servers and remain editable through /mcp unless explicitly reset. The unified Configure MCP editor remains available for interactive connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.
 
 ## Start
 
@@ -35,6 +35,7 @@ Open its Manager detail or change its package state with:
 - Pi's built-in MCP extension owns transport, OAuth, tokens, connections, exposure, resources, and readiness; login.handoff never performs human OAuth consent.
 - Direct capability overlaps default to native SF Pi owners; complementary profiles use hidden-by-default server exposure with exact approved tools.
 - Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.
+- Pi-native project overrides preserve the matching global transport and credentials, remain editable through /mcp, and are replaced with full project presets only after an explicit reviewed reset.
 - Pi-normalized server-name collisions require the user to choose the one entry to keep.
 - Governed presets, including Salesforce DX, Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX, use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.
 - The unified editor makes Hidden, Code Mode, Deferred, and Direct guidance persistent, while risky Direct choices still warn and every save retains explicit diff review before persistence.

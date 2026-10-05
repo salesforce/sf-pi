@@ -14,6 +14,7 @@ import {
   setMcpServerEnabled,
   upsertMcpServer,
   type McpServerConfig,
+  type McpServerOverride,
 } from "./mcp-config.ts";
 import {
   createManagedStateStore,
@@ -78,6 +79,7 @@ export function inspectPresetRuntime(
     serverName: preset.serverName,
     presetId: preset.id,
     presetRevision: preset.revision,
+    scope,
   });
   return {
     preset,
@@ -124,13 +126,14 @@ export function installPreset(input: {
     serverName: preset.serverName,
     presetId: preset.id,
     presetRevision: preset.revision,
+    scope: input.scope,
   });
   if (managed.status === "name-conflict") {
     return { ok: false, message: managed.message ?? "Canonical MCP server names conflict." };
   }
   if (
     !input.replaceExisting &&
-    ["manual", "modified", "managed-outdated"].includes(managed.status)
+    ["manual", "modified", "managed-outdated", "project-override"].includes(managed.status)
   ) {
     return {
       ok: false,
@@ -177,6 +180,7 @@ export function adoptPreset(input: {
     serverName: preset.serverName,
     presetId: preset.id,
     presetRevision: preset.revision,
+    scope: input.scope,
   });
   if (!managed.config || !managed.configuredName) {
     return { ok: false, message: `${preset.label} has no single existing entry to adopt.` };
@@ -220,7 +224,10 @@ export function reconcileCanonicalServerNames(input: {
   const file = mcpConfigPath(input.cwd, input.scope);
   const inspected = inspectMcpConfig(file);
   if (inspected.ok === false) return { ok: false, message: inspected.message };
-  const matches = findCanonicalMcpServerNames(inspected.servers, preset.serverName);
+  const matches = findCanonicalMcpServerNames(
+    { ...inspected.servers, ...inspected.overrides },
+    preset.serverName,
+  );
   if (matches.length < 2) {
     return { ok: false, message: `${preset.label} has no canonical duplicate names to resolve.` };
   }
@@ -242,7 +249,7 @@ export function reconcileCanonicalServerNames(input: {
 }
 
 export function summarizeConfigDiff(
-  current: McpServerConfig | undefined,
+  current: McpServerConfig | McpServerOverride | undefined,
   proposed: McpServerConfig,
 ): string[] {
   const before = summarizeConfig(current);
@@ -256,9 +263,7 @@ export function summarizeConfigDiff(
 export function buildMcpRoutingGuidelines(cwd: string): string[] {
   const lines: string[] = [];
   for (const preset of SALESFORCE_MCP_PRESETS) {
-    const project = inspectPresetRuntime(cwd, "project", preset);
-    const global = inspectPresetRuntime(cwd, "global", preset);
-    const effective = project.managed.status === "missing" ? global : project;
+    const effective = inspectEffectivePresetRuntime(cwd, preset);
     if (
       effective.managed.status !== "managed-enabled" ||
       effective.managed.record?.resolution !== "side-by-side" ||
@@ -295,6 +300,7 @@ export function setManagedPresetEnabled(input: {
     serverName: preset.serverName,
     presetId: preset.id,
     presetRevision: preset.revision,
+    scope: input.scope,
   });
   if (managed.status !== "managed-enabled" && managed.status !== "managed-disabled") {
     return {
@@ -340,6 +346,7 @@ export function updateManagedPresetToolPolicy(input: {
     serverName: preset.serverName,
     presetId: preset.id,
     presetRevision: preset.revision,
+    scope: input.scope,
   });
   if (
     (managed.status !== "managed-enabled" && managed.status !== "managed-disabled") ||
@@ -394,7 +401,9 @@ export function updateManagedPresetToolPolicy(input: {
   };
 }
 
-function summarizeConfig(config: McpServerConfig | undefined): Record<string, string> {
+function summarizeConfig(
+  config: McpServerConfig | McpServerOverride | undefined,
+): Record<string, string> {
   if (!config) return {};
   const summary: Record<string, string> = {};
   if ("command" in config && config.command) summary.command = config.command;
@@ -402,7 +411,9 @@ function summarizeConfig(config: McpServerConfig | undefined): Record<string, st
   if ("url" in config && config.url) summary.url = redactedUrl(config.url);
   if (config.exposure) summary.exposure = config.exposure;
   if (config.enabled !== undefined) summary.enabled = String(config.enabled);
-  if (config.timeout !== undefined) summary.timeout = String(config.timeout);
+  if ("timeout" in config && config.timeout !== undefined) {
+    summary.timeout = String(config.timeout);
+  }
   if ("oauth" in config && config.oauth?.clientId) summary.oauthClientId = "<configured>";
   if ("oauth" in config && config.oauth?.callbackPort !== undefined) {
     summary.oauthCallbackPort = String(config.oauth.callbackPort);
@@ -433,6 +444,34 @@ function redactedUrl(value: string): string {
   }
 }
 
+function inspectEffectivePresetRuntime(cwd: string, preset: McpPreset): PresetRuntimeState {
+  const project = inspectPresetRuntime(cwd, "project", preset);
+  const global = inspectPresetRuntime(cwd, "global", preset);
+  if (project.managed.status === "missing") return global;
+  if (project.managed.status !== "project-override") return project;
+  if (!global.managed.config) return project;
+
+  const config: McpServerConfig = {
+    ...global.managed.config,
+    ...project.managed.override,
+  };
+  const status =
+    global.managed.status === "managed-enabled" || global.managed.status === "managed-disabled"
+      ? config.enabled === false
+        ? "managed-disabled"
+        : "managed-enabled"
+      : global.managed.status;
+  return {
+    ...global,
+    managed: {
+      ...global.managed,
+      status,
+      config,
+    },
+    scopeConflict: project.scopeConflict,
+  };
+}
+
 function inspectScopeConflict(
   cwd: string,
   scope: "global" | "project",
@@ -440,17 +479,28 @@ function inspectScopeConflict(
 ): PresetRuntimeState["scopeConflict"] {
   const otherScope = scope === "global" ? "project" : "global";
   const other = inspectMcpConfig(mcpConfigPath(cwd, otherScope));
-  if (
-    other.ok === false ||
-    findCanonicalMcpServerNames(other.servers, preset.serverName).length === 0
-  ) {
+  const otherEntries =
+    other.ok === true ? { ...other.servers, ...other.overrides } : ({} as Record<string, unknown>);
+  if (findCanonicalMcpServerNames(otherEntries, preset.serverName).length === 0) {
     return undefined;
   }
   if (scope === "project") {
-    return {
-      kind: "project-would-override-global",
-      message: `A global ${preset.serverName} entry already exists. A project entry with the same name will override it in this trusted project.`,
-    };
+    const current = inspectMcpConfig(mcpConfigPath(cwd, "project"));
+    const currentEntries =
+      current.ok === true
+        ? { ...current.servers, ...current.overrides }
+        : ({} as Record<string, unknown>);
+    const hasProjectEntry =
+      findCanonicalMcpServerNames(currentEntries, preset.serverName).length > 0;
+    return hasProjectEntry
+      ? {
+          kind: "project-overrides-global",
+          message: `A project ${preset.serverName} entry is active and overrides the matching global entry in this trusted project.`,
+        }
+      : {
+          kind: "project-would-override-global",
+          message: `A global ${preset.serverName} entry already exists. A project entry with the same name will override it in this trusted project.`,
+        };
   }
   return {
     kind: "project-overrides-global",

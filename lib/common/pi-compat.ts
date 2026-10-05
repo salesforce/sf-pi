@@ -19,13 +19,13 @@ import * as PiRuntime from "@earendil-works/pi-coding-agent";
 export const MIN_PI_VERSION = "1.0.0";
 
 /** Exclusive end of the exact patch range covered by required compatibility CI. */
-export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "1.0.1";
+export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "1.0.3";
 
 /** Future stable Pi 1.x releases may load; Pi 2.x requires an explicit audit. */
 export const HARD_MAX_PI_VERSION_EXCLUSIVE = "2.0.0";
 
 /** Exact runtime used by normal development and bounded repair guidance. */
-export const RECOMMENDED_PI_VERSION = "1.0.0";
+export const RECOMMENDED_PI_VERSION = "1.0.2";
 
 export type PiVersionCompatibility =
   "audited" | "forward-compatible" | "too-old" | "prerelease" | "major-version";

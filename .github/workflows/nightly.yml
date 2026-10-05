@@ -23,8 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Pi 1.0.0 requires Node >= 22.19. Keep this lane equal to the
-        # supported range until Pi advertises a higher floor.
+        # The Pi 1.x support window requires Node >= 22.19. Keep this lane
+        # equal to the supported range until Pi advertises a higher floor.
         node: [22]
 
     steps:
@@ -66,6 +66,8 @@ jobs:
       matrix:
         include:
           - pi-version: "1.0.0"
+            experimental: false
+          - pi-version: "1.0.2"
             experimental: false
           - pi-version: "latest"
             experimental: true

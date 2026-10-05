@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -96,6 +96,59 @@ describe("SF MCP preset service", () => {
       if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
       else process.env.PI_CODING_AGENT_DIR = previous;
     }
+  });
+
+  it("recognizes a Pi project override instead of treating it as a manual server", () => {
+    const cwd = workspace();
+    const preset = getPreset("headless-360");
+    expect(
+      installPreset({
+        cwd,
+        scope: "global",
+        presetId: preset.id,
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+    const projectFile = mcpConfigPath(cwd, "project");
+    mkdirSync(path.dirname(projectFile), { recursive: true });
+    writeFileSync(
+      projectFile,
+      `${JSON.stringify({ mcpServers: { [preset.serverName]: { enabled: false } } }, null, 2)}\n`,
+    );
+
+    expect(inspectPresetRuntime(cwd, "project", preset)).toMatchObject({
+      managed: {
+        status: "project-override",
+        configuredName: preset.serverName,
+        override: { enabled: false },
+      },
+      scopeConflict: { kind: "project-overrides-global" },
+    });
+    expect(buildMcpRoutingGuidelines(cwd)).toEqual([]);
+  });
+
+  it("applies a project override when building effective side-by-side routing guidance", () => {
+    const cwd = workspace();
+    const preset = getPreset("headless-360");
+    expect(
+      installPreset({
+        cwd,
+        scope: "global",
+        presetId: preset.id,
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "consumer-key" },
+      }).ok,
+    ).toBe(true);
+    const projectFile = mcpConfigPath(cwd, "project");
+    mkdirSync(path.dirname(projectFile), { recursive: true });
+    writeFileSync(
+      projectFile,
+      `${JSON.stringify({ mcpServers: { [preset.serverName]: { enabled: true } } }, null, 2)}\n`,
+    );
+
+    expect(buildMcpRoutingGuidelines(cwd)).toEqual([expect.stringContaining("side-by-side with")]);
+    expect(buildMcpRoutingGuidelines(cwd)[0]).toContain("sf-soql");
   });
 
   it("adopts a compatible manual entry without replacing native configuration", () => {

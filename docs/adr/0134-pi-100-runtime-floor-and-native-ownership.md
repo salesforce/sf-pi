@@ -1,8 +1,9 @@
 ---
 id: "0134"
-status: accepted
+status: superseded
 date: 2026-10-02
 supersedes: ["0124"]
+supersededBy: ["0136"]
 ---
 
 # ADR 0134: Pi 1.0 Runtime Floor and Native Ownership

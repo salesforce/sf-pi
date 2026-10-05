@@ -51,23 +51,10 @@ export type ReleaseFreshness = "checking" | "latest" | "update-available" | "unk
 export interface ReleaseStatusInfo {
   installedVersion?: string;
   latestVersion?: string;
-  /** Absolute upstream latest when `latestVersion` is policy-constrained. */
-  absoluteLatestVersion?: string;
-  /** Newest release currently allowed by the user's package-manager policy. */
-  policyVisibleLatestVersion?: string;
-  /** True when a release-age policy is hiding a newer absolute Pi release. */
-  cooldownActive?: boolean;
-  /** True when a prerelease or Pi major release is not safe to offer as an update. */
-  supportWindowLimited?: boolean;
-  /** True when the installed or offered stable Pi is newer than required compatibility CI. */
-  forwardCompatibility?: boolean;
   freshness: ReleaseFreshness;
   loading: boolean;
   /** Optional command shown as a muted hint when freshness is update-available. */
   updateCommand?: string;
-  /** True when the caller deliberately skipped the live latest check. */
-  checkSkipped?: boolean;
-  skipReason?: "offline" | "version-check-disabled";
 }
 
 /**
@@ -356,9 +343,6 @@ export interface SplashData {
   /** sf-pi package release freshness. Local/cache-only at startup; live
    *  freshness piggybacks on the deferred announcements refresh. */
   sfPiRelease?: ReleaseStatusInfo;
-  /** Pi runtime release freshness. Local/cache-only at startup, then
-   *  refreshed by a deferred bounded fetch that respects Pi's offline flags. */
-  piRelease?: ReleaseStatusInfo;
   /** Cached Code Analyzer readiness. Read-only at startup; refreshed by sf-code-analyzer. */
   codeAnalyzer?: CodeAnalyzerReadinessState;
   /** Node custom-CA status populated cache-first, then refreshed on a

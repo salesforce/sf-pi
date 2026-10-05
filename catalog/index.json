@@ -967,7 +967,7 @@
     "docs": {
       "intentGroup": "Personalize pi",
       "agentGuide": "AGENT_GUIDE.md",
-      "summary": "Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status, review source-bound redacted configuration plans, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. The unified Configure MCP editor remains available for interactive connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.",
+      "summary": "Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status, review source-bound redacted configuration plans, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. Pi-native project overrides are recognized without being mistaken for complete manual servers and remain editable through /mcp unless explicitly reset. The unified Configure MCP editor remains available for interactive connection status, numbered tool inventory, color-coded exposure modes, inline conflict guidance, profile selection, and explicit Review & Save. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.",
       "primaryFiles": [
         "index.ts",
         "lib/sf-mcp-tool.ts",
@@ -994,6 +994,7 @@
         "Pi's built-in MCP extension owns transport, OAuth, tokens, connections, exposure, resources, and readiness; login.handoff never performs human OAuth consent.",
         "Direct capability overlaps default to native SF Pi owners; complementary profiles use hidden-by-default server exposure with exact approved tools.",
         "Manual or externally modified native MCP entries are adopted or reset only after an explicit review; malformed configuration is never overwritten.",
+        "Pi-native project overrides preserve the matching global transport and credentials, remain editable through /mcp, and are replaced with full project presets only after an explicit reviewed reset.",
         "Pi-normalized server-name collisions require the user to choose the one entry to keep.",
         "Governed presets, including Salesforce DX, Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX, use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.",
         "The unified editor makes Hidden, Code Mode, Deferred, and Direct guidance persistent, while risky Direct choices still warn and every save retains explicit diff review before persistence.",
@@ -1009,7 +1010,7 @@
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 7876
+    "srcLoc": 8024
   },
   {
     "id": "sf-ohana-spinner",
@@ -1373,7 +1374,7 @@
   {
     "id": "sf-welcome",
     "name": "SF Welcome",
-    "description": "Salesforce-branded splash screen with environment status, release freshness, and community info",
+    "description": "Salesforce-branded splash screen with environment status, SF Pi release freshness, and community info",
     "category": "ui",
     "maturity": "stable",
     "defaultEnabled": true,
@@ -1393,7 +1394,7 @@
     ],
     "docs": {
       "intentGroup": "Personalize pi",
-      "summary": "Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, release freshness, announcements, recommended extensions, and recent sessions. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.",
+      "summary": "Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, SF Pi package freshness, announcements, recommended extensions, and recent sessions. Pi owns Pi Runtime release checks and updates. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.",
       "primaryFiles": [
         "index.ts",
         "lib/splash-component.ts",
@@ -1404,7 +1405,6 @@
       ],
       "stateFiles": [
         "~/.pi/agent/sf-welcome-state.json",
-        "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json",
         "<globalAgentDir>/sf-pi/sf-welcome/font-status.json",
         "<globalAgentDir>/sf-pi/sf-welcome/hunk-status.json",
         "<globalAgentDir>/sf-pi/sf-planreview/status.json",
@@ -1415,6 +1415,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6772
+    "srcLoc": 6378
   }
 ]

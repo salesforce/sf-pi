@@ -201,7 +201,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-welcome">
   <span class="sfpi-card-kicker">UI · on</span>
   <strong>SF Welcome</strong>
-  <span>Salesforce-branded splash screen with environment status, release freshness, and community info</span>
+  <span>Salesforce-branded splash screen with environment status, SF Pi release freshness, and community info</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-welcome</code></span>
 </a>
 </div>

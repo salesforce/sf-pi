@@ -128,7 +128,8 @@ const Params = Type.Object({
   ),
   replace_existing: Type.Optional(
     Type.Boolean({
-      description: "Include a reviewed replacement of a manual, modified, or outdated entry.",
+      description:
+        "Include a reviewed replacement of a manual, modified, outdated, or project-override entry.",
     }),
   ),
   plan_id: Type.Optional(Type.String({ description: "Exact session-bound plan id." })),
@@ -240,7 +241,7 @@ function createConfigurePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams
   const setup = presetSetup(params);
   const toolPolicy = reviewedToolPolicy(preset, state.plan, params.tool_profile ?? "recommended");
   const proposedConfig = buildServerConfig(preset, resolution, setup, toolPolicy?.exposures);
-  const diff = summarizeConfigDiff(state.managed.config, proposedConfig);
+  const diff = summarizeConfigDiff(state.managed.config ?? state.managed.override, proposedConfig);
   const sourceVersion = sourceVersionFor(cwd, scope, preset);
   const replaceExisting = params.replace_existing === true;
   const willChange =
@@ -288,6 +289,11 @@ function configurePlanResult(plan: ConfigurePlan, state: ReturnType<typeof inspe
     `Native config: ${mcpConfigPath(plan.cwd, plan.scope)}`,
     `Change required: ${plan.willChange ? "yes" : "no"}`,
     ...(state.scopeConflict ? [`Warning: ${state.scopeConflict.message}`] : []),
+    ...(state.managed.status === "project-override"
+      ? [
+          "Warning: This replaces the Pi-native project override with a complete project server entry.",
+        ]
+      : []),
     "Changes:",
     ...(plan.diff.length ? plan.diff.map((line) => `- ${line}`) : ["- none"]),
   ];
@@ -503,6 +509,7 @@ function sourceVersionFor(cwd: string, scope: SfMcpScope, preset: McpPreset): st
     status: state.managed.status,
     configuredName: state.managed.configuredName,
     config: state.managed.config,
+    override: state.managed.override,
     record: state.managed.record,
     scopeConflict: state.scopeConflict,
   })}`;
@@ -572,7 +579,10 @@ function assertPlannableState(
   if (status === "invalid-config" || status === "name-conflict") {
     throw new Error(message ?? `SF MCP configuration is ${status}.`);
   }
-  if (["manual", "modified", "managed-outdated"].includes(status) && !replaceExisting) {
+  if (
+    ["manual", "modified", "managed-outdated", "project-override"].includes(status) &&
+    !replaceExisting
+  ) {
     throw new Error(
       `${message ?? "Existing MCP configuration requires review."} Set replace_existing=true only after reviewing the status and plan diff.`,
     );

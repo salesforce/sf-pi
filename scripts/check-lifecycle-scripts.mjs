@@ -17,18 +17,6 @@ const LOCK_PATH = path.join(ROOT, "package-lock.json");
 
 const ALLOWED_INSTALL_SCRIPT_PACKAGES = new Map([
   ["", "sf-pi root prepare hook; guarded to no-op during pi git package installs."],
-  [
-    "node_modules/@earendil-works/pi-coding-agent/node_modules/@google/genai",
-    "nested dev dependency from pi-coding-agent model tooling.",
-  ],
-  [
-    "node_modules/@earendil-works/pi-coding-agent/node_modules/protobufjs",
-    "nested dev dependency from pi-coding-agent Google client tooling.",
-  ],
-  [
-    "node_modules/@earendil-works/pi-coding-agent/node_modules/esbuild",
-    "nested dev dependency from pi-coding-agent docs/tooling bundling.",
-  ],
   ["node_modules/@google/genai", "dev dependency from pi-ai model tooling."],
   ["node_modules/protobufjs", "dev dependency from Google client tooling."],
   ["node_modules/esbuild", "dev dependency from VitePress/Vite docs-site bundling."],

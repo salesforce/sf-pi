@@ -29,6 +29,7 @@ For Headless 360, pass the public External Client App consumer key as `oauth_cli
 - Use `global` for user-level configuration across workspaces.
 - Use `project` only in a trusted project. Project entries override global entries with the same normalized server name.
 - Manual, modified, outdated, invalid, and canonically colliding entries fail closed. Set `replace_existing=true` only after reviewing status and the proposed diff.
+- A project entry containing only `enabled`, `exposure`, or `toolExposure` is a Pi-native override of the matching global server, not a complete manual server. Use `/mcp` for ordinary override changes; replace it with a full project preset only after explicit review.
 - The plan is bound to the current Pi session, workspace, scope, preset revision, current target entry, proposed configuration, and managed-state record. Any target drift requires a new plan.
 
 ## Tool exposure

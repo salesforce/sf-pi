@@ -35,7 +35,7 @@ Inside Pi:
 ```
 
 The supported Pi range is currently
-`>=1.0.0 <2.0.0`.
+`>=1.0.0 <2.0.0`. Exact Pi `1.0.2` is the latest audited and recommended runtime.
 
 See [Installation](./docs/install.md) for updates, project-local setup, platform
 notes, fonts, and recovery. Follow [Quickstart](./docs/quickstart.md) for a first

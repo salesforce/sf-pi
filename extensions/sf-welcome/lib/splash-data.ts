@@ -31,7 +31,7 @@ import {
 import { collectRecommendationsStatus } from "./recommendations-status.ts";
 import { collectCaBundleNudge } from "./ca-bundle-nudge.ts";
 import { readCachedNodeCertStatus } from "./node-cert-cache.ts";
-import { collectInitialPiReleaseStatus, detectSfPiReleaseStatus } from "./release-status.ts";
+import { detectSfPiReleaseStatus } from "./release-status.ts";
 import { summarizeAvailableSkillSources } from "../../../lib/common/skill-sources/skill-sources.ts";
 import { readCodeAnalyzerReadiness } from "../../../lib/common/code-analyzer-status/store.ts";
 import { getTelemetryState } from "../../../lib/common/privacy/state.ts";
@@ -113,14 +113,7 @@ export {
   writeCachedSfSkillsStatus,
 } from "./sf-skills-status.ts";
 export { readCachedNodeCertStatus, writeCachedNodeCertStatus } from "./node-cert-cache.ts";
-export {
-  collectInitialPiReleaseStatus,
-  detectPiReleaseStatus,
-  detectSfPiReleaseStatus,
-  fetchLatestPiVersion,
-  readCachedPiReleaseStatus,
-  writeCachedPiReleaseStatus,
-} from "./release-status.ts";
+export { detectSfPiReleaseStatus } from "./release-status.ts";
 export { estimateMonthlyCost, getRecentSessions } from "./session-data.ts";
 export {
   buildAnnouncementsSync,
@@ -418,7 +411,6 @@ export function collectInitialSplashData(
     autoUpdate: collectAutoUpdateStatus(),
     browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),
     sfPiRelease: detectSfPiReleaseStatus(cwd),
-    piRelease: collectInitialPiReleaseStatus(),
     codeAnalyzer:
       cwd && isSfPiExtensionEnabled(cwd, "sf-code-analyzer")
         ? readCodeAnalyzerReadiness()
@@ -535,7 +527,6 @@ export function collectSplashData(
     autoUpdate: collectAutoUpdateStatus(),
     browserRuntime: readCachedBrowserRuntimeStatus() ?? defaultBrowserRuntimeStatus(),
     sfPiRelease: detectSfPiReleaseStatus(cwd),
-    piRelease: collectInitialPiReleaseStatus(),
     codeAnalyzer: isSfPiExtensionEnabled(cwd, "sf-code-analyzer")
       ? readCodeAnalyzerReadiness()
       : undefined,

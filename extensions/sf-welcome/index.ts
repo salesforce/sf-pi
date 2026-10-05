@@ -55,7 +55,6 @@ import {
   collectInitialSplashData,
   collectSplashData,
   detectSfCliStatus,
-  detectPiReleaseStatus,
   detectSfPiReleaseStatus,
   detectSfSkillsStatus,
   readCachedSfCliStatus,
@@ -63,7 +62,6 @@ import {
   reconcileCachedSfSkillsStatus,
   refreshAnnouncementsSummary,
   resolveMonthlyUsage,
-  writeCachedPiReleaseStatus,
   writeCachedSfCliStatus,
   writeCachedSfSkillsStatus,
 } from "./lib/splash-data.ts";
@@ -398,7 +396,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
       try {
         if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
         const currentSfCli = data.sfCli;
-        const currentPiRelease = data.piRelease;
         const currentNodeCert = data.nodeCert;
         // Phase 2.3: split heavy FS work across two ticks. The first tick
         // runs collectSplashData EXCEPT loadedCounts (skipped via the
@@ -421,7 +418,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
           if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
           Object.assign(data, settled);
           data.sfCli = currentSfCli ?? { installed: false, freshness: "checking", loading: true };
-          data.piRelease = currentPiRelease ?? data.piRelease;
           data.nodeCert = currentNodeCert ?? { kind: "checking", loading: true };
           data.doctor = startupDoctorNudge;
 
@@ -521,31 +517,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     }, 2_500);
     sfSkillsTimer.unref?.();
 
-    // Background Pi release freshness: cache-first for first paint, live
-    // refresh later. This mirrors Pi's documented update check endpoint but
-    // is delayed so it never competes with startup. It also respects
-    // PI_OFFLINE and PI_SKIP_VERSION_CHECK.
-    const piReleaseTimer = setTimeout(() => {
-      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-      void markBootStep("sf-welcome.pi-release-detect", () => detectPiReleaseStatus())
-        .then((status) => {
-          writeCachedPiReleaseStatus(status);
-          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-          data.piRelease = status;
-          scheduleSplashRepaint(ctx, generation);
-        })
-        .catch(() => {
-          if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-          if (data.piRelease) {
-            data.piRelease = { ...data.piRelease, freshness: "unknown", loading: false };
-          }
-          scheduleSplashRepaint(ctx, generation);
-        });
-    }, 3_000);
-    piReleaseTimer.unref?.();
-
     // Background Node CA status: cache-first and strictly local. This runs
-    // after the SF CLI / SF Skills / Pi release probes so it cannot affect first paint,
+    // after the SF CLI and SF Skills probes so it cannot affect first paint,
     // and it performs no network, subprocess, or recursive filesystem work.
     const nodeCertTimer = setTimeout(() => {
       if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
@@ -1056,17 +1029,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
       data.nodeCert ??= { kind: "unknown", loading: false };
     }
     data.sfPiRelease = detectSfPiReleaseStatus(ctx.cwd);
-    try {
-      const piRelease = await detectPiReleaseStatus();
-      writeCachedPiReleaseStatus(piRelease);
-      data.piRelease = piRelease;
-    } catch {
-      data.piRelease ??= {
-        freshness: "unknown",
-        loading: false,
-        updateCommand: "/sf-pi doctor runtime",
-      };
-    }
     const healthLines = data.extensionHealth.map((ext) => {
       const statusIcon = ext.status === "active" ? "●" : ext.status === "locked" ? "◆" : "○";
       return `  ${statusIcon} ${ext.name} — ${ext.status}`;
@@ -1146,7 +1108,6 @@ export default function sfWelcome(pi: ExtensionAPI) {
       `Auto Update: ${autoUpdateStatus}`,
       `Node CA Certs: ${nodeCertStatus}`,
       `sf-pi: ${formatPlainReleaseStatus(data.sfPiRelease)} (${activeExtensionCount}/${totalExtensionCount} extensions active)`,
-      `Pi: ${formatPlainReleaseStatus(data.piRelease)}`,
       "",
       "sf-pi Extensions:",
       ...healthLines,
@@ -1229,9 +1190,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
     return "package not installed · upstream Herdr inactive";
   }
 
-  function formatPlainReleaseStatus(
-    status: SplashData["sfPiRelease"] | SplashData["piRelease"],
-  ): string {
+  function formatPlainReleaseStatus(status: SplashData["sfPiRelease"]): string {
     if (!status) return "not checked";
     const installed = status.installedVersion ? `v${status.installedVersion}` : "version unknown";
     if (status.freshness === "latest") return `latest · ${installed}`;
@@ -1240,8 +1199,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
       return `update available · ${installed} → ${latest}`;
     }
     if (status.freshness === "checking" || status.loading) return `checking latest · ${installed}`;
-    const reason = status.checkSkipped ? "latest check skipped" : "latest unknown";
-    return `installed · ${installed} (${reason})`;
+    return `installed · ${installed} (latest unknown)`;
   }
 
   async function emitWelcomeOutput(

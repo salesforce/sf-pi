@@ -787,7 +787,7 @@ function formatVersion(version: string | undefined): string {
 }
 
 function formatReleaseStatusValue(
-  status: SplashData["sfPiRelease"] | SplashData["piRelease"],
+  status: SplashData["sfPiRelease"],
   mode: GlyphMode,
   suffix: string = "",
 ): string {
@@ -802,28 +802,17 @@ function formatReleaseStatusValue(
 
   if (status.freshness === "update-available") {
     const latest = status.latestVersion ? `v${status.latestVersion}` : "latest";
-    const label = status.forwardCompatibility ? "update available [forward]" : "update available";
-    return `${SF_ORANGE("↑")} ${SF_ORANGE(label)} ${MUTED(`· ${installed} → ${latest}`)}${suffix}`;
+    return `${SF_ORANGE("↑")} ${SF_ORANGE("update available")} ${MUTED(`· ${installed} → ${latest}`)}${suffix}`;
   }
 
   if (status.freshness === "latest") {
-    const label = status.supportWindowLimited
-      ? "latest supported [update blocked]"
-      : status.forwardCompatibility
-        ? "latest [forward]"
-        : status.cooldownActive
-          ? "latest allowed [cooldown active]"
-          : "latest";
-    return `${SF_GREEN("✓")} ${SF_GREEN(label)} ${MUTED(`· ${installed}`)}${suffix}`;
+    return `${SF_GREEN("✓")} ${SF_GREEN("latest")} ${MUTED(`· ${installed}`)}${suffix}`;
   }
 
-  const reason = status.checkSkipped ? "latest check skipped" : "latest unknown";
-  return `${SF_GREEN("✓")} ${SF_GREEN("installed")} ${MUTED(`· ${installed} (${reason})`)}${suffix}`;
+  return `${SF_GREEN("✓")} ${SF_GREEN("installed")} ${MUTED(`· ${installed} (latest unknown)`)}${suffix}`;
 }
 
-function releaseActionHint(
-  status: SplashData["sfPiRelease"] | SplashData["piRelease"],
-): string | null {
+function releaseActionHint(status: SplashData["sfPiRelease"]): string | null {
   if (!status || status.loading || status.freshness !== "update-available") return null;
   return status.updateCommand ?? null;
 }
@@ -1133,8 +1122,8 @@ function buildLeftColumn(
     lines.push(`   ${MUTED(`→ ${truncated}`)}`);
   }
 
-  // Release freshness rows sit under SF Skills so package/runtime update
-  // state is grouped together. The sf-pi row carries the extension
+  // SF Pi release freshness sits under SF Skills. Pi owns Pi Runtime
+  // release checks and update guidance. The sf-pi row carries the extension
   // active/total count, replacing the older top-level "sf-pi Extensions"
   // row without losing the enablement signal.
   lines.push(
@@ -1151,12 +1140,6 @@ function buildLeftColumn(
     lines.push(`   ${MUTED(`→ ${truncated}`)}`);
   }
 
-  lines.push(formatGlyphInfoRow("pi", mode, "Pi", formatReleaseStatusValue(data.piRelease, mode)));
-  const piHint = releaseActionHint(data.piRelease);
-  if (piHint) {
-    const truncated = truncateToWidth(piHint, Math.max(10, colWidth - 4), "…");
-    lines.push(`   ${MUTED(`→ ${truncated}`)}`);
-  }
   lines.push("");
 
   return lines;

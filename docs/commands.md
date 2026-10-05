@@ -225,7 +225,7 @@ _Manage skills through one Skill Funnel: catalog every source (Claude/Codex/Curs
 
 ### [SF Welcome](./extensions/sf-welcome)
 
-_Salesforce-branded splash screen with environment status, release freshness, and community info_
+_Salesforce-branded splash screen with environment status, SF Pi release freshness, and community info_
 
 - Default: **on**
 - Commands: `/sf-welcome`, `/sf-setup-fonts`

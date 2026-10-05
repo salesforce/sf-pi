@@ -27,7 +27,47 @@ describe("native Pi MCP configuration", () => {
   it("is absent and empty by default", () => {
     const inspected = inspectMcpConfig(tempFile());
 
-    expect(inspected).toMatchObject({ ok: true, exists: false, servers: {} });
+    expect(inspected).toMatchObject({ ok: true, exists: false, servers: {}, overrides: {} });
+  });
+
+  it("separates Pi project overrides from complete server definitions", () => {
+    const file = tempFile();
+    writeFileSync(
+      file,
+      `${JSON.stringify(
+        {
+          mcpServers: {
+            "salesforce-headless-360": {
+              enabled: false,
+              exposure: "hidden",
+              toolExposure: { discover: "codemode" },
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    expect(inspectMcpConfig(file)).toMatchObject({
+      ok: true,
+      servers: {},
+      overrides: {
+        "salesforce-headless-360": {
+          enabled: false,
+          exposure: "hidden",
+          toolExposure: { discover: "codemode" },
+        },
+      },
+    });
+
+    expect(upsertMcpServer(file, "salesforce-dx", { command: "npx" }).ok).toBe(true);
+    expect(JSON.parse(readFileSync(file, "utf8")).mcpServers["salesforce-headless-360"]).toEqual({
+      enabled: false,
+      exposure: "hidden",
+      toolExposure: { discover: "codemode" },
+    });
   });
 
   it("adds one server without discarding unrelated native MCP configuration", () => {

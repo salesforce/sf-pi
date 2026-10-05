@@ -45,17 +45,21 @@ for details.
 
 ## 3. Install the latest Pi and SF Pi
 
-These unpinned commands install the latest available releases. Install Pi,
-verify it, and then install SF Pi globally from GitHub:
+Pi's managed installer pins its dependencies and is the recommended installation path:
 
 ```bash
-npm install --global --ignore-scripts @earendil-works/pi-coding-agent
+curl -fsSL https://pi.dev/install.sh | sh
 pi --version
 pi install git:github.com/salesforce/sf-pi
 ```
 
-SF Pi's supported Pi range is `>=1.0.0 <2.0.0`. `/sf-pi doctor` reports
-whether the installed Pi and SF Pi versions are current.
+An npm installation remains supported but does not pin Pi's transitive dependencies:
+
+```bash
+npm install --global --ignore-scripts @earendil-works/pi-coding-agent
+```
+
+SF Pi's supported Pi range is `>=1.0.0 <2.0.0`; exact Pi `1.0.2` is the latest audited and recommended runtime. Pi owns Pi Runtime update guidance, while `/sf-pi doctor` reports compatibility and installation details.
 
 ## 4. Install or update Salesforce CLI
 

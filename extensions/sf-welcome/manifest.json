@@ -1,7 +1,7 @@
 {
   "id": "sf-welcome",
   "name": "SF Welcome",
-  "description": "Salesforce-branded splash screen with environment status, release freshness, and community info",
+  "description": "Salesforce-branded splash screen with environment status, SF Pi release freshness, and community info",
   "category": "ui",
   "maturity": "stable",
   "defaultEnabled": true,
@@ -10,7 +10,7 @@
   "events": ["session_start", "agent_start", "tool_call", "session_shutdown"],
   "docs": {
     "intentGroup": "Personalize pi",
-    "summary": "Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, release freshness, announcements, recommended extensions, and recent sessions. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.",
+    "summary": "Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, SF Pi package freshness, announcements, recommended extensions, and recent sessions. Pi owns Pi Runtime release checks and updates. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.",
     "primaryFiles": [
       "index.ts",
       "lib/splash-component.ts",
@@ -21,7 +21,6 @@
     ],
     "stateFiles": [
       "~/.pi/agent/sf-welcome-state.json",
-      "<globalAgentDir>/sf-pi/sf-welcome/pi-release-status.json",
       "<globalAgentDir>/sf-pi/sf-welcome/font-status.json",
       "<globalAgentDir>/sf-pi/sf-welcome/hunk-status.json",
       "<globalAgentDir>/sf-pi/sf-planreview/status.json",
