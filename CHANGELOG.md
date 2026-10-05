@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.328.1](https://github.com/salesforce/sf-pi/compare/v0.328.0...v0.328.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **sf-docs:** satisfy auth test static analysis ([60acb93](https://github.com/salesforce/sf-pi/commit/60acb93d2b44d1d3233a1712486d5f9eefabb8a9))
+
 ## [0.328.0](https://github.com/salesforce/sf-pi/compare/v0.327.0...v0.328.0) (2026-10-05)
 
 
