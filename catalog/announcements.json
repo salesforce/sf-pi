@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.326.0-2026-10-05",
-  "latestVersion": "0.326.0",
+  "revision": "release-0.327.0-2026-10-05",
+  "latestVersion": "0.327.0",
   "announcements": [
     {
-      "id": "release-0.326.0",
+      "id": "release-0.327.0",
       "kind": "update",
-      "title": "sf-pi v0.326.0 — sf-agentscript: add voice workflow hardening",
+      "title": "sf-pi v0.327.0 — runtime: audit Pi 1.0.3 compatibility",
       "publishedAt": "2026-10-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.326.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.327.0",
       "severity": "info",
-      "body": "sf-agentscript: add voice workflow hardening"
+      "body": "runtime: audit Pi 1.0.3 compatibility — deps-dev: update compatible development dependencies"
     }
   ]
 }
