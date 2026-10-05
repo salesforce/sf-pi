@@ -33,13 +33,13 @@ evidence is unavailable.
 
 ## Commands
 
-| Command            | Purpose                               |
-| ------------------ | ------------------------------------- |
-| `/sf-docs`         | Open SF Docs in the SF Pi Manager     |
-| `/sf-docs connect` | Prepare native endpoint configuration |
-| `/sf-docs refresh` | Refresh the collection catalog        |
-| `/sf-docs status`  | Print endpoint and service readiness  |
-| `/sf-docs help`    | Print usage guidance                  |
+| Command            | Purpose                                 |
+| ------------------ | --------------------------------------- |
+| `/sf-docs`         | Open SF Docs in the SF Pi Manager       |
+| `/sf-docs connect` | Prepare native credential configuration |
+| `/sf-docs refresh` | Refresh the collection catalog          |
+| `/sf-docs status`  | Print endpoint and service readiness    |
+| `/sf-docs help`    | Print usage guidance                    |
 
 ## Configuration
 
@@ -48,17 +48,18 @@ format, page size, display density, and collection-catalog caching. Answer and
 explain actions always request citations.
 Project values override global values, then extension defaults.
 
-Use `/login sf-docs` to enter an internally supplied docs endpoint URL. Pi
-persists only that endpoint and owns logout. No access token is required, stored,
-or transmitted. SF Docs ships with no default endpoint.
-`SF_DOCS_MCP_ENDPOINT` remains the non-persisted automation override.
+Use `/login sf-docs` to enter an internally supplied docs endpoint URL followed
+by the access token through SF Pi's fixed-mask credential input. Pi persists the
+API-key credential with the endpoint and owns logout. SF Docs ships with no
+default endpoint or token. `SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT`
+remain the non-persisted automation overrides.
 
 ## Safety and Data Boundaries
 
 - Only the collection catalog can be cached; it is scoped by a one-way endpoint
   identity without persisting the endpoint URL. Search results, answers,
   citations, prompts, and document bodies are not cached.
-- The configured service endpoint stays out of model-visible status output.
+- The configured service endpoint and bearer token stay out of model-visible output.
 - Documentation source URLs and citations remain visible so evidence can be reviewed.
 - Answer and explain responses are bounded to 16,000 characters and 12 citations.
 - Fetch results distinguish complete, partial, and failed retrieval from content truncation.
@@ -74,9 +75,9 @@ release-note recovery live in [`AGENT_GUIDE.md`](./AGENT_GUIDE.md).
 ## Troubleshooting
 
 **SF Docs is not configured:** Run `/sf-docs connect`, submit the prefilled
-native login command, and enter the internally supplied docs endpoint URL. No
-access token is required. For automation, set `SF_DOCS_MCP_ENDPOINT` before
-starting Pi.
+native login command, enter the internally supplied docs endpoint URL, and paste
+the access token into the fixed-mask prompt. For automation, set both
+`SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT` before starting Pi.
 
 **Collections look stale:** Run `/sf-docs refresh` or request `collections` with
 `refresh=true`.

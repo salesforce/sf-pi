@@ -1,8 +1,9 @@
 ---
 id: "0111"
-status: accepted
+status: superseded
 date: 2026-09-09
 supersedes: ["0060"]
+supersededBy: ["0139"]
 ---
 
 # ADR 0111: SF Docs Uses Endpoint-Only Pi Login

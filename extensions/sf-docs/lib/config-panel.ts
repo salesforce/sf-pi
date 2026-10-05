@@ -3,7 +3,7 @@
 import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
-import { resolveEndpoint } from "./auth.ts";
+import { detectTokenSource, isDocsConfigured, resolveEndpoint } from "./auth.ts";
 import {
   describePreferenceSource,
   readEffectiveDocsPreferences,
@@ -103,14 +103,16 @@ class SfDocsConfigPanel implements Focusable {
   renderContent(width: number): string[] {
     const t = this.theme;
     const pad = (line = "") => padAnsi(line, width);
+    const tokenSource = detectTokenSource();
     const endpoint = resolveEndpoint();
     const lines: string[] = [
       ` ${t.fg("accent", t.bold("📚 SF Docs Settings"))}`,
-      ` ${t.fg("dim", "Configure non-secret defaults. Use /login sf-docs for the internally supplied endpoint URL.")}`,
+      ` ${t.fg("dim", "Configure non-secret defaults. Use /login sf-docs for the endpoint URL and masked token.")}`,
       "",
-      ` ${endpoint.ok ? t.fg("success", "● Configured") : t.fg("error", "● Not configured")}`,
+      ` ${isDocsConfigured() ? t.fg("success", "● Connected") : t.fg("error", "● Setup required")}`,
+      `   ${t.fg("muted", "Token source:")} ${t.fg("text", tokenSource)}`,
       `   ${t.fg("muted", "Endpoint source:")} ${t.fg("text", endpoint.source)}`,
-      `   ${t.fg("muted", "Authentication:")} ${t.fg("text", "not required")}`,
+      `   ${t.fg("muted", "Authentication:")} ${t.fg("text", "bearer token")}`,
     ];
     if (endpoint.ok && endpoint.warning) lines.push(`   ${t.fg("warning", endpoint.warning)}`);
     if (endpoint.ok === false && endpoint.source !== "none") {

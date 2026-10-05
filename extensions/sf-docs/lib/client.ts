@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** HTTP JSON-RPC/SSE client for the Salesforce Docs service. */
 import { parseJsonRpcSseResponse } from "./sse.ts";
+import { ENV_TOKEN } from "./types.ts";
 
 export interface DocsClientOptions {
   endpoint: string;
+  token: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
 }
@@ -64,7 +66,7 @@ export class DocsClient {
         throw new Error("Docs service request timed out or was cancelled.", { cause: err });
       }
       const message = err instanceof Error ? err.message : String(err);
-      throw new Error(message, { cause: err });
+      throw new Error(redactSecrets(message, this.options.token), { cause: err });
     } finally {
       clearTimeout(timeout);
       signal?.removeEventListener("abort", abortListener);
@@ -79,6 +81,7 @@ export class DocsClient {
     const response = await this.fetchImpl(this.options.endpoint, {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${this.options.token}`,
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
       },
@@ -94,7 +97,10 @@ export class DocsClient {
     if (!response.ok) {
       throw new DocsHttpError(
         response.status,
-        `Docs service HTTP ${response.status}: ${text.slice(0, 500)}`,
+        redactSecrets(
+          `Docs service HTTP ${response.status}: ${text.slice(0, 500)}`,
+          this.options.token,
+        ),
       );
     }
     const parsed = validateJsonRpcEnvelope(
@@ -192,6 +198,14 @@ export function unwrapToolContent(result: unknown): unknown {
   } catch {
     return { text };
   }
+}
+
+export function redactSecrets(value: string, token?: string): string {
+  let output = value;
+  if (token) output = output.split(token).join("[REDACTED]");
+  const envToken = process.env[ENV_TOKEN];
+  if (envToken) output = output.split(envToken).join("[REDACTED]");
+  return output.replace(/Bearer\s+[^\s"']+/giu, "Bearer [REDACTED]");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

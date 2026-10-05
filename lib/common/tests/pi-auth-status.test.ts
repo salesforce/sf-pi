@@ -3,7 +3,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readPiAuthProviderEnv, readPiAuthProviderStatus } from "../pi-auth-status.ts";
+import {
+  hasPiAuthProviderApiKey,
+  readPiAuthProviderEnv,
+  readPiAuthProviderStatus,
+} from "../pi-auth-status.ts";
 
 const tempDirs: string[] = [];
 
@@ -51,6 +55,25 @@ describe("readPiAuthProviderStatus", () => {
       configured: false,
       source: "pi-auth-store",
     });
+  });
+
+  it("distinguishes API-key credentials from endpoint-only and OAuth entries", () => {
+    const apiKey = makeAuthFile({
+      "sf-docs": { type: "api_key", key: "secret-key" },
+    });
+    const endpointOnly = makeAuthFile({
+      "sf-docs": {
+        type: "api_key",
+        env: { SF_DOCS_MCP_ENDPOINT: "https://docs.example.test/" },
+      },
+    });
+    const oauth = makeAuthFile({
+      "sf-docs": { type: "oauth", access: "secret-token", expires: Date.now() },
+    });
+
+    expect(hasPiAuthProviderApiKey("sf-docs", apiKey)).toBe(true);
+    expect(hasPiAuthProviderApiKey("sf-docs", endpointOnly)).toBe(false);
+    expect(hasPiAuthProviderApiKey("sf-docs", oauth)).toBe(false);
   });
 
   it("reads a named credential env value without returning secrets", () => {

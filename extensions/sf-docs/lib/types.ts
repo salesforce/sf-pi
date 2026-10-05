@@ -3,15 +3,22 @@
 export const PROVIDER_NAME = "sf-docs";
 export const COMMAND_NAME = "sf-docs";
 export const TOOL_NAME = "sf_docs";
+export const ENV_TOKEN = "SF_DOCS_MCP_TOKEN";
 export const ENV_ENDPOINT = "SF_DOCS_MCP_ENDPOINT";
 export const WIDGET_KEY = "sf-docs-status";
 
 export type DocsAction =
   "status" | "collections" | "ground" | "search" | "fetch" | "answer" | "explain" | "cheatsheet";
 
+export type TokenSource = "pi-auth" | "env" | "none";
 export type EndpointSource = "pi-auth" | "env" | "none";
 export type DocsScope = "global" | "project";
 export type SfDocsDisplayDensity = "compact" | "balanced" | "verbose";
+
+export interface TokenResolution {
+  source: Exclude<TokenSource, "none">;
+  token: string;
+}
 
 export type EndpointResolution =
   | {

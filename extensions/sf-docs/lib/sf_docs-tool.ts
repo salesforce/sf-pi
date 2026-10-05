@@ -5,7 +5,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { getDocsEndpoint } from "./auth.ts";
+import { getDocsAuth } from "./auth.ts";
 import { DocsClient } from "./client.ts";
 import { runGroundWorkflow } from "./ground-workflow.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./catalog-cache.ts";
@@ -137,15 +137,16 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
       }
       if (input.action === "cheatsheet") return cheatsheetResult(prefs.displayDensity);
 
-      const endpoint = await getDocsEndpoint(ctx);
-      if (endpoint.ok === false) {
-        return fail(input.action, endpoint.message, {
-          reason: endpoint.reason,
+      const auth = await getDocsAuth(ctx);
+      if (auth.ok === false) {
+        return fail(input.action, auth.message, {
+          reason: auth.reason,
           recover_via: { command: "/sf-docs connect", action: "status" },
         });
       }
       const client = new DocsClient({
-        endpoint: endpoint.endpoint,
+        endpoint: auth.endpoint,
+        token: auth.token,
         timeoutMs: timeoutForAction(input.action),
       });
       const requestedCollection = nonBlank(input.collection);
@@ -182,7 +183,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           }
           const result = await runGroundWorkflow({
             client,
-            endpoint: endpoint.endpoint,
+            endpoint: auth.endpoint,
             input: {
               query: input.query,
               collection: slice.collection,
@@ -206,7 +207,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
         }
 
         if (input.action === "collections") {
-          const cache = readCatalogCache(Date.now(), endpoint.endpoint);
+          const cache = readCatalogCache(Date.now(), auth.endpoint);
           if (
             prefs.cacheCatalog &&
             !input.refresh &&
@@ -237,7 +238,7 @@ export function registerSfDocsTool(pi: ExtensionAPI): void {
           }
           const collections = response.collections ?? [];
           if (prefs.cacheCatalog && !input.collection) {
-            writeCatalogCache(collections, Date.now(), endpoint.endpoint);
+            writeCatalogCache(collections, Date.now(), auth.endpoint);
           }
           return collectionsResult(
             collections,

@@ -7,15 +7,15 @@ export type SfDocsCommandAction =
 export const SF_DOCS_ACTIONS: SfPiCommandAction<SfDocsCommandAction>[] = [
   {
     value: "connect",
-    label: "Configure endpoint",
-    description: "Prepare native /login to save an internally supplied endpoint URL.",
+    label: "Connect",
+    description: "Prepare native /login to save the docs endpoint and masked access token.",
     group: "Connection",
   },
   {
     value: "disconnect",
     label: "Disconnect",
     description:
-      "Prepare native logout for the saved endpoint. Environment variables are untouched.",
+      "Prepare native logout for the saved credential. Environment variables are untouched.",
     group: "Connection",
   },
   {
@@ -58,17 +58,17 @@ export function renderHelp(): string {
     "",
     "Commands:",
     "- `/sf-docs` — open the SF Pi Manager detail page.",
-    "- `/sf-docs connect` — prepare native `/login sf-docs` for endpoint configuration.",
-    "- `/sf-docs disconnect` — prefill native logout for the saved endpoint; env vars are untouched.",
-    "- `/sf-docs status` — show endpoint configuration, defaults, and cache status.",
+    "- `/sf-docs connect` — prepare native `/login sf-docs` for endpoint and token configuration.",
+    "- `/sf-docs disconnect` — prefill native logout for the saved credential; env vars are untouched.",
+    "- `/sf-docs status` — show credential configuration, defaults, and cache status.",
     "- `/sf-docs collections` — list available docs collections.",
     "- `/sf-docs refresh` — refresh the collection catalog cache.",
     "- `/sf-docs cheatsheet` — show the extension-owned usage cheatsheet.",
     "",
-    "Endpoint setup:",
-    "- `/login sf-docs` collects and persists only an internally supplied docs endpoint URL.",
-    "- No access token is required, stored, or transmitted.",
-    "- `SF_DOCS_MCP_ENDPOINT` remains the non-persisted automation fallback.",
+    "Credential setup:",
+    "- `/login sf-docs` collects the docs endpoint URL, then masks the access token.",
+    "- Pi owns credential persistence and `/logout sf-docs` owns removal.",
+    "- `SF_DOCS_MCP_TOKEN` and `SF_DOCS_MCP_ENDPOINT` remain automation fallbacks.",
     "- SF Docs ships with no default endpoint.",
   ].join("\n");
 }

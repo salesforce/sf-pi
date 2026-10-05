@@ -68,10 +68,12 @@ describe("sf-docs", () => {
 
   it("publishes a cache-first DevBar pill from local configuration only", async () => {
     const previousEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    const previousToken = process.env.SF_DOCS_MCP_TOKEN;
     const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
     const agentDir = mkdtempSync(path.join(tmpdir(), "sf-docs-footer-"));
     process.env.PI_CODING_AGENT_DIR = agentDir;
     delete process.env.SF_DOCS_MCP_ENDPOINT;
+    delete process.env.SF_DOCS_MCP_TOKEN;
     try {
       const mod = await import("../index.ts");
       type SessionHandler = (event: unknown, ctx: unknown) => Promise<void> | void;
@@ -103,6 +105,7 @@ describe("sf-docs", () => {
       expect(setStatus).toHaveBeenCalledWith("sf-docs-status", undefined);
 
       process.env.SF_DOCS_MCP_ENDPOINT = "https://docs.example.test/";
+      process.env.SF_DOCS_MCP_TOKEN = "sfmcp-test-token";
       await sessionStart?.(
         {},
         {
@@ -119,18 +122,26 @@ describe("sf-docs", () => {
     } finally {
       if (previousEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
       else process.env.SF_DOCS_MCP_ENDPOINT = previousEndpoint;
+      if (previousToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+      else process.env.SF_DOCS_MCP_TOKEN = previousToken;
       if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
       else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
       rmSync(agentDir, { recursive: true, force: true });
     }
   });
 
-  const liveIt = process.env.SF_DOCS_LIVE_SMOKE && process.env.SF_DOCS_MCP_ENDPOINT ? it : it.skip;
+  const liveIt =
+    process.env.SF_DOCS_LIVE_SMOKE &&
+    process.env.SF_DOCS_MCP_ENDPOINT &&
+    process.env.SF_DOCS_MCP_TOKEN
+      ? it
+      : it.skip;
   liveIt(
-    "live docs service preserves the unauthenticated tool protocol",
+    "live docs service preserves the authenticated tool protocol",
     async () => {
       const client = new DocsClient({
         endpoint: process.env.SF_DOCS_MCP_ENDPOINT!,
+        token: process.env.SF_DOCS_MCP_TOKEN!,
         timeoutMs: 30000,
       });
       const catalog = (await client.callTool("list", {})) as {

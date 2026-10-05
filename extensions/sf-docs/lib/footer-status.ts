@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Pure SF Docs footer classification and compact DevBar rendering. */
-import type { EndpointResolution } from "./types.ts";
+import type { EndpointResolution, TokenSource } from "./types.ts";
 
 export type DocsFooterKind = "not-configured" | "setup" | "ready";
 
@@ -13,9 +13,16 @@ export interface DocsFooterStatusInput {
   kind: DocsFooterKind;
 }
 
-export function classifyDocsFooterStatus(endpoint: EndpointResolution): DocsFooterKind {
-  if (endpoint.ok) return "ready";
-  return endpoint.source === "none" ? "not-configured" : "setup";
+export function classifyDocsFooterStatus(input: {
+  tokenSource: TokenSource;
+  endpoint: EndpointResolution;
+}): DocsFooterKind {
+  const { tokenSource, endpoint } = input;
+  if (tokenSource !== "none" && endpoint.ok) return "ready";
+  if (tokenSource === "none" && endpoint.ok === false && endpoint.source === "none") {
+    return "not-configured";
+  }
+  return "setup";
 }
 
 /** Render a compact Docs pill without exposing the configured endpoint. */

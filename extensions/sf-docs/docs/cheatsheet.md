@@ -77,24 +77,25 @@ Primary setup lives in the SF Pi Manager detail page:
 /sf-docs
 ```
 
-The detail page reports the endpoint configuration source and prepares native login. Interactive setup collects and persists only an internally supplied docs endpoint URL while Pi owns persistence and logout:
+The detail page reports credential configuration sources and prepares native login. Interactive setup collects an internally supplied docs endpoint URL, then masks the bearer token while Pi owns persistence and logout:
 
 ```text
 /login sf-docs
 ```
 
-For non-persisted automation, set the endpoint before starting Pi:
+For non-persisted automation, set the token and endpoint before starting Pi:
 
 ```text
+SF_DOCS_MCP_TOKEN=<access-token>
 SF_DOCS_MCP_ENDPOINT=https://docs.example.com/
 ```
 
-No access token is required, stored, or transmitted. SF Docs ships with no default endpoint. Configure the internally supplied docs service URL through login or the environment variable.
+SF Docs ships with no default endpoint or token. Configure both through login or the environment variables.
 
 ## Safety boundaries
 
-- `/login sf-docs` stores only the endpoint URL in Pi's provider-scoped configuration.
-- The configured service endpoint is omitted from model-visible status output.
+- `/login sf-docs` returns the masked token and endpoint URL to Pi's provider-scoped credential store; the extension never writes the auth file.
+- The configured service endpoint and bearer token are omitted from model-visible output.
 - Settings are non-secret preferences only.
 - The catalog cache stores only collection metadata, scoped by a one-way endpoint identity; it never stores the endpoint URL, search results, answer text, or fetched document bodies.
 - SF Docs uses the Salesforce Docs service as its retrieval surface; it does not scrape Salesforce websites, download documentation bundles, or build a local search index.

@@ -18,6 +18,7 @@ describe("sf_docs remote and evidence contracts", () => {
   beforeEach(() => {
     tempAgentDir = mkdtempSync(path.join(tmpdir(), "sf-docs-contract-"));
     vi.stubEnv("SF_DOCS_MCP_ENDPOINT", "https://docs.example.test/");
+    vi.stubEnv("SF_DOCS_MCP_TOKEN", "sfmcp-test-token");
   });
 
   afterEach(() => {

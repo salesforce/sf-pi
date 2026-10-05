@@ -33,6 +33,18 @@ export function readPiAuthProviderStatus(
   return { provider, configured: credential !== undefined, source: "pi-auth-store" };
 }
 
+/** Report whether a provider has a non-empty Pi-owned API key without returning it. */
+export function hasPiAuthProviderApiKey(
+  provider: string,
+  authPath: string = getPiAuthStorePath(),
+): boolean {
+  if (!existsSync(authPath)) return false;
+  const credential = readStoredCredential(provider, authPath);
+  if (!credential || typeof credential !== "object") return false;
+  const key = (credential as { key?: unknown }).key;
+  return typeof key === "string" && Boolean(key.trim());
+}
+
 /**
  * Read one named non-secret `credential.env` value from the Pi auth store.
  * Never returns `key`, `access`, or `refresh`.

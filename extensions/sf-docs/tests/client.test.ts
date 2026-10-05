@@ -2,21 +2,27 @@
 import { describe, expect, it, vi } from "vitest";
 import { DocsClient, unwrapToolContent } from "../lib/client.ts";
 
+const TEST_TOKEN = "sfmcp-test-token";
+
 describe("DocsClient", () => {
-  it("posts an unauthenticated tools/call request and unwraps tool content", async () => {
+  it("posts an authenticated tools/call request and unwraps tool content", async () => {
     const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
       expect(body.method).toBe("tools/call");
       expect(body.params.name).toBe("search");
       expect(body.params.arguments.query).toBe("apex");
-      expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+      expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${TEST_TOKEN}`);
       return new Response(
         'event: message\ndata: {"result":{"content":[{"type":"text","text":"{\\"results\\":[{\\"title\\":\\"Apex\\"}]}"}]},"jsonrpc":"2.0","id":1}\n\n',
         { status: 200, headers: { "content-type": "text/event-stream" } },
       );
     }) as unknown as typeof fetch;
 
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
     await expect(client.callTool("search", { query: "apex" })).resolves.toEqual({
       results: [{ title: "Apex" }],
     });
@@ -36,7 +42,11 @@ describe("DocsClient", () => {
           { status: 200, headers: { "content-type": "application/json" } },
         ),
       );
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("search", { query: "apex" })).resolves.toEqual({ results: [] });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
@@ -56,7 +66,11 @@ describe("DocsClient", () => {
           { status: 200, headers: { "content-type": "application/json" } },
         ),
       );
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("search", { query: "apex" })).resolves.toEqual({ results: [] });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
@@ -64,7 +78,11 @@ describe("DocsClient", () => {
 
   it("retries transient failures at most once", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError("fetch failed"));
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("search", { query: "apex" })).rejects.toThrow("fetch failed");
     expect(fetchImpl).toHaveBeenCalledTimes(2);
@@ -78,7 +96,11 @@ describe("DocsClient", () => {
           headers: { "content-type": "application/json" },
         }),
     ) as unknown as typeof fetch;
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("search", { query: "apex" })).rejects.toThrow(/JSON-RPC/i);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
@@ -88,10 +110,37 @@ describe("DocsClient", () => {
     const fetchImpl = vi.fn(
       async () => new Response("bad request", { status: 400 }),
     ) as unknown as typeof fetch;
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("search", { query: "apex" })).rejects.toThrow(/HTTP 400/u);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("redacts the configured token and bearer values from HTTP failures", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(`denied ${TEST_TOKEN} Authorization: Bearer response-private`, {
+          status: 403,
+        }),
+    ) as unknown as typeof fetch;
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
+
+    const error = await client.callTool("list", {}).then(
+      () => new Error("expected request to fail"),
+      (caught: unknown) => (caught instanceof Error ? caught : new Error(String(caught))),
+    );
+    expect(error.message).toContain("HTTP 403");
+    expect(error.message).not.toContain(TEST_TOKEN);
+    expect(error.message).not.toContain("response-private");
+    expect(error.message).toContain("[REDACTED]");
   });
 
   it("accepts a JSON-RPC application/json response", async () => {
@@ -106,7 +155,11 @@ describe("DocsClient", () => {
           { status: 200, headers: { "content-type": "application/json" } },
         ),
     ) as unknown as typeof fetch;
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("list", {})).resolves.toEqual({ collections: [] });
   });
@@ -121,7 +174,11 @@ describe("DocsClient", () => {
         { status: 200, headers: { "content-type": "text/event-stream" } },
       );
     }) as unknown as typeof fetch;
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
     const controller = new AbortController();
     controller.abort();
 
@@ -142,7 +199,11 @@ describe("DocsClient", () => {
           { status: 200, headers: { "content-type": "application/json" } },
         ),
     ) as unknown as typeof fetch;
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("list", {})).rejects.toThrow(/response id/i);
   });
@@ -155,7 +216,11 @@ describe("DocsClient", () => {
           headers: { "content-type": "application/json" },
         }),
     ) as unknown as typeof fetch;
-    const client = new DocsClient({ endpoint: "https://example.test/", fetchImpl });
+    const client = new DocsClient({
+      endpoint: "https://example.test/",
+      token: TEST_TOKEN,
+      fetchImpl,
+    });
 
     await expect(client.callTool("list", {})).rejects.toThrow(/JSON-RPC/i);
   });

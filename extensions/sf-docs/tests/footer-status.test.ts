@@ -7,23 +7,50 @@ const plainTheme = {
 };
 
 describe("SF Docs footer status", () => {
-  it("hides an unconfigured Docs install", () => {
-    const kind = classifyDocsFooterStatus({ ok: false, source: "none", error: "missing" });
+  it("hides a fully unconfigured Docs install", () => {
+    const kind = classifyDocsFooterStatus({
+      tokenSource: "none",
+      endpoint: { ok: false, source: "none", error: "missing" },
+    });
     expect(kind).toBe("not-configured");
     expect(formatDocsFooterStatus({ icon: "📖", kind }, plainTheme)).toBeNull();
   });
 
-  it("warns when a configured endpoint is invalid", () => {
-    const kind = classifyDocsFooterStatus({ ok: false, source: "env", error: "invalid" });
-    expect(kind).toBe("setup");
-    expect(formatDocsFooterStatus({ icon: "📖", kind }, plainTheme)).toBe("📖 Docs ! setup");
+  it("warns when only the token or only the endpoint is present", () => {
+    expect(
+      classifyDocsFooterStatus({
+        tokenSource: "env",
+        endpoint: { ok: false, source: "none", error: "missing" },
+      }),
+    ).toBe("setup");
+    expect(
+      classifyDocsFooterStatus({
+        tokenSource: "none",
+        endpoint: { ok: true, source: "env", endpoint: "https://docs.example.test/" },
+      }),
+    ).toBe("setup");
+    expect(formatDocsFooterStatus({ icon: "📖", kind: "setup" }, plainTheme)).toBe(
+      "📖 Docs ! setup",
+    );
   });
 
-  it("keeps a valid endpoint-only state compact", () => {
+  it("warns when a configured endpoint is invalid", () => {
+    expect(
+      classifyDocsFooterStatus({
+        tokenSource: "pi-auth",
+        endpoint: { ok: false, source: "env", error: "invalid" },
+      }),
+    ).toBe("setup");
+  });
+
+  it("keeps a healthy authenticated state compact", () => {
     const kind = classifyDocsFooterStatus({
-      ok: true,
-      source: "pi-auth",
-      endpoint: "https://docs.example.test/",
+      tokenSource: "pi-auth",
+      endpoint: {
+        ok: true,
+        source: "pi-auth",
+        endpoint: "https://docs.example.test/",
+      },
     });
     expect(kind).toBe("ready");
     expect(formatDocsFooterStatus({ icon: "📖", kind }, plainTheme)).toBe("📖 Docs ✓");

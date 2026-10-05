@@ -1,18 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { resolveEndpoint } from "./auth.ts";
+import { detectTokenSource, isDocsConfigured, resolveEndpoint } from "./auth.ts";
 import { formatCacheAge, readCatalogCache } from "./catalog-cache.ts";
 import { readEffectiveDocsPreferences } from "./preferences.ts";
 
 export function buildStatus(cwd: string): string {
+  const tokenSource = detectTokenSource();
   const endpoint = resolveEndpoint();
   const cache = readCatalogCache(Date.now(), endpoint.ok ? endpoint.endpoint : undefined);
   const prefs = readEffectiveDocsPreferences(cwd);
+  const partiallyConfigured = tokenSource !== "none" || endpoint.source !== "none";
   const lines = [
     "📚 SF Docs status",
     "",
-    `Configuration: ${endpoint.ok ? "ready" : "not configured"}`,
+    `Configuration: ${isDocsConfigured() ? "ready" : partiallyConfigured ? "setup required" : "not configured"}`,
+    `Token source: ${tokenSource}`,
     `Endpoint source: ${endpoint.source}`,
-    "Authentication: not required",
+    "Authentication: bearer token required",
   ];
   if (endpoint.ok && endpoint.warning) lines.push(`Warning: ${endpoint.warning}`);
   if (endpoint.ok === false && endpoint.source !== "none") {

@@ -62,8 +62,8 @@ class SfDocsConnectPanel implements Focusable {
     }
 
     const guidance = [
-      "Native login collects and persists only an internally supplied docs endpoint URL. No access token is required or transmitted.",
-      "SF_DOCS_MCP_ENDPOINT remains the automation and CI fallback.",
+      "Native login collects a docs endpoint URL, then uses SF Pi's fixed-mask credential input. Pi owns persistence.",
+      "SF_DOCS_MCP_TOKEN and SF_DOCS_MCP_ENDPOINT remain the automation and CI fallbacks.",
     ];
     return [
       ` ${t.fg("accent", t.bold("Connect to SF Docs"))}`,
@@ -139,7 +139,7 @@ class SfDocsDisconnectPanel implements Focusable {
     return [
       ` ${t.fg("accent", t.bold("Disconnect SF Docs"))}`,
       ` ${t.fg("dim", "Prepare /logout sf-docs in Pi's editor for your review.")}`,
-      ` ${t.fg("dim", "No endpoint changes occur until you submit it; SF_DOCS_MCP_ENDPOINT is untouched.")}`,
+      ` ${t.fg("dim", "No credential changes occur until you submit it; environment variables are untouched.")}`,
       ` ${t.fg("muted", `Current source: ${this.args.endpointSourceLabel}`)}`,
       "",
       ` ${confirm ? t.fg("accent", "→") : " "} ${confirm ? t.fg("accent", "Prepare native logout") : t.fg("text", "Prepare native logout")}`,

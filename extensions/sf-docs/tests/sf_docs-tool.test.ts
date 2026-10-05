@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let tempAgentDir: string;
 let originalEndpoint: string | undefined;
+let originalToken: string | undefined;
 
 vi.mock("@earendil-works/pi-coding-agent", async () => {
   const actual = await vi.importActual<typeof import("@earendil-works/pi-coding-agent")>(
@@ -19,11 +20,15 @@ describe("sf_docs tool", () => {
   beforeEach(() => {
     tempAgentDir = mkdtempSync(path.join(tmpdir(), "sf-docs-tool-"));
     originalEndpoint = process.env.SF_DOCS_MCP_ENDPOINT;
+    originalToken = process.env.SF_DOCS_MCP_TOKEN;
+    process.env.SF_DOCS_MCP_TOKEN = "sfmcp-test-token";
   });
 
   afterEach(() => {
     if (originalEndpoint === undefined) delete process.env.SF_DOCS_MCP_ENDPOINT;
     else process.env.SF_DOCS_MCP_ENDPOINT = originalEndpoint;
+    if (originalToken === undefined) delete process.env.SF_DOCS_MCP_TOKEN;
+    else process.env.SF_DOCS_MCP_TOKEN = originalToken;
     vi.unstubAllGlobals();
     rmSync(tempAgentDir, { recursive: true, force: true });
   });
@@ -462,6 +467,27 @@ describe("sf_docs tool", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.details).toMatchObject({ ok: false, reason: "invalid_endpoint" });
+  });
+
+  it("returns setup guidance when authentication is missing", async () => {
+    process.env.SF_DOCS_MCP_ENDPOINT = "https://example.test/";
+    delete process.env.SF_DOCS_MCP_TOKEN;
+    vi.resetModules();
+    const { registerSfDocsTool } = await import("../lib/sf_docs-tool.ts");
+    const registerTool = vi.fn();
+    registerSfDocsTool({ registerTool } as unknown as ExtensionAPI);
+    const tool = registerTool.mock.calls[0]?.[0];
+    const result = await tool.execute("id", { action: "collections" }, undefined, undefined, {
+      cwd: process.cwd(),
+      modelRegistry: { getApiKeyForProvider: vi.fn(async () => undefined) },
+    });
+    expect(result.details).toMatchObject({
+      ok: false,
+      action: "collections",
+      reason: "missing_auth",
+      recover_via: { command: "/sf-docs connect", action: "status" },
+    });
+    expect(result.content[0].text).toMatch(/not connected/i);
   });
 
   it("returns setup guidance when the endpoint is missing", async () => {

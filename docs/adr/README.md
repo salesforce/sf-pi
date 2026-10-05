@@ -99,7 +99,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0107: SF tldraw validates Spec v2 at execute instead of advertising the union](./0107-tldraw-validates-spec-v2-at-execute.md) — 2026-08-19
 - [0108: Managed skill invocation stamps use an effective tree](./0108-managed-skill-invocation-stamps.md) — 2026-08-21
 - [0110: SF Docs ships with no default endpoint](./0110-sf-docs-ships-with-no-default-endpoint.md) — 2026-09-08
-- [0111: SF Docs Uses Endpoint-Only Pi Login](./0111-sf-docs-uses-endpoint-only-pi-login.md) — 2026-09-09
 - [0112: SF Docs Separates Protocol Validity from Evidence Outcomes](./0112-sf-docs-separates-protocol-validity-from-evidence-outcomes.md) — 2026-09-09
 - [0113: SF Docs Uses Explicit Grounding and Literal Primitives](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md) — 2026-09-09
 - [0114: SF Flow is a lean Flow Lifecycle Extension](./0114-sf-flow-is-a-lean-flow-lifecycle-extension.md) — 2026-09-18
@@ -121,6 +120,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0135: SF Browser uses bounded semantic navigation for Salesforce Setup chrome](./0135-sf-browser-bounded-semantic-setup-navigation.md) — 2026-10-04
 - [0137: SF MCP Separates Connection and Tool Access](./0137-sf-mcp-separated-configuration-and-product-families.md) — 2026-10-04
 - [0138: Pi 1.0.3 audit edge](./0138-pi-103-audit-edge.md) — 2026-10-05
+- [0139: SF Docs Restores Pi-Owned Bearer Authentication](./0139-sf-docs-restores-pi-owned-bearer-authentication.md) — 2026-10-05
 
 ## Proposed
 
@@ -145,6 +145,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0077: Dynamic Gateway Model Catalog](./0077-dynamic-gateway-model-catalog.md) — 2026-08-05 — superseded by [ADR 0122](./0122-gateway-catalog-requires-pi-backed-ids.md)
 - [0088: Pi 0.82.0 Runtime Floor](./0088-pi-082-runtime-floor.md) — 2026-07-27 — superseded by [ADR 0109](./0109-pi-084-runtime-floor.md)
 - [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25 — superseded by [ADR 0118](./0118-pi-086-runtime-floor.md)
+- [0111: SF Docs Uses Endpoint-Only Pi Login](./0111-sf-docs-uses-endpoint-only-pi-login.md) — 2026-09-09 — superseded by [ADR 0139](./0139-sf-docs-restores-pi-owned-bearer-authentication.md)
 - [0118: Pi 0.86.0 Runtime Floor](./0118-pi-086-runtime-floor.md) — 2026-09-21 — superseded by [ADR 0119](./0119-pi-087-runtime-floor-and-actionable-settlement.md)
 - [0123: Pi 0.99.1 Runtime Floor and Native Ownership](./0123-pi-0991-runtime-floor-and-native-ownership.md) — 2026-09-30 — superseded by [ADR 0124](./0124-pi-0992-runtime-floor-and-mcp-identity.md)
 - [0124: Pi 0.99.2 Runtime Floor and MCP Identity](./0124-pi-0992-runtime-floor-and-mcp-identity.md) — 2026-09-30 — superseded by [ADR 0134](./0134-pi-100-runtime-floor-and-native-ownership.md)

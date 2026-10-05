@@ -6,11 +6,11 @@
  *
  *   Event/Trigger          | Result
  *   -----------------------|---------------------------------------------------------
- *   extension load         | Register endpoint-only Provider, `sf_docs`, `/sf-docs`
- *   session_start          | Publish a cache-first DevBar pill
+ *   extension load         | Register auth-only Provider, `sf_docs`, `/sf-docs`
+ *   session_start/shutdown | Bind/clear credential entry; cache-first DevBar pill
  *   /sf-docs (no args)     | Open SF Pi Manager detail page when UI is available
- *   /sf-docs connect       | Prepare native `/login sf-docs` (endpoint URL only)
- *   /sf-docs status        | Print endpoint/default/cache status
+ *   /sf-docs connect       | Prepare native `/login sf-docs` (endpoint URL + token)
+ *   /sf-docs status        | Print credential/default/cache status
  *   sf_docs search/fetch   | Call docs service via direct HTTP JSON-RPC/SSE transport
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
@@ -33,7 +33,13 @@ import {
 } from "../../lib/common/manager-actions.ts";
 import { setDocsStatus } from "../../lib/common/docs-status/store.ts";
 import { glyph, resolveGlyphMode } from "../../lib/common/glyph-policy.ts";
-import { getDocsEndpoint, resolveEndpoint, sfDocsProvider } from "./lib/auth.ts";
+import {
+  detectTokenSource,
+  getDocsAuth,
+  hasStoredDocsCredential,
+  resolveEndpoint,
+  sfDocsAuthController,
+} from "./lib/auth.ts";
 import { classifyDocsFooterStatus, formatDocsFooterStatus } from "./lib/footer-status.ts";
 import { DocsClient } from "./lib/client.ts";
 import { formatCacheAge, readCatalogCache, writeCatalogCache } from "./lib/catalog-cache.ts";
@@ -45,6 +51,7 @@ import { buildStatus } from "./lib/status.ts";
 import {
   COMMAND_NAME,
   ENV_ENDPOINT,
+  ENV_TOKEN,
   PROVIDER_NAME,
   WIDGET_KEY,
   type DocsCollection,
@@ -58,11 +65,15 @@ import {
 export default function sfDocs(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-docs")) return;
 
-  pi.registerProvider(sfDocsProvider);
+  pi.registerProvider(sfDocsAuthController.provider);
   publishDocsConnection();
 
   pi.on("session_start", async (_event, ctx) => {
+    sfDocsAuthController.bind(ctx.ui, ctx.mode);
     publishDocsConnection(ctx);
+  });
+  pi.on("session_shutdown", async () => {
+    sfDocsAuthController.clear();
   });
 
   registerSfDocsTool(pi);
@@ -111,7 +122,7 @@ function buildManagerActions(pi: ExtensionAPI): ManagerDetailAction[] {
           createPanel: (theme, _cwd, _scope, done, ctx) =>
             createSfDocsDisconnectPanel({
               theme,
-              endpointSourceLabel: resolveEndpoint().source,
+              endpointSourceLabel: `${detectTokenSource()} token · ${resolveEndpoint().source} endpoint`,
               done,
               disconnect: () => prepareDocsLogout(ctx),
             }),
@@ -179,10 +190,10 @@ async function connect(ctx: ExtensionCommandContext, fromPanel: boolean): Promis
     prepared
       ? [
           `Prefilled /login ${PROVIDER_NAME}.`,
-          "Native login collects and persists only an internally supplied docs endpoint URL. No access token is required or transmitted.",
-          `${ENV_ENDPOINT} remains available for automation and is never modified.`,
+          "Native login collects the docs endpoint URL, then uses SF Pi's fixed-mask access-token input. Pi owns persistence.",
+          `${ENV_TOKEN} and ${ENV_ENDPOINT} remain available for automation and are never modified.`,
         ].join("\n")
-      : `Run /login ${PROVIDER_NAME} in interactive TUI mode, or set ${ENV_ENDPOINT} before starting Pi for automation.`,
+      : `Run /login ${PROVIDER_NAME} in interactive TUI mode, or set ${ENV_TOKEN} and ${ENV_ENDPOINT} before starting Pi for automation.`,
     prepared ? "info" : "warning",
     fromPanel,
   );
@@ -202,7 +213,10 @@ function publishDocsConnection(ctx?: {
     theme?: { fg(color: string, text: string): string };
   };
 }): void {
-  const kind = classifyDocsFooterStatus(resolveEndpoint());
+  const kind = classifyDocsFooterStatus({
+    tokenSource: detectTokenSource(),
+    endpoint: resolveEndpoint(),
+  });
   setDocsStatus({ kind });
   if (!ctx?.hasUI || !ctx.ui?.setStatus || !ctx.ui.theme) return;
   const pill = formatDocsFooterStatus(
@@ -216,13 +230,13 @@ async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Pro
   if (ctx.hasUI) {
     const confirmed = await ctx.ui.confirm(
       "Disconnect SF Docs?",
-      `This clears the endpoint saved by /login ${PROVIDER_NAME}. ${ENV_ENDPOINT} is left untouched.`,
+      `This clears the credential saved by /login ${PROVIDER_NAME}. ${ENV_TOKEN} and ${ENV_ENDPOINT} are left untouched.`,
     );
     if (!confirmed)
       return emit(
         ctx,
         "Disconnect cancelled",
-        "SF Docs endpoint configuration left in place.",
+        "SF Docs credential left in place.",
         "info",
         fromPanel,
       );
@@ -231,32 +245,35 @@ async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Pro
 }
 
 function prepareDocsLogout(ctx: ExtensionCommandContext): string {
-  const source = resolveEndpoint().source;
-  if (source === "none") return "No SF Docs endpoint is configured.";
-  if (source === "env") {
-    return `${ENV_ENDPOINT} is active. Native logout does not modify environment variables; unset it outside Pi and restart the session.`;
+  const tokenSource = detectTokenSource();
+  const endpointSource = resolveEndpoint().source;
+  if (!hasStoredDocsCredential()) {
+    if (tokenSource === "none" && endpointSource === "none") {
+      return "No SF Docs credential is configured.";
+    }
+    return `${ENV_TOKEN} or ${ENV_ENDPOINT} is active. Native logout does not modify environment variables; unset them outside Pi and restart the session.`;
   }
   if (!ctx.hasUI) {
-    return `Run \`/logout ${PROVIDER_NAME}\` in an interactive Pi session. ${ENV_ENDPOINT} is left untouched.`;
+    return `Run \`/logout ${PROVIDER_NAME}\` in an interactive Pi session. Environment variables are left untouched.`;
   }
   ctx.ui.setEditorText(`/logout ${PROVIDER_NAME}`);
-  return `Prefilled \`/logout ${PROVIDER_NAME}\` in the editor. Review and submit it to clear only the saved endpoint; ${ENV_ENDPOINT} is left untouched.`;
+  return `Prefilled \`/logout ${PROVIDER_NAME}\` in the editor. Review and submit it to clear only the saved credential; environment variables are left untouched.`;
 }
 
 async function listCollections(ctx: ExtensionCommandContext, refresh: boolean): Promise<string> {
   const prefs = readEffectiveDocsPreferences(ctx.cwd);
-  const endpoint = await getDocsEndpoint(ctx);
-  if (endpoint.ok === false) return endpoint.message;
-  const cache = readCatalogCache(Date.now(), endpoint.endpoint);
+  const auth = await getDocsAuth(ctx);
+  if (auth.ok === false) return auth.message;
+  const cache = readCatalogCache(Date.now(), auth.endpoint);
   if (prefs.cacheCatalog && !refresh && cache.hit && !cache.stale && cache.collections) {
     return formatCollectionCatalog(cache.collections, `hit · ${formatCacheAge(cache.fetchedAt)}`);
   }
 
-  const client = new DocsClient({ endpoint: endpoint.endpoint });
+  const client = new DocsClient({ endpoint: auth.endpoint, token: auth.token });
   const response = parseListResponse(await client.callTool("list", {}, ctx.signal));
   if (response.error) return `Docs service error: ${response.error}`;
   const collections: DocsCollection[] = response.collections ?? [];
-  if (prefs.cacheCatalog) writeCatalogCache(collections, Date.now(), endpoint.endpoint);
+  if (prefs.cacheCatalog) writeCatalogCache(collections, Date.now(), auth.endpoint);
   return formatCollectionCatalog(collections, refresh ? "refreshed" : "miss/refreshed");
 }
 
