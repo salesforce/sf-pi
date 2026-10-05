@@ -79,8 +79,10 @@ export async function getAgentScriptAnalysis(
         ? runAgentScriptQuality(source, {
             document: {
               source,
-              ast: result.analysis.compileResult.document.ast,
-              hasErrors: result.analysis.compileResult.document.hasErrors,
+              ast: result.analysis.documentState.ast,
+              hasErrors: result.analysis.compileDiagnostics.some(
+                (diagnostic) => diagnostic.severity === 1,
+              ),
             },
             upstreamDiagnostics: result.analysis.compileDiagnostics,
           })

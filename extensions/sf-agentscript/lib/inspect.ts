@@ -73,19 +73,17 @@ export async function inspectSource(
     };
   }
   const analysis = result.analysis;
-  const doc = analysis.compileResult.document;
 
   // Count severity-1 diagnostics so the LLM knows whether the structural
   // result is trustworthy. Don't fail — the SDK is error-tolerant on purpose.
-  let sev1Count = 0;
-  for (const diag of doc.diagnostics ?? []) {
-    if (((diag as { severity?: number })?.severity ?? 0) === 1) sev1Count += 1;
-  }
+  const sev1Count = analysis.documentState.service.diagnostics.filter(
+    (diagnostic) => diagnostic.severity === 1,
+  ).length;
 
   const { decomposeAtMemberExpression, walkAstExpressions } =
     await import("@sf-agentscript/language");
   return projectInspectStructure({
-    ast: doc.ast,
+    ast: analysis.documentState.ast,
     dialect: analysis.dialect,
     hasParseErrors: sev1Count > 0,
     parseErrorCount: sev1Count,

@@ -42,6 +42,12 @@ describe("generateSpec", () => {
         severity: "error",
       },
     });
+    expect(out.spec.tests.map((test) => test.id)).toEqual(["voice_greeting", "voice_distress"]);
+    expect(out.summary.voice_tests).toBe(2);
+    for (const test of out.spec.tests) {
+      expect(test.steps.some((step) => step.type === "agent.get_state")).toBe(true);
+      expect(test.steps.some((step) => step.type === "evaluator.bot_response_rating")).toBe(true);
+    }
   });
 
   test("non-Voice generated suites remain policy-neutral", () => {

@@ -135,6 +135,68 @@ describe("agentscript_authoring inspect/review", () => {
     );
   });
 
+  test("reports voice-profile advisories without duplicating compiler diagnostics", async () => {
+    const agentFile = path.join(workDir, "voice-review.agent");
+    await writeFile(
+      agentFile,
+      [
+        "config:",
+        '    developer_name: "VoiceReview"',
+        '    agent_type: "AgentforceServiceAgent"',
+        "    runtime:",
+        "        streaming: False",
+        "access:",
+        '    default_agent_user: "agent@example.com"',
+        "system:",
+        '    instructions: "Keep spoken responses concise."',
+        "    messages:",
+        '        welcome: "Hello"',
+        '        error: "Please try again."',
+        "language:",
+        '    default_locale: "en_US"',
+        "modality voice:",
+        "    outbound:",
+        "        model:",
+        '            id: "eleven_v3_conversational"',
+        "            parameters:",
+        "                similarity: 0.75",
+        "start_agent main:",
+        '    description: "Help the caller."',
+        "",
+      ].join("\n"),
+    );
+
+    const result = await captureAuthoringTool().execute(
+      "call-voice-review",
+      { verb: "inspect", mode: "review", agent_file: agentFile },
+      undefined,
+      undefined,
+      ctx(),
+    );
+    const details = result.details as {
+      readiness?: string;
+      findings?: Array<{ id: string; category: string; severity: string }>;
+      voice_profile?: { syntax?: string };
+    };
+
+    expect(details.readiness).toBe("ready_with_warnings");
+    expect(details.voice_profile).toMatchObject({ syntax: "nested" });
+    expect(details.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "voice-streaming-disabled",
+          category: "voice",
+          severity: "warning",
+        }),
+        expect.objectContaining({
+          id: "voice-v3-ignored-parameter",
+          category: "voice",
+          severity: "warning",
+        }),
+      ]),
+    );
+  });
+
   test("accepts a valid orchestrator-based GoalBasedAgent without start_agent", async () => {
     const agentFile = path.join(workDir, "goal-based.agent");
     await writeFile(

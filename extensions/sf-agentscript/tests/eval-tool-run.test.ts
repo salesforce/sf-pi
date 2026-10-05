@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
       action_tests: 0,
       connected_agent_tests: 0,
       multi_turn_tests: 0,
+      voice_tests: 0,
       guardrail_tests: 1,
       safety_tests: 0,
     },

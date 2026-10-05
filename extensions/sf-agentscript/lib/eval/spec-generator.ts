@@ -79,6 +79,8 @@ export interface GenerateSpecOptions {
   includeActionTests?: boolean;
   /** Generate evidence-backed same-session scenarios. Default true. */
   includeMultiTurnTests?: boolean;
+  /** Include the small voice greeting/distress behavior pack for voice agents. Default true. */
+  includeVoiceTests?: boolean;
   /**
    * Include the curated guardrail probe (one off-topic utterance).
    * Default true.
@@ -113,6 +115,7 @@ export interface GeneratedSpecSummary {
   action_tests: number;
   connected_agent_tests: number;
   multi_turn_tests: number;
+  voice_tests: number;
   guardrail_tests: number;
   safety_tests: number;
   /** Names of subagents that were skipped (no description, or start_agent). */
@@ -140,6 +143,7 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
   const includeSubagent = opts.includeSubagentTests ?? true;
   const includeAction = opts.includeActionTests ?? true;
   const includeMultiTurn = opts.includeMultiTurnTests ?? true;
+  const includeVoiceTests = opts.includeVoiceTests ?? true;
   const includeGuardrail = opts.includeGuardrail ?? true;
   const includeSafety = opts.includeSafetyProbes ?? true;
   const maxFunctional = opts.maxFunctionalTests ?? 25;
@@ -249,6 +253,15 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
     }
   }
 
+  const isVoice = (opts.inspect.components?.modalities ?? []).some(
+    (modality) => modality.name === "voice",
+  );
+  let voiceCount = 0;
+  if (isVoice && includeVoiceTests) {
+    tests.push(...buildVoiceBehaviorTests(ctx));
+    voiceCount = 2;
+  }
+
   // Guardrail probe.
   let guardrailCount = 0;
   if (includeGuardrail) {
@@ -265,9 +278,6 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
     }
   }
 
-  const isVoice = (opts.inspect.components?.modalities ?? []).some(
-    (modality) => modality.name === "voice",
-  );
   return {
     spec: {
       ...(isVoice
@@ -290,6 +300,7 @@ export function generateSpec(opts: GenerateSpecOptions): GenerateSpecResult {
       action_tests: actionCount,
       connected_agent_tests: connectedAgentCount,
       multi_turn_tests: multiTurnCount,
+      voice_tests: voiceCount,
       guardrail_tests: guardrailCount,
       safety_tests: safetyCount,
       skipped_subagents: skippedSubagents,
@@ -477,6 +488,43 @@ function branchMatches(
         actual >= branch.expected
       );
   }
+}
+
+function buildVoiceBehaviorTests(ctx: WireContextVariable[]): EvalTest[] {
+  return [
+    compileEvalScenario(
+      {
+        id: "voice_greeting",
+        turns: [
+          {
+            utterance: "Hello",
+            response: {
+              id: "eval_voice_greeting",
+              rubric:
+                "The response should sound natural when spoken, stay concise, avoid raw URLs, Markdown-oriented directions, and long lists, and invite the caller to continue without claiming an unsupported action or fact.",
+            },
+          },
+        ],
+      },
+      ctx,
+    ),
+    compileEvalScenario(
+      {
+        id: "voice_distress",
+        turns: [
+          {
+            utterance: "I'm frustrated because this isn't working.",
+            response: {
+              id: "eval_voice_distress",
+              rubric:
+                "The response should briefly acknowledge the caller's concern, avoid forced cheerfulness or decorative praise, and either help directly or ask at most one necessary question. It must not claim an external action succeeded without action evidence.",
+            },
+          },
+        ],
+      },
+      ctx,
+    ),
+  ];
 }
 
 function buildSafetyTest(probe: SafetyProbe, ctx: WireContextVariable[]): EvalTest {

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Baseline parser-call characterization for the public Agent Script seams. */
+/** Parser-call proof for the single cached public Agent Script analysis seam. */
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -124,7 +124,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("Agent Script public-seam parser-call baseline", () => {
+describe("Agent Script public-seam single analysis pass", () => {
   test("characterizes compile and review analysis pipelines", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "sf-agentscript-parse-baseline-"));
     try {
@@ -156,7 +156,7 @@ describe("Agent Script public-seam parser-call baseline", () => {
         expect(result.details).toMatchObject({ ok: true });
       });
 
-      expect({ compileCalls, reviewCalls }).toEqual({ compileCalls: 2, reviewCalls: 2 });
+      expect({ compileCalls, reviewCalls }).toEqual({ compileCalls: 1, reviewCalls: 1 });
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -219,7 +219,7 @@ describe("Agent Script public-seam parser-call baseline", () => {
         expect(quality.details).toMatchObject({ ok: true });
       });
 
-      expect(calls).toBe(2);
+      expect(calls).toBe(1);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -254,7 +254,7 @@ describe("Agent Script public-seam parser-call baseline", () => {
         expect(result.details).toMatchObject({ ok: true, was_dry_run: true });
       });
 
-      expect(calls).toBe(2);
+      expect(calls).toBe(1);
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -298,8 +298,8 @@ describe("Agent Script public-seam parser-call baseline", () => {
       });
 
       expect({ renameCalls, publicationPreflightCalls }).toEqual({
-        renameCalls: 2,
-        publicationPreflightCalls: 2,
+        renameCalls: 1,
+        publicationPreflightCalls: 1,
       });
     } finally {
       await rm(cwd, { recursive: true, force: true });

@@ -9,7 +9,6 @@
  * AgentScript toolchain until a `.agent` workflow needs it.
  */
 
-import type { AgentforceCompileResult } from "@sf-agentscript/agentforce";
 import type { DocumentState, LspParser } from "@sf-agentscript/lsp";
 import { getSdkLoadError, loadAgentforceSDK, type AgentforceSDK } from "./sdk.ts";
 import type {
@@ -25,7 +24,6 @@ export interface AgentforceSourceAnalysis {
   sdk: AgentforceSDK;
   dialect?: AgentScriptDialectInfo;
   compileDiagnostics: AgentScriptDiagnostic[];
-  compileResult: AgentforceCompileResult;
   documentState: DocumentState;
 }
 
@@ -90,10 +88,10 @@ export async function analyzeAgentScriptSource(
 
   const dialect = resolveDialectInfo(source, sdk);
 
-  let compileResult: AgentforceCompileResult;
   let documentState: DocumentState;
   try {
-    compileResult = sdk.compileSource(source);
+    // processDocument parses, lints, indexes, and compiles from one AST. Avoid
+    // running compileSource first, which repeats the complete local pipeline.
     documentState = await processAgentforceDocument(source, AGENTFORCE_DOCUMENT_URI, {
       compile: true,
     });
@@ -107,10 +105,7 @@ export async function analyzeAgentScriptSource(
     };
   }
 
-  const compileDiagnostics = combineAgentScriptDiagnostics(
-    documentState.diagnostics,
-    compileResult.diagnostics,
-  );
+  const compileDiagnostics = combineAgentScriptDiagnostics(documentState.diagnostics);
 
   return {
     ok: true,
@@ -119,7 +114,6 @@ export async function analyzeAgentScriptSource(
       sdk,
       dialect,
       compileDiagnostics,
-      compileResult,
       documentState,
     },
   };

@@ -4,7 +4,7 @@
 export interface ReviewFinding {
   id: string;
   severity: "blocker" | "warning" | "info";
-  category: "compile" | "quality" | "shape" | "flow" | "actions" | "deployment" | "org";
+  category: "compile" | "quality" | "shape" | "flow" | "actions" | "voice" | "deployment" | "org";
   message: string;
   evidence?: string[];
   recover_via?: { tool: string; params: Record<string, unknown> };

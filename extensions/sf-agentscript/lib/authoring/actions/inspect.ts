@@ -29,6 +29,7 @@ import type { AgentScriptQualityResult } from "../../quality/types.ts";
 import type { ReviewFinding } from "../../review/types.ts";
 import { safeResolveToolPath, toolError, toolOk, type ToolError } from "../../tool-types.ts";
 import type { TimingCollector } from "../../timings.ts";
+import { buildVoiceProfile, type VoiceProfile } from "../../voice-profile.ts";
 import type { AuthoringParams } from "../params.ts";
 
 export type ReviewReadiness = "ready" | "ready_with_warnings" | "blocked" | "partial";
@@ -124,11 +125,21 @@ async function actionContextProfile(agentFile: string, timings?: TimingCollector
     return toolError(`context_profile failed: ${result.reason ?? "unknown"}`, result.reason_detail);
   }
   const profile = (await analysis.getFeatureProfile()) ?? buildFeatureProfile(result);
+  const voiceProfile = buildVoiceProfile(result);
   const lines = [
     `🧬 Context profile ${agentFile}`,
     `linked: ${profile.linked_variables.length} · mutable: ${profile.mutable_variables.length} · ` +
       `modalities: ${profile.modalities.length} · response_formats: ${profile.response_formats.length}`,
   ];
+  if (voiceProfile) {
+    const model = voiceProfile.outbound.model_id
+      ? ` · model=${voiceProfile.outbound.model_id}`
+      : "";
+    lines.push(
+      `voice: ${voiceProfile.syntax} · streaming=${voiceProfile.streaming}${model} · ` +
+        `advisories=${voiceProfile.advisories.length}`,
+    );
+  }
   if (profile.context_variables_template.length > 0) {
     lines.push(`preview seed: ${profile.context_variables_template.map((v) => v.name).join(", ")}`);
   }
@@ -144,6 +155,7 @@ async function actionContextProfile(agentFile: string, timings?: TimingCollector
         path: agentFile,
         dialect: result.dialect,
         context_profile: profile,
+        ...(voiceProfile ? { voice_profile: voiceProfile } : {}),
       },
       inspectEvents(
         agentFile,
@@ -641,6 +653,7 @@ async function actionReview(
   const inspect = timings
     ? await timings.time("inspect_structure", () => analysis.getInspect())
     : await analysis.getInspect();
+  let voiceProfile: VoiceProfile | undefined;
   const parseBlocked = inspect.ok && inspect.has_parse_errors;
   const qualityBlocked = !quality.ok || quality.status === "failed";
   if (!inspect.ok) {
@@ -682,6 +695,16 @@ async function actionReview(
       });
     }
     const profile = (await analysis.getFeatureProfile()) ?? buildFeatureProfile(inspect);
+    voiceProfile = buildVoiceProfile(inspect);
+    for (const advisory of voiceProfile?.advisories ?? []) {
+      findings.push({
+        id: advisory.code,
+        severity: advisory.severity,
+        category: "voice",
+        message: advisory.message,
+        evidence: advisory.evidence,
+      });
+    }
     for (const risk of profile.publish_risks) {
       findings.push({
         id: `publish-risk-${risk.code}`,
@@ -768,6 +791,7 @@ async function actionReview(
     },
     structural_checks: parseBlocked ? "partial" : inspect.ok ? "complete" : "blocked",
     quality,
+    ...(voiceProfile ? { voice_profile: voiceProfile } : {}),
     findings,
   };
   if (input.output_path) {

@@ -17,7 +17,8 @@ const upstream = vi.hoisted(() => ({
     ok: true,
     analysis: {
       source: "config:\n  agent_name: Agent\n",
-      compileResult: { document: { ast: {}, hasErrors: false } },
+      compileDiagnostics: [],
+      documentState: { ast: {} },
     },
   } as unknown,
 }));
@@ -76,7 +77,8 @@ afterEach(() => {
     ok: true,
     analysis: {
       source: "config:\n  agent_name: Agent\n",
-      compileResult: { document: { ast: {}, hasErrors: false } },
+      compileDiagnostics: [],
+      documentState: { ast: {} },
     },
   };
   vi.clearAllMocks();

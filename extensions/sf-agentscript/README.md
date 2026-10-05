@@ -40,7 +40,14 @@ SF Pi hardening remains focused on invalid deterministic action contexts.
 Diagnostics and code actions carry deterministic identities bound to the exact
 source bytes. Quick-fix application refuses stale or ambiguous identities, and
 compile results distinguish an unavailable official code-action provider from a
-successful provider with zero actions.
+successful provider with zero actions. Cached local analysis runs the official
+parse, lint, index, and compile pipeline once per source identity; mutation paths
+create a mutable document only when they need one.
+
+Voice context profiles reuse that official AST to project nested or legacy voice
+format, streaming, locale, model/persona parameters, inbound speech settings,
+filler sentences, action progress coverage, and router posture. Review adds only
+bounded policy advisories not already owned by official compiler diagnostics.
 
 High findings pause local-file publication unless the current session explicitly
 acknowledges the reviewed rule ids. Manager settings can enable/disable stable
@@ -71,7 +78,8 @@ retried once with an Agentforce named-user token; other HTTP failures are not
 retried for auth. Org lookups and seed queries keep the normal connection.
 Incomplete batches, evaluator failures, step errors, missing state evidence, and
 non-2xx batch failures can never become a green empty run. Voice release suites
-require strict one-customer-facing-completion evidence per turn.
+require strict one-customer-facing-completion evidence per turn and generated
+Voice suites include concise greeting and distressed-caller probes by default.
 
 ## Release workflow
 
@@ -126,7 +134,10 @@ and read dynamically; explicit tool arguments win for one call.
 Use [`docs/README.md`](./docs/README.md) for focused transition, Service Agent
 user, and diagnostic-parity material. Tool ordering, recovery, linked variables,
 preview cleanup, eval failure drill-down, and release lifecycle guidance live in
-[`AGENT_GUIDE.md`](./AGENT_GUIDE.md).
+[`AGENT_GUIDE.md`](./AGENT_GUIDE.md). Voice Profiles follow the current official
+[Agent Script voice model](https://developer.salesforce.com/docs/ai/agentforce/guide/ascript-voice.html)
+and [model selection](https://developer.salesforce.com/docs/ai/agentforce/guide/ascript-model.html)
+contracts rather than maintaining a local voice schema.
 
 ## Troubleshooting
 

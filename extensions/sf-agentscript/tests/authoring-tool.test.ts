@@ -130,6 +130,93 @@ describe("agentscript_authoring", () => {
     expect(details.code_action_provider?.status).toBe("available");
   });
 
+  test("inspect/context_profile surfaces nested voice configuration and advisories", async () => {
+    const agentFile = path.join(workDir, "voice.agent");
+    await writeFile(
+      agentFile,
+      [
+        "config:",
+        '    developer_name: "Voice_Bot"',
+        '    agent_type: "AgentforceServiceAgent"',
+        "    runtime:",
+        "        streaming: False",
+        "access:",
+        '    default_agent_user: "agent@example.com"',
+        "system:",
+        '    instructions: "Keep spoken responses concise."',
+        "actions:",
+        "    lookup:",
+        '        description: "Look up account details."',
+        '        target: "flow://Lookup"',
+        "        include_in_progress_indicator: True",
+        "language:",
+        '    default_locale: "en_US"',
+        "modality voice:",
+        "    inbound:",
+        "        filler_words_detection: True",
+        "    outbound:",
+        "        model:",
+        '            id: "eleven_v3_conversational"',
+        "            parameters:",
+        "                speed: 1.0",
+        "        filler_sentences:",
+        '            - "Let me check that."',
+        "start_agent main:",
+        '    description: "Route the call."',
+        "    reasoning:",
+        "        actions:",
+        "            route: @utils.transition to @subagent.help",
+        "subagent help:",
+        '    description: "Help the caller."',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await captureAuthoringTool().execute(
+      "call-voice-profile",
+      { verb: "inspect", mode: "context_profile", agent_file: agentFile },
+      undefined,
+      undefined,
+      ctxWithBranch(),
+    );
+    const details = result.details as {
+      voice_profile?: {
+        syntax?: string;
+        streaming?: string;
+        default_locale?: string;
+        outbound?: { model_id?: string; filler_sentences?: string[] };
+        inbound?: { filler_words_detection?: boolean };
+        advisories?: Array<{ code?: string }>;
+        actions?: { total?: number; with_progress_indicator?: number };
+        router?: { name?: string; transition_only?: boolean };
+      };
+    };
+
+    expect(details.voice_profile).toMatchObject({
+      syntax: "nested",
+      streaming: "disabled",
+      default_locale: "en_US",
+      outbound: {
+        model_id: "eleven_v3_conversational",
+        filler_sentences: ["Let me check that."],
+      },
+      inbound: { filler_words_detection: true },
+      actions: { total: 1, with_progress_indicator: 1 },
+      router: { name: "main", transition_only: true },
+    });
+    expect(details.voice_profile?.advisories?.map((item) => item.code)).toEqual(
+      expect.arrayContaining([
+        "voice-streaming-disabled",
+        "voice-v3-ignored-parameter",
+        "voice-router-hyperclassifier-candidate",
+      ]),
+    );
+    const text = result.content.find((part) => part.type === "text")?.text;
+    expect(text).toContain("voice: nested");
+    expect(text).toContain("streaming=disabled");
+  });
+
   test("compile/check infers agent_file from exactly one branch-state candidate", async () => {
     const created = await createBundle({ cwd: workDir, bundle_name: "Inferred_Bot" });
     if (created.ok === false) throw new Error(created.reason_detail ?? created.reason);

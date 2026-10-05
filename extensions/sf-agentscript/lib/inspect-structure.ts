@@ -52,6 +52,7 @@ export interface InspectResult {
     connections?: ConnectionSummary[];
     modalities?: ModalitySummary[];
     model_config?: BlockSummary;
+    language?: BlockSummary;
     access?: BlockSummary;
     context?: BlockSummary;
   };
@@ -70,6 +71,7 @@ export interface InspectResult {
     connections?: number;
     modalities?: number;
     model_config?: number;
+    language?: number;
     access?: number;
     context?: number;
   };
@@ -114,6 +116,11 @@ export interface ComponentSummary {
   input_names?: string[];
   /** Action declaration output names, when present. */
   output_names?: string[];
+  /** Component-local reasoning model, when model_config.model is declared. */
+  model?: string;
+  /** Action-level progress indicator configuration, when declared. */
+  include_in_progress_indicator?: boolean;
+  progress_indicator_message?: string;
   /** Simple source branches that can ground generated second-turn eval expectations. */
   state_branches?: StateBranchSummary[];
   /**
@@ -371,6 +378,14 @@ function summarizeWithRefs(
   if (inputNames) summary.input_names = inputNames;
   const outputNames = paramNames(e.outputs);
   if (outputNames) summary.output_names = outputNames;
+  const model = unwrapScalar((e.model_config as Record<string, unknown> | undefined)?.model);
+  if (typeof model === "string") summary.model = model;
+  const progressIndicator = unwrapScalar(e.include_in_progress_indicator);
+  if (typeof progressIndicator === "boolean") {
+    summary.include_in_progress_indicator = progressIndicator;
+  }
+  const progressMessage = unwrapScalar(e.progress_indicator_message);
+  if (typeof progressMessage === "string") summary.progress_indicator_message = progressMessage;
   const branches = projectStateBranches(e, decomposeAtMemberExpression);
   if (branches.length > 0) summary.state_branches = branches;
   return summary;
@@ -687,6 +702,7 @@ export function projectInspectStructure(input: {
   );
   const modalities = namedMapEntries(ast.modality).map(([n, e]) => summarizeModality(n, e));
   const modelConfig = summarizeBlock(ast.model_config);
+  const language = summarizeBlock(ast.language);
   const access = summarizeBlock(ast.access);
   const context = summarizeBlock(ast.context);
 
@@ -707,6 +723,7 @@ export function projectInspectStructure(input: {
     ...(connections.length > 0 ? { connections } : {}),
     ...(modalities.length > 0 ? { modalities } : {}),
     ...(modelConfig ? { model_config: modelConfig } : {}),
+    ...(language ? { language } : {}),
     ...(access ? { access } : {}),
     ...(context ? { context } : {}),
   };
@@ -730,6 +747,7 @@ export function projectInspectStructure(input: {
       connections: connections.length,
       modalities: modalities.length,
       ...(modelConfig ? { model_config: 1 } : {}),
+      ...(language ? { language: 1 } : {}),
       ...(access ? { access: 1 } : {}),
       ...(context ? { context: 1 } : {}),
     },

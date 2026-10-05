@@ -40,7 +40,7 @@ describe("diagnoseRuntimeSmoke", () => {
       } as unknown as Connection);
 
       expect(query).not.toHaveBeenCalled();
-      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(result.findings.map((finding) => finding.code)).toEqual([
         "runtime-no-channel-records",
       ]);
@@ -70,11 +70,47 @@ describe("diagnoseRuntimeSmoke", () => {
     expect(result.findings.map((finding) => finding.code)).toEqual(["voice-runtime-no-agent-work"]);
   });
 
+  test("uses the supplied phone number and correlates AgentWork through WorkItemId", async () => {
+    const query = vi.fn(async (soql: string) => {
+      if (soql.includes("FROM VoiceCall")) {
+        expect(soql).toContain("CreatedDate = LAST_N_DAYS:1");
+        expect(soql).toContain("FromPhoneNumber IN ('+15551234567')");
+        expect(soql).toContain("ToPhoneNumber IN ('+15551234567')");
+        return {
+          records: [{ Id: "0LQ", ConversationId: "0CONV", FromPhoneNumber: "+15551234567" }],
+        };
+      }
+      if (soql.includes("FROM AgentWork")) {
+        expect(soql).toContain("WorkItemId IN ('0LQ')");
+        return {
+          records: [
+            {
+              Id: "0AW",
+              WorkItemId: "0LQ",
+              BotId: "0BOT",
+              ActiveTime: 20,
+              HandleTime: 30,
+            },
+          ],
+        };
+      }
+      throw new Error(`Unexpected query: ${soql}`);
+    });
+
+    const result = await diagnoseRuntimeSmoke({ query } as unknown as Connection, {
+      phoneNumber: "+15551234567",
+    });
+
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(result.surface).toBe("voice");
+    expect(result.findings.map((finding) => finding.code)).toEqual(["runtime-agent-work-active"]);
+  });
+
   test("diagnoses bot-selected AgentWork with zero ActiveTime", async () => {
     const result = await diagnoseRuntimeSmoke(
       connWith({
         VoiceCall: [{ Id: "0LQ", ConversationId: "0CONV" }],
-        AgentWork: [{ Id: "0AW", BotId: "0BOT", ActiveTime: 0, HandleTime: 9 }],
+        AgentWork: [{ Id: "0AW", WorkItemId: "0LQ", BotId: "0BOT", ActiveTime: 0, HandleTime: 9 }],
         MessagingSession: [],
       }),
     );
@@ -87,7 +123,9 @@ describe("diagnoseRuntimeSmoke", () => {
     const result = await diagnoseRuntimeSmoke(
       connWith({
         VoiceCall: [],
-        AgentWork: [{ Id: "0AW", BotId: "0BOT", ActiveTime: 20, HandleTime: 30 }],
+        AgentWork: [
+          { Id: "0AW", WorkItemId: "0MS", BotId: "0BOT", ActiveTime: 20, HandleTime: 30 },
+        ],
         MessagingSession: [{ Id: "0MS", Status: "Active" }],
       }),
     );

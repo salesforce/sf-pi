@@ -538,8 +538,7 @@ async function applyAstRename(
       reason_detail: upstream.unavailableReason,
     };
   }
-  const compilerDocument = upstream.analysis.compileResult.document;
-  if (compilerDocument.hasErrors) {
+  if (upstream.analysis.compileDiagnostics.some((diagnostic) => diagnostic.severity === 1)) {
     return {
       ok: false,
       reason: "has_parse_errors",

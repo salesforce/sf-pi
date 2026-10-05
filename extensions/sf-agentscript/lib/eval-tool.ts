@@ -185,6 +185,12 @@ const Params = Type.Object({
         "Optional for action='generate_spec'. Include evidence-backed same-session scenarios for provable after_response state and branch behavior. Default true.",
     }),
   ),
+  include_voice_tests: Type.Optional(
+    Type.Boolean({
+      description:
+        "Optional for action='generate_spec'. Include the concise greeting and distressed-caller probes for Voice agents. Default true.",
+    }),
+  ),
   include_guardrail: Type.Optional(
     Type.Boolean({
       description:
@@ -239,6 +245,7 @@ interface ParamsAny {
   include_subagent_tests?: boolean;
   include_action_tests?: boolean;
   include_multi_turn_tests?: boolean;
+  include_voice_tests?: boolean;
   include_guardrail?: boolean;
   include_safety_probes?: boolean;
   max_functional_tests?: number;

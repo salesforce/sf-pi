@@ -23,11 +23,9 @@ describe("upstream Agent Script capability contracts", () => {
 `);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.analysis.compileResult.output).toBeDefined();
-    expect(result.analysis.compileResult.document.ast).toBeDefined();
-    expect(result.analysis.compileResult.ranges).toBeDefined();
     expect(result.analysis.documentState.ast).toBeDefined();
     expect(result.analysis.documentState.service).toBeDefined();
+    expect(result.analysis.documentState.store).toBeDefined();
     expect(result.analysis.documentState.compileOutput).toBeDefined();
   });
 
@@ -143,8 +141,10 @@ describe("upstream Agent Script capability contracts", () => {
         runAgentScriptQuality(source, {
           document: {
             source,
-            ast: upstream.analysis.compileResult.document.ast,
-            hasErrors: upstream.analysis.compileResult.document.hasErrors,
+            ast: upstream.analysis.documentState.ast,
+            hasErrors: upstream.analysis.compileDiagnostics.some(
+              (diagnostic) => diagnostic.severity === 1,
+            ),
           },
           upstreamDiagnostics: upstream.analysis.compileDiagnostics,
         });
@@ -168,8 +168,10 @@ describe("upstream Agent Script capability contracts", () => {
       runAgentScriptQuality(source, {
         document: {
           source,
-          ast: upstream.analysis.compileResult.document.ast,
-          hasErrors: upstream.analysis.compileResult.document.hasErrors,
+          ast: upstream.analysis.documentState.ast,
+          hasErrors: upstream.analysis.compileDiagnostics.some(
+            (diagnostic) => diagnostic.severity === 1,
+          ),
         },
       }),
     ).resolves.toMatchObject({
@@ -205,8 +207,10 @@ describe("upstream Agent Script capability contracts", () => {
     const qualityWithStaleDocument = await runAgentScriptQuality(sourceB, {
       document: {
         source: sourceA,
-        ast: analysisA.analysis.compileResult.document.ast,
-        hasErrors: analysisA.analysis.compileResult.document.hasErrors,
+        ast: analysisA.analysis.documentState.ast,
+        hasErrors: analysisA.analysis.compileDiagnostics.some(
+          (diagnostic) => diagnostic.severity === 1,
+        ),
       },
     });
     expect(qualityWithStaleDocument).toEqual(await runAgentScriptQuality(sourceB));

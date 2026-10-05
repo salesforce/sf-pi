@@ -6,9 +6,9 @@ Use this guide whenever the user is editing `.agent` files, debugging an Agentfo
 
 | Tool                    | Use it for                                                                                                                                                                                   |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agentscript_authoring` | Create bundles, compile/check or format `.agent` files, inspect structure/docs/targets/native quality, run deterministic review, and mutate source. Uses `verb` + `mode`.                    |
+| `agentscript_authoring` | Create bundles, compile/check or format `.agent` files, inspect structure/docs/targets/native quality/Voice Profile, run deterministic review, and mutate source. Uses `verb` + `mode`.      |
 | `agentscript_preview`   | Start/send/end live preview sessions, fetch planner traces, bulk-end sessions, clean stale preview artifacts, render rich human Preview Trace Reports, and return compact LLM trace digests. |
-| `agentscript_eval`      | Generate starter eval specs, run regression suites, drill into failures, synthesize trace artifacts, fetch explicit live traces, and resolve active/latest version ids.                      |
+| `agentscript_eval`      | Generate starter eval specs (including Voice behavior probes), run regression suites, drill into failures, synthesize trace artifacts, fetch explicit live traces, and resolve versions.     |
 | `agentscript_lifecycle` | Publish, activate/deactivate, list versions, and diagnose/provision Service Agent users.                                                                                                     |
 
 ## Preferred loop

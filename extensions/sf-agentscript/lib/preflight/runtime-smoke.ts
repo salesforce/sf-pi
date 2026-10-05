@@ -8,7 +8,7 @@
  */
 
 import type { Connection } from "@salesforce/core";
-import { safeQueryRecords } from "./soql.ts";
+import { safeQueryRecords, soqlInList } from "./soql.ts";
 
 export type RuntimeSmokeSurface = "voice" | "messaging" | "unknown";
 export type RuntimeSmokeSeverity = "ok" | "warning" | "unverifiable";
@@ -37,11 +37,15 @@ export interface VoiceCallRow {
   DisconnectReason?: string | null;
   CallDurationInSeconds?: number | null;
   VendorType?: string | null;
+  FromPhoneNumber?: string | null;
+  ToPhoneNumber?: string | null;
+  CallStartDateTime?: string | null;
   CreatedDate?: string;
 }
 
 export interface AgentWorkRow {
   Id?: string;
+  WorkItemId?: string | null;
   BotId?: string | null;
   Status?: string | null;
   ActiveTime?: number | null;
@@ -60,12 +64,21 @@ export async function diagnoseRuntimeSmoke(
   conn: Connection,
   opts: { phoneNumber?: string } = {},
 ): Promise<RuntimeSmokeResult> {
-  void opts.phoneNumber;
-  const [voiceCalls, agentWorks, messagingSessions] = await Promise.all([
-    latestVoiceCalls(conn),
-    latestAgentWorks(conn),
-    latestMessagingSessions(conn),
+  const phoneNumber = opts.phoneNumber?.trim() || undefined;
+  const [voiceCalls, messagingSessions] = await Promise.all([
+    latestVoiceCalls(conn, phoneNumber),
+    phoneNumber ? Promise.resolve([]) : latestMessagingSessions(conn),
   ]);
+  const workItemIds = [
+    ...(voiceCalls ?? []).map((row) => row.Id),
+    ...(messagingSessions ?? []).map((row) => row.Id),
+  ].filter((id): id is string => typeof id === "string" && id.length > 0);
+  const agentWorks =
+    workItemIds.length > 0
+      ? await agentWorksForWorkItems(conn, workItemIds)
+      : voiceCalls === null && messagingSessions === null
+        ? null
+        : [];
 
   const findings: RuntimeSmokeFinding[] = [];
   if (voiceCalls === null) {
@@ -91,8 +104,11 @@ export async function diagnoseRuntimeSmoke(
   }
 
   const voice = voiceCalls?.[0];
-  const agentWork = agentWorks?.[0];
   const session = messagingSessions?.[0];
+  const selectedWorkItemId = voice?.Id ?? session?.Id;
+  const agentWork = selectedWorkItemId
+    ? agentWorks?.find((row) => row.WorkItemId === selectedWorkItemId)
+    : undefined;
   const surface = voice ? "voice" : session ? "messaging" : "unknown";
 
   if (
@@ -188,24 +204,38 @@ export async function diagnoseRuntimeSmoke(
   };
 }
 
-async function latestVoiceCalls(conn: Connection): Promise<VoiceCallRow[] | null> {
+async function latestVoiceCalls(
+  conn: Connection,
+  phoneNumber?: string,
+): Promise<VoiceCallRow[] | null> {
+  const phoneFilter = phoneNumber
+    ? ` AND (FromPhoneNumber IN (${soqlInList([phoneNumber])}) OR ToPhoneNumber IN (${soqlInList([phoneNumber])}))`
+    : "";
   return queryOptional<VoiceCallRow>(
     conn,
-    "SELECT Id, ConversationId, DisconnectReason, CallDurationInSeconds, VendorType, CreatedDate FROM VoiceCall ORDER BY CreatedDate DESC LIMIT 3",
+    "SELECT Id, ConversationId, DisconnectReason, CallDurationInSeconds, VendorType, " +
+      "FromPhoneNumber, ToPhoneNumber, CallStartDateTime, CreatedDate FROM VoiceCall " +
+      `WHERE CreatedDate = LAST_N_DAYS:1${phoneFilter} ` +
+      "ORDER BY CreatedDate DESC LIMIT 3",
   );
 }
 
-function latestAgentWorks(conn: Connection): Promise<AgentWorkRow[] | null> {
+function agentWorksForWorkItems(
+  conn: Connection,
+  workItemIds: string[],
+): Promise<AgentWorkRow[] | null> {
   return queryOptional<AgentWorkRow>(
     conn,
-    "SELECT Id, BotId, Status, ActiveTime, HandleTime, CreatedDate FROM AgentWork ORDER BY CreatedDate DESC LIMIT 3",
+    "SELECT Id, WorkItemId, BotId, Status, ActiveTime, HandleTime, CreatedDate FROM AgentWork " +
+      `WHERE WorkItemId IN (${soqlInList(workItemIds)}) ORDER BY CreatedDate DESC LIMIT 10`,
   );
 }
 
 function latestMessagingSessions(conn: Connection): Promise<MessagingSessionRow[] | null> {
   return queryOptional<MessagingSessionRow>(
     conn,
-    "SELECT Id, Status, MessagingChannelId, CreatedDate FROM MessagingSession ORDER BY CreatedDate DESC LIMIT 3",
+    "SELECT Id, Status, MessagingChannelId, CreatedDate FROM MessagingSession " +
+      "WHERE CreatedDate = LAST_N_DAYS:1 ORDER BY CreatedDate DESC LIMIT 3",
   );
 }
 

@@ -8,35 +8,10 @@
  * resolution fails.
  */
 
-import type { AgentforceCompileResult } from "@sf-agentscript/agentforce";
-
-// -------------------------------------------------------------------------------------------------
-// Shape of the official SDK we depend on
-// -------------------------------------------------------------------------------------------------
-
-export interface AgentforceSDK {
-  parse: (source: string) => {
-    hasErrors: boolean;
-    diagnostics: readonly unknown[];
-  };
-  compileSource: (source: string) => AgentforceCompileResult;
-  resolveDialect: (
-    source: string,
-    config: { dialects: unknown[]; defaultDialect?: string },
-  ) => {
-    dialect: { name: string };
-    unknownDialect?: {
-      name: string;
-      availableNames: string[];
-    };
-  };
-  parseDialectAnnotation: (source: string) => {
-    name: string;
-    version?: string;
-  } | null;
-  findSuggestion: (name: string, candidates: string[]) => string | undefined;
-  agentforceDialect: unknown;
-}
+// Keep lazy loading for startup cost, but let the official package own its type
+// surface so new schema/language capabilities do not require a local shadow
+// interface update.
+export type AgentforceSDK = typeof import("@sf-agentscript/agentforce");
 
 // -------------------------------------------------------------------------------------------------
 // Load + cache

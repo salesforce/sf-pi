@@ -80,11 +80,17 @@ export async function checkAgentScriptSource(
     };
   }
 
-  const compilerDocument = analysis.analysis.compileResult.document;
-  const localDiagnostics = buildAstHardeningDiagnosticsFromAst(compilerDocument.ast as never);
+  const ast = analysis.analysis.documentState.ast;
+  const localDiagnostics = ast ? buildAstHardeningDiagnosticsFromAst(ast as never) : [];
   const quality = await runAgentScriptQuality(source, {
     editTimeOnly: true,
-    document: { source, ast: compilerDocument.ast, hasErrors: compilerDocument.hasErrors },
+    document: {
+      source,
+      ast,
+      hasErrors: analysis.analysis.compileDiagnostics.some(
+        (diagnostic) => diagnostic.severity === 1,
+      ),
+    },
   });
   const qualityDiagnostics: AgentScriptDiagnostic[] = quality.findings
     .filter((finding) => finding.severity === "high")

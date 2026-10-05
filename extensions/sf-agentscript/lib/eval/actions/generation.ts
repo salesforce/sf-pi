@@ -27,6 +27,7 @@ export interface GenerateEvalSpecActionInput {
   include_subagent_tests?: boolean;
   include_action_tests?: boolean;
   include_multi_turn_tests?: boolean;
+  include_voice_tests?: boolean;
   include_guardrail?: boolean;
   include_safety_probes?: boolean;
   max_functional_tests?: number;
@@ -131,6 +132,7 @@ export async function actionGenerateSpec(
       includeSubagentTests: input.include_subagent_tests,
       includeActionTests: input.include_action_tests,
       includeMultiTurnTests: input.include_multi_turn_tests,
+      includeVoiceTests: input.include_voice_tests,
       includeGuardrail: input.include_guardrail,
       includeSafetyProbes: input.include_safety_probes,
       maxFunctionalTests: input.max_functional_tests,
@@ -162,8 +164,8 @@ export async function actionGenerateSpec(
   const totals =
     `${summary.total_tests} test(s): ${summary.subagent_tests} subagent, ` +
     `${summary.action_tests} action, ${summary.connected_agent_tests} connected, ` +
-    `${summary.multi_turn_tests} multi-turn, ${summary.guardrail_tests} guardrail, ` +
-    `${summary.safety_tests} safety`;
+    `${summary.multi_turn_tests} multi-turn, ${summary.voice_tests} voice, ` +
+    `${summary.guardrail_tests} guardrail, ${summary.safety_tests} safety`;
   const head = `✨ spec generated for ${path.basename(agentFile)}\n${totals}${writtenPath ? `\nWritten: ${writtenPath}` : ""}`;
 
   // Hand back the next-step hint so the LLM chains directly into a run.

@@ -43,7 +43,7 @@ exports[`Every sf-agentscript tool emits an OpenAI-strict-compatible schema > pi
       "Use the installed Agent Script guide path declared in <sf_engineering_constitution> for spec generation, failure drill-down, and version-resolution guidance.",
     ],
     "promptSnippet": "Run / debug / introspect Agent Script regression specs against the Salesforce Evaluation API.",
-    "schemaHash": "911357590d81fb5514127552cee253a75d9ac2d11d90f4e1992fccb0a459739a",
+    "schemaHash": "e7e7445e7706e8e767d257361f719b3765275a787eb287878935aede69e6a581",
   },
   {
     "description": "Multi-action Agent Script lifecycle: publish an inactive version, activate only with exact-version release eval evidence, deactivate/list versions, and diagnose or provision Service Agent users.",
