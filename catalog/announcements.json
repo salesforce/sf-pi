@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.323.0-2026-10-04",
-  "latestVersion": "0.323.0",
+  "revision": "release-0.324.0-2026-10-05",
+  "latestVersion": "0.324.0",
   "announcements": [
     {
-      "id": "release-0.323.0",
+      "id": "release-0.324.0",
       "kind": "update",
-      "title": "sf-pi v0.323.0 — sf-browser: harden Setup and app navigation",
-      "publishedAt": "2026-10-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.323.0",
+      "title": "sf-pi v0.324.0 — runtime: adopt Pi 1.0.2 native capabilities",
+      "publishedAt": "2026-10-05T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.324.0",
       "severity": "info",
-      "body": "sf-browser: harden Setup and app navigation"
+      "body": "runtime: adopt Pi 1.0.2 native capabilities"
     }
   ]
 }
