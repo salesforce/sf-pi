@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { InMemoryCredentialStore, createModels } from "@earendil-works/pi-ai";
-import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -36,7 +36,7 @@ function writeAuthFile(body: unknown): void {
 
 function makePromptBridge(token = "sfmcp-test-token"): SecureCredentialPromptBridge {
   return {
-    bind: vi.fn((_ui: ExtensionUIContext, _mode: ExtensionContext["mode"]) => undefined),
+    bind: vi.fn(() => undefined),
     clear: vi.fn(() => undefined),
     prompt: vi.fn(async () => token),
   };
