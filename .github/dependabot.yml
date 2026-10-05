@@ -26,6 +26,10 @@ updates:
         update-types:
           - minor
           - patch
+        # Keep Agent Script dialect upgrades isolated so a regressed nested
+        # toolchain cannot block unrelated development dependency updates.
+        exclude-patterns:
+          - "@sf-agentscript/agentfabric-dialect"
       prod-minor-and-patch:
         dependency-type: production
         update-types:
