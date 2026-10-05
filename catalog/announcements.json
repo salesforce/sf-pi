@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.325.0-2026-10-05",
-  "latestVersion": "0.325.0",
+  "revision": "release-0.326.0-2026-10-05",
+  "latestVersion": "0.326.0",
   "announcements": [
     {
-      "id": "release-0.325.0",
+      "id": "release-0.326.0",
       "kind": "update",
-      "title": "sf-pi v0.325.0 — sf-mcp: add product presets and split configuration",
+      "title": "sf-pi v0.326.0 — sf-agentscript: add voice workflow hardening",
       "publishedAt": "2026-10-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.325.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.326.0",
       "severity": "info",
-      "body": "sf-mcp: add product presets and split configuration"
+      "body": "sf-agentscript: add voice workflow hardening"
     }
   ]
 }
