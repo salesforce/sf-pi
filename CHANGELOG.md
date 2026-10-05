@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.328.0](https://github.com/salesforce/sf-pi/compare/v0.327.0...v0.328.0) (2026-10-05)
+
+
+### Features
+
+* **sf-docs:** restore bearer authentication ([292dce6](https://github.com/salesforce/sf-pi/commit/292dce690b33cea179ef2f3f485f6b0a6e2a8f02))
+
 ## [0.327.0](https://github.com/salesforce/sf-pi/compare/v0.326.0...v0.327.0) (2026-10-05)
 
 
