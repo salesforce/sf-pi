@@ -5,6 +5,7 @@ import {
   ACTIVE_COMPACTION_MODEL,
   readScopedCompactionModel,
   writeScopedCompactionModel,
+  writeScopedCompactionSetup,
   type CompactionSettingsScope,
   type GatewayCompactionModel,
   type GatewayCompactionModelOption,
@@ -26,10 +27,14 @@ export class GatewayCompactionModelPicker {
     private readonly cwd: string,
     private readonly scope: CompactionSettingsScope,
     models: readonly GatewayCompactionModelOption[],
+    initialSelection?: GatewayCompactionModel,
   ) {
     const scoped = readScopedCompactionModel(cwd, scope);
-    this.selected = scoped ?? (scope === "project" ? "inherit" : ACTIVE_COMPACTION_MODEL);
-    this.persisted = this.selected;
+    this.persisted = scoped ?? (scope === "project" ? "inherit" : ACTIVE_COMPACTION_MODEL);
+    this.selected =
+      !scoped && initialSelection && models.some((option) => option.value === initialSelection)
+        ? initialSelection
+        : this.persisted;
     this.options = buildChoices(scope, this.selected, models);
   }
 
@@ -65,6 +70,18 @@ export class GatewayCompactionModelPicker {
 
   isDirty(): boolean {
     return this.selected !== this.persisted;
+  }
+
+  selectedModel(): GatewayCompactionModel | undefined {
+    return this.selected === "inherit" ? undefined : this.selected;
+  }
+
+  persistSetup(): Exclude<GatewayCompactionModel, typeof ACTIVE_COMPACTION_MODEL> | undefined {
+    const model = this.selectedModel();
+    if (!model || model === ACTIVE_COMPACTION_MODEL) return undefined;
+    writeScopedCompactionSetup(this.cwd, this.scope, model);
+    this.persisted = model;
+    return model;
   }
 
   persist(): void {

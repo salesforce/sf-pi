@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Non-blocking startup header with model/environment status, one-line LSP and Herdr readiness, optional gateway usage, SF Pi package freshness, announcements, recommended extensions, and recent sessions. Pi owns Pi Runtime release checks and updates. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.
+Non-blocking startup header with model/environment status, cache-only dedicated-compaction readiness, one-line LSP and Herdr readiness, optional gateway usage, SF Pi package freshness, announcements, recommended extensions, and recent sessions. Pi owns Pi Runtime release checks and updates. SF Welcome mode is independent from Pi's native quietStartup setting; /sf-welcome and /sf-setup-fonts remain available on demand.
 
 ## Start
 

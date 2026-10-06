@@ -207,6 +207,7 @@ describe("buildStatusReport", () => {
       modelRegistry: {
         getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
       },
+      isProjectTrusted: () => true,
       getContextUsage: () => null,
     } as unknown as ExtensionContext;
 
@@ -254,6 +255,7 @@ describe("buildStatusReport", () => {
       modelRegistry: {
         getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
       },
+      isProjectTrusted: () => true,
       getContextUsage: () => null,
     } as unknown as ExtensionContext;
 
@@ -285,6 +287,7 @@ describe("buildStatusReport", () => {
       modelRegistry: {
         getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
       },
+      isProjectTrusted: () => true,
       getContextUsage: () => null,
     } as unknown as ExtensionContext;
 
@@ -325,6 +328,7 @@ describe("buildStatusReport", () => {
       modelRegistry: {
         getProviderAuthStatus: () => ({ configured: true, source: "stored" }),
       },
+      isProjectTrusted: () => true,
       getContextUsage: () => null,
     } as unknown as ExtensionContext;
 

@@ -98,6 +98,7 @@ import {
 import { subscribeSlackStatus } from "../../lib/common/slack-status/store.ts";
 import { subscribeDocsStatus } from "../../lib/common/docs-status/store.ts";
 import { subscribeTldrawStatus } from "../../lib/common/tldraw-status/store.ts";
+import { subscribeCompactionStatus } from "../../lib/common/compaction-status/store.ts";
 import { onSfLspHealthChange } from "../../lib/common/sf-lsp-health/index.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
 import { FONT_FAMILY_NAME, isFontFamilyInstalled } from "./lib/font-status.ts";
@@ -149,6 +150,7 @@ export default function sfWelcome(pi: ExtensionAPI) {
   let unsubscribeSlackStore: (() => void) | null = null;
   let unsubscribeDocsStore: (() => void) | null = null;
   let unsubscribeTldrawStore: (() => void) | null = null;
+  let unsubscribeCompactionStore: (() => void) | null = null;
   let unsubscribeLspStore: (() => void) | null = null;
   let startupRunId = 0;
   let activeSessionGeneration = 0;
@@ -325,6 +327,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     unsubscribeDocsStore = null;
     unsubscribeTldrawStore?.();
     unsubscribeTldrawStore = null;
+    unsubscribeCompactionStore?.();
+    unsubscribeCompactionStore = null;
     unsubscribeLspStore?.();
     unsubscribeLspStore = null;
   }
@@ -758,6 +762,14 @@ export default function sfWelcome(pi: ExtensionAPI) {
       scheduleSplashRepaint(ctx, generation);
     });
 
+    unsubscribeCompactionStore?.();
+    unsubscribeCompactionStore = subscribeCompactionStatus((status) => {
+      if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
+      data.compactionVisible = isSfPiExtensionEnabled(ctx.cwd, "sf-llm-gateway");
+      data.compactionStatus = status;
+      scheduleSplashRepaint(ctx, generation);
+    });
+
     unsubscribeLspStore?.();
     unsubscribeLspStore = onSfLspHealthChange((snapshot) => {
       if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
@@ -862,6 +874,8 @@ export default function sfWelcome(pi: ExtensionAPI) {
     unsubscribeDocsStore = null;
     unsubscribeTldrawStore?.();
     unsubscribeTldrawStore = null;
+    unsubscribeCompactionStore?.();
+    unsubscribeCompactionStore = null;
     unsubscribeLspStore?.();
     unsubscribeLspStore = null;
     endActiveSession(ctx);

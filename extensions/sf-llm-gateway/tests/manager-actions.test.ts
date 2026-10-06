@@ -32,12 +32,15 @@ describe("gateway Manager actions", () => {
     }
   });
 
-  it("hosts setup as an in-Manager action page", () => {
+  it("hosts setup and dedicated compaction as in-Manager action pages", () => {
     const actions = buildGatewayManagerActions({} as never);
 
     const setup = actions.find((action) => action.id === "setup");
+    const compaction = actions.find((action) => action.id === "compaction");
     expect(setup?.closeBeforeRun).toBeUndefined();
     expect(typeof setup?.createPanel).toBe("function");
+    expect(compaction?.closeBeforeRun).toBeUndefined();
+    expect(typeof compaction?.createPanel).toBe("function");
     expect(actions.find((action) => action.id === "doctor")?.closeBeforeRun).toBeUndefined();
   });
 

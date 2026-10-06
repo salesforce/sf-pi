@@ -8,6 +8,7 @@ import {
   buildGatewayCompactionModelOptions,
   readEffectiveCompactionSettings,
   writeScopedCompactionModel,
+  writeScopedCompactionSetup,
 } from "../lib/compaction-settings.ts";
 
 const tempDirs: string[] = [];
@@ -73,11 +74,15 @@ describe("gateway compaction settings", () => {
         value: "sf-llm-gateway/claude-sonnet-5",
         label: "Claude Sonnet 5",
         description: "1M context · 128K output",
+        contextWindow: 1_000_000,
+        maxTokens: 128_000,
       },
       {
         value: "sf-llm-gateway/gemini-2.5-flash",
         label: "Gemini 2.5 Flash",
         description: "1M context · 65.5K output",
+        contextWindow: 1_000_000,
+        maxTokens: 65_536,
       },
     ]);
   });
@@ -123,6 +128,34 @@ describe("gateway compaction settings", () => {
     expect(readEffectiveCompactionSettings(cwd, globalSettings)).toMatchObject({
       model: "sf-llm-gateway/claude-sonnet-5",
       source: "global",
+    });
+  });
+
+  it("enables native compaction and saves a dedicated model without replacing unrelated settings", () => {
+    const cwd = tempDir();
+    const globalSettings = path.join(tempDir(), "settings.json");
+    writeFileSync(
+      globalSettings,
+      `${JSON.stringify(
+        {
+          theme: "dark",
+          compaction: { enabled: false, reserveTokens: 32_000 },
+          sfPi: { display: { profile: "compact" } },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    writeScopedCompactionSetup(cwd, "global", "sf-llm-gateway/claude-sonnet-5", globalSettings);
+
+    expect(JSON.parse(readFileSync(globalSettings, "utf8"))).toEqual({
+      theme: "dark",
+      compaction: { enabled: true, reserveTokens: 32_000 },
+      sfPi: {
+        display: { profile: "compact" },
+        compaction: { model: "sf-llm-gateway/claude-sonnet-5" },
+      },
     });
   });
 });

@@ -22,6 +22,7 @@ import { getMonthlyUsageState } from "../../../lib/common/monthly-usage/store.ts
 import { getSlackStatus } from "../../../lib/common/slack-status/store.ts";
 import { getDocsStatus } from "../../../lib/common/docs-status/store.ts";
 import { getTldrawStatus } from "../../../lib/common/tldraw-status/store.ts";
+import { getCompactionStatus } from "../../../lib/common/compaction-status/store.ts";
 import { getSfLspHealth } from "../../../lib/common/sf-lsp-health/index.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
 import {
@@ -365,6 +366,7 @@ export function collectInitialSplashData(
   const docsStatus = getDocsStatus();
   const tldrawStatus = getTldrawStatus();
   const tldrawEnabled = cwd ? isSfPiExtensionEnabled(cwd, "sf-tldraw") : undefined;
+  const compactionVisible = cwd ? isSfPiExtensionEnabled(cwd, "sf-llm-gateway") : false;
   const lspEnabled = cwd ? isSfPiExtensionEnabled(cwd, "sf-lsp") : true;
 
   return {
@@ -391,6 +393,8 @@ export function collectInitialSplashData(
     gatewayVisible: false,
     gatewayStatus: gatewayState.connectionStatus ?? null,
     gatewayLoading: gatewayState.connectionStatus?.kind === "checking",
+    compactionVisible,
+    compactionStatus: compactionVisible ? getCompactionStatus() : undefined,
     loading: true,
     slackLoading: true,
     extensionHealthLoading: true,
@@ -451,6 +455,7 @@ export function collectSplashData(
   const docsStatus = getDocsStatus();
   const tldrawStatus = getTldrawStatus();
   const tldrawEnabled = isSfPiExtensionEnabled(cwd, "sf-tldraw");
+  const compactionVisible = isSfPiExtensionEnabled(cwd, "sf-llm-gateway");
   const lspEnabled = isSfPiExtensionEnabled(cwd, "sf-lsp");
   const gatewayVisible = shouldShowGatewayStatus(cwd, modelName, providerName);
 
@@ -507,6 +512,8 @@ export function collectSplashData(
     gatewayVisible,
     gatewayStatus: gatewayVisible ? (gatewayState.connectionStatus ?? null) : null,
     gatewayLoading: gatewayVisible && gatewayState.connectionStatus?.kind === "checking",
+    compactionVisible,
+    compactionStatus: compactionVisible ? getCompactionStatus() : undefined,
     recommendations: collectRecommendationsStatus(cwd),
     skillSources: summarizeAvailableSkillSources() ?? undefined,
     doctor,

@@ -51,7 +51,7 @@ remains the credential boundary.
 | Group     | Actions                                           |
 | --------- | ------------------------------------------------- |
 | Connect   | `setup`, `import-claude`, `open-token`, `onboard` |
-| Routing   | `on`, `off`, `set-default`                        |
+| Setup     | `on`, `off`, `set-default`, `compaction`          |
 | Discovery | `refresh`, `models`, `doctor`, `usage-probe`      |
 | Utilities | `tokens`, `fix-ca-bundle`                         |
 | Reference | `status`, `help`                                  |
@@ -144,6 +144,15 @@ request, returns an incomplete response, or fails, SF Pi warns once and falls
 back to Pi's active-model compaction. Conversation data never leaves the
 configured Gateway because this preference accepts only `sf-llm-gateway/*`
 models.
+
+Run `/sf-llm-gateway compaction [global|project]` for the focused setup flow. It
+uses Pi's restored authenticated model catalog without a startup or setup
+network request, preselects the model only when exactly one cached model has at
+least a 1M context window and 8K output capacity, and otherwise leaves the
+choice to the user. Saving atomically enables Pi's native automatic compaction
+and records the dedicated model without changing the active chat model. Project
+scope requires a trusted project. The model's displayed context capacity does
+not change the active model's context window or Pi's compaction threshold.
 
 ## Diagnostics
 

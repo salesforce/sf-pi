@@ -47,8 +47,11 @@ const SUMMARY_FORMAT = `Use this exact structure:
 
 Keep every section concise. Preserve exact technical identifiers and error messages.`;
 
+type GatewayCompactionPreference = Pick<EffectiveCompactionSettings, "model" | "source"> &
+  Partial<Pick<EffectiveCompactionSettings, "enabled" | "enabledSource">>;
+
 export interface GatewayCompactionDependencies {
-  readSettings?: (cwd: string) => EffectiveCompactionSettings;
+  readSettings?: (cwd: string) => GatewayCompactionPreference;
 }
 
 export async function handleGatewayCompaction(
@@ -56,7 +59,9 @@ export async function handleGatewayCompaction(
   ctx: ExtensionContext,
   dependencies: GatewayCompactionDependencies = {},
 ) {
-  const preference = (dependencies.readSettings ?? readEffectiveCompactionSettings)(ctx.cwd);
+  const preference = dependencies.readSettings
+    ? dependencies.readSettings(ctx.cwd)
+    : readEffectiveCompactionSettings(ctx.cwd, undefined, ctx.isProjectTrusted());
   if (preference.model === ACTIVE_COMPACTION_MODEL) return undefined;
 
   const modelId = preference.model.slice(`${PROVIDER_NAME}/`.length);

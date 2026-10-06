@@ -128,7 +128,12 @@ function makeCtx(cwd: string): ExtensionContext {
     cwd,
     mode: "tui",
     model: undefined,
-    modelRegistry: { find: vi.fn(() => undefined), refresh: vi.fn(async () => undefined) },
+    modelRegistry: {
+      find: vi.fn(() => undefined),
+      getAvailable: vi.fn(() => []),
+      refresh: vi.fn(async () => undefined),
+    },
+    isProjectTrusted: () => true,
     ui: { notify: vi.fn(), setStatus: vi.fn() },
   } as unknown as ExtensionContext;
 }

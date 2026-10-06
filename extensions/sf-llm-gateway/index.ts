@@ -46,6 +46,7 @@
  * - /sf-llm-gateway refresh               refresh models + monthly usage
  * - /sf-llm-gateway set-default [global|project]
  * - /sf-llm-gateway models                list discovered models
+ * - /sf-llm-gateway compaction [global|project] enable + choose dedicated compaction
  * - /sf-llm-gateway doctor --stream <modelId> [... --tool|--image] | --stream-canaries [...] (explicit billable probes)
  * - /sf-llm-gateway usage-probe [--trace] classify user/key usage scope (--trace prints per-endpoint timings)
  * - /sf-llm-gateway tokens <modelId> [prompt]
@@ -73,6 +74,7 @@
  *   /command on                 | credentials present                | Set defaults and explicitly refresh Pi models
  *   /command off                | —                                  | Disable, remove pattern, switch to off-default
  *   /command refresh            | —                                  | Re-discover, refresh monthly usage
+ *   /command compaction         | cached Gateway models available    | Enable native compaction + save a dedicated model
  *   /command doctor --stream    | explicit model/level/count         | Run bounded text/tool/generated-image live probe(s)
  *   /command usage-probe        | —                                  | Force read-only usage probe
  *   Monthly usage fetch         | cached < 60 s old                  | Use cache
@@ -84,6 +86,7 @@
  * - Provider auth + session context live in lib/provider-auth.ts
  * - Protocol-neutral request error guidance lives in lib/request-diagnostics.ts
  * - Dedicated-model compaction lives in lib/compaction.ts and lib/compaction-settings.ts
+ * - Cache-only readiness and focused setup live in lib/compaction-status.ts, lib/compaction-setup-command.ts, and lib/compaction-setup-panel.ts
  * - Monthly usage caching lives in lib/monthly-usage.ts
  * - Pi settings mutations live in lib/pi-settings.ts
  * - Footer/status formatting lives in lib/status.ts
@@ -132,6 +135,9 @@ import { inferModelDefinition, getModelFamily, findMatchingModelId } from "./lib
 import { resolveGatewayDefaultModelWithPi } from "./lib/model-resolution.ts";
 import { GatewaySetupOverlayComponent, type SetupOverlayResult } from "./lib/setup-overlay.ts";
 import { GatewayConfigPanelComponent } from "./lib/config-panel.ts";
+import { GatewayCompactionSetupComponent } from "./lib/compaction-setup-panel.ts";
+import { runGatewayCompactionSetup } from "./lib/compaction-setup-command.ts";
+import { publishGatewayCompactionStatus } from "./lib/compaction-status.ts";
 import { buildFooterStatus, buildStatusReport } from "./lib/status.ts";
 import {
   applyGatewayModelScope,
@@ -229,6 +235,7 @@ import {
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
 import { globalAgentPath } from "../../lib/common/pi-paths.ts";
+import { clearCompactionStatus } from "../../lib/common/compaction-status/store.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Extension-only types
@@ -241,6 +248,7 @@ type CommandArgs = {
     | "set-default"
     | "help"
     | "models"
+    | "compaction"
     | "doctor"
     | "usage-probe"
     | "tokens"
@@ -349,6 +357,11 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry);
+    publishGatewayCompactionStatus(
+      ctx.cwd,
+      ctx.modelRegistry.getAvailable(),
+      ctx.isProjectTrusted(),
+    );
     if (!unregisterMonthlyUsage) {
       unregisterMonthlyUsage = registerGatewayMonthlyUsageRefresher();
     }
@@ -423,6 +436,11 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
 
   pi.on("model_select", async (_event, ctx) => {
     paintFooterStatus(ctx);
+    publishGatewayCompactionStatus(
+      ctx.cwd,
+      ctx.modelRegistry.getAvailable(),
+      ctx.isProjectTrusted(),
+    );
   });
 
   // Capture gateway-side throttle/upstream signals so the footer can render
@@ -440,6 +458,7 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async (_event, ctx) => {
     gatewayProviderRuntime.clear();
+    clearCompactionStatus();
     clearDeferredStartupTimers();
     clearProviderSignal();
     detailsKickedOff = false;
@@ -495,7 +514,22 @@ function gatewayManagerAction(
               ),
             }),
         }
-      : {}),
+      : command === "compaction"
+        ? {
+            createPanel: (theme, cwd, scope, done, ctx) => {
+              const models = ctx.modelRegistry.getAvailable();
+              return new GatewayCompactionSetupComponent(
+                theme,
+                scope,
+                cwd,
+                done,
+                buildGatewayCompactionModelOptions(models),
+                () => publishGatewayCompactionStatus(cwd, models, ctx.isProjectTrusted()),
+                scope === "global" || ctx.isProjectTrusted(),
+              );
+            },
+          }
+        : {}),
   };
 }
 
@@ -521,6 +555,8 @@ async function handleCommand(
       return handleRefreshCommand(pi, ctx);
     case "models":
       return handleModelsCommand(pi, ctx);
+    case "compaction":
+      return handleCompactionSetupCommand(pi, ctx, parsed.scope);
     case "doctor":
       return handleDoctorCommand(pi, ctx, parsed.positional ?? []);
     case "usage-probe":
@@ -578,6 +614,8 @@ async function handlePanelAction(
       return handleRefreshCommand(pi, ctx);
     case "models":
       return handleModelsCommand(pi, ctx);
+    case "compaction":
+      return handleCompactionSetupCommand(pi, ctx, scope);
     case "doctor":
       return handleDoctorCommand(pi, ctx, []);
     case "usage-probe":
@@ -653,6 +691,7 @@ export async function refreshGatewayProvider(
 async function handleRefreshCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   const state = await refreshGatewayProvider(ctx);
   await syncGatewaySessionDefaults(pi, ctx, true);
+  publishGatewayCompactionStatus(ctx.cwd, ctx.modelRegistry.getAvailable(), ctx.isProjectTrusted());
   const runtimeAuth = await gatewayProviderRuntime.authController.resolveRuntimeAuth(ctx.cwd);
   const report = buildStatusReport(
     ctx,
@@ -670,6 +709,16 @@ async function handleRefreshCommand(pi: ExtensionAPI, ctx: ExtensionCommandConte
     report,
     state.error || accessEmpty ? "warning" : "info",
   );
+}
+
+async function handleCompactionSetupCommand(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  scope: "global" | "project",
+): Promise<void> {
+  const output = await runGatewayCompactionSetup(ctx, scope);
+  if (!output) return;
+  await emitCommandOutput(pi, ctx, output.summary, output.details, output.level);
 }
 
 async function handleModelsCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
@@ -1597,6 +1646,9 @@ export function parseCommandArgs(args: string): CommandArgs {
   }
   if (sub === "models") {
     return { subcommand: "models", scope };
+  }
+  if (sub === "compaction") {
+    return { subcommand: "compaction", scope };
   }
   if (sub === "doctor" || sub === "dr") {
     return { subcommand: "doctor", scope, positional: tokens.slice(1) };

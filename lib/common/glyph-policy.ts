@@ -159,6 +159,7 @@ export const GLYPH_TABLE = {
   slack: { emoji: "💬", ascii: ">" },
   docs: { emoji: "📖", ascii: "dc" },
   gateway: { emoji: "🔗", ascii: "~" },
+  compaction: { emoji: "🧠", ascii: "cx" },
   cli: { emoji: "🧰", ascii: ">" },
   lsp: { emoji: "🩻", ascii: "ls" },
   codeAnalyzer: { emoji: "🧪", ascii: "ca" },

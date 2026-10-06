@@ -83,7 +83,7 @@ export function buildStatusReport(
   const config = getGatewayConfig(ctx.cwd);
   const savedConfig = getMergedSavedGatewayConfig(ctx.cwd);
   const savedScope = getSavedExclusiveScopeStatus(ctx.cwd);
-  const compaction = readEffectiveCompactionSettings(ctx.cwd);
+  const compaction = readEffectiveCompactionSettings(ctx.cwd, undefined, ctx.isProjectTrusted());
   const activeModel = getActiveModelDefinition(ctx.model?.id, state.discovery?.modelIds);
   const contextUsage = ctx.getContextUsage();
   const discovery = state.discovery;

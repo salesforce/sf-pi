@@ -19,11 +19,15 @@ export interface GatewayCompactionModelOption {
   value: GatewayCompactionModel;
   label: string;
   description: string;
+  contextWindow?: number;
+  maxTokens?: number;
 }
 
 export interface EffectiveCompactionSettings {
   model: GatewayCompactionModel;
   source: CompactionSettingsSource;
+  enabled: boolean;
+  enabledSource: CompactionSettingsSource;
   globalModel?: GatewayCompactionModel;
   projectModel?: GatewayCompactionModel;
 }
@@ -37,6 +41,8 @@ export function buildGatewayCompactionModelOptions(
       value: `${PROVIDER_NAME}/${model.id}` as GatewayCompactionModel,
       label: model.name.replace(/^\[SF LLM Gateway\]\s*/u, "") || model.id,
       description: `${formatTokenCapacity(model.contextWindow)} context · ${formatTokenCapacity(model.maxTokens)} output`,
+      contextWindow: model.contextWindow,
+      maxTokens: model.maxTokens,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -54,12 +60,46 @@ export function normalizeCompactionModel(value: unknown): GatewayCompactionModel
 export function readEffectiveCompactionSettings(
   cwd: string,
   globalSettingsFile: string = globalSettingsPath(),
+  projectTrusted: boolean = true,
 ): EffectiveCompactionSettings {
-  const globalModel = readScopedCompactionModel(cwd, "global", globalSettingsFile);
-  const projectModel = readScopedCompactionModel(cwd, "project", globalSettingsFile);
-  if (projectModel) return { model: projectModel, source: "project", globalModel, projectModel };
-  if (globalModel) return { model: globalModel, source: "global", globalModel, projectModel };
-  return { model: ACTIVE_COMPACTION_MODEL, source: "default", globalModel, projectModel };
+  const globalRoot = readJsonFile(globalSettingsFile);
+  const projectRoot = projectTrusted ? readJsonFile(projectSettingsPath(cwd)) : {};
+  const globalModel = compactionModelFromRoot(globalRoot);
+  const projectModel = compactionModelFromRoot(projectRoot);
+  const globalEnabled = compactionEnabledFromRoot(globalRoot);
+  const projectEnabled = compactionEnabledFromRoot(projectRoot);
+  const enabled = projectEnabled ?? globalEnabled ?? true;
+  const enabledSource: CompactionSettingsSource =
+    projectEnabled !== undefined ? "project" : globalEnabled !== undefined ? "global" : "default";
+
+  if (projectModel) {
+    return {
+      model: projectModel,
+      source: "project",
+      enabled,
+      enabledSource,
+      globalModel,
+      projectModel,
+    };
+  }
+  if (globalModel) {
+    return {
+      model: globalModel,
+      source: "global",
+      enabled,
+      enabledSource,
+      globalModel,
+      projectModel,
+    };
+  }
+  return {
+    model: ACTIVE_COMPACTION_MODEL,
+    source: "default",
+    enabled,
+    enabledSource,
+    globalModel,
+    projectModel,
+  };
 }
 
 export function readScopedCompactionModel(
@@ -68,9 +108,7 @@ export function readScopedCompactionModel(
   globalSettingsFile: string = globalSettingsPath(),
 ): GatewayCompactionModel | undefined {
   const root = readJsonFile(settingsPathForScope(cwd, scope, globalSettingsFile));
-  const sfPi = nestedRecord(root, "sfPi");
-  const compaction = nestedRecord(sfPi, "compaction");
-  return normalizeCompactionModel(compaction.model);
+  return compactionModelFromRoot(root);
 }
 
 export function writeScopedCompactionModel(
@@ -79,20 +117,46 @@ export function writeScopedCompactionModel(
   model: GatewayCompactionModel | undefined,
   globalSettingsFile: string = globalSettingsPath(),
 ): void {
+  writeScopedCompactionPreference(cwd, scope, model, false, globalSettingsFile);
+}
+
+export function writeScopedCompactionSetup(
+  cwd: string,
+  scope: CompactionSettingsScope,
+  model: Exclude<GatewayCompactionModel, typeof ACTIVE_COMPACTION_MODEL>,
+  globalSettingsFile: string = globalSettingsPath(),
+): void {
+  writeScopedCompactionPreference(cwd, scope, model, true, globalSettingsFile);
+}
+
+function writeScopedCompactionPreference(
+  cwd: string,
+  scope: CompactionSettingsScope,
+  model: GatewayCompactionModel | undefined,
+  enableNativeCompaction: boolean,
+  globalSettingsFile: string,
+): void {
   const filePath = settingsPathForScope(cwd, scope, globalSettingsFile);
   const root = readJsonFile(filePath);
   const nextRoot = { ...root };
   const sfPi = { ...nestedRecord(nextRoot, "sfPi") };
-  const compaction = { ...nestedRecord(sfPi, "compaction") };
+  const sfPiCompaction = { ...nestedRecord(sfPi, "compaction") };
 
-  if (model) compaction.model = model;
-  else delete compaction.model;
+  if (model) sfPiCompaction.model = model;
+  else delete sfPiCompaction.model;
 
-  if (Object.keys(compaction).length > 0) sfPi.compaction = compaction;
+  if (Object.keys(sfPiCompaction).length > 0) sfPi.compaction = sfPiCompaction;
   else delete sfPi.compaction;
 
   if (Object.keys(sfPi).length > 0) nextRoot.sfPi = sfPi;
   else delete nextRoot.sfPi;
+
+  if (enableNativeCompaction) {
+    nextRoot.compaction = {
+      ...nestedRecord(nextRoot, "compaction"),
+      enabled: true,
+    };
+  }
 
   writeJsonFile(filePath, nextRoot);
 }
@@ -113,6 +177,18 @@ function formatTokenCapacity(tokens: number): string {
 
 function formatCapacityNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/u, "");
+}
+
+function compactionModelFromRoot(
+  root: Record<string, unknown>,
+): GatewayCompactionModel | undefined {
+  const sfPi = nestedRecord(root, "sfPi");
+  return normalizeCompactionModel(nestedRecord(sfPi, "compaction").model);
+}
+
+function compactionEnabledFromRoot(root: Record<string, unknown>): boolean | undefined {
+  const enabled = nestedRecord(root, "compaction").enabled;
+  return typeof enabled === "boolean" ? enabled : undefined;
 }
 
 function nestedRecord(parent: Record<string, unknown>, key: string): Record<string, unknown> {

@@ -26,6 +26,7 @@ export type GatewayCommandId =
   | "refresh"
   | "set-default"
   | "models"
+  | "compaction"
   | "doctor"
   | "usage-probe"
   | "tokens"
@@ -129,6 +130,15 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     usage: "set-default [global|project]",
     description:
       "Set the gateway provider/model defaults without changing saved credentials or Pi thinking settings.",
+    section: "Setup",
+    acceptsScope: true,
+  },
+  {
+    id: "compaction",
+    label: "Configure dedicated compaction",
+    usage: "compaction [global|project]",
+    description:
+      "Enable Pi compaction and choose a dedicated cached Gateway model without changing the chat model.",
     section: "Setup",
     acceptsScope: true,
   },

@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission, capability-coverage diagnostics and offline cache filtering, mixed-API dispatch, guarded Responses terminal-close recovery, Gateway-only prompt-cache-key omission, exact GPT Sol Responses priority requests, optional dedicated-model compaction, explicit refresh, connectivity diagnostics, opt-in bounded text/tool/generated-image probes, and usage status.
+Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission, capability-coverage diagnostics and offline cache filtering, mixed-API dispatch, guarded Responses terminal-close recovery, Gateway-only prompt-cache-key omission, exact GPT Sol Responses priority requests, cache-only dedicated-compaction readiness and focused setup, explicit refresh, connectivity diagnostics, opt-in bounded text/tool/generated-image probes, and usage status.
 
 ## Start
 
@@ -33,7 +33,7 @@ Open its Manager detail or change its package state with:
 - API-key input uses SF Pi's shared fixed-mask component and never enters Pi's visible stock prompt.
 - Pi alone persists/removes active credentials; setup and import paths write no secrets.
 - Extension config stores only non-secret settings; credentials remain Pi-owned.
-- Dedicated compaction accepts only authenticated sf-llm-gateway models, never changes the chat model, and falls back to Pi.
+- Dedicated compaction accepts only authenticated cached sf-llm-gateway models, never changes the chat model, requires trusted project scope, and falls back to Pi.
 - Discovery and restored cache entries publish only exact IDs backed by a reusable public Pi catalog API.
 - Catalog-backed GPT models retain Pi's Responses transport even when Gateway discovery declares chat; other models continue to honor discovered route mode.
 - Gateway OpenAI-compatible requests omit the optional prompt_cache_key field without changing other providers; this may reduce cache affinity.

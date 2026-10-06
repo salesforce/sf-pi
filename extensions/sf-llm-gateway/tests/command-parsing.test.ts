@@ -83,6 +83,17 @@ describe("parseCommandArgs", () => {
     expect(result.subcommand).toBe("models");
   });
 
+  it("parses dedicated compaction setup with global and project scope", () => {
+    expect(parseCommandArgs("compaction")).toMatchObject({
+      subcommand: "compaction",
+      scope: "global",
+    });
+    expect(parseCommandArgs("compaction project")).toMatchObject({
+      subcommand: "compaction",
+      scope: "project",
+    });
+  });
+
   it("parses 'doctor'", () => {
     const result = parseCommandArgs("doctor");
     expect(result.subcommand).toBe("doctor");

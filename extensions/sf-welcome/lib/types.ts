@@ -16,6 +16,7 @@ import type { BrowserRuntimeStatusInfo } from "../../../lib/common/browser-runti
 import type { PlannotatorRuntimeStatus } from "../../../lib/common/plannotator-runtime.ts";
 import type { GlyphMode } from "../../../lib/common/glyph-policy.ts";
 import type { SfLspHealthSnapshot } from "../../../lib/common/sf-lsp-health/index.ts";
+import type { CompactionStatusSnapshot } from "../../../lib/common/compaction-status/store.ts";
 
 export interface RecentSession {
   name: string;
@@ -283,6 +284,10 @@ export interface SplashData {
   gatewayStatus?: GatewayConnectionStatus | null;
   /** True while gateway status is being checked. */
   gatewayLoading?: boolean;
+  /** Whether dedicated Gateway compaction status should be shown. */
+  compactionVisible?: boolean;
+  /** Cache-only dedicated compaction configuration and model snapshot. */
+  compactionStatus?: CompactionStatusSnapshot;
   /** Install status for recommended external pi packages. Replaces the
    * legacy Salesforce AI block when any recommendations are defined. */
   recommendations?: RecommendationsStatusSummary;

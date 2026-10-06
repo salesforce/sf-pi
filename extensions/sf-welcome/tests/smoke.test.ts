@@ -394,6 +394,102 @@ describe("sf-welcome", () => {
     expect(stripAnsi(incompatible)).toContain("✗ Incompatible runtime");
   });
 
+  it("renders a dedicated compaction model with cached context capacity", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Example Model",
+      providerName: "sf-llm-gateway",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      compactionVisible: true,
+      compactionStatus: {
+        kind: "dedicated" as const,
+        model: "sf-llm-gateway/claude-sonnet-5",
+        modelLabel: "Claude Sonnet 5",
+        contextWindow: 1_000_000,
+        source: "global" as const,
+      },
+    };
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(120).join("\n"));
+
+    expect(plain).toContain("Context Compaction");
+    expect(plain).toContain("✓ Custom · Claude Sonnet 5 · 1M context");
+    expect(plain).not.toContain("/sf-llm-gateway compaction global");
+  });
+
+  it("renders Pi-default compaction as an actionable recommendation rather than a failure", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Example Model",
+      providerName: "sf-llm-gateway",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      compactionVisible: true,
+      compactionStatus: { kind: "default" as const, source: "default" as const },
+    };
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(120).join("\n"));
+
+    expect(plain).toContain("! Pi default · active chat model");
+    expect(plain).toContain("→ /sf-llm-gateway compaction global");
+    expect(plain).not.toContain("✗ Pi default");
+  });
+
+  it("renders disabled automatic compaction as a repairable failure", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Example Model",
+      providerName: "sf-llm-gateway",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      compactionVisible: true,
+      compactionStatus: { kind: "disabled" as const, source: "global" as const },
+    };
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(120).join("\n"));
+
+    expect(plain).toContain("✗ Disabled");
+    expect(plain).toContain("→ /sf-llm-gateway compaction global");
+  });
+
+  it("renders an unavailable dedicated model with the safe Pi fallback", async () => {
+    const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
+    const data = {
+      modelName: "Example Model",
+      providerName: "sf-llm-gateway",
+      loadedCounts: { extensions: 3, skills: 1, promptTemplates: 0 },
+      recentSessions: [],
+      extensionHealth: [],
+      slackConnected: false,
+      monthlyCost: 0,
+      monthlyBudget: 3000,
+      compactionVisible: true,
+      compactionStatus: {
+        kind: "unavailable" as const,
+        model: "sf-llm-gateway/retired-model",
+        source: "project" as const,
+      },
+    };
+
+    const plain = stripAnsi(new SfWelcomeOverlay(data).render(120).join("\n"));
+
+    expect(plain).toContain("! Custom unavailable · Pi fallback");
+    expect(plain).toContain("→ /sf-llm-gateway compaction project");
+  });
+
   it("renders gateway status from probe state instead of provider name", async () => {
     const { SfWelcomeOverlay } = await import("../lib/splash-component.ts");
     const baseData = {

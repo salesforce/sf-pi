@@ -433,6 +433,52 @@ function formatGatewayStatusValue(data: SplashData, mode: GlyphMode): string {
   }
 }
 
+function formatCompactionCapacity(tokens: number | undefined): string | null {
+  if (typeof tokens !== "number" || !Number.isFinite(tokens) || tokens <= 0) return null;
+  if (tokens >= 1_000_000) {
+    const millions = tokens / 1_000_000;
+    return `${Number.isInteger(millions) ? millions : millions.toFixed(1)}M context`;
+  }
+  if (tokens >= 1_000) {
+    const thousands = tokens / 1_000;
+    return `${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}K context`;
+  }
+  return `${tokens} context`;
+}
+
+function formatCompactionStatusValue(data: SplashData, mode: GlyphMode): string {
+  const status = data.compactionStatus;
+  if (!status || status.kind === "hidden" || status.kind === "checking") {
+    return MUTED(`${glyph("hourglass", mode)} Checking cached configuration`);
+  }
+  if (status.kind === "dedicated") {
+    const capacity = formatCompactionCapacity(status.contextWindow);
+    const detail = [status.modelLabel ?? status.model, capacity].filter(Boolean).join(" · ");
+    return `${SF_GREEN("✓")} ${SF_GREEN("Custom")}${detail ? ` ${MUTED(`· ${detail}`)}` : ""}`;
+  }
+  if (status.kind === "disabled") {
+    return `${SF_RED("✗")} ${SF_RED("Disabled")}`;
+  }
+  if (status.kind === "unavailable") {
+    return `${SF_ORANGE("!")} ${SF_ORANGE("Custom unavailable")} ${MUTED("· Pi fallback")}`;
+  }
+  return `${SF_ORANGE("!")} ${SF_ORANGE("Pi default")} ${MUTED("· active chat model")}`;
+}
+
+function compactionActionHint(data: SplashData): string | null {
+  const status = data.compactionStatus;
+  if (
+    !status ||
+    status.kind === "hidden" ||
+    status.kind === "checking" ||
+    status.kind === "dedicated"
+  ) {
+    return null;
+  }
+  const scope = status.source === "project" ? "project" : "global";
+  return `/sf-llm-gateway compaction ${scope}`;
+}
+
 function formatSfSkillsStatusValue(data: SplashData, mode: GlyphMode): string {
   const skills = data.sfSkills;
 
@@ -1006,6 +1052,22 @@ function buildLeftColumn(
       const hint = `${data.caBundleNudge.command} \u2014 ${data.caBundleNudge.message}`;
       const truncated = truncateToWidth(hint, Math.max(10, colWidth - 4), "…");
       lines.push(`   ${SF_ORANGE("⚠")} ${MUTED(truncated)}`);
+    }
+  }
+
+  if (data.compactionVisible) {
+    lines.push(
+      formatGlyphInfoRow(
+        "compaction",
+        mode,
+        "Context Compaction",
+        formatCompactionStatusValue(data, mode),
+      ),
+    );
+    const hint = compactionActionHint(data);
+    if (hint) {
+      const truncated = truncateToWidth(hint, Math.max(10, colWidth - 4), "…");
+      lines.push(`   ${MUTED(`→ ${truncated}`)}`);
     }
   }
 

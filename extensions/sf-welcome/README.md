@@ -6,12 +6,19 @@ SF Welcome provides a non-blocking Salesforce startup surface with an animated
 Pi + SALESFORCE wordmark and cache-first readiness information.
 
 The default header summarizes the active model, optional gateway usage,
-Salesforce CLI and API context, Apex/LWC/Agent Script LSP readiness, Node runtime,
-Herdr, Browser, Code Analyzer, fonts, local review tools, SF Pi package freshness,
-privacy posture, announcements, recommended packages, skill sources, and recent
-sessions. Pi owns Pi Runtime release checks and update guidance. Slack stays hidden
-until configured. SF Docs appears when the extension
-is enabled and reports connected, setup needed, or not configured.
+dedicated compaction readiness, Salesforce CLI and API context, Apex/LWC/Agent
+Script LSP readiness, Node runtime, Herdr, Browser, Code Analyzer, fonts, local
+review tools, SF Pi package freshness, privacy posture, announcements,
+recommended packages, skill sources, and recent sessions. Pi owns Pi Runtime
+release checks and update guidance. Slack stays hidden until configured. SF Docs
+appears when the extension is enabled and reports connected, setup needed, or
+not configured.
+
+When SF LLM Gateway is enabled, the Context Compaction row reads only Pi settings
+and the restored model catalog. Native active-model compaction is shown as a
+recommendation rather than a failure because Pi enables it by default. Run
+`/sf-llm-gateway compaction global` to enable automatic compaction and choose a
+dedicated cached Gateway model without changing the chat model.
 
 Wide terminals can show two columns; narrow terminals stack the same content.
 `NO_COLOR` preserves text/layout while removing SF Welcome-owned ANSI styling.

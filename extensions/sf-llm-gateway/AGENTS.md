@@ -26,6 +26,9 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Protocol-neutral request diagnostics           | `lib/request-diagnostics.ts`                         |
 | Dedicated compaction policy                    | `lib/compaction.ts`                                  |
 | Scoped compaction preference                   | `lib/compaction-settings.ts`                         |
+| Cache-only compaction readiness                | `lib/compaction-status.ts`                           |
+| Focused compaction command                     | `lib/compaction-setup-command.ts`                    |
+| Focused compaction setup UI                    | `lib/compaction-setup-panel.ts`                      |
 | Manager compaction model picker                | `lib/compaction-model-picker.ts`                     |
 | Masked API-key input                           | `common secure credential prompt`                    |
 | HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`                                   |
@@ -55,6 +58,10 @@ copy.
   registers the refresher via `registerGatewayMonthlyUsageRefresher()`.
   **Do not** have sf-welcome or sf-devbar import from this extension
   directly — both read the shared store.
+- Dedicated-compaction readiness lives in
+  `lib/common/compaction-status/store.ts`. This extension publishes from Pi
+  settings plus the restored model catalog; sf-welcome only reads/subscribes.
+  Never add startup discovery or a second persisted cache for this status.
 
 ## Conventions
 
