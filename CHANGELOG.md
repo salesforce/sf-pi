@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.330.0](https://github.com/salesforce/sf-pi/compare/v0.329.0...v0.330.0) (2026-10-06)
+
+
+### Features
+
+* **compaction:** add guided dedicated model setup ([e17fe3b](https://github.com/salesforce/sf-pi/commit/e17fe3b3e4d0b545afff7492c345b321d4f58124))
+
 ## [0.329.0](https://github.com/salesforce/sf-pi/compare/v0.328.1...v0.329.0) (2026-10-06)
 
 
