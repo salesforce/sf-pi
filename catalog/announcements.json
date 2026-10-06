@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.328.1-2026-10-05",
-  "latestVersion": "0.328.1",
+  "revision": "release-0.329.0-2026-10-06",
+  "latestVersion": "0.329.0",
   "announcements": [
     {
-      "id": "release-0.328.1",
+      "id": "release-0.329.0",
       "kind": "update",
-      "title": "sf-pi v0.328.1 — sf-docs: satisfy auth test static analysis",
-      "publishedAt": "2026-10-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.328.1",
+      "title": "sf-pi v0.329.0 — runtime: audit Pi 1.0.4 compatibility",
+      "publishedAt": "2026-10-06T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.329.0",
       "severity": "info",
-      "body": "sf-docs: satisfy auth test static analysis"
+      "body": "runtime: audit Pi 1.0.4 compatibility — deps: patch transitive vulnerabilities"
     }
   ]
 }
