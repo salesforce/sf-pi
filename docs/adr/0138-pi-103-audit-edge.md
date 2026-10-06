@@ -1,8 +1,9 @@
 ---
 id: "0138"
-status: accepted
+status: superseded
 date: 2026-10-05
 supersedes: ["0136"]
+supersededBy: ["0140"]
 ---
 
 # ADR 0138: Pi 1.0.3 audit edge

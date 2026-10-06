@@ -59,7 +59,7 @@ An npm installation remains supported but does not pin Pi's transitive dependenc
 npm install --global --ignore-scripts @earendil-works/pi-coding-agent
 ```
 
-SF Pi's supported Pi range is `>=1.0.0 <2.0.0`; exact Pi `1.0.3` is the latest audited and recommended runtime. Pi owns Pi Runtime update guidance, while `/sf-pi doctor` reports compatibility and installation details.
+SF Pi's supported Pi range is `>=1.0.0 <2.0.0`; exact Pi `1.0.4` is the latest audited and recommended runtime. Pi owns Pi Runtime update guidance, while `/sf-pi doctor` reports compatibility and installation details.
 
 ## 4. Install or update Salesforce CLI
 

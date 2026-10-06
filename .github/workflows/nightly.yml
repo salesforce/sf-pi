@@ -67,7 +67,7 @@ jobs:
         include:
           - pi-version: "1.0.0"
             experimental: false
-          - pi-version: "1.0.3"
+          - pi-version: "1.0.4"
             experimental: false
           - pi-version: "latest"
             experimental: true
@@ -98,14 +98,29 @@ jobs:
       - name: Type check against Pi ${{ matrix.pi-version }}
         run: npm run check
 
-      - name: Smoke SF Pi with Pi-native MCP
+      - name: Smoke SF Pi from a clean home at the Pi floor
+        if: matrix.pi-version == '1.0.0'
         env:
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/pi-agent
           PI_OFFLINE: "1"
         run: |
           mkdir -p "$PI_CODING_AGENT_DIR"
           ./node_modules/.bin/pi --offline --approve --list-models --no-session -e "$GITHUB_WORKSPACE" >/dev/null
-          ./node_modules/.bin/pi mcp list
+
+      - name: Smoke SF Pi without MCP
+        if: matrix.pi-version != '1.0.0'
+        env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/pi-agent
+          PI_OFFLINE: "1"
+        run: |
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          ./node_modules/.bin/pi --offline --approve --no-mcp --list-models --no-session -e "$GITHUB_WORKSPACE" >/dev/null
+
+      - name: Smoke Pi-native MCP
+        env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/pi-agent
+          PI_OFFLINE: "1"
+        run: ./node_modules/.bin/pi mcp list
 
       - name: Run tests against Pi ${{ matrix.pi-version }}
         run: npm test
