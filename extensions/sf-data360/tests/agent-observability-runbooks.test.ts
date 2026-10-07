@@ -7,9 +7,17 @@ import {
   buildSessionTimelineSql,
   runAgentObservabilityRunbook,
 } from "../lib/agent-observability.ts";
-import type { QuerySqlResponse } from "../lib/sql.ts";
+import { normalizeTimestampLiteral, type QuerySqlResponse } from "../lib/sql.ts";
 
 describe("Agent observability runbooks", () => {
+  it("normalizes deterministic relative time windows", () => {
+    const now = new Date("2026-10-07T03:09:55Z");
+    expect(normalizeTimestampLiteral("24h", now)).toBe("2026-10-06 03:09:55");
+    expect(normalizeTimestampLiteral("7d", now)).toBe("2026-09-30 03:09:55");
+    expect(normalizeTimestampLiteral("last 30 minutes", now)).toBe("2026-10-07 02:39:55");
+    expect(normalizeTimestampLiteral("yesterday", now)).toBe("2026-10-06 00:00:00");
+  });
+
   it("builds bounded STDM session timeline SQL", () => {
     const sql = buildSessionTimelineSql("session'1", 9999);
 

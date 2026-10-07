@@ -42,6 +42,7 @@ export interface Data360ActionDefinition {
   safety: D360OperationSafety;
   requiredParams: string[];
   optionalParams: string[];
+  requiredAnyOf?: string[][];
   inputSchema?: Record<string, unknown>;
   aliases?: string[];
   tips?: string;
@@ -64,6 +65,7 @@ export interface Data360InternalActionDefinition {
   safety: D360OperationSafety;
   requiredParams: string[];
   optionalParams: string[];
+  requiredAnyOf?: string[][];
   inputSchema?: Record<string, unknown>;
   aliases?: string[];
   tips?: string;

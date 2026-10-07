@@ -2,11 +2,13 @@
 import { describe, expect, it } from "vitest";
 import {
   buildData360SweepPlan,
+  classifyLiveReadResult,
   classifyUsefulMissingParamResult,
   paramsForDryRun,
 } from "../../../scripts/e2e/data360-action-sweep.ts";
 import {
   buildDloData360LifecyclePlan,
+  buildDmoData360LifecyclePlan,
   canRunData360MutationLifecycle,
   runData360LifecyclePlan,
 } from "../../../scripts/e2e/data360/lifecycle.ts";
@@ -26,6 +28,13 @@ describe("sf_data360 action sweep", () => {
     expect(plan).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          stage: "classification",
+          tool: "sf_data360",
+          action: "prepare.dlo.create",
+          testMode: "fixture_mutation",
+          fixturePolicy: "owned_only",
+        }),
+        expect.objectContaining({
           stage: "describe",
           tool: "sf_data360",
           action: "prepare.dlo.create",
@@ -38,9 +47,79 @@ describe("sf_data360 action sweep", () => {
     );
   });
 
-  it("builds deterministic placeholders for required parameters", () => {
+  it("builds deterministic placeholders for required and any-of parameters", () => {
     const create = findPublicData360Action("prepare.dlo.create")!;
     expect(paramsForDryRun(create)).toMatchObject({ body: { name: "Placeholder" } });
+    const mappings = findPublicData360Action("harmonize.dmo_mapping.list")!;
+    expect(paramsForDryRun(mappings)).toMatchObject({
+      dmoDeveloperName: "PlaceholderDmoDeveloperName",
+    });
+    expect(buildData360SweepPlan([mappings])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ stage: "missing_params", action: mappings.action }),
+      ]),
+    );
+  });
+
+  it("uses action-scoped fixture profiles for asset reads and safe POSTs", () => {
+    const dloGet = findPublicData360Action("prepare.dlo.get")!;
+    const ciValidate = findPublicData360Action("segment.ci.validate")!;
+    const fixtureProfile = {
+      defaults: { dataspace: "default" },
+      actions: {
+        "prepare.dlo.get": { dloName: "Example__dll" },
+        "segment.ci.validate": { body: { sql: "SELECT 1" } },
+      },
+    };
+    const plan = buildData360SweepPlan([dloGet, ciValidate], {
+      liveRead: true,
+      liveSafePost: true,
+      fixtureProfile,
+    });
+    expect(plan).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: "live_read",
+          action: "prepare.dlo.get",
+          params: { dloName: "Example__dll", dataspace: "default" },
+        }),
+        expect.objectContaining({
+          stage: "live_read",
+          action: "segment.ci.validate",
+          params: { body: { sql: "SELECT 1" } },
+        }),
+      ]),
+    );
+  });
+
+  it("classifies auth prerequisites and platform failures without hiding them", () => {
+    const record = {
+      stage: "live_read" as const,
+      tool: "sf_data360",
+      action: "query.sql.chunk",
+      safety: "read",
+      outcome: "ok" as const,
+      fail: false,
+      summary: "planned",
+    };
+    expect(
+      classifyLiveReadResult(record, {
+        ok: false,
+        error: "Data 360 token exchange failed: invalid_scope",
+      }),
+    ).toMatchObject({ outcome: "auth_required", fail: false });
+    expect(
+      classifyLiveReadResult(
+        { ...record, action: "semantic.search_index.process_history" },
+        { ok: false, status: 500, error: "Internal Server Error" },
+      ),
+    ).toMatchObject({ outcome: "platform_error", fail: false });
+    expect(
+      classifyLiveReadResult(
+        { ...record, action: "connect.source_schema.get" },
+        { ok: false, status: 400, error: "No enum constant ConnectionSchemaTypeEnum.X" },
+      ),
+    ).toMatchObject({ outcome: "dependency_missing", fail: false });
   });
 
   it("recognizes actionable missing-parameter failures", () => {
@@ -70,6 +149,23 @@ describe("sf_data360 action sweep", () => {
     const plan = buildDloData360LifecyclePlan(getPublicData360Actions(), "A".repeat(32));
     expect(plan.resourceName.length).toBeLessThanOrEqual(40);
     expect(plan.resourceName).toMatch(/^PiData360SweepDlo_[A-Za-z0-9_]+__dll$/);
+  });
+
+  it("builds a fixture-owned DMO create-update-delete lifecycle", () => {
+    const plan = buildDmoData360LifecyclePlan(getPublicData360Actions(), "Run20260811");
+    expect(plan.resourceName).toBe("PiData360SweepDmo_Run20260811__dlm");
+    expect(plan.checks.map(({ action }) => action)).toEqual([
+      "harmonize.dmo.get",
+      "harmonize.dmo.create",
+      "harmonize.dmo.create",
+      "harmonize.dmo.get",
+      "harmonize.dmo.update",
+      "harmonize.dmo.update",
+      "harmonize.dmo.get",
+      "harmonize.dmo.delete",
+      "harmonize.dmo.delete",
+      "harmonize.dmo.get",
+    ]);
   });
 
   it("requires exact non-production mutation gates", () => {

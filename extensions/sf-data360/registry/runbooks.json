@@ -3,7 +3,14 @@
     "name": "agent_observability.platform_error_traces",
     "family": "Agent Observability",
     "description": "Find recent Agent Platform Tracing ERROR spans.",
-    "optionalParams": ["since", "limit"]
+    "optionalParams": ["since", "limit"],
+    "parameterSchemas": {
+      "since": {
+        "type": "string",
+        "description": "ISO date/timestamp or relative window such as 24h, 7d, yesterday, or last 30 minutes.",
+        "examples": ["24h", "2026-05-01T00:00:00Z"]
+      }
+    }
   },
   {
     "name": "agent_observability.platform_trace_tree",
@@ -21,7 +28,14 @@
     "name": "agent_observability.stdm_find_sessions",
     "family": "Agent Observability",
     "description": "Find recent Agentforce STDM sessions by optional agent API name and time window.",
-    "optionalParams": ["agent_api_name", "since", "limit"]
+    "optionalParams": ["agent_api_name", "since", "limit"],
+    "parameterSchemas": {
+      "since": {
+        "type": "string",
+        "description": "ISO date/timestamp or relative window such as 24h, 7d, yesterday, or last 30 minutes.",
+        "examples": ["24h", "2026-05-01T00:00:00Z"]
+      }
+    }
   },
   {
     "name": "agent_observability.stdm_session_timeline",
@@ -33,6 +47,13 @@
     "name": "agent_observability.operation_latency_summary",
     "family": "Agent Observability",
     "description": "Aggregate Platform Tracing duration by operation name.",
-    "optionalParams": ["since", "limit"]
+    "optionalParams": ["since", "limit"],
+    "parameterSchemas": {
+      "since": {
+        "type": "string",
+        "description": "ISO date/timestamp or relative window such as 24h, 7d, yesterday, or last 30 minutes.",
+        "examples": ["24h", "2026-05-01T00:00:00Z"]
+      }
+    }
   }
 ]

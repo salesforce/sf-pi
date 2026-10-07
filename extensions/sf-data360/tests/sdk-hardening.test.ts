@@ -40,6 +40,23 @@ describe("sf_data360 post-release hardening", () => {
     });
   });
 
+  it("rejects selector-dependent reads before the network call", async () => {
+    const result = await runSfData360Action(
+      { action: "harmonize.dmo_mapping.list", params: {} },
+      env,
+      ctx,
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      error: "MISSING_REQUIRED_SELECTOR",
+      requiredAnyOf: [["dmoDeveloperName"], ["dloDeveloperName"], ["sourceObjectName"]],
+      recover_via: {
+        tool: "sf_data360",
+        action: "discover.action.describe",
+      },
+    });
+  });
+
   it("normalizes recovery links onto the single tool", async () => {
     const result = await runSfData360Action({ action: "prepare.dlo.get", params: {} }, env, ctx);
     expect(result).toMatchObject({

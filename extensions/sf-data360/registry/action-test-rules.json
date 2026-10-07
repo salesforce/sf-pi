@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "parameterKinds": {
+    "literal": [
+      "action",
+      "componentType",
+      "connectorName",
+      "connectorType",
+      "entityType",
+      "filters",
+      "intent",
+      "journey",
+      "method",
+      "object",
+      "path",
+      "prefixes",
+      "primaryKey",
+      "resourceName",
+      "schemaName",
+      "schemaObjectName",
+      "sql",
+      "strategy",
+      "streamName",
+      "utterance"
+    ],
+    "payload": ["body", "fields", "memberNames", "sourceFields", "targetFields"],
+    "local_file": ["csvPath", "manifestPath"],
+    "auth": [
+      "authSessionId",
+      "authorizationCode",
+      "clientId",
+      "codeVerifier",
+      "loginUrl",
+      "redirectUri"
+    ],
+    "asset": [
+      "activationId",
+      "activationTargetId",
+      "alertId",
+      "calculatedDimensionId",
+      "calculatedMeasureId",
+      "chunkId",
+      "ciName",
+      "componentId",
+      "configurationIdOrName",
+      "connectionId",
+      "dataActionId",
+      "dataActionTargetId",
+      "dataGraphEntityName",
+      "dataKitDevName",
+      "dataKitId",
+      "dataModelName",
+      "dataObjectNameOrId",
+      "dataSpaceName",
+      "dataStreamId",
+      "dloDeveloperName",
+      "dloName",
+      "dmoDeveloperName",
+      "dmoName",
+      "entity",
+      "fieldMappingName",
+      "historyId",
+      "id",
+      "idOrAppSourceIdOrName",
+      "idOrName",
+      "identityResolutionId",
+      "interaction_id",
+      "jobId",
+      "mappingName",
+      "metricNameOrId",
+      "modelApiNameOrId",
+      "nameParam",
+      "queryId",
+      "relationshipId",
+      "retrieverId",
+      "retrieverIdOrName",
+      "searchIndexApiNameOrId",
+      "segmentApiName",
+      "segmentId",
+      "session_id",
+      "sourceDloName",
+      "sourceName",
+      "sourceObjectName",
+      "targetDmoName",
+      "trace_id",
+      "transformId",
+      "versionId"
+    ]
+  },
+  "capabilityRules": [
+    {
+      "actionPrefixes": ["discover."],
+      "capability": "local"
+    },
+    {
+      "actionPrefixes": ["orchestrate."],
+      "capability": "orchestration"
+    },
+    {
+      "actionPrefixes": ["observe.trace."],
+      "capability": "platform_tracing"
+    },
+    {
+      "actionPrefixes": ["observe.stdm."],
+      "capability": "stdm"
+    },
+    {
+      "actionPrefixes": ["query.sql."],
+      "capability": "query_v3"
+    },
+    {
+      "actionPrefixes": ["prepare.ingest_job."],
+      "capability": "ingestion_auth"
+    },
+    {
+      "actionPrefixes": ["connect.auth."],
+      "capability": "ingestion_auth"
+    },
+    {
+      "actionPrefixes": ["prepare.datakit"],
+      "capability": "data_kits"
+    },
+    {
+      "actionPrefixes": ["prepare.dataspace"],
+      "capability": "data_spaces"
+    },
+    {
+      "actionPrefixes": ["activate.personalization."],
+      "capability": "personalization"
+    },
+    {
+      "actionPrefixes": [
+        "activate.activation.",
+        "activate.activation_target.",
+        "activate.data_action.",
+        "activate.data_action_target."
+      ],
+      "capability": "external_delivery"
+    },
+    {
+      "actionPrefixes": [
+        "connect.connection",
+        "connect.snowflake_connection.",
+        "connect.source_schema.",
+        "prepare.datastream_create_",
+        "prepare.stream.create_third_party_connector"
+      ],
+      "capability": "external_credentials"
+    },
+    {
+      "actionPrefixes": ["semantic.ml."],
+      "capability": "ml"
+    },
+    {
+      "actionPrefixes": ["semantic."],
+      "capability": "semantic"
+    }
+  ],
+  "externalEffectCapabilities": ["external_delivery", "external_credentials", "personalization"]
+}

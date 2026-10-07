@@ -46,6 +46,26 @@ describe("d360 payload example parity", () => {
     expect(readme).not.toContain('"capability": "d360_dmo_create"');
   });
 
+  it("keeps the executable DMO create example aligned with the live API payload", () => {
+    const fields = (
+      localExamples.d360_dmo_create as {
+        params: { body: { fields: Array<Record<string, unknown>> } };
+      }
+    ).params.body.fields;
+    expect(fields.length).toBeGreaterThan(0);
+    expect(fields.every((field) => field.creationType === undefined)).toBe(true);
+  });
+
+  it("uses the live Data Space input representation", () => {
+    const body = (
+      localExamples.d360_dataspace_create as {
+        params: { body: Record<string, unknown> };
+      }
+    ).params.body;
+    expect(body).toMatchObject({ label: "Example Data Space", prefix: "eds" });
+    expect(body).not.toHaveProperty("name");
+  });
+
   it("includes payload example coverage in the generated upstream parity report", () => {
     expect(upstreamParity.summary?.payloadExamples).toMatchObject({
       upstreamPayloadExamples: Object.keys(upstreamExamples).length,

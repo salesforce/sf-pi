@@ -13,9 +13,10 @@
  * fixture-ownership preflight, and bounded cleanup/propagation retries.
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
@@ -29,8 +30,10 @@ import type {
 } from "../../extensions/sf-data360/lib/actions/action-types.ts";
 import { runSfData360Action } from "../../extensions/sf-data360/lib/sdk.ts";
 import { presentSfData360Result } from "../../extensions/sf-data360/lib/result.ts";
+import type { Data360FixtureProfile } from "./data360/fixture-profile.ts";
 import {
   buildDloData360LifecyclePlan,
+  buildDmoData360LifecyclePlan,
   canRunData360MutationLifecycle,
   runData360LifecyclePlan,
   type Data360LifecycleOutcome,
@@ -39,6 +42,7 @@ import {
 } from "./data360/lifecycle.ts";
 
 export type Data360SweepStage =
+  | "classification"
   | "describe"
   | "metadata"
   | "dry_run"
@@ -56,6 +60,7 @@ export type Data360SweepOutcome =
   | "feature_gated"
   | "not_found_optional"
   | "dependency_missing"
+  | "auth_required"
   | Data360LifecycleOutcome;
 
 export interface Data360SweepRecord {
@@ -70,7 +75,17 @@ export interface Data360SweepRecord {
   params?: Record<string, unknown>;
   error?: string;
   presentation?: string;
+  testMode?: string;
+  testCapability?: string;
+  fixturePolicy?: string;
   artifacts?: Array<{ label: string; path: string; kind: string }>;
+}
+
+interface Data360TestContract {
+  action: string;
+  mode: string;
+  capability: string;
+  fixturePolicy: string;
 }
 
 export interface Data360SweepOptions {
@@ -80,11 +95,30 @@ export interface Data360SweepOptions {
   namespaces?: string[];
   includeMissingParams?: boolean;
   liveRead?: boolean;
+  liveSafePost?: boolean;
   maxLiveRead?: number;
+  fixtureProfile?: Data360FixtureProfile;
   mutationLifecycle?: Data360MutationLifecycleName;
   mutate?: boolean;
   runId?: string;
 }
+
+const TEST_CONTRACTS_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "extensions",
+  "sf-data360",
+  "registry",
+  "action-test-contracts.json",
+);
+const TEST_CONTRACTS = new Map(
+  (
+    JSON.parse(readFileSync(TEST_CONTRACTS_PATH, "utf8")) as {
+      actions: Data360TestContract[];
+    }
+  ).actions.map((contract) => [contract.action, contract]),
+);
 
 const SKIP_DRY_RUN_IMPLEMENTATION_KINDS = new Set(["journey"]);
 const LOCAL_HELPER_ACTIONS = new Set([
@@ -110,13 +144,34 @@ export function buildData360SweepPlan(
   actions: Data360ActionDefinition[],
   options: Pick<
     Data360SweepOptions,
-    "actions" | "namespaces" | "includeMissingParams" | "liveRead" | "maxLiveRead"
+    | "actions"
+    | "namespaces"
+    | "includeMissingParams"
+    | "liveRead"
+    | "liveSafePost"
+    | "maxLiveRead"
+    | "fixtureProfile"
   > = {},
 ): Data360SweepRecord[] {
   const selected = actions.filter((action) => matchesFilters(action, options));
   const records: Data360SweepRecord[] = [];
   let liveReadCount = 0;
   for (const action of selected) {
+    const contract = TEST_CONTRACTS.get(action.action);
+    records.push({
+      ...baseRecord(action, "classification"),
+      ...(contract
+        ? {
+            testMode: contract.mode,
+            testCapability: contract.capability,
+            fixturePolicy: contract.fixturePolicy,
+          }
+        : {
+            outcome: "failed",
+            fail: true,
+            summary: "Missing recursive test contract.",
+          }),
+    });
     records.push(baseRecord(action, "describe"));
     records.push(baseRecord(action, "metadata"));
     if (canDryRun(action)) {
@@ -135,11 +190,17 @@ export function buildData360SweepPlan(
         params: paramsForMutationGate(action),
       });
     }
-    if (options.includeMissingParams !== false && (action.requiredParams?.length ?? 0) > 0) {
+    if (
+      options.includeMissingParams !== false &&
+      ((action.requiredParams?.length ?? 0) > 0 || (action.requiredAnyOf?.length ?? 0) > 0)
+    ) {
       records.push(baseRecord(action, "missing_params"));
     }
-    if (options.liveRead && action.safety === "read") {
-      const params = paramsForLiveRead(action);
+    if (
+      (options.liveRead && action.safety === "read") ||
+      (options.liveSafePost && action.safety === "safe_post")
+    ) {
+      const params = paramsForLiveRead(action, options.fixtureProfile);
       if (!params) {
         records.push({
           ...baseRecord(action, "live_read"),
@@ -165,24 +226,48 @@ export function buildData360SweepPlan(
 
 export function paramsForDryRun(action: Data360ActionDefinition): Record<string, unknown> {
   const params: Record<string, unknown> = {};
-  for (const required of action.requiredParams ?? [])
+  for (const required of action.requiredParams ?? []) {
     params[required] = placeholderForParam(required);
+  }
+  for (const required of action.requiredAnyOf?.[0] ?? []) {
+    params[required] ??= placeholderForParam(required);
+  }
   return { ...params, ...specialDryRunParams(action) };
 }
 
 export function paramsForLiveRead(
   action: Data360ActionDefinition,
+  fixtureProfile?: Data360FixtureProfile,
 ): Record<string, unknown> | undefined {
-  if (action.safety !== "read") return undefined;
-  if ((action.capability ?? "").startsWith("agent_observability.")) return undefined;
-  if (action.implementation) return undefined;
-  if ((action.requiredParams?.length ?? 0) === 0) return {};
-  switch (action.action) {
-    case "query.metadata.entities":
-      return { entityType: "DataModelObject" };
-    default:
-      return undefined;
+  if (action.safety !== "read" && action.safety !== "safe_post") return undefined;
+  const special = specialLiveParams(action);
+  const actionFixtures = fixtureProfile?.actions?.[action.action] ?? {};
+  const defaults = fixtureProfile?.defaults ?? {};
+  const params: Record<string, unknown> = { ...special, ...actionFixtures };
+  const supported = new Set([
+    ...(action.requiredParams ?? []),
+    ...(action.optionalParams ?? []),
+    ...(action.requiredAnyOf ?? []).flat(),
+  ]);
+  for (const name of supported) {
+    if (params[name] === undefined && defaults[name] !== undefined) params[name] = defaults[name];
   }
+  if ((action.requiredParams ?? []).some((name) => !hasFixtureValue(params[name])))
+    return undefined;
+  if (
+    action.requiredAnyOf?.length &&
+    !action.requiredAnyOf.some((group) => group.every((name) => hasFixtureValue(params[name])))
+  ) {
+    return undefined;
+  }
+  if (
+    action.safety === "safe_post" &&
+    !Object.keys(actionFixtures).length &&
+    !Object.keys(special).length
+  ) {
+    return undefined;
+  }
+  return params;
 }
 
 export function canProbeMutationGate(action: Data360ActionDefinition): boolean {
@@ -266,9 +351,12 @@ export async function runData360Sweep(
   for (const record of plan) {
     results.push(await runData360SweepRecord(record, env, ctx, options.targetOrg));
   }
-  if (options.mutationLifecycle === "dlo") {
-    if (!options.runId) throw new Error("The DLO lifecycle requires --run-id.");
-    const lifecycle = buildDloData360LifecyclePlan(actions, options.runId);
+  if (options.mutationLifecycle) {
+    if (!options.runId) throw new Error("The mutation lifecycle requires --run-id.");
+    const lifecycle =
+      options.mutationLifecycle === "dlo"
+        ? buildDloData360LifecyclePlan(actions, options.runId)
+        : buildDmoData360LifecyclePlan(actions, options.runId);
     results.push(
       ...(await runData360LifecyclePlan(lifecycle, async (input) => {
         const targetInput = { ...input, target_org: options.targetOrg };
@@ -301,6 +389,11 @@ async function runData360SweepRecord(
 ): Promise<Data360SweepRecord> {
   if (record.outcome === "skipped") return record;
   try {
+    if (record.stage === "classification") {
+      return record.fail
+        ? record
+        : pass(record, `${record.testMode} · ${record.testCapability} · ${record.fixturePolicy}`);
+    }
     if (record.stage === "describe") {
       const result = await runSfData360Action(
         {
@@ -407,6 +500,18 @@ export function classifyLiveReadResult(
   if (!data) return fail(record, "Live read returned a non-object result.");
   const blob = JSON.stringify(data).toLowerCase();
   if (data.ok === false) {
+    if (
+      blob.includes("invalid_scope") ||
+      blob.includes("auth_required") ||
+      blob.includes("tenant ingest auth")
+    ) {
+      return {
+        ...record,
+        outcome: "auth_required",
+        fail: false,
+        summary: String(data.summary ?? data.error ?? "Authentication prerequisite missing"),
+      };
+    }
     if (data.status === 404) {
       return {
         ...record,
@@ -435,19 +540,20 @@ export function classifyLiveReadResult(
         summary: String(data.summary ?? "Optional surface not found"),
       };
     }
-    if (
-      data.status === 500 &&
-      record.action.includes("datakit") &&
-      blob.includes("internal_server_error")
-    ) {
+    if (typeof data.status === "number" && data.status >= 500) {
       return {
         ...record,
         outcome: "platform_error",
         fail: false,
-        summary: String(data.summary ?? "Known DataKit backend error"),
+        summary: String(data.summary ?? data.error ?? "Salesforce platform error"),
       };
     }
-    if (blob.includes("missing") || blob.includes("required") || blob.includes("dependency")) {
+    if (
+      blob.includes("missing") ||
+      blob.includes("required") ||
+      blob.includes("dependency") ||
+      blob.includes("no enum constant")
+    ) {
       return {
         ...record,
         outcome: "dependency_missing",
@@ -512,6 +618,34 @@ function matchesFilters(
   )
     return false;
   return true;
+}
+
+function specialLiveParams(action: Data360ActionDefinition): Record<string, unknown> {
+  switch (action.action) {
+    case "discover.route":
+      return { intent: "list Data 360 data spaces" };
+    case "discover.action.search":
+      return { query: "data spaces", limit: 5 };
+    case "discover.action.describe":
+    case "discover.action.example":
+      return { action: "prepare.dataspace.list" };
+    case "query.metadata.entities":
+      return { entityType: "DataModelObject" };
+    case "query.sql.run":
+      return { sql: "SELECT 1", queryRowLimit: 1 };
+    case "orchestrate.intent.plan":
+      return { utterance: "inspect Data 360 readiness" };
+    case "orchestrate.journey.describe":
+      return { journey: "make_data_usable" };
+    case "api.request":
+      return { method: "GET", path: "/ssot/data-spaces" };
+    default:
+      return {};
+  }
+}
+
+function hasFixtureValue(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== "";
 }
 
 function specialDryRunParams(action: Data360ActionDefinition): Record<string, unknown> {
@@ -614,13 +748,17 @@ function resolveOutputDir(outputDir?: string): string {
 
 function writeReports(records: Data360SweepRecord[], outputDir: string): void {
   const stages = [...new Set(records.map((record) => record.stage))];
+  const classifications = records.filter((record) => record.stage === "classification");
   const summary = {
     total: records.length,
     failed: records.filter((record) => record.fail).length,
     skipped: records.filter((record) => record.outcome === "skipped").length,
+    classifiedActions: classifications.filter((record) => !record.fail).length,
     byStage: Object.fromEntries(
       stages.map((stage) => [stage, records.filter((record) => record.stage === stage).length]),
     ),
+    byTestMode: countBy(classifications, (record) => record.testMode ?? "missing"),
+    byCapability: countBy(classifications, (record) => record.testCapability ?? "missing"),
   };
   writeFileSync(
     path.join(outputDir, "data360-action-sweep.json"),
@@ -632,6 +770,17 @@ function writeReports(records: Data360SweepRecord[], outputDir: string): void {
     `- Total checks: ${summary.total}`,
     `- Failed checks: ${summary.failed}`,
     `- Skipped checks: ${summary.skipped}`,
+    `- Classified actions: ${summary.classifiedActions}`,
+    "",
+    "## Test Modes",
+    "",
+    ...Object.entries(summary.byTestMode).map(([mode, count]) => `- ${mode}: ${count}`),
+    "",
+    "## Capabilities",
+    "",
+    ...Object.entries(summary.byCapability).map(
+      ([capability, count]) => `- ${capability}: ${count}`,
+    ),
     "",
     "## Lifecycle",
     "",
@@ -660,6 +809,18 @@ function writeReports(records: Data360SweepRecord[], outputDir: string): void {
       .map((record) => `- ${record.stage} ${record.tool} ${record.action}: ${record.summary}`),
   ].join("\n");
   writeFileSync(path.join(outputDir, "data360-action-sweep.md"), markdown);
+}
+
+function countBy(
+  records: Data360SweepRecord[],
+  keyFor: (record: Data360SweepRecord) => string,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const record of records) {
+    const key = keyFor(record);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
 }
 
 async function execForSweep(
@@ -699,10 +860,18 @@ export function parseData360SweepArgs(argv: string[]): Data360SweepOptions {
     else if (arg === "--action") (options.actions ??= []).push(argv[++i]);
     else if (arg === "--no-missing-params") options.includeMissingParams = false;
     else if (arg === "--live-read") options.liveRead = true;
-    else if (arg === "--max-live-read") options.maxLiveRead = Number(argv[++i]);
+    else if (arg === "--live-safe-post") options.liveSafePost = true;
+    else if (arg === "--fixture-profile") {
+      const profilePath = path.resolve(argv[++i] ?? "");
+      options.fixtureProfile = JSON.parse(
+        readFileSync(profilePath, "utf8"),
+      ) as Data360FixtureProfile;
+    } else if (arg === "--max-live-read") options.maxLiveRead = Number(argv[++i]);
     else if (arg === "--mutation-lifecycle") {
       const lifecycle = argv[++i];
-      if (lifecycle !== "dlo") throw new Error(`Unsupported mutation lifecycle: ${lifecycle}`);
+      if (lifecycle !== "dlo" && lifecycle !== "dmo") {
+        throw new Error(`Unsupported mutation lifecycle: ${lifecycle}`);
+      }
       options.mutationLifecycle = lifecycle;
     } else if (arg === "--mutate") options.mutate = true;
     else if (arg === "--run-id") options.runId = argv[++i];
@@ -714,7 +883,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseData360SweepArgs(process.argv.slice(2));
   if (!options.targetOrg) {
     console.error(
-      "Usage: node --experimental-strip-types scripts/e2e/data360-action-sweep.ts --target-org <alias> [--namespace <name>] [--live-read] [--mutation-lifecycle dlo --mutate --run-id <id>]",
+      "Usage: node --experimental-strip-types scripts/e2e/data360-action-sweep.ts --target-org <alias> [--namespace <name>] [--live-read] [--live-safe-post] [--fixture-profile <json>] [--mutation-lifecycle dlo|dmo --mutate --run-id <id>]",
     );
     process.exit(2);
   }
