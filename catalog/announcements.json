@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.331.0-2026-10-07",
-  "latestVersion": "0.331.0",
+  "revision": "release-0.331.1-2026-10-07",
+  "latestVersion": "0.331.1",
   "announcements": [
     {
-      "id": "release-0.331.0",
+      "id": "release-0.331.1",
       "kind": "update",
-      "title": "sf-pi v0.331.0 — sf-data360: replace all d360 and data360_* tools with sf_data360 business actions.",
+      "title": "sf-pi v0.331.1 — sf-data360: harden single-tool runtime safety",
       "publishedAt": "2026-10-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.331.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.331.1",
       "severity": "info",
-      "body": "sf-data360: replace all d360 and data360_* tools with sf_data360 business actions. — sf-data360: unify Data 360 SDK surface"
+      "body": "sf-data360: harden single-tool runtime safety"
     }
   ]
 }
