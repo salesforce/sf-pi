@@ -40,6 +40,32 @@ describe("SF Data 360 hard cutover contract", () => {
     }
   });
 
+  it("keeps every public journey reference on the single-tool action surface", () => {
+    const actions = readJson<Array<{ action: string }>>("registry/actions.json");
+    const journeys = readJson<
+      Array<{
+        name: string;
+        planAction: string;
+        runAction: string;
+        verification: string[];
+        availableActions: Array<{ tool: string; action: string }>;
+      }>
+    >("registry/journey-catalog.json");
+    const actionNames = new Set(actions.map((action) => action.action));
+
+    for (const journey of journeys) {
+      expect(actionNames.has(journey.planAction), `${journey.name} planAction`).toBe(true);
+      expect(actionNames.has(journey.runAction), `${journey.name} runAction`).toBe(true);
+      for (const action of journey.verification) {
+        expect(actionNames.has(action), `${journey.name} verification ${action}`).toBe(true);
+      }
+      for (const reference of journey.availableActions) {
+        expect(reference.tool, `${journey.name} ${reference.action}`).toBe("sf_data360");
+        expect(actionNames.has(reference.action), `${journey.name} ${reference.action}`).toBe(true);
+      }
+    }
+  });
+
   it("deletes legacy public tool implementations and card rendering", () => {
     for (const relativePath of [
       "lib/facade-tool.ts",

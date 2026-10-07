@@ -29,6 +29,28 @@ describe("sf_data360 Run Card result presentation", () => {
     expect(result.details).not.toHaveProperty("artifactPath");
   });
 
+  it("counts connector and other collection arrays without a total field", async () => {
+    const result = await presentSfData360Result(
+      { action: "connect.connector.list" },
+      {
+        ok: true,
+        action: "connect.connector.list",
+        namespace: "connect",
+        transport: "connect",
+        response: {
+          connectorInfoList: [
+            { name: "ExampleOne", label: "Example One" },
+            { name: "ExampleTwo", label: "Example Two" },
+          ],
+        },
+        summary: "Listed connectors",
+      },
+      "summary",
+    );
+
+    expect(result.content[0]?.text).toContain("2 resources");
+  });
+
   it("persists error evidence while creating a failure Run Card", async () => {
     const result = await presentSfData360Result(
       { action: "prepare.datakit.list" },

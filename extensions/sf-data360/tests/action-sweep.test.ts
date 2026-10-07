@@ -31,6 +31,7 @@ describe("sf_data360 action sweep", () => {
           action: "prepare.dlo.create",
         }),
         expect.objectContaining({ stage: "dry_run", action: "prepare.dlo.create" }),
+        expect.objectContaining({ stage: "mutation_gate", action: "prepare.dlo.create" }),
         expect.objectContaining({ stage: "missing_params", action: "prepare.dlo.get" }),
         expect.objectContaining({ stage: "live_read", action: "prepare.dlo.get" }),
       ]),
@@ -63,6 +64,12 @@ describe("sf_data360 action sweep", () => {
       { tool: "sf_data360", action: "prepare.dlo.delete" },
       { tool: "sf_data360", action: "prepare.dlo.get" },
     ]);
+  });
+
+  it("keeps maximum-length run IDs within the DLO API-name limit", () => {
+    const plan = buildDloData360LifecyclePlan(getPublicData360Actions(), "A".repeat(32));
+    expect(plan.resourceName.length).toBeLessThanOrEqual(40);
+    expect(plan.resourceName).toMatch(/^PiData360SweepDlo_[A-Za-z0-9_]+__dll$/);
   });
 
   it("requires exact non-production mutation gates", () => {

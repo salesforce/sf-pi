@@ -44,12 +44,13 @@ async function parseResponseBody(response: Response): Promise<unknown> {
 export function planTenantIngestRequest(
   action: TenantIngestActionName,
   params: Record<string, unknown>,
+  targetOrg = "unscoped",
 ): TenantIngestPlan {
   switch (action) {
     case "ingest_job.create":
       return {
         action,
-        auth: inspectTenantIngestAuth(params),
+        auth: inspectTenantIngestAuth(params, targetOrg),
         request: {
           method: "POST",
           tenantPath: "/api/v1/ingest/jobs",
@@ -64,7 +65,7 @@ export function planTenantIngestRequest(
       const jobId = encodePathSegment(requiredString(params, "jobId"));
       return {
         action,
-        auth: inspectTenantIngestAuth(params),
+        auth: inspectTenantIngestAuth(params, targetOrg),
         request: {
           method: "PUT",
           tenantPath: `/api/v1/ingest/jobs/${jobId}/batches`,
@@ -77,7 +78,7 @@ export function planTenantIngestRequest(
       const jobId = encodePathSegment(requiredString(params, "jobId"));
       return {
         action,
-        auth: inspectTenantIngestAuth(params),
+        auth: inspectTenantIngestAuth(params, targetOrg),
         request: {
           method: "PATCH",
           tenantPath: `/api/v1/ingest/jobs/${jobId}`,
@@ -89,7 +90,7 @@ export function planTenantIngestRequest(
       const jobId = encodePathSegment(requiredString(params, "jobId"));
       return {
         action,
-        auth: inspectTenantIngestAuth(params),
+        auth: inspectTenantIngestAuth(params, targetOrg),
         request: {
           method: "GET",
           tenantPath: `/api/v1/ingest/jobs/${jobId}`,

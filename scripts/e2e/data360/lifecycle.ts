@@ -2,6 +2,7 @@
 /** Fixture-owned confirmed lifecycle for the Data 360 action sweep. */
 
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+import { data360SweepDloName } from "../../../extensions/sf-data360/lib/destructive-guard.ts";
 import type {
   Data360ActionDefinition,
   SfData360Input,
@@ -72,7 +73,7 @@ export function buildDloData360LifecyclePlan(
   const create = requireLifecycleAction(actions, "prepare.dlo.create", "confirmed");
   const get = requireLifecycleAction(actions, "prepare.dlo.get", "read");
   const remove = requireLifecycleAction(actions, "prepare.dlo.delete", "destructive");
-  const resourceName = `PiData360SweepDlo_${runId}__dll`;
+  const resourceName = data360SweepDloName(runId);
   const getParams = { dloName: resourceName };
   const createParams = { body: buildDloCreateBody(resourceName, runId) };
   return {

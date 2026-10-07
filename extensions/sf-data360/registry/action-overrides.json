@@ -611,7 +611,7 @@
       "description": "Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.",
       "safety": "read",
       "requiredParams": [],
-      "optionalParams": ["tenantHost"],
+      "optionalParams": ["authSessionId", "tenantHost"],
       "implementation": {
         "kind": "tenant_ingest_auth",
         "name": "auth.status"
@@ -661,9 +661,10 @@
       "family": "Connection",
       "action": "auth.pkce_start",
       "description": "Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.",
-      "safety": "read",
+      "safety": "confirmed",
       "requiredParams": ["loginUrl", "clientId", "redirectUri"],
       "optionalParams": ["scopes"],
+      "tips": "Dry-run first; execution stores a short-lived PKCE verifier in memory and requires allow_mutation=true.",
       "implementation": {
         "kind": "tenant_ingest_auth",
         "name": "auth.pkce_start"
@@ -690,7 +691,7 @@
       "phase": "connect",
       "family": "Connection",
       "action": "auth.sessions",
-      "description": "List in-memory Data Cloud ingest auth sessions without tokens.",
+      "description": "List in-memory Data Cloud ingest auth sessions bound to the target org without tokens.",
       "safety": "read",
       "requiredParams": [],
       "optionalParams": [],
@@ -705,10 +706,11 @@
       "phase": "connect",
       "family": "Connection",
       "action": "auth.clear",
-      "description": "Clear one or all in-memory Data Cloud ingest auth sessions.",
-      "safety": "read",
+      "description": "Clear one or all in-memory Data Cloud ingest auth sessions bound to the target org.",
+      "safety": "confirmed",
       "requiredParams": [],
       "optionalParams": ["authSessionId"],
+      "tips": "Dry-run first; execution removes in-memory tenant sessions and requires allow_mutation=true.",
       "implementation": {
         "kind": "tenant_ingest_auth",
         "name": "auth.clear"

@@ -94,7 +94,7 @@ describe("Data 360 semantic retrieval planning", () => {
       ]),
     );
     expect(result.verification).toEqual(
-      expect.arrayContaining(["semantic_model.validate", "retriever.get"]),
+      expect.arrayContaining(["semantic.semantic_model.validate", "semantic.retriever.get"]),
     );
   });
 });

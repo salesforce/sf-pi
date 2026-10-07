@@ -19,6 +19,7 @@ import {
   listData360TenantTokenSessions,
   planTenantIngestAuth,
   planTenantIngestExchange,
+  planTenantIngestPkceStart,
   startTenantIngestPkce,
   tenantIngestTokenExchange,
 } from "./ingest/auth.ts";
@@ -166,7 +167,7 @@ async function runApiAction(
       summary: `Resolved raw Data 360 REST ${resolved.method} ${resolved.apiPath}`,
     };
   }
-  if (resolved.safety.requiresConfirmation && !input.allow_mutation) {
+  if (resolved.method !== "GET" && input.allow_mutation !== true) {
     return {
       ok: false,
       tool: input.tool,
@@ -240,9 +241,9 @@ function localTargetContext(
   if (!targetOrg) throw new Error("No Salesforce target org is configured.");
   return {
     targetOrg,
-    instanceUrl: env.org.instanceUrl,
-    // Orientation only for tenant-host/local planning; never request authority.
-    apiVersion: env.org.apiVersion ?? "not-required",
+    // Tenant-host and local planning never use the Salesforce REST instance. Pairing an
+    // explicit alias with the default org's URL or API version would misstate authority.
+    apiVersion: "not-required",
   };
 }
 
@@ -688,10 +689,6 @@ function metadataInputFor(
     timeout_ms: input.timeout_ms,
   };
   switch (action) {
-    case "dmo.list":
-      return { action: "list_dmos", ...common };
-    case "dlo.list":
-      return { action: "list_dlos", ...common };
     case "dmo.get":
       return {
         action: "describe_dmo",
@@ -746,7 +743,24 @@ async function runTenantIngestAuthAction(
   const { targetOrg, apiVersion, instanceUrl } = localTargetContext(input, env);
   const params = input.params ?? {};
   if (action.action === "auth.pkce_start") {
-    const result = startTenantIngestPkce(params);
+    const plan = planTenantIngestPkceStart(params);
+    if (input.dry_run) {
+      return {
+        ok: true,
+        tool: input.tool,
+        action: input.action,
+        dryRun: true,
+        targetOrg,
+        instanceUrl,
+        apiVersion,
+        ...plan,
+        summary: "Data Cloud ingest PKCE start dry-run",
+      };
+    }
+    if (input.allow_mutation !== true) {
+      return tenantIngestAuthConfirmationRequired(input, action, targetOrg, apiVersion, plan);
+    }
+    const result = startTenantIngestPkce(params, targetOrg);
     return {
       ok: true,
       tool: input.tool,
@@ -773,14 +787,37 @@ async function runTenantIngestAuthAction(
       targetOrg,
       instanceUrl,
       apiVersion,
-      sessions: listData360TenantTokenSessions(),
+      sessions: listData360TenantTokenSessions(targetOrg),
       summary: "Listed in-memory Data Cloud ingest auth sessions",
     };
   }
   if (action.action === "auth.clear") {
     const authSessionId =
       typeof params.authSessionId === "string" ? params.authSessionId.trim() : undefined;
-    const cleared = clearData360TenantTokenSessions(authSessionId);
+    const matchingSessions = listData360TenantTokenSessions(targetOrg).filter(
+      (session) => !authSessionId || session.id === authSessionId,
+    ).length;
+    if (input.dry_run) {
+      return {
+        ok: true,
+        tool: input.tool,
+        action: input.action,
+        dryRun: true,
+        targetOrg,
+        instanceUrl,
+        apiVersion,
+        cleared: 0,
+        wouldClear: matchingSessions,
+        summary: `Would clear ${matchingSessions} in-memory Data Cloud ingest auth session(s)`,
+      };
+    }
+    if (input.allow_mutation !== true) {
+      return tenantIngestAuthConfirmationRequired(input, action, targetOrg, apiVersion, {
+        storesSecrets: false,
+        executesNetworkCalls: false,
+      });
+    }
+    const cleared = clearData360TenantTokenSessions(authSessionId, targetOrg);
     return {
       ok: true,
       tool: input.tool,
@@ -793,7 +830,7 @@ async function runTenantIngestAuthAction(
     };
   }
   if (action.action === "auth.status") {
-    const auth = inspectTenantIngestAuth(params);
+    const auth = inspectTenantIngestAuth(params, targetOrg);
     return {
       ok: true,
       tool: input.tool,
@@ -827,7 +864,7 @@ async function runTenantIngestAuthAction(
     };
   }
   if (action.action === "auth.exchange") {
-    const plan = planTenantIngestExchange(params);
+    const plan = planTenantIngestExchange(params, targetOrg);
     if (input.dry_run) {
       return {
         ok: true,
@@ -850,7 +887,7 @@ async function runTenantIngestAuthAction(
         executesNetworkCalls: plan.executesNetworkCalls,
       });
     }
-    const result = await exchangePkceForTenantIngestAuth(params);
+    const result = await exchangePkceForTenantIngestAuth(params, targetOrg);
     return {
       ok: true,
       tool: input.tool,
@@ -881,14 +918,18 @@ async function runTenantIngestAction(
   env: SfEnvironment,
 ): Promise<Record<string, unknown>> {
   const { targetOrg, apiVersion, instanceUrl } = localTargetContext(input, env);
-  const plan = planTenantIngestRequest(action.action as TenantIngestActionName, input.params ?? {});
+  const plan = planTenantIngestRequest(
+    action.action as TenantIngestActionName,
+    input.params ?? {},
+    targetOrg,
+  );
   if (!input.dry_run && plan.request.method !== "GET" && input.allow_mutation !== true) {
     return tenantIngestConfirmationRequired(input, action, targetOrg, apiVersion, plan);
   }
   if (!input.dry_run) {
     const authSessionId =
       typeof input.params?.authSessionId === "string" ? input.params.authSessionId : undefined;
-    const session = getData360TenantTokenSession(authSessionId);
+    const session = getData360TenantTokenSession(authSessionId, targetOrg);
     if (!session) {
       return {
         ok: false,
@@ -2436,13 +2477,7 @@ async function runJourneyAction(
       targetAction: plan.targetAction,
       summary: `Recommended Data 360 journey: ${plan.journey.name}`,
       report: intentPlanReport(utterance, plan),
-      next_actions: [
-        {
-          tool: plan.targetTool,
-          action: plan.targetAction,
-          params: { journey: plan.journey.name },
-        },
-      ],
+      next_actions: [{ tool: plan.targetTool, action: plan.targetAction }],
     };
   }
   if (action.implementation?.name === "make_data_usable.run") {
@@ -2629,7 +2664,7 @@ async function runJourneyAction(
     if (input.allow_mutation !== true) {
       return tenantIngestAuthConfirmationRequired(input, action, targetOrg, apiVersion, plan);
     }
-    const result = await runInteractivePkceAuth(input.params ?? {});
+    const result = await runInteractivePkceAuth(input.params ?? {}, { targetOrg });
     return {
       ok: true,
       tool: input.tool,

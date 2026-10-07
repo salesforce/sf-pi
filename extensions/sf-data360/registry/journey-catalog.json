@@ -5,14 +5,14 @@
     "utterances": ["load csv", "ingest csv", "upload local file", "load local data"],
     "phases": ["connect", "prepare", "retrieve"],
     "requiredInputs": ["sourceName", "connectionId", "csvPath", "primaryKey"],
-    "planAction": "manifest.plan",
-    "runAction": "manifest.run",
-    "verification": ["sql.verify_rows"],
+    "planAction": "orchestrate.manifest.plan",
+    "runAction": "orchestrate.manifest.run",
+    "verification": ["query.sql.verify_rows"],
     "availableActions": [
-      { "tool": "orchestrate", "action": "manifest.plan" },
-      { "tool": "orchestrate", "action": "manifest.run" },
-      { "tool": "prepare", "action": "csv_schema.infer" },
-      { "tool": "prepare", "action": "ingest_job.create" }
+      { "tool": "sf_data360", "action": "orchestrate.manifest.plan" },
+      { "tool": "sf_data360", "action": "orchestrate.manifest.run" },
+      { "tool": "sf_data360", "action": "prepare.csv_schema.infer" },
+      { "tool": "sf_data360", "action": "prepare.ingest_job.create" }
     ],
     "suggestedQuestions": [
       "Which CSV file or manifest should I load?",
@@ -31,15 +31,15 @@
     ],
     "phases": ["connect", "prepare", "harmonize", "retrieve"],
     "requiredInputs": ["source", "primaryKey", "targetModel"],
-    "planAction": "make_data_usable.plan",
-    "runAction": "make_data_usable.run",
-    "verification": ["sql.verify_rows", "mapping.get"],
+    "planAction": "orchestrate.make_data_usable.plan",
+    "runAction": "orchestrate.make_data_usable.run",
+    "verification": ["query.sql.verify_rows", "harmonize.dmo_mapping.get"],
     "availableActions": [
-      { "tool": "orchestrate", "action": "manifest.plan" },
-      { "tool": "connect", "action": "connection.test" },
-      { "tool": "prepare", "action": "stream.create_ingest_api" },
-      { "tool": "harmonize", "action": "mapping.create" },
-      { "tool": "query", "action": "sql.verify_rows" }
+      { "tool": "sf_data360", "action": "orchestrate.manifest.plan" },
+      { "tool": "sf_data360", "action": "connect.connection_test" },
+      { "tool": "sf_data360", "action": "prepare.stream.create_ingest_api" },
+      { "tool": "sf_data360", "action": "harmonize.dmo_mapping.create" },
+      { "tool": "sf_data360", "action": "query.sql.verify_rows" }
     ],
     "suggestedQuestions": [
       "Is the source local CSV, S3, Snowflake, CRM, or another connector?",
@@ -53,14 +53,14 @@
     "utterances": ["build audience", "create segment", "publish segment", "target group"],
     "phases": ["segment", "retrieve"],
     "requiredInputs": ["segmentDefinition", "profileDmo"],
-    "planAction": "build_segment.plan",
-    "runAction": "build_segment.run",
-    "verification": ["ci.run_status", "segment.get"],
+    "planAction": "orchestrate.build_segment.plan",
+    "runAction": "orchestrate.build_segment.run",
+    "verification": ["segment.ci.run.status", "segment.get"],
     "availableActions": [
-      { "tool": "segment", "action": "ci.validate" },
-      { "tool": "segment", "action": "ci.create" },
-      { "tool": "segment", "action": "segment.create" },
-      { "tool": "segment", "action": "segment.publish" }
+      { "tool": "sf_data360", "action": "segment.ci.validate" },
+      { "tool": "sf_data360", "action": "segment.ci.create" },
+      { "tool": "sf_data360", "action": "segment.create" },
+      { "tool": "sf_data360", "action": "segment.publish" }
     ],
     "suggestedQuestions": [
       "Which profile object defines the audience?",
@@ -73,13 +73,13 @@
     "utterances": ["activate segment", "send audience", "deliver downstream", "data action"],
     "phases": ["act", "segment"],
     "requiredInputs": ["segment", "target"],
-    "planAction": "activate_segment.plan",
-    "runAction": "activate_segment.run",
-    "verification": ["activation.get", "activation_target.get"],
+    "planAction": "orchestrate.activate_segment.plan",
+    "runAction": "orchestrate.activate_segment.run",
+    "verification": ["activate.activation.get", "activate.activation_target.get"],
     "availableActions": [
-      { "tool": "activate", "action": "activation_target.create" },
-      { "tool": "activate", "action": "activation.create" },
-      { "tool": "activate", "action": "data_action.create" }
+      { "tool": "sf_data360", "action": "activate.activation_target.create" },
+      { "tool": "sf_data360", "action": "activate.activation.create" },
+      { "tool": "sf_data360", "action": "activate.data_action.create" }
     ],
     "suggestedQuestions": [
       "Which segment should be activated?",
@@ -98,13 +98,13 @@
     ],
     "phases": ["semantic", "retrieve"],
     "requiredInputs": ["sourceObjects", "retrievalUseCase"],
-    "planAction": "semantic_retrieval.plan",
-    "runAction": "semantic_retrieval.run",
-    "verification": ["semantic_model.validate", "retriever.get"],
+    "planAction": "orchestrate.semantic_retrieval.plan",
+    "runAction": "orchestrate.semantic_retrieval.run",
+    "verification": ["semantic.semantic_model.validate", "semantic.retriever.get"],
     "availableActions": [
-      { "tool": "semantic", "action": "semantic_model.list" },
-      { "tool": "semantic", "action": "search_index.create" },
-      { "tool": "semantic", "action": "retriever.create" }
+      { "tool": "sf_data360", "action": "semantic.semantic_model.list" },
+      { "tool": "sf_data360", "action": "semantic.search_index.create" },
+      { "tool": "sf_data360", "action": "semantic.retriever.create" }
     ],
     "suggestedQuestions": ["Which data should be searchable?", "Is this for RAG, BI, or both?"]
   },
@@ -120,14 +120,14 @@
     ],
     "phases": ["observe", "retrieve"],
     "requiredInputs": ["agentOrSession", "timeRange"],
-    "planAction": "agent_behavior_investigation.plan",
-    "runAction": "agent_behavior_investigation.run",
-    "verification": ["stdm.session_timeline", "trace.error_traces"],
+    "planAction": "orchestrate.agent_behavior_investigation.plan",
+    "runAction": "orchestrate.agent_behavior_investigation.run",
+    "verification": ["observe.stdm.session_timeline", "observe.trace.error_traces"],
     "availableActions": [
-      { "tool": "observe", "action": "stdm.session_timeline" },
-      { "tool": "observe", "action": "trace.error_traces" },
-      { "tool": "observe", "action": "trace.trace_tree" },
-      { "tool": "observe", "action": "trace.operation_latency_summary" }
+      { "tool": "sf_data360", "action": "observe.stdm.session_timeline" },
+      { "tool": "sf_data360", "action": "observe.trace.error_traces" },
+      { "tool": "sf_data360", "action": "observe.trace.trace_tree" },
+      { "tool": "sf_data360", "action": "observe.trace.operation_latency_summary" }
     ],
     "suggestedQuestions": [
       "Which agent, session, or trace should I inspect?",

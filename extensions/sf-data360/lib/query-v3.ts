@@ -19,6 +19,7 @@ export function isQueryV3Action(action: string): boolean {
     "query.sql.status",
     "query.sql.rows",
     "query.sql.metadata",
+    "query.sql.chunk",
     "query.sql.cancel",
   ].includes(action);
 }
@@ -55,6 +56,7 @@ export async function runDirectData360Request(
       tool: "sf_data360",
       action: "api.request",
       namespace: "api",
+      transport: apiFamily === "query" ? "query-v3" : "ingestion",
       dryRun: true,
       targetOrg: session.target.targetOrg,
       apiFamily,
@@ -68,11 +70,18 @@ export async function runDirectData360Request(
       tool: "sf_data360",
       action: "api.request",
       namespace: "api",
+      transport: apiFamily === "query" ? "query-v3" : "ingestion",
       error: "CONFIRMATION_REQUIRED",
       summary: "Direct non-GET requests require dry_run review and allow_mutation=true.",
     };
   }
-  const token = await resolveTenantToken(input, session.connection, fetchFn, signal);
+  const token = await resolveTenantToken(
+    input,
+    session.connection,
+    fetchFn,
+    signal,
+    session.target.targetOrg,
+  );
   const url = new URL(path, ensureTrailingSlash(token.instanceUrl));
   for (const [key, value] of Object.entries(objectValue(params.query))) {
     if (["string", "number", "boolean"].includes(typeof value)) {
@@ -94,6 +103,7 @@ export async function runDirectData360Request(
     tool: "sf_data360",
     action: "api.request",
     namespace: "api",
+    transport: apiFamily === "query" ? "query-v3" : "ingestion",
     targetOrg: session.target.targetOrg,
     apiFamily,
     status: response.status,
@@ -123,6 +133,7 @@ export async function runQueryV3(
       tool: "sf_data360",
       action: input.action,
       namespace: "query",
+      transport: "query-v3",
       targetOrg: session.target.targetOrg,
       error: "CONFIRMATION_REQUIRED",
       summary: "Query cancellation requires dry_run review and allow_mutation=true.",
@@ -134,6 +145,7 @@ export async function runQueryV3(
       tool: "sf_data360",
       action: input.action,
       namespace: "query",
+      transport: "query-v3",
       dryRun: true,
       targetOrg: session.target.targetOrg,
       apiVersion: "3",
@@ -141,7 +153,13 @@ export async function runQueryV3(
       summary: `Resolved Query API V3 ${request.method} ${request.path}`,
     };
   }
-  const token = await resolveTenantToken(input, session.connection, fetchFn, signal);
+  const token = await resolveTenantToken(
+    input,
+    session.connection,
+    fetchFn,
+    signal,
+    session.target.targetOrg,
+  );
   const url = new URL(request.path, ensureTrailingSlash(token.instanceUrl));
   for (const [key, value] of Object.entries(request.query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
@@ -163,6 +181,7 @@ export async function runQueryV3(
     tool: "sf_data360",
     action: input.action,
     namespace: "query",
+    transport: "query-v3",
     targetOrg: session.target.targetOrg,
     apiVersion: "3",
     status: response.status,
@@ -213,6 +232,10 @@ function queryRequest(input: SfData360Input): {
   if (input.action === "query.sql.metadata") {
     return { method: "GET", path: `/api/v3/query/${queryId}/metadata` };
   }
+  if (input.action === "query.sql.chunk") {
+    const chunkId = encodeURIComponent(requiredString(params.chunkId, "chunkId"));
+    return { method: "GET", path: `/api/v3/query/${queryId}/chunks/${chunkId}` };
+  }
   return { method: "DELETE", path: `/api/v3/query/${queryId}` };
 }
 
@@ -221,10 +244,11 @@ async function resolveTenantToken(
   connection: Connection,
   fetchFn: typeof fetch,
   signal?: AbortSignal,
+  targetOrg?: string,
 ): Promise<TenantToken> {
   const authSessionId =
     typeof input.params?.authSessionId === "string" ? input.params.authSessionId : undefined;
-  const configuredSession = getData360TenantTokenSession(authSessionId);
+  const configuredSession = getData360TenantTokenSession(authSessionId, targetOrg);
   return configuredSession
     ? {
         accessToken: configuredSession.accessToken,

@@ -61,13 +61,19 @@ describe("Data 360 intent planning", () => {
         name: "make_data_usable",
         phases: ["connect", "prepare", "harmonize", "retrieve"],
         requiredInputs: expect.arrayContaining(["source", "primaryKey", "targetModel"]),
-        verification: expect.arrayContaining(["sql.verify_rows", "mapping.get"]),
+        verification: expect.arrayContaining([
+          "query.sql.verify_rows",
+          "harmonize.dmo_mapping.get",
+        ]),
       }),
     });
     expect(result.availableActions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ tool: "orchestrate", action: "manifest.plan" }),
-        expect.objectContaining({ tool: "harmonize", action: "mapping.create" }),
+        expect.objectContaining({ tool: "sf_data360", action: "orchestrate.manifest.plan" }),
+        expect.objectContaining({
+          tool: "sf_data360",
+          action: "harmonize.dmo_mapping.create",
+        }),
       ]),
     );
   });
@@ -89,8 +95,8 @@ describe("Data 360 intent planning", () => {
       ok: true,
       recommendedJourney: "make_data_usable",
       confidence: "high",
-      targetTool: "orchestrate",
-      targetAction: "journey.describe",
+      targetTool: "sf_data360",
+      targetAction: "orchestrate.make_data_usable.plan",
     });
     expect(result.missingInputs).toEqual(
       expect.arrayContaining(["source", "primaryKey", "targetModel"]),
@@ -116,11 +122,15 @@ describe("Data 360 intent planning", () => {
     expect(result).toMatchObject({
       ok: true,
       recommendedJourney: "agent_behavior_investigation",
-      targetTool: "observe",
+      targetTool: "sf_data360",
+      targetAction: "orchestrate.agent_behavior_investigation.plan",
     });
     expect(result.next_actions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ tool: "observe", action: "actions.search" }),
+        expect.objectContaining({
+          tool: "sf_data360",
+          action: "orchestrate.agent_behavior_investigation.plan",
+        }),
       ]),
     );
   });

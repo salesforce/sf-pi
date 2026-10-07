@@ -75,6 +75,29 @@ describe("Data 360 Query API V3 transport", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  it("plans preferred chunk retrieval for completed V3 queries", async () => {
+    const fetchFn = vi.fn();
+    const result = await runQueryV3(
+      {
+        action: "query.sql.chunk",
+        target_org: "ExampleSandbox",
+        dry_run: true,
+        params: { queryId: "query/1", chunkId: "chunk 2" },
+      },
+      "/workspace",
+      undefined,
+      fetchFn as never,
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      request: {
+        method: "GET",
+        path: "/api/v3/query/query%2F1/chunks/chunk%202",
+      },
+    });
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   it("blocks query cancellation until mutation intent is explicit", async () => {
     const result = await runQueryV3(
       { action: "query.sql.cancel", params: { queryId: "query-1" } },

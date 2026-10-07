@@ -1,7 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Destructive-operation authority gates for the single sf_data360 surface. */
+import { createHash } from "node:crypto";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import type { D360Operation } from "./operation-registry.ts";
+
+const SWEEP_DLO_PREFIX = "PiData360SweepDlo_";
+const SWEEP_DLO_SUFFIX = "__dll";
+const MAX_DLO_API_NAME_LENGTH = 40;
+
+export function data360SweepDloName(runId: string): string {
+  const available = MAX_DLO_API_NAME_LENGTH - SWEEP_DLO_PREFIX.length - SWEEP_DLO_SUFFIX.length;
+  const token =
+    runId.length <= available
+      ? runId
+      : `${runId.slice(0, available - 7)}_${createHash("sha256").update(runId).digest("hex").slice(0, 6)}`;
+  return `${SWEEP_DLO_PREFIX}${token}${SWEEP_DLO_SUFFIX}`;
+}
 
 export interface OwnedData360SweepCleanup {
   runId: string;
@@ -79,6 +93,6 @@ function isOwnedSweepCleanup(input: DestructiveExecutionGuardInput): boolean {
   }
   return (
     input.operation.name === "d360_dlo_delete" &&
-    input.params?.dloName === `PiData360SweepDlo_${cleanup.runId}__dll`
+    input.params?.dloName === data360SweepDloName(cleanup.runId)
   );
 }
