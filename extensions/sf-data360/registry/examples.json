@@ -847,20 +847,8 @@
         "dataSpaceName": "default",
         "description": "Example DMO payload placeholder. Do not include __dlm in the name; verify field names and types before execution.",
         "fields": [
-          {
-            "name": "Id__c",
-            "label": "Id",
-            "dataType": "Text",
-            "isPrimaryKey": true,
-            "creationType": "Custom"
-          },
-          {
-            "name": "Name__c",
-            "label": "Name",
-            "dataType": "Text",
-            "isPrimaryKey": false,
-            "creationType": "Custom"
-          }
+          { "name": "Id__c", "label": "Id", "dataType": "Text", "isPrimaryKey": true },
+          { "name": "Name__c", "label": "Name", "dataType": "Text", "isPrimaryKey": false }
         ]
       }
     },
@@ -1395,9 +1383,9 @@
   "d360_dataspace_create": {
     "params": {
       "body": {
-        "name": "Example_Data_Space",
         "label": "Example Data Space",
-        "description": "Example data space payload placeholder. Verify naming and membership plan before execution."
+        "prefix": "eds",
+        "description": "Example data space payload placeholder. Verify org capacity, prefix uniqueness, naming, and membership plan before execution."
       }
     },
     "capability": "d360_dataspace_create"

@@ -1976,6 +1976,7 @@
     "safety": "read",
     "requiredParams": [],
     "optionalParams": ["dmoDeveloperName", "dloDeveloperName", "sourceObjectName", "dataspace"],
+    "requiredAnyOf": [["dmoDeveloperName"], ["dloDeveloperName"], ["sourceObjectName"]],
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1985,10 +1986,16 @@
         "sourceObjectName": { "type": "string" }
       },
       "required": [],
+      "anyOf": [
+        { "required": ["dmoDeveloperName"] },
+        { "required": ["dloDeveloperName"] },
+        { "required": ["sourceObjectName"] }
+      ],
       "additionalProperties": true
     },
     "endpoint": { "method": "GET", "path": "/ssot/data-model-object-mappings" },
-    "aliases": ["d360_dmo_mapping_list"]
+    "aliases": ["d360_dmo_mapping_list"],
+    "tips": "Provide at least one of dmoDeveloperName, dloDeveloperName, or sourceObjectName."
   },
   {
     "namespace": "harmonize",
@@ -2554,7 +2561,11 @@
       "properties": {
         "agent_api_name": { "type": "string" },
         "limit": { "type": "integer" },
-        "since": { "type": "string" }
+        "since": {
+          "type": "string",
+          "description": "ISO date/timestamp or relative window such as 24h, 7d, yesterday, or last 30 minutes.",
+          "examples": ["24h", "2026-05-01T00:00:00Z"]
+        }
       },
       "required": [],
       "additionalProperties": true
@@ -2615,7 +2626,14 @@
     "optionalParams": ["since", "limit"],
     "inputSchema": {
       "type": "object",
-      "properties": { "limit": { "type": "integer" }, "since": { "type": "string" } },
+      "properties": {
+        "limit": { "type": "integer" },
+        "since": {
+          "type": "string",
+          "description": "ISO date/timestamp or relative window such as 24h, 7d, yesterday, or last 30 minutes.",
+          "examples": ["24h", "2026-05-01T00:00:00Z"]
+        }
+      },
       "required": [],
       "additionalProperties": true
     },
@@ -2655,7 +2673,14 @@
     "optionalParams": ["since", "limit"],
     "inputSchema": {
       "type": "object",
-      "properties": { "limit": { "type": "integer" }, "since": { "type": "string" } },
+      "properties": {
+        "limit": { "type": "integer" },
+        "since": {
+          "type": "string",
+          "description": "ISO date/timestamp or relative window such as 24h, 7d, yesterday, or last 30 minutes.",
+          "examples": ["24h", "2026-05-01T00:00:00Z"]
+        }
+      },
       "required": [],
       "additionalProperties": true
     },
@@ -3300,21 +3325,22 @@
     "capability": "d360_datakit_components",
     "description": "List org components available for inclusion in data kits.",
     "safety": "read",
-    "requiredParams": [],
-    "optionalParams": ["componentType", "dataKitDevName", "limit", "offset"],
+    "requiredParams": ["componentType", "dataKitDevName"],
+    "optionalParams": ["limit", "offset"],
     "inputSchema": {
       "type": "object",
       "properties": {
-        "componentType": { "type": "string" },
+        "componentType": { "type": "string", "examples": ["DataStreamBundle"] },
         "dataKitDevName": { "type": "string" },
         "limit": { "type": "integer" },
         "offset": { "type": "integer" }
       },
-      "required": [],
+      "required": ["componentType", "dataKitDevName"],
       "additionalProperties": true
     },
     "endpoint": { "method": "GET", "path": "/ssot/data-kits/available-components" },
-    "aliases": ["d360_datakit_components"]
+    "aliases": ["d360_datakit_components"],
+    "tips": "Use a documented component type such as DataStreamBundle and the exact data kit developer name."
   },
   {
     "namespace": "prepare",
@@ -3558,7 +3584,7 @@
     },
     "endpoint": { "method": "POST", "path": "/ssot/data-spaces" },
     "aliases": ["d360_dataspace_create"],
-    "tips": "Data spaces are admin/global workspaces. Confirm naming, membership plan, and downstream references; dry_run before execution."
+    "tips": "Create with body.label, a unique three-character body.prefix, and optional body.description. Data spaces are org-limited admin workspaces; dry_run before execution and expect a capacity error when the org limit is reached."
   },
   {
     "namespace": "prepare",
@@ -4671,21 +4697,26 @@
     "description": "Query Individual, Account, or custom profile models.",
     "safety": "read",
     "requiredParams": ["dataModelName"],
-    "optionalParams": ["id", "limit", "offset", "orderby"],
+    "optionalParams": ["id", "fields", "filters", "limit", "offset", "orderby"],
+    "requiredAnyOf": [["id"], ["filters"]],
     "inputSchema": {
       "type": "object",
       "properties": {
         "dataModelName": { "type": "string" },
+        "fields": { "type": "string" },
+        "filters": { "type": "string" },
         "id": { "type": "string" },
         "limit": { "type": "integer" },
         "offset": { "type": "integer" },
         "orderby": { "type": "string" }
       },
       "required": ["dataModelName"],
+      "anyOf": [{ "required": ["id"] }, { "required": ["filters"] }],
       "additionalProperties": true
     },
     "endpoint": { "method": "GET", "path": "/ssot/profile/{dataModelName}" },
-    "aliases": ["d360_profile_query"]
+    "aliases": ["d360_profile_query"],
+    "tips": "Provide either id for a specific profile or filters in [field=value] form. Use fields to bound the response."
   },
   {
     "namespace": "query",

@@ -105,7 +105,7 @@ validation.
 This complete inventory is generated from `package.json`; edit that file and run `npm run generate-catalog`.
 
 <details>
-<summary>Show all 68 package scripts</summary>
+<summary>Show all 71 package scripts</summary>
 
 **Generated sources**
 
@@ -122,6 +122,8 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run generate-d360-references:check`
 - `npm run generate-d360-registry`
 - `npm run generate-d360-registry:check`
+- `npm run generate-d360-test-contracts`
+- `npm run generate-d360-test-contracts:check`
 - `npm run import-d360-upstream`
 - `npm run import-d360-upstream:check`
 
@@ -171,6 +173,7 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run e2e:d360-stdm`
 - `npm run e2e:d360-tracing`
 - `npm run e2e:data360`
+- `npm run e2e:data360:seed`
 - `npm run e2e:instruction-behavior`
 - `npm run e2e:sf-apex-harness`
 - `npm run e2e:sf-browser-harden`

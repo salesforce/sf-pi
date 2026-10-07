@@ -2,18 +2,23 @@
 /** Fixture-owned confirmed lifecycle for the Data 360 action sweep. */
 
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
-import { data360SweepDloName } from "../../../extensions/sf-data360/lib/destructive-guard.ts";
+import {
+  data360SweepDloName,
+  data360SweepDmoName,
+} from "../../../extensions/sf-data360/lib/destructive-guard.ts";
 import type {
   Data360ActionDefinition,
   SfData360Input,
 } from "../../../extensions/sf-data360/lib/actions/action-types.ts";
 
-export type Data360MutationLifecycleName = "dlo";
+export type Data360MutationLifecycleName = "dlo" | "dmo";
 export type Data360LifecycleStage =
   | "lifecycle_preflight"
   | "lifecycle_plan"
   | "lifecycle_execute"
   | "lifecycle_verify"
+  | "lifecycle_update_plan"
+  | "lifecycle_update_execute"
   | "cleanup_plan"
   | "cleanup_execute"
   | "cleanup_verify";
@@ -84,6 +89,49 @@ export function buildDloData360LifecyclePlan(
       lifecycleCheck(get, "lifecycle_preflight", getParams, "absent"),
       lifecycleCheck(create, "lifecycle_plan", createParams, "ok", { dryRun: true }),
       lifecycleCheck(create, "lifecycle_execute", createParams, "ok", {
+        allowMutation: true,
+      }),
+      lifecycleCheck(get, "lifecycle_verify", getParams, "present"),
+      lifecycleCheck(remove, "cleanup_plan", getParams, "ok", { dryRun: true }),
+      lifecycleCheck(remove, "cleanup_execute", getParams, "ok", {
+        allowMutation: true,
+      }),
+      lifecycleCheck(get, "cleanup_verify", getParams, "absent"),
+    ],
+  };
+}
+
+export function buildDmoData360LifecyclePlan(
+  actions: Data360ActionDefinition[],
+  runId: string,
+): Data360MutationLifecyclePlan {
+  const create = requireLifecycleAction(actions, "harmonize.dmo.create", "confirmed");
+  const get = requireLifecycleAction(actions, "harmonize.dmo.get", "read");
+  const update = requireLifecycleAction(actions, "harmonize.dmo.update", "confirmed");
+  const remove = requireLifecycleAction(actions, "harmonize.dmo.delete", "destructive");
+  const resourceName = data360SweepDmoName(runId);
+  const getParams = { dmoName: resourceName, dataspace: "default" };
+  const createParams = { body: buildDmoCreateBody(resourceName, runId) };
+  const updateParams = {
+    dmoName: resourceName,
+    body: {
+      label: boundedFixtureLabel("Pi D360 DMO Updated ", runId),
+      description: `Fixture-owned Data 360 sweep DMO updated for ${runId}.`,
+    },
+  };
+  return {
+    name: "dmo",
+    runId,
+    resourceName,
+    checks: [
+      lifecycleCheck(get, "lifecycle_preflight", getParams, "absent"),
+      lifecycleCheck(create, "lifecycle_plan", createParams, "ok", { dryRun: true }),
+      lifecycleCheck(create, "lifecycle_execute", createParams, "ok", {
+        allowMutation: true,
+      }),
+      lifecycleCheck(get, "lifecycle_verify", getParams, "present"),
+      lifecycleCheck(update, "lifecycle_update_plan", updateParams, "ok", { dryRun: true }),
+      lifecycleCheck(update, "lifecycle_update_execute", updateParams, "ok", {
         allowMutation: true,
       }),
       lifecycleCheck(get, "lifecycle_verify", getParams, "present"),
@@ -240,6 +288,9 @@ function classifyLifecycleResult(
   if (check.stage === "lifecycle_execute") {
     return { ...check, outcome: "confirmed", fail: false, summary: "Confirmed create completed." };
   }
+  if (check.stage === "lifecycle_update_execute") {
+    return { ...check, outcome: "confirmed", fail: false, summary: "Confirmed update completed." };
+  }
   if (check.stage === "cleanup_execute") {
     return {
       ...check,
@@ -329,10 +380,24 @@ function requireLifecycleAction(
   return action;
 }
 
+function buildDmoCreateBody(resourceName: string, runId: string): Record<string, unknown> {
+  return {
+    name: resourceName.replace(/__dlm$/, ""),
+    label: boundedFixtureLabel("Pi D360 DMO ", runId),
+    category: "Other",
+    dataSpaceName: "default",
+    description: `Fixture-owned Data 360 sweep DMO for ${runId}.`,
+    fields: [
+      { name: "Id__c", label: "Id", dataType: "Text", isPrimaryKey: true },
+      { name: "Name__c", label: "Name", dataType: "Text", isPrimaryKey: false },
+    ],
+  };
+}
+
 function buildDloCreateBody(resourceName: string, runId: string): Record<string, unknown> {
   return {
     name: resourceName,
-    label: `Pi Data360 Sweep DLO ${runId}`,
+    label: boundedFixtureLabel("Pi D360 DLO ", runId),
     category: "Other",
     dataspaceInfo: [{ name: "default" }],
     dataLakeFieldInputRepresentations: [
@@ -340,6 +405,10 @@ function buildDloCreateBody(resourceName: string, runId: string): Record<string,
       { name: "Name__c", label: "Name", dataType: "Text", isPrimaryKey: false },
     ],
   };
+}
+
+function boundedFixtureLabel(prefix: string, runId: string): string {
+  return `${prefix}${runId}`.slice(0, 40);
 }
 
 function fail(check: Data360LifecycleCheck, summary: string): Data360LifecycleRecord {

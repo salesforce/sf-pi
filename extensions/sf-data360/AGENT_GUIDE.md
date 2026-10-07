@@ -37,6 +37,30 @@ Use the single `sf_data360` Pi system tool for Data 360 work. Its `action` selec
 
 The model receives a compact semantic digest and stable structured content. Humans receive a Data 360 Run Card with a namespace-specific icon, full API rail, readable SQL, bounded request/response payloads, result tables, transport fallback, evidence, and next-step sections. Raw broad payloads remain artifacts instead of becoming the primary transcript.
 
+## Recursive coverage
+
+Use generated recursive test contracts to classify every action before live execution:
+
+```bash
+npm run generate-d360-test-contracts:check
+```
+
+For private non-production coverage, discover bounded org-local identifiers into an ignored seed profile, then run reads and validation-only POSTs:
+
+```bash
+npm run e2e:data360:seed -- \
+  --target-org <alias> \
+  --output /tmp/data360-seeds.json
+
+npm run e2e:data360 -- \
+  --target-org <alias> \
+  --live-read \
+  --live-safe-post \
+  --seed-profile /tmp/data360-seeds.json
+```
+
+Seed profiles can contain org IDs and stay private with mode `0o600`; never commit them. Mutating lifecycle coverage remains fixture-owned, dry-run first, exact-target gated, and reverse-cleaned.
+
 ## Boundaries
 
 Use `sf_soql` for CRM SOQL. Use Agent Script tools for local agent development. Use `observe.*` for production Agentforce telemetry. Do not hand-roll REST or shell out when `sf_data360` owns the endpoint.

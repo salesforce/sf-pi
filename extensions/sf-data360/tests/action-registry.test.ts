@@ -74,6 +74,38 @@ describe("sf_data360 action registry", () => {
     });
   });
 
+  it("publishes cross-field requirements for selector-dependent reads", () => {
+    expect(findPublicData360Action("harmonize.dmo_mapping.list")).toMatchObject({
+      requiredParams: [],
+      requiredAnyOf: [["dmoDeveloperName"], ["dloDeveloperName"], ["sourceObjectName"]],
+      inputSchema: {
+        anyOf: [
+          { required: ["dmoDeveloperName"] },
+          { required: ["dloDeveloperName"] },
+          { required: ["sourceObjectName"] },
+        ],
+      },
+    });
+    expect(findPublicData360Action("query.profile.query")).toMatchObject({
+      requiredParams: ["dataModelName"],
+      requiredAnyOf: [["id"], ["filters"]],
+      optionalParams: expect.arrayContaining(["fields", "filters", "limit", "offset", "orderby"]),
+    });
+    expect(findPublicData360Action("prepare.datakit_components")).toMatchObject({
+      requiredParams: ["componentType", "dataKitDevName"],
+      optionalParams: ["limit", "offset"],
+      inputSchema: {
+        required: ["componentType", "dataKitDevName"],
+        properties: {
+          componentType: {
+            type: "string",
+            examples: expect.arrayContaining(["DataStreamBundle"]),
+          },
+        },
+      },
+    });
+  });
+
   it("publishes exact discovery action parameter contracts", () => {
     expect(findPublicData360Action("discover.action.search")).toMatchObject({
       requiredParams: [],

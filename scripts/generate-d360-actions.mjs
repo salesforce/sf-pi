@@ -165,10 +165,13 @@ function buildActions() {
       safety: operation.safety,
       requiredParams: operation.requiredParams ?? [],
       optionalParams: operation.optionalParams ?? [],
+      ...(operation.requiredAnyOf?.length ? { requiredAnyOf: operation.requiredAnyOf } : {}),
       inputSchema: buildInputSchema(
         operation.requiredParams ?? [],
         operation.optionalParams ?? [],
         operation.name,
+        operation.requiredAnyOf,
+        operation.parameterSchemas,
       ),
       endpoint: { method: operation.method, path: operation.path },
       aliases: unique([operation.name, ...(override.aliases ?? [])]),
@@ -206,10 +209,13 @@ function buildActions() {
       safety: "read",
       requiredParams: runbook.requiredParams ?? [],
       optionalParams: runbook.optionalParams ?? [],
+      ...(runbook.requiredAnyOf?.length ? { requiredAnyOf: runbook.requiredAnyOf } : {}),
       inputSchema: buildInputSchema(
         runbook.requiredParams ?? [],
         runbook.optionalParams ?? [],
         runbook.name,
+        runbook.requiredAnyOf,
+        runbook.parameterSchemas,
       ),
       aliases: unique([runbook.name]),
       ...(runbook.tips ? { tips: runbook.tips } : {}),
@@ -241,10 +247,13 @@ function normalizeExtraAction(entry) {
     safety,
     requiredParams: entry.requiredParams ?? [],
     optionalParams: entry.optionalParams ?? [],
+    ...(entry.requiredAnyOf?.length ? { requiredAnyOf: entry.requiredAnyOf } : {}),
     inputSchema: buildInputSchema(
       entry.requiredParams ?? [],
       entry.optionalParams ?? [],
       entry.capability,
+      entry.requiredAnyOf,
+      entry.parameterSchemas,
     ),
     implementation: entry.implementation,
     aliases: unique(entry.aliases ?? []),
@@ -372,16 +381,25 @@ function assertEveryOperationMappedOnce(actions) {
     if (count !== 1) throw new Error(`${operation.name} mapped ${count} time(s), expected 1.`);
   }
 }
-function buildInputSchema(requiredParams, optionalParams, capability) {
+function buildInputSchema(
+  requiredParams,
+  optionalParams,
+  capability,
+  requiredAnyOf = [],
+  parameterSchemas = {},
+) {
   const sample = exampleParams(capability);
   const properties = {};
   for (const name of unique([...requiredParams, ...optionalParams])) {
-    properties[name] = schemaForValue(sample?.[name], name);
+    properties[name] = parameterSchemas[name] ?? schemaForValue(sample?.[name], name);
   }
   return {
     type: "object",
     properties,
     required: [...requiredParams],
+    ...(requiredAnyOf.length
+      ? { anyOf: requiredAnyOf.map((required) => ({ required: [...required] })) }
+      : {}),
     additionalProperties: true,
   };
 }

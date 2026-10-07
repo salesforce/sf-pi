@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import {
+  data360SweepDmoName,
   evaluateDestructiveExecutionGuard,
   shouldBlockMutation,
 } from "../lib/destructive-guard.ts";
@@ -67,6 +68,26 @@ describe("sf_data360 mutation and destructive guards", () => {
         targetResolved: true,
         hasUI: false,
         params: { dloName: "PiData360SweepDlo_20260811A__dll" },
+        ownedSweepCleanup,
+      }),
+    ).toEqual({ blocked: false });
+  });
+
+  it("allows headless deletion only for the exact sweep-owned DMO", () => {
+    const ownedSweepCleanup = {
+      runId: "20260811A",
+      mutationTargetOrg: "ExampleSandbox",
+      destructiveTargetOrg: "ExampleSandbox",
+    };
+    expect(
+      evaluateDestructiveExecutionGuard({
+        operation: { name: "d360_dmo_delete", safety: "destructive" },
+        targetOrg: "ExampleSandbox",
+        env,
+        targetOrgInfo: { alias: "ExampleSandbox", orgType: "sandbox" },
+        targetResolved: true,
+        hasUI: false,
+        params: { dmoName: data360SweepDmoName(ownedSweepCleanup.runId) },
         ownedSweepCleanup,
       }),
     ).toEqual({ blocked: false });

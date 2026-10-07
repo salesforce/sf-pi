@@ -103,8 +103,10 @@
     "path": "/ssot/profile/{dataModelName}",
     "origin": "upstream",
     "requiredParams": ["dataModelName"],
-    "optionalParams": ["id", "limit", "offset", "orderby"],
-    "safety": "read"
+    "requiredAnyOf": [["id"], ["filters"]],
+    "optionalParams": ["id", "fields", "filters", "limit", "offset", "orderby"],
+    "safety": "read",
+    "tips": "Provide either id for a specific profile or filters in [field=value] form. Use fields to bound the response."
   },
   {
     "name": "d360_profile_metadata",
@@ -287,7 +289,9 @@
     "path": "/ssot/data-model-object-mappings",
     "origin": "upstream",
     "optionalParams": ["dmoDeveloperName", "dloDeveloperName", "sourceObjectName", "dataspace"],
-    "safety": "read"
+    "requiredAnyOf": [["dmoDeveloperName"], ["dloDeveloperName"], ["sourceObjectName"]],
+    "safety": "read",
+    "tips": "Provide at least one of dmoDeveloperName, dloDeveloperName, or sourceObjectName."
   },
   {
     "name": "d360_dmo_mapping_get",
@@ -1008,7 +1012,7 @@
     "origin": "upstream",
     "requiredParams": ["body"],
     "safety": "confirmed",
-    "tips": "Data spaces are admin/global workspaces. Confirm naming, membership plan, and downstream references; dry_run before execution."
+    "tips": "Create with body.label, a unique three-character body.prefix, and optional body.description. Data spaces are org-limited admin workspaces; dry_run before execution and expect a capacity error when the org limit is reached."
   },
   {
     "name": "d360_dataspace_update",
@@ -1262,9 +1266,11 @@
     "method": "GET",
     "path": "/ssot/data-kits/available-components",
     "origin": "upstream",
-    "requiredParams": [],
+    "requiredParams": ["componentType", "dataKitDevName"],
     "safety": "read",
-    "optionalParams": ["componentType", "dataKitDevName", "limit", "offset"]
+    "optionalParams": ["limit", "offset"],
+    "parameterSchemas": { "componentType": { "type": "string", "examples": ["DataStreamBundle"] } },
+    "tips": "Use a documented component type such as DataStreamBundle and the exact data kit developer name."
   },
   {
     "name": "d360_dataaction_list",

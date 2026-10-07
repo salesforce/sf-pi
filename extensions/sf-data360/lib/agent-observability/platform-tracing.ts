@@ -8,6 +8,8 @@
  * reconstruction, and compact summaries.
  */
 
+import { normalizeTimestampLiteral } from "../sql.ts";
+
 export const APT_SPAN_DMO = "ssot__TelemetryTraceSpan__dlm";
 export const APT_SPAN_DLO = "ObservabilitySpans__dll";
 export const APT_ROOT_PARENT_SPAN_ID = "0000000000000000";
@@ -205,19 +207,8 @@ function whereClause(predicates: string[]): string[] {
 }
 
 function sincePredicate(since: string | undefined): string[] {
-  if (!since) return [];
-  return [`ssot__StartDateTime__c >= TIMESTAMP ${sqlString(normalizeTimestampLiteral(since))}`];
-}
-
-function normalizeTimestampLiteral(input: string): string {
-  const trimmed = input.trim();
-  if (!/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z?)?$/.test(trimmed)) {
-    throw new Error(
-      "since must be YYYY-MM-DD or an ISO-like UTC timestamp, e.g. 2026-05-01T00:00:00Z.",
-    );
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return `${trimmed} 00:00:00`;
-  return trimmed.replace("T", " ").replace(/Z$/, "");
+  const normalized = normalizeTimestampLiteral(since);
+  return normalized ? [`ssot__StartDateTime__c >= TIMESTAMP ${sqlString(normalized)}`] : [];
 }
 
 function sqlString(value: string): string {

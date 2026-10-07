@@ -135,7 +135,9 @@
   },
   "d360_dmo_mapping_list": {
     "optionalParams": ["dmoDeveloperName", "dloDeveloperName", "sourceObjectName", "dataspace"],
-    "safety": "read"
+    "requiredAnyOf": [["dmoDeveloperName"], ["dloDeveloperName"], ["sourceObjectName"]],
+    "safety": "read",
+    "tips": "Provide at least one of dmoDeveloperName, dloDeveloperName, or sourceObjectName."
   },
   "d360_dmo_mapping_get": {
     "requiredParams": ["mappingName"],
@@ -266,9 +268,16 @@
     "optionalParams": ["dataspace"]
   },
   "d360_datakit_components": {
-    "requiredParams": [],
+    "requiredParams": ["componentType", "dataKitDevName"],
     "safety": "read",
-    "optionalParams": ["componentType", "dataKitDevName", "limit", "offset"],
+    "optionalParams": ["limit", "offset"],
+    "parameterSchemas": {
+      "componentType": {
+        "type": "string",
+        "examples": ["DataStreamBundle"]
+      }
+    },
+    "tips": "Use a documented component type such as DataStreamBundle and the exact data kit developer name.",
     "path": "/ssot/data-kits/available-components"
   },
   "d360_datakit_component_status": {
@@ -290,8 +299,10 @@
   },
   "d360_profile_query": {
     "requiredParams": ["dataModelName"],
-    "optionalParams": ["id", "limit", "offset", "orderby"],
-    "safety": "read"
+    "requiredAnyOf": [["id"], ["filters"]],
+    "optionalParams": ["id", "fields", "filters", "limit", "offset", "orderby"],
+    "safety": "read",
+    "tips": "Provide either id for a specific profile or filters in [field=value] form. Use fields to bound the response."
   },
   "d360_insights_metadata": {
     "safety": "read"
@@ -655,7 +666,7 @@
   "d360_dataspace_create": {
     "requiredParams": ["body"],
     "safety": "confirmed",
-    "tips": "Data spaces are admin/global workspaces. Confirm naming, membership plan, and downstream references; dry_run before execution."
+    "tips": "Create with body.label, a unique three-character body.prefix, and optional body.description. Data spaces are org-limited admin workspaces; dry_run before execution and expect a capacity error when the org limit is reached."
   },
   "d360_dataspace_update": {
     "requiredParams": ["dataSpaceName", "body"],

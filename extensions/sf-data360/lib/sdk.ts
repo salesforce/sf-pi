@@ -102,6 +102,27 @@ export async function runSfData360Action(
       },
     };
   }
+  if (
+    action.requiredAnyOf?.length &&
+    !action.requiredAnyOf.some((group) => group.every((name) => hasParam(input.params?.[name])))
+  ) {
+    return {
+      ok: false,
+      tool: "sf_data360",
+      action: action.action,
+      namespace: action.namespace,
+      error: "MISSING_REQUIRED_SELECTOR",
+      requiredAnyOf: action.requiredAnyOf,
+      summary: `${action.action} requires one of: ${action.requiredAnyOf
+        .map((group) => group.join(" + "))
+        .join("; ")}`,
+      recover_via: {
+        tool: "sf_data360",
+        action: "discover.action.describe",
+        params: { action: action.action },
+      },
+    };
+  }
   const result = await runData360Action(
     {
       tool: action.internalOwner,
@@ -432,6 +453,10 @@ function explicitIntentRoute(intent: string): Data360ActionDefinition | undefine
     return findPublicData360Action("orchestrate.intent.plan");
   }
   return undefined;
+}
+
+function hasParam(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== "";
 }
 
 function stringParam(value: unknown): string | undefined {
