@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.332.0](https://github.com/salesforce/sf-pi/compare/v0.331.2...v0.332.0) (2026-10-07)
+
+
+### Features
+
+* **sf-data360:** cover Connect OpenAPI surface ([5ed0b63](https://github.com/salesforce/sf-pi/commit/5ed0b63f7652a578e7a0971e99a987440b98b52c))
+
 ## [0.331.2](https://github.com/salesforce/sf-pi/compare/v0.331.1...v0.331.2) (2026-10-07)
 
 
