@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.331.1](https://github.com/salesforce/sf-pi/compare/v0.331.0...v0.331.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **sf-data360:** harden single-tool runtime safety ([#796](https://github.com/salesforce/sf-pi/issues/796)) ([a97ef24](https://github.com/salesforce/sf-pi/commit/a97ef24fac609250c98bb893d28d89c079a25b3c))
+
 ## [0.331.0](https://github.com/salesforce/sf-pi/compare/v0.330.0...v0.331.0) (2026-10-07)
 
 
