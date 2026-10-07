@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.331.2](https://github.com/salesforce/sf-pi/compare/v0.331.1...v0.331.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **sf-data360:** add recursive API coverage ([#798](https://github.com/salesforce/sf-pi/issues/798)) ([b183dc1](https://github.com/salesforce/sf-pi/commit/b183dc15e0299e61c6fcb0cb569b1f8c72525cb8))
+
 ## [0.331.1](https://github.com/salesforce/sf-pi/compare/v0.331.0...v0.331.1) (2026-10-07)
 
 
