@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.331.2-2026-10-07",
-  "latestVersion": "0.331.2",
+  "revision": "release-0.332.0-2026-10-07",
+  "latestVersion": "0.332.0",
   "announcements": [
     {
-      "id": "release-0.331.2",
+      "id": "release-0.332.0",
       "kind": "update",
-      "title": "sf-pi v0.331.2 — sf-data360: add recursive API coverage",
+      "title": "sf-pi v0.332.0 — sf-data360: cover Connect OpenAPI surface",
       "publishedAt": "2026-10-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.331.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.332.0",
       "severity": "info",
-      "body": "sf-data360: add recursive API coverage"
+      "body": "sf-data360: cover Connect OpenAPI surface"
     }
   ]
 }
