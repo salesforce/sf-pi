@@ -5,7 +5,7 @@
     "skillName": "sf-data360-connect",
     "summary": "Set up and inspect Data 360 source connectivity.",
     "description": "Data 360 Connect phase. Use when managing connections, connectors, source systems, source metadata, connection tests, or source endpoints with sf-data360 tools.",
-    "familyDefaults": ["Connection"],
+    "familyDefaults": ["Connection", "Data Shares", "Private Network Routes"],
     "operationOverrides": ["d360_connectors_list", "d360_connections_sfdc_list"]
   },
   {
@@ -14,7 +14,15 @@
     "skillName": "sf-data360-prepare",
     "summary": "Prepare raw data structures and ingestion pipelines.",
     "description": "Data 360 Prepare phase. Use when managing DLOs, data streams, data transforms, data kits, data spaces, ingestion readiness, or raw data preparation with sf-data360 tools.",
-    "familyDefaults": ["DLO", "DataStreams", "DataTransform", "DataKit", "Dataspace"],
+    "familyDefaults": [
+      "DLO",
+      "DataStreams",
+      "DataTransform",
+      "DataKit",
+      "Dataspace",
+      "Data Custom Code",
+      "Document AI"
+    ],
     "operationOverrides": ["d360_data_streams_list", "d360_data_transforms_list"]
   },
   {
@@ -23,7 +31,14 @@
     "skillName": "sf-data360-harmonize",
     "summary": "Model, map, and unify data into harmonized entities.",
     "description": "Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, identity resolution, smart mapping helpers, or semantic model definitions with sf-data360 tools.",
-    "familyDefaults": ["DMO", "Mappings", "StandardMappings", "Smart", "Identity Resolution"],
+    "familyDefaults": [
+      "DMO",
+      "Mappings",
+      "StandardMappings",
+      "Smart",
+      "Identity Resolution",
+      "Data Governance"
+    ],
     "operationOverrides": [
       "d360_sdm_create",
       "d360_sdm_update",
@@ -61,7 +76,13 @@
     "skillName": "sf-data360-act",
     "summary": "Deliver audiences and data-triggered actions downstream.",
     "description": "Data 360 Act phase. Use when managing activations, activation targets, downstream delivery, data actions, or action targets with sf-data360 tools.",
-    "familyDefaults": ["Activation", "DataAction", "Personalization"],
+    "familyDefaults": [
+      "Activation",
+      "DataAction",
+      "Personalization",
+      "Clean Rooms",
+      "Communication Capping"
+    ],
     "operationOverrides": ["d360_data_actions_list"]
   },
   {
@@ -70,7 +91,7 @@
     "skillName": "sf-data360-retrieve",
     "summary": "Query, search, and inspect Data 360 data and metadata.",
     "description": "Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile or data graph queries, semantic queries, retriever inspection, or search-index work with sf-data360 tools.",
-    "familyDefaults": ["Query", "Metadata", "Profile and Data Graph"],
+    "familyDefaults": ["Query", "Metadata", "Profile and Data Graph", "Universal ID Lookup"],
     "operationOverrides": []
   },
   {
@@ -79,7 +100,12 @@
     "skillName": "sf-data360-semantic",
     "summary": "Manage semantic models, search indexes, retrievers, and ML/prediction model surfaces.",
     "description": "Data 360 Semantic phase. Use when managing semantic models, search indexes, retrievers, model artifacts, configured models, model setups, prediction jobs, setup versions, or prediction helper actions with sf-data360 tools.",
-    "familyDefaults": ["Semantic Retrieval", "MachineLearning"],
+    "familyDefaults": [
+      "Semantic Retrieval",
+      "MachineLearning",
+      "Notebook AI",
+      "Agent Configuration"
+    ],
     "operationOverrides": []
   },
   {

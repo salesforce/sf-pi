@@ -24,12 +24,14 @@ Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile
 - **Metadata** — Discover data spaces, DMO schemas, DLO schemas, and compact catalogs.
 - **Profile and Data Graph** — Read profile, insight, and data graph metadata and records.
 - **Query** — Run bounded Data 360 SQL and inspect data shape.
+- **Universal ID Lookup** — Resolve universal identifiers across Data 360 source records.
 
-- Capabilities: 20 (0 runbook-backed)
-- Safety mix: read=17, safe_post=2, confirmed=0, destructive=1
+- Capabilities: 32 (0 runbook-backed)
+- Safety mix: read=23, safe_post=4, confirmed=3, destructive=2
 
 ## Data 360 family actions
 
+- `sf_data360` `query.datagraph.get` (query, rest_operation, read) — Get data graph
 - `sf_data360` `query.datagraph.lookup` (query, rest_operation, read) — Lookup by natural key.
 - `sf_data360` `query.datagraph.metadata` (query, rest_operation, read) — List data graph entities or get schema.
 - `sf_data360` `query.datagraph.query` (query, rest_operation, read) — Query data graphs. Set live=true for real-time.
@@ -37,7 +39,6 @@ Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile
 - `sf_data360` `query.insights.metadata` (query, rest_operation, read) — Discover CI names and available dimensions/measures.
 - `sf_data360` `query.insights.query` (query, rest_operation, read) — Query calculated insights with dimensions and measures.
 - `sf_data360` `query.metadata.entities` (query, rest_operation, read) — List paginated metadata entities. entityType required.
-- `sf_data360` `query.metadata.query` (query, rest_operation, read) — Get metadata for entity. ALWAYS use entityName filter.
 
 ## Cross-phase routing
 

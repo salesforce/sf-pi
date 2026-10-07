@@ -5,6 +5,7 @@ import {
   classifyLiveReadResult,
   classifyUsefulMissingParamResult,
   paramsForDryRun,
+  parseData360SweepArgs,
 } from "../../../scripts/e2e/data360-action-sweep.ts";
 import {
   buildDloData360LifecyclePlan,
@@ -47,9 +48,42 @@ describe("sf_data360 action sweep", () => {
     );
   });
 
+  it("enables explicit Connect OpenAPI validation without changing default sweeps", () => {
+    expect(
+      parseData360SweepArgs([
+        "--target-org",
+        "ExampleSandbox",
+        "--live-read",
+        "--contract-validate",
+        "--promotion-wave",
+        "wave2_existing_family_reads",
+      ]),
+    ).toMatchObject({
+      targetOrg: "ExampleSandbox",
+      liveRead: true,
+      contractValidate: true,
+      promotionWaves: ["wave2_existing_family_reads"],
+    });
+    expect(parseData360SweepArgs(["--target-org", "ExampleSandbox"]).contractValidate).toBe(
+      undefined,
+    );
+    const wavePlan = buildData360SweepPlan(getPublicData360Actions(), {
+      promotionWaves: ["wave2_existing_family_reads"],
+    });
+    expect(
+      new Set(
+        wavePlan
+          .filter((record) => record.stage === "classification")
+          .map((record) => record.action),
+      ).size,
+    ).toBe(39);
+  });
+
   it("builds deterministic placeholders for required and any-of parameters", () => {
     const create = findPublicData360Action("prepare.dlo.create")!;
     expect(paramsForDryRun(create)).toMatchObject({ body: { name: "Placeholder" } });
+    const dataKitDeploy = findPublicData360Action("prepare.datakit.deploy")!;
+    expect(paramsForDryRun(dataKitDeploy)).toMatchObject({ asyncMode: false });
     const mappings = findPublicData360Action("harmonize.dmo_mapping.list")!;
     expect(paramsForDryRun(mappings)).toMatchObject({
       dmoDeveloperName: "PlaceholderDmoDeveloperName",
@@ -57,6 +91,19 @@ describe("sf_data360 action sweep", () => {
     expect(buildData360SweepPlan([mappings])).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ stage: "missing_params", action: mappings.action }),
+      ]),
+    );
+  });
+
+  it("uses public-safe live probes for promoted query POSTs", () => {
+    const queryV2 = findPublicData360Action("query.sql.v2.query")!;
+    expect(buildData360SweepPlan([queryV2], { liveSafePost: true })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: "live_read",
+          action: "query.sql.v2.query",
+          params: { body: { sql: "SELECT 1" } },
+        }),
       ]),
     );
   });
@@ -120,6 +167,26 @@ describe("sf_data360 action sweep", () => {
         { ok: false, status: 400, error: "No enum constant ConnectionSchemaTypeEnum.X" },
       ),
     ).toMatchObject({ outcome: "dependency_missing", fail: false });
+    expect(
+      classifyLiveReadResult(
+        { ...record, action: "activate.activation.metadata.channels.list" },
+        {
+          ok: false,
+          status: 403,
+          response: [{ message: "Activations V2 Connect API is not enabled" }],
+        },
+      ),
+    ).toMatchObject({ outcome: "feature_gated", fail: false });
+    expect(
+      classifyLiveReadResult(
+        { ...record, action: "harmonize.governance.auto_tagging_job.list" },
+        {
+          ok: false,
+          status: 400,
+          response: [{ message: "No access to trigger AI suggest tags" }],
+        },
+      ),
+    ).toMatchObject({ outcome: "permission_required", fail: false });
   });
 
   it("recognizes actionable missing-parameter failures", () => {

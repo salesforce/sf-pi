@@ -24,6 +24,7 @@ import { connectSalesforce } from "../../lib/common/sf-conn/index.ts";
 import { detectEnvironment } from "../../lib/common/sf-environment/detect.ts";
 import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import { getPublicData360Actions } from "../../extensions/sf-data360/lib/actions/action-registry.ts";
+import { validateConnectLiveResult } from "../lib/d360-connect-openapi.mjs";
 import type {
   Data360ActionDefinition,
   SfData360Input,
@@ -61,6 +62,7 @@ export type Data360SweepOutcome =
   | "not_found_optional"
   | "dependency_missing"
   | "auth_required"
+  | "permission_required"
   | Data360LifecycleOutcome;
 
 export interface Data360SweepRecord {
@@ -79,6 +81,23 @@ export interface Data360SweepRecord {
   testCapability?: string;
   fixturePolicy?: string;
   artifacts?: Array<{ label: string; path: string; kind: string }>;
+  contract?: {
+    status: string;
+    fail: boolean;
+    summary: string;
+    operationKey?: string;
+    checks?: {
+      method: boolean;
+      path: boolean;
+      responseStatus: boolean;
+      requestBody?: string;
+      responseBody?: string;
+    };
+    requestBodyErrors?: string[];
+    responseBodyErrors?: string[];
+    responseStatusOverride?: { observed: string; declared: string };
+    overrideEvidence?: string;
+  };
 }
 
 interface Data360TestContract {
@@ -93,15 +112,37 @@ export interface Data360SweepOptions {
   outputDir?: string;
   actions?: string[];
   namespaces?: string[];
+  promotionWaves?: string[];
   includeMissingParams?: boolean;
   liveRead?: boolean;
   liveSafePost?: boolean;
   maxLiveRead?: number;
   fixtureProfile?: Data360FixtureProfile;
+  contractValidate?: boolean;
   mutationLifecycle?: Data360MutationLifecycleName;
   mutate?: boolean;
   runId?: string;
 }
+
+const CONNECT_OPENAPI_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "extensions",
+  "sf-data360",
+  "registry",
+  "connect-openapi-contracts.json",
+);
+const CONNECT_OPENAPI = JSON.parse(readFileSync(CONNECT_OPENAPI_PATH, "utf8")) as Record<
+  string,
+  unknown
+>;
+const CONNECT_OPENAPI_OVERRIDES = JSON.parse(
+  readFileSync(
+    path.join(path.dirname(CONNECT_OPENAPI_PATH), "connect-openapi-overrides.json"),
+    "utf8",
+  ),
+) as Record<string, unknown>;
 
 const TEST_CONTRACTS_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -146,6 +187,7 @@ export function buildData360SweepPlan(
     Data360SweepOptions,
     | "actions"
     | "namespaces"
+    | "promotionWaves"
     | "includeMissingParams"
     | "liveRead"
     | "liveSafePost"
@@ -347,9 +389,18 @@ export async function runData360Sweep(
     if (gate.ok !== true) throw new Error(gate.reason);
   }
 
+  const actionByName = new Map(actions.map((action) => [action.action, action]));
   const plan = buildData360SweepPlan(actions, options);
   for (const record of plan) {
-    results.push(await runData360SweepRecord(record, env, ctx, options.targetOrg));
+    results.push(
+      await runData360SweepRecord(
+        record,
+        env,
+        ctx,
+        options.targetOrg,
+        options.contractValidate ? actionByName.get(record.action) : undefined,
+      ),
+    );
   }
   if (options.mutationLifecycle) {
     if (!options.runId) throw new Error("The mutation lifecycle requires --run-id.");
@@ -386,6 +437,7 @@ async function runData360SweepRecord(
   env: SfEnvironment,
   ctx: ExtensionContext,
   targetOrg: string,
+  contractAction?: Data360ActionDefinition,
 ): Promise<Data360SweepRecord> {
   if (record.outcome === "skipped") return record;
   try {
@@ -456,13 +508,16 @@ async function runData360SweepRecord(
       };
       const result = await runSfData360Action(input, env, ctx, undefined);
       const presented = await presentSfData360Result(input, result, "summary");
-      return attachPresentationEvidence(classifyLiveReadResult(record, result), {
+      const classified = attachPresentationEvidence(classifyLiveReadResult(record, result), {
         ...result,
         sweepPresentation: {
           text: presented.content[0]?.text,
           artifacts: presented.details.artifacts,
         },
       });
+      return contractAction
+        ? attachConnectContractEvidence(classified, contractAction, result)
+        : classified;
     }
     if (record.stage === "missing_params") {
       try {
@@ -512,6 +567,18 @@ export function classifyLiveReadResult(
         summary: String(data.summary ?? data.error ?? "Authentication prerequisite missing"),
       };
     }
+    if (
+      blob.includes("no access") ||
+      blob.includes("access denied") ||
+      blob.includes("insufficient access")
+    ) {
+      return {
+        ...record,
+        outcome: "permission_required",
+        fail: false,
+        summary: String(data.summary ?? data.error ?? "Permission prerequisite missing"),
+      };
+    }
     if (data.status === 404) {
       return {
         ...record,
@@ -520,7 +587,11 @@ export function classifyLiveReadResult(
         summary: String(data.summary ?? "Optional surface not found"),
       };
     }
-    if (blob.includes("functionality_not_enabled") || blob.includes("not currently enabled")) {
+    if (
+      blob.includes("functionality_not_enabled") ||
+      blob.includes("not currently enabled") ||
+      blob.includes("is not enabled")
+    ) {
       return {
         ...record,
         outcome: "feature_gated",
@@ -608,9 +679,15 @@ function baseRecord(action: Data360ActionDefinition, stage: Data360SweepStage): 
 
 function matchesFilters(
   action: Data360ActionDefinition,
-  options: Pick<Data360SweepOptions, "actions" | "namespaces">,
+  options: Pick<Data360SweepOptions, "actions" | "namespaces" | "promotionWaves">,
 ): boolean {
   if (options.namespaces?.length && !options.namespaces.includes(action.namespace)) return false;
+  if (
+    options.promotionWaves?.length &&
+    (!action.promotionWave || !options.promotionWaves.includes(action.promotionWave))
+  ) {
+    return false;
+  }
   if (
     options.actions?.length &&
     !options.actions.includes(action.action) &&
@@ -633,6 +710,9 @@ function specialLiveParams(action: Data360ActionDefinition): Record<string, unkn
       return { entityType: "DataModelObject" };
     case "query.sql.run":
       return { sql: "SELECT 1", queryRowLimit: 1 };
+    case "query.sql.v1.query":
+    case "query.sql.v2.query":
+      return { body: { sql: "SELECT 1" } };
     case "orchestrate.intent.plan":
       return { utterance: "inspect Data 360 readiness" };
     case "orchestrate.journey.describe":
@@ -678,6 +758,7 @@ function specialDryRunParams(action: Data360ActionDefinition): Record<string, un
 function placeholderForParam(name: string): unknown {
   if (name === "body" || name.endsWith("Body")) return { name: "Placeholder" };
   if (name === "sql") return "SELECT 1";
+  if (name === "asyncMode") return false;
   if (name === "prefixes") return ["GPS"];
   if (name === "dataStreamIds") return ["PlaceholderStream"];
   if (name === "scopes") return ["api", "cdp_ingest_api"];
@@ -697,6 +778,29 @@ function toPascalName(value: string): string {
     .filter(Boolean)
     .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
     .join("");
+}
+
+export function attachConnectContractEvidence(
+  record: Data360SweepRecord,
+  action: Data360ActionDefinition,
+  result: Record<string, unknown>,
+): Data360SweepRecord {
+  const actionOverrides = asRecord(CONNECT_OPENAPI_OVERRIDES.actions);
+  const contract = validateConnectLiveResult(
+    CONNECT_OPENAPI,
+    action,
+    result,
+    asRecord(actionOverrides?.[action.action]),
+  ) as NonNullable<Data360SweepRecord["contract"]>;
+  if (!contract.fail) return { ...record, contract };
+  return {
+    ...record,
+    outcome: "failed",
+    fail: true,
+    error: contract.summary,
+    summary: contract.summary,
+    contract,
+  };
 }
 
 function attachPresentationEvidence(
@@ -759,6 +863,10 @@ function writeReports(records: Data360SweepRecord[], outputDir: string): void {
     ),
     byTestMode: countBy(classifications, (record) => record.testMode ?? "missing"),
     byCapability: countBy(classifications, (record) => record.testCapability ?? "missing"),
+    byConnectContractStatus: countBy(
+      records.filter((record) => Boolean(record.contract)),
+      (record) => record.contract?.status ?? "missing",
+    ),
   };
   writeFileSync(
     path.join(outputDir, "data360-action-sweep.json"),
@@ -780,6 +888,12 @@ function writeReports(records: Data360SweepRecord[], outputDir: string): void {
     "",
     ...Object.entries(summary.byCapability).map(
       ([capability, count]) => `- ${capability}: ${count}`,
+    ),
+    "",
+    "## Connect OpenAPI live validation",
+    "",
+    ...Object.entries(summary.byConnectContractStatus).map(
+      ([status, count]) => `- ${status}: ${count}`,
     ),
     "",
     "## Lifecycle",
@@ -857,6 +971,7 @@ export function parseData360SweepArgs(argv: string[]): Data360SweepOptions {
     if (arg === "--target-org") options.targetOrg = argv[++i] ?? options.targetOrg;
     else if (arg === "--output-dir") options.outputDir = argv[++i];
     else if (arg === "--namespace") (options.namespaces ??= []).push(argv[++i]);
+    else if (arg === "--promotion-wave") (options.promotionWaves ??= []).push(argv[++i]);
     else if (arg === "--action") (options.actions ??= []).push(argv[++i]);
     else if (arg === "--no-missing-params") options.includeMissingParams = false;
     else if (arg === "--live-read") options.liveRead = true;
@@ -867,6 +982,7 @@ export function parseData360SweepArgs(argv: string[]): Data360SweepOptions {
         readFileSync(profilePath, "utf8"),
       ) as Data360FixtureProfile;
     } else if (arg === "--max-live-read") options.maxLiveRead = Number(argv[++i]);
+    else if (arg === "--contract-validate") options.contractValidate = true;
     else if (arg === "--mutation-lifecycle") {
       const lifecycle = argv[++i];
       if (lifecycle !== "dlo" && lifecycle !== "dmo") {
@@ -883,7 +999,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseData360SweepArgs(process.argv.slice(2));
   if (!options.targetOrg) {
     console.error(
-      "Usage: node --experimental-strip-types scripts/e2e/data360-action-sweep.ts --target-org <alias> [--namespace <name>] [--live-read] [--live-safe-post] [--fixture-profile <json>] [--mutation-lifecycle dlo|dmo --mutate --run-id <id>]",
+      "Usage: node --experimental-strip-types scripts/e2e/data360-action-sweep.ts --target-org <alias> [--namespace <name>] [--promotion-wave <id>] [--live-read] [--live-safe-post] [--contract-validate] [--fixture-profile <json>] [--mutation-lifecycle dlo|dmo --mutate --run-id <id>]",
     );
     process.exit(2);
   }

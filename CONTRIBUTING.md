@@ -105,7 +105,7 @@ validation.
 This complete inventory is generated from `package.json`; edit that file and run `npm run generate-catalog`.
 
 <details>
-<summary>Show all 71 package scripts</summary>
+<summary>Show all 74 package scripts</summary>
 
 **Generated sources**
 
@@ -114,6 +114,8 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run generate-catalog:check-staged`
 - `npm run generate-d360-actions`
 - `npm run generate-d360-actions:check`
+- `npm run generate-d360-connect-openapi-parity`
+- `npm run generate-d360-connect-openapi-parity:check`
 - `npm run generate-d360-parity`
 - `npm run generate-d360-parity:check`
 - `npm run generate-d360-payload-examples`
@@ -124,6 +126,7 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run generate-d360-registry:check`
 - `npm run generate-d360-test-contracts`
 - `npm run generate-d360-test-contracts:check`
+- `npm run import-d360-connect-openapi`
 - `npm run import-d360-upstream`
 - `npm run import-d360-upstream:check`
 

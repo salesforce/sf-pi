@@ -7,7 +7,7 @@ This generated report compares the official public Data 360 operation snapshot w
 - Upstream operations: 246
 - Supported: 246
 - Missing: 0
-- SF Data 360 actions: 309
+- SF Data 360 actions: 577
 - Exact endpoint shapes: 241
 - Adjusted endpoint shapes: 5
 - Payload examples: 89 (0 missing)

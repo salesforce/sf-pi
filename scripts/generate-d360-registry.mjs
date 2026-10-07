@@ -14,6 +14,8 @@ import { isDeepStrictEqual } from "node:util";
 
 import { format, resolveConfig } from "prettier";
 
+import { buildPromotedConnectOperations } from "./lib/d360-connect-openapi.mjs";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
@@ -24,12 +26,16 @@ const SAFETY_VALUES = new Set(["read", "safe_post", "confirmed", "destructive"])
 const METHODS = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
 
 const upstream = readJson("upstream-operations.json");
+const connectOpenApi = readJson("connect-openapi-contracts.json");
+const promotionConfig = readJson("connect-openapi-promotions.json");
+const promotedConnectOperations = buildPromotedConnectOperations(connectOpenApi, promotionConfig);
+assertPromotionsDoNotDuplicateEndpoints(upstream, promotedConnectOperations);
 const overrides = readJson("overrides.json");
 const families = readJson("families.json");
 const runbooks = readJson("runbooks.json");
 const examples = readJson("examples.json");
 
-const generated = generateOperations(upstream, overrides);
+const generated = generateOperations([...upstream, ...promotedConnectOperations], overrides);
 validateRegistry({ operations: generated, families, runbooks, examples });
 
 const targetPath = path.join(REGISTRY_DIR, "operations.json");
@@ -58,6 +64,24 @@ function readJson(fileName) {
   return JSON.parse(readFileSync(path.join(REGISTRY_DIR, fileName), "utf8"));
 }
 
+function assertPromotionsDoNotDuplicateEndpoints(existing, promoted) {
+  const existingKeys = new Set(
+    existing.map((operation) => `${operation.method} ${normalizePath(operation.path)}`),
+  );
+  for (const operation of promoted) {
+    const key = `${operation.method} ${normalizePath(operation.path)}`;
+    if (existingKeys.has(key)) {
+      throw new Error(`Connect OpenAPI promotion duplicates existing endpoint ${key}.`);
+    }
+  }
+}
+
+function normalizePath(value) {
+  return String(value ?? "")
+    .split(/[?#]/, 1)[0]
+    .replaceAll(/\{[^}]+\}/g, "{}");
+}
+
 function generateOperations(upstreamOps, overrideMap) {
   if (!Array.isArray(upstreamOps)) throw new Error("upstream-operations.json must be an array.");
   if (!overrideMap || typeof overrideMap !== "object" || Array.isArray(overrideMap)) {
@@ -79,16 +103,26 @@ function generateOperations(upstreamOps, overrideMap) {
 
 function withOperationalDefaults(operation) {
   const required = new Set(operation.requiredParams ?? []);
+  const optional = new Set(operation.optionalParams ?? []);
   for (const param of pathParams(operation.path)) required.add(param);
 
-  if (operation.method !== "GET" && operation.method !== "DELETE" && needsBody(operation)) {
+  if (
+    operation.origin !== "connect_openapi" &&
+    operation.method !== "GET" &&
+    operation.method !== "DELETE" &&
+    needsBody(operation)
+  ) {
     required.add("body");
   }
+  for (const param of required) optional.delete(param);
 
   const tips = operation.tips ?? defaultTips(operation);
   return stripUndefined({
     ...operation,
     ...(required.size ? { requiredParams: [...required] } : {}),
+    ...(operation.optionalParams !== undefined || optional.size
+      ? { optionalParams: [...optional] }
+      : {}),
     ...(tips ? { tips } : {}),
   });
 }

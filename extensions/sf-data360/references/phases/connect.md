@@ -22,10 +22,12 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 ## Phase coverage
 
 - **Connection** — Inspect connectors, connections, endpoints, and source metadata.
+- **Data Shares** — Inspect Data 360 zero-copy shares and share targets.
 - **Ingestion** — Discover connectors, connections, data streams, and ingestion health surfaces.
+- **Private Network Routes** — Inspect private network routes used by Data 360 connectivity.
 
-- Capabilities: 20 (0 runbook-backed)
-- Safety mix: read=10, safe_post=5, confirmed=4, destructive=1
+- Capabilities: 44 (0 runbook-backed)
+- Safety mix: read=18, safe_post=8, confirmed=14, destructive=4
 
 ## Data 360 family actions
 
@@ -33,10 +35,10 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 - `sf_data360` `connect.auth.sessions` (connect, tenant_ingest_auth, read) — List in-memory Data Cloud ingest auth sessions bound to the target org without tokens.
 - `sf_data360` `connect.auth.status` (connect, tenant_ingest_auth, read) — Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.
 - `sf_data360` `connect.connection_endpoints` (connect, rest_operation, read) — List pre-configured connection endpoints.
+- `sf_data360` `connect.connection.endpoint.list` (connect, rest_operation, read) — Get connection endpoints
 - `sf_data360` `connect.connection.get` (connect, rest_operation, read) — Get connection details. connectorType REQUIRED.
 - `sf_data360` `connect.connection.list` (connect, rest_operation, read) — List connections. connectorType REQUIRED.
-- `sf_data360` `connect.connections_sfdc.list` (connect, rest_operation, read) — List Salesforce CRM connections.
-- `sf_data360` `connect.connector.list` (connect, rest_operation, read) — Discover supported connector types.
+- `sf_data360` `connect.connection.sitemap.get` (connect, rest_operation, read) — Get connection site map
 
 ## Cross-phase routing
 

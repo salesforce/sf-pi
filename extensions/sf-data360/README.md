@@ -62,11 +62,12 @@ api.*          exact endpoint escape hatch
 
 - One static Pi tool schema keeps startup and prompt footprint bounded.
 - A generated action catalog provides full known endpoint coverage without registering one tool per endpoint.
+- A normalized snapshot of the official Data 360 Connect OpenAPI document provides independent method, path, parameter, recursive request/response schema, and source-drift evidence. Reviewed promotion waves cover all 414 OpenAPI operations as generated named actions without hand-editing the runtime registry.
 - Connect REST uses the shared Salesforce Connection Module.
 - SQL uses Data 360 Query API V3 by default.
 - Tenant ingestion uses the Data 360 Ingestion API.
 - `api.request` provides day-zero reach for an exact unpromoted endpoint.
-- The official hosted Data 360 MCP and public reference repository provide parity evidence; neither is a runtime dependency.
+- The official Connect OpenAPI document, hosted Data 360 MCP, and public reference repository provide complementary parity evidence; none is a runtime dependency.
 - Results use rich Data 360 Run Cards modeled after SF Apex: API rails, readable SQL, request/response payloads, domain tables, transport fallbacks, evidence, and next steps.
 
 ## Run Cards

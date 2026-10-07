@@ -151,5 +151,55 @@
       "point",
       "p13n"
     ]
+  },
+  {
+    "name": "Data Governance",
+    "summary": "Inspect Data 360 policies, classifications, taxonomies, tags, assignments, and governance jobs.",
+    "keywords": ["governance", "policy", "classification", "taxonomy", "tag", "access grant"]
+  },
+  {
+    "name": "Notebook AI",
+    "summary": "Inspect knowledge spaces, libraries, research sessions, and Notebook AI configuration.",
+    "keywords": ["notebook ai", "knowledge space", "knowledge library", "deep research"]
+  },
+  {
+    "name": "Clean Rooms",
+    "summary": "Inspect privacy-safe Data 360 clean-room providers, collaborations, templates, and results.",
+    "keywords": ["clean room", "collaboration", "provider", "privacy", "zero copy"]
+  },
+  {
+    "name": "Communication Capping",
+    "summary": "Inspect communication-capping configuration, dimensions, rules, and activation targets.",
+    "keywords": ["communication capping", "frequency", "dimension", "rule", "activation target"]
+  },
+  {
+    "name": "Data Custom Code",
+    "summary": "Inspect Data 360 custom-code deployments and executions.",
+    "keywords": ["custom code", "code extension", "deployment", "execution"]
+  },
+  {
+    "name": "Data Shares",
+    "summary": "Inspect Data 360 zero-copy shares and share targets.",
+    "keywords": ["data share", "share target", "zero copy", "sharing"]
+  },
+  {
+    "name": "Document AI",
+    "summary": "Inspect Data 360 Document AI processing configuration.",
+    "keywords": ["document ai", "document processing", "ocr", "extraction"]
+  },
+  {
+    "name": "Agent Configuration",
+    "summary": "Inspect Data 360 agentic configuration exposed by Connect API.",
+    "keywords": ["agent configuration", "agentic", "agent"]
+  },
+  {
+    "name": "Private Network Routes",
+    "summary": "Inspect private network routes used by Data 360 connectivity.",
+    "keywords": ["private network", "route", "connectivity"]
+  },
+  {
+    "name": "Universal ID Lookup",
+    "summary": "Resolve universal identifiers across Data 360 source records.",
+    "keywords": ["universal id", "source record", "lookup", "identity"]
   }
 ]

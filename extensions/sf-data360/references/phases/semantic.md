@@ -21,22 +21,24 @@ Data 360 Semantic phase. Use when managing semantic models, search indexes, retr
 
 ## Phase coverage
 
+- **Agent Configuration** — Inspect Data 360 agentic configuration exposed by Connect API.
 - **MachineLearning** — Inspect and manage Data 360 machine learning models, prediction jobs, model setups, configured models, alerts, and prediction helpers.
+- **Notebook AI** — Inspect knowledge spaces, libraries, research sessions, and Notebook AI configuration.
 - **Semantic Retrieval** — Inspect retrievers, search indexes, and semantic data models for RAG and BI.
 
-- Capabilities: 86 (0 runbook-backed)
-- Safety mix: read=45, safe_post=8, confirmed=26, destructive=7
+- Capabilities: 132 (0 runbook-backed)
+- Safety mix: read=64, safe_post=14, confirmed=40, destructive=14
 
 ## Data 360 family actions
 
-- `sf_data360` `semantic.ml.configured_model.get` (semantic, rest_operation, read) — Get a configured model by id or developer name.
-- `sf_data360` `semantic.ml.configured_model.history.get` (semantic, rest_operation, read) — Get one configured-model history snapshot.
-- `sf_data360` `semantic.ml.configured_model.history.list` (semantic, rest_operation, read) — List history snapshots for a configured model.
-- `sf_data360` `semantic.ml.configured_model.list` (semantic, rest_operation, read) — List configured models. Filter by assetIdOrName + assetType (ModelArtifact|ModelSetup) to find configured models bound to a specific artifact or setup.
-- `sf_data360` `semantic.ml.model_artifact.get` (semantic, rest_operation, read) — Get a trained model artifact. Carries the parameters, inputFields, outputFields, source/setupContainer back-links.
-- `sf_data360` `semantic.ml.model_artifact.list` (semantic, rest_operation, read) — List trained model artifacts. Filter by modelType, sourceType, dataCloudOneVisibility.
-- `sf_data360` `semantic.ml.model_setup.get` (semantic, rest_operation, read) — Get a model-setup container by id or developer name.
-- `sf_data360` `semantic.ml.model_setup.list` (semantic, rest_operation, read) — List model-setup containers. Filters: search, modelType, modelCapability, setupType, connectorType. Pagination via limit/offset.
+- `sf_data360` `semantic.agent_config.get` (semantic, rest_operation, read) — Get agent
+- `sf_data360` `semantic.agent_config.list` (semantic, rest_operation, read) — Get agents
+- `sf_data360` `semantic.knowledge_space.config.get` (semantic, rest_operation, read) — Get knowledge space configuration
+- `sf_data360` `semantic.knowledge_space.config.list` (semantic, rest_operation, read) — Get knowledge space configurations
+- `sf_data360` `semantic.knowledge_space.deep_research.status.get` (semantic, rest_operation, read) — Get deep research status
+- `sf_data360` `semantic.knowledge_space.details.get` (semantic, rest_operation, read) — Get knowledge space details
+- `sf_data360` `semantic.knowledge_space.get` (semantic, rest_operation, read) — Get knowledge space
+- `sf_data360` `semantic.knowledge_space.library.details.get` (semantic, rest_operation, read) — Get knowledge library details
 
 ## Cross-phase routing
 

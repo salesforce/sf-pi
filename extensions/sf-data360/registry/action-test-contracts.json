@@ -1,8 +1,252 @@
 {
   "schemaVersion": 1,
   "generatedFrom": "registry/actions.json",
-  "actionCount": 309,
+  "actionCount": 577,
   "actions": [
+    {
+      "action": "activate.activation_external_platform.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activation-external-platforms/{idOrName}" }
+    },
+    {
+      "action": "activate.activation_external_platform.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activation-external-platforms" }
+    },
+    {
+      "action": "activate.activation_platform.create",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/activation-platforms" }
+    },
+    {
+      "action": "activate.activation_platform.delete",
+      "namespace": "activate",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/activation-platforms/{idOrName}" }
+    },
+    {
+      "action": "activate.activation_platform.disable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-platforms/{idOrName}/actions/disable"
+      }
+    },
+    {
+      "action": "activate.activation_platform.enable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-platforms/{idOrName}/actions/enable"
+      }
+    },
+    {
+      "action": "activate.activation_platform.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activation-platforms/{idOrName}" }
+    },
+    {
+      "action": "activate.activation_platform.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activation-platforms" }
+    },
+    {
+      "action": "activate.activation_platform.metadata.action_source.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "eventName", "source": "asset" },
+        { "name": "idOrName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-platforms/{idOrName}/metadata/action-sources"
+      }
+    },
+    {
+      "action": "activate.activation_platform.metadata.event.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-platforms/{idOrName}/metadata/events"
+      }
+    },
+    {
+      "action": "activate.activation_platform.metadata.partner_object_type.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-platforms/{idOrName}/metadata/partner-object-types"
+      }
+    },
+    {
+      "action": "activate.activation_platform.privacy_type.set",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "idOrName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-platforms/{idOrName}/actions/set-privacy-type"
+      }
+    },
+    {
+      "action": "activate.activation_platform.publish",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-platforms/{idOrName}/actions/publish"
+      }
+    },
+    {
+      "action": "activate.activation_platform.sync.retry",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-platforms/{idOrName}/actions/retry-sync"
+      }
+    },
+    {
+      "action": "activate.activation_platform.update",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/activation-platforms/{idOrName}" }
+    },
+    {
+      "action": "activate.activation_target.ad_account.assign",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationTargetId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-targets/actions/{activationTargetId}/assign-ad-account"
+      }
+    },
+    {
+      "action": "activate.activation_target.available_ad_account.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "activationTargetId", "source": "asset" },
+        { "name": "dataSpace", "source": "asset" },
+        { "name": "platformIdOrName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-targets/{activationTargetId}/available-ad-accounts"
+      }
+    },
     {
       "action": "activate.activation_target.create",
       "namespace": "activate",
@@ -28,6 +272,36 @@
       "endpoint": { "method": "DELETE", "path": "/ssot/activation-targets/{activationTargetId}" }
     },
     {
+      "action": "activate.activation_target.disable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationTargetId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-targets/actions/{activationTargetId}/disable"
+      }
+    },
+    {
+      "action": "activate.activation_target.enable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationTargetId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-targets/actions/{activationTargetId}/enable"
+      }
+    },
+    {
       "action": "activate.activation_target.get",
       "namespace": "activate",
       "safety": "read",
@@ -50,6 +324,115 @@
       "requirements": [],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/activation-targets" }
+    },
+    {
+      "action": "activate.activation_target.metadata.activation_platform.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-targets/metadata/activation-platforms"
+      }
+    },
+    {
+      "action": "activate.activation_target.metadata.communication_capping_dataspace.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-targets/metadata/communication-capping-data-spaces"
+      }
+    },
+    {
+      "action": "activate.activation_target.metadata.dataspace_account.validate",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "accountId", "source": "asset" },
+        { "name": "dataSpace", "source": "asset" },
+        { "name": "platformIdOrName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-targets/metadata/dataspace-account-validation"
+      }
+    },
+    {
+      "action": "activate.activation_target.metadata.mc_enterprise.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activation-targets/metadata/mc-enterprises" }
+    },
+    {
+      "action": "activate.activation_target.metadata.platform_field.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "platformIdOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-targets/metadata/target-platform-fields"
+      }
+    },
+    {
+      "action": "activate.activation_target.partner_object.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "activationTargetId", "source": "asset" },
+        { "name": "partnerObjectType", "source": "literal" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activation-targets/{activationTargetId}/partner-objects"
+      }
+    },
+    {
+      "action": "activate.activation_target.sync.retry",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationTargetId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activation-targets/actions/{activationTargetId}/retry-sync"
+      }
     },
     {
       "action": "activate.activation_target.update",
@@ -79,6 +462,21 @@
       "endpoint": { "method": "POST", "path": "/ssot/activations" }
     },
     {
+      "action": "activate.activation.data.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "X-Chatter-Entity-Encoding", "source": "literal" },
+        { "name": "activationId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activations/{activationId}/data" }
+    },
+    {
       "action": "activate.activation.delete",
       "namespace": "activate",
       "safety": "destructive",
@@ -89,6 +487,45 @@
       "requirements": [{ "name": "activationId", "source": "asset" }],
       "requiredAnyOf": [],
       "endpoint": { "method": "DELETE", "path": "/ssot/activations/{activationId}" }
+    },
+    {
+      "action": "activate.activation.disable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/activations/actions/{activationId}/disable" }
+    },
+    {
+      "action": "activate.activation.enable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/activations/actions/{activationId}/enable" }
+    },
+    {
+      "action": "activate.activation.full_refresh.run",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activations/actions/{activationId}/full-refresh"
+      }
     },
     {
       "action": "activate.activation.get",
@@ -103,6 +540,18 @@
       "endpoint": { "method": "GET", "path": "/ssot/activations/{activationId}" }
     },
     {
+      "action": "activate.activation.history.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "activationId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activations/{activationId}/history" }
+    },
+    {
       "action": "activate.activation.list",
       "namespace": "activate",
       "safety": "read",
@@ -113,6 +562,169 @@
       "requirements": [],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/activations" }
+    },
+    {
+      "action": "activate.activation.metadata.activatable_object_category.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activations/metadata/activatable-data-object-categories"
+      }
+    },
+    {
+      "action": "activate.activation.metadata.channel_preference.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "channel", "source": "literal" },
+        { "name": "dataModelObjectApiName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activations/metadata/channel-preferences" }
+    },
+    {
+      "action": "activate.activation.metadata.channel.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "activateOn", "source": "literal" },
+        { "name": "dataSpace", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activations/metadata/channels" }
+    },
+    {
+      "action": "activate.activation.metadata.consent_dmo.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "activateOn", "source": "literal" },
+        { "name": "dataSpace", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activations/metadata/consent-data-model-objects"
+      }
+    },
+    {
+      "action": "activate.activation.metadata.data_source.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "dataModelObjectApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activations/metadata/data-sources" }
+    },
+    {
+      "action": "activate.activation.metadata.match_boost_identity_provider.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "activateOn", "source": "literal" },
+        { "name": "activationTargetId", "source": "asset" },
+        { "name": "dataSpace", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activations/metadata/match-boost-identity-providers"
+      }
+    },
+    {
+      "action": "activate.activation.metadata.related_attribute_activation_quota.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activations/metadata/limits/related-attribute-activation-quota"
+      }
+    },
+    {
+      "action": "activate.activation.metadata.related_attribute_configuration_limits.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/activations/metadata/limits/related-attribute-configuration-limits"
+      }
+    },
+    {
+      "action": "activate.activation.metadata.streaming_eligibility.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_delivery",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "dataModelObjectApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/activations/metadata/streaming-eligibility" }
+    },
+    {
+      "action": "activate.activation.publish",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/activations/{activationId}/actions/publish" }
+    },
+    {
+      "action": "activate.activation.sync.retry",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "activationId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/activations/actions/{activationId}/retry-sync"
+      }
     },
     {
       "action": "activate.activation.update",
@@ -128,6 +740,502 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "PUT", "path": "/ssot/activations/{activationId}" }
+    },
+    {
+      "action": "activate.clean_room.collaboration_invitation.accept",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "collaborationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-clean-room/collaborations/{collaborationIdOrApiName}/actions/accept-invitation"
+      }
+    },
+    {
+      "action": "activate.clean_room.collaboration_invitation.reject",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "collaborationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-clean-room/collaborations/{collaborationIdOrApiName}/actions/reject-invitation"
+      }
+    },
+    {
+      "action": "activate.clean_room.collaboration.create",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-clean-room/collaborations" }
+    },
+    {
+      "action": "activate.clean_room.collaboration.disable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "collaborationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-clean-room/collaborations/{collaborationIdOrApiName}/actions/disable"
+      }
+    },
+    {
+      "action": "activate.clean_room.collaboration.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-clean-room/collaborations" }
+    },
+    {
+      "action": "activate.clean_room.collaboration.metadata.refresh",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "collaborationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PUT",
+        "path": "/ssot/data-clean-room/collaborations/{collaborationIdOrApiName}/actions/refresh-metadata"
+      }
+    },
+    {
+      "action": "activate.clean_room.collaboration.query_job.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "collaborationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-clean-room/collaborations/{collaborationIdOrApiName}/jobs"
+      }
+    },
+    {
+      "action": "activate.clean_room.collaboration.query.run",
+      "namespace": "activate",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "collaborationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-clean-room/collaborations/{collaborationIdOrApiName}/actions/run"
+      }
+    },
+    {
+      "action": "activate.clean_room.collaboration.result_object.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "collaborationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-clean-room/collaborations/{collaborationIdOrApiName}/result-data-objects"
+      }
+    },
+    {
+      "action": "activate.clean_room.connection.test",
+      "namespace": "activate",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-clean-room/test-connection" }
+    },
+    {
+      "action": "activate.clean_room.provider.create",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-clean-room/providers" }
+    },
+    {
+      "action": "activate.clean_room.provider.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "providerIdOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-clean-room/providers/{providerIdOrName}" }
+    },
+    {
+      "action": "activate.clean_room.provider.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-clean-room/providers" }
+    },
+    {
+      "action": "activate.clean_room.provider.template.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "providerIdOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-clean-room/providers/{providerIdOrName}/templates"
+      }
+    },
+    {
+      "action": "activate.clean_room.specification.create",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-clean-room/specifications" }
+    },
+    {
+      "action": "activate.clean_room.specification.delete",
+      "namespace": "activate",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "specificationIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-clean-room/specifications/{specificationIdOrApiName}"
+      }
+    },
+    {
+      "action": "activate.clean_room.specification.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-clean-room/specifications" }
+    },
+    {
+      "action": "activate.clean_room.template.collaboration.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "useCaseTemplateType", "source": "literal" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-clean-room/templates/{useCaseTemplateType}/collaborations"
+      }
+    },
+    {
+      "action": "activate.clean_room.template.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-clean-room/templates" }
+    },
+    {
+      "action": "activate.communication_capping.activation_target_metadata.delete",
+      "namespace": "activate",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "activationTargetId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/communication-capping/activation-target-capping-metadata/{activationTargetId}"
+      }
+    },
+    {
+      "action": "activate.communication_capping.activation_target_metadata.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "activationTargetId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/communication-capping/activation-target-capping-metadata/{activationTargetId}"
+      }
+    },
+    {
+      "action": "activate.communication_capping.activation_target.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/communication-capping/{id}/activation-targets" }
+    },
+    {
+      "action": "activate.communication_capping.configuration.create",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/communication-capping" }
+    },
+    {
+      "action": "activate.communication_capping.dimension_metadata_to_activation_target.map",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "activationTargetId", "source": "asset" },
+        { "name": "body", "source": "payload" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/communication-capping/activation-target-capping-metadata/{activationTargetId}"
+      }
+    },
+    {
+      "action": "activate.communication_capping.dimension.create",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/communication-capping/dimensions" }
+    },
+    {
+      "action": "activate.communication_capping.dimension.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/communication-capping/dimensions" }
+    },
+    {
+      "action": "activate.communication_capping.dimension.priority.swap",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/communication-capping/dimensions/actions/swap-priority"
+      }
+    },
+    {
+      "action": "activate.communication_capping.dimension.update",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "dimensionId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/communication-capping/dimensions/{dimensionId}"
+      }
+    },
+    {
+      "action": "activate.communication_capping.disable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/communication-capping/{id}/actions/disable" }
+    },
+    {
+      "action": "activate.communication_capping.enable",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/communication-capping/{id}/actions/enable" }
+    },
+    {
+      "action": "activate.communication_capping.get",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/communication-capping/{id}" }
+    },
+    {
+      "action": "activate.communication_capping.rule.create",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "id", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/communication-capping/{id}/rules" }
+    },
+    {
+      "action": "activate.communication_capping.rule.delete",
+      "namespace": "activate",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "ruleIdOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/communication-capping/rules/{ruleIdOrName}" }
+    },
+    {
+      "action": "activate.communication_capping.rule.list",
+      "namespace": "activate",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/communication-capping/{id}/rules" }
+    },
+    {
+      "action": "activate.communication_capping.rule.update",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "id", "source": "asset" },
+        { "name": "ruleIdOrName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/communication-capping/{id}/rules/{ruleIdOrName}"
+      }
+    },
+    {
+      "action": "activate.communication_capping.update",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "id", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/communication-capping/{id}" }
     },
     {
       "action": "activate.data_action_target.create",
@@ -176,6 +1284,18 @@
       "requirements": [],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/data-action-targets" }
+    },
+    {
+      "action": "activate.data_action_target.signing_key.generate",
+      "namespace": "activate",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_delivery",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "apiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-action-targets/{apiName}/signing-key" }
     },
     {
       "action": "activate.data_action_target.update",
@@ -672,6 +1792,18 @@
       "endpoint": { "method": "POST", "path": "/ssot/connections/actions/test" }
     },
     {
+      "action": "connect.connection.action.run",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_credentials",
+      "fixturePolicy": "external_explicit",
+      "requirements": [{ "name": "command", "source": "literal" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/connections/actions/{command}" }
+    },
+    {
       "action": "connect.connection.create",
       "namespace": "connect",
       "safety": "confirmed",
@@ -685,6 +1817,18 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "POST", "path": "/ssot/connections" }
+    },
+    {
+      "action": "connect.connection.database.list",
+      "namespace": "connect",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "external_credentials",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "connectionId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/connections/{connectionId}/databases" }
     },
     {
       "action": "connect.connection.db_schemas.list",
@@ -715,6 +1859,45 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "DELETE", "path": "/ssot/connections/{connectionId}" }
+    },
+    {
+      "action": "connect.connection.endpoint.list",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_credentials",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "connectionId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/connections/{connectionId}/endpoints" }
+    },
+    {
+      "action": "connect.connection.existing_connection_action.run",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_credentials",
+      "fixturePolicy": "external_explicit",
+      "requirements": [
+        { "name": "command", "source": "literal" },
+        { "name": "connectionId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/connections/{connectionId}/actions/{command}" }
+    },
+    {
+      "action": "connect.connection.existing_connection_action.test",
+      "namespace": "connect",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "external_credentials",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "connectionId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/connections/{connectionId}/actions/test" }
     },
     {
       "action": "connect.connection.get",
@@ -778,6 +1961,67 @@
       "endpoint": { "method": "POST", "path": "/ssot/connections/{connectionId}/objects" }
     },
     {
+      "action": "connect.connection.preview.get",
+      "namespace": "connect",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "external_credentials",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "connectionId", "source": "asset" },
+        { "name": "resourceName", "source": "literal" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/connections/{connectionId}/objects/{resourceName}/preview"
+      }
+    },
+    {
+      "action": "connect.connection.replace",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_credentials",
+      "fixturePolicy": "external_explicit",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "connectionId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PUT", "path": "/ssot/connections/{connectionId}" }
+    },
+    {
+      "action": "connect.connection.sitemap.get",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "external_credentials",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "connectionId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/connections/{connectionId}/sitemap" }
+    },
+    {
+      "action": "connect.connection.sitemap.upsert",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "external_credentials",
+      "fixturePolicy": "external_explicit",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "connectionId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PUT", "path": "/ssot/connections/{connectionId}/sitemap" }
+    },
+    {
       "action": "connect.connection.update",
       "namespace": "connect",
       "safety": "confirmed",
@@ -828,6 +2072,186 @@
       "requirements": [{ "name": "connectorName", "source": "literal" }],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/connectors/{connectorName}" }
+    },
+    {
+      "action": "connect.data_share_target.create",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-share-target" }
+    },
+    {
+      "action": "connect.data_share_target.delete",
+      "namespace": "connect",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "nameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-share-target/{nameOrId}" }
+    },
+    {
+      "action": "connect.data_share_target.get",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "nameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-share-target/{nameOrId}" }
+    },
+    {
+      "action": "connect.data_share_target.list",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "targetType", "source": "literal" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-share-targets/{targetType}" }
+    },
+    {
+      "action": "connect.data_share.create",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-share" }
+    },
+    {
+      "action": "connect.data_share.delete",
+      "namespace": "connect",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "nameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-share/{nameOrId}" }
+    },
+    {
+      "action": "connect.data_share.get",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "nameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-share/{nameOrId}" }
+    },
+    {
+      "action": "connect.data_share.link",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "nameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-share/{nameOrId}/actions/link" }
+    },
+    {
+      "action": "connect.data_share.list",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-shares" }
+    },
+    {
+      "action": "connect.data_share.unlink",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "nameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-share/{nameOrId}/actions/unlink" }
+    },
+    {
+      "action": "connect.data_share.update",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "nameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/data-share/{nameOrId}" }
+    },
+    {
+      "action": "connect.private_network_route.create",
+      "namespace": "connect",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/private-network-routes" }
+    },
+    {
+      "action": "connect.private_network_route.delete",
+      "namespace": "connect",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "routeIdOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/private-network-routes/{routeIdOrName}" }
+    },
+    {
+      "action": "connect.private_network_route.get",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "routeIdOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/private-network-routes/{routeIdOrName}" }
+    },
+    {
+      "action": "connect.private_network_route.list",
+      "namespace": "connect",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/private-network-routes" }
     },
     {
       "action": "connect.snowflake_connection.list",
@@ -1008,7 +2432,10 @@
       "mode": "fixture_mutation",
       "capability": "core",
       "fixturePolicy": "owned_only",
-      "requirements": [{ "name": "body", "source": "payload" }],
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "dataspace", "source": "literal" }
+      ],
       "requiredAnyOf": [],
       "endpoint": { "method": "POST", "path": "/ssot/data-model-object-mappings" }
     },
@@ -1092,6 +2519,39 @@
       "endpoint": { "method": "DELETE", "path": "/ssot/data-model-objects/{dmoName}" }
     },
     {
+      "action": "harmonize.dmo.field_mapping.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "objectSourceTargetMapDeveloperName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-model-object-mappings/{objectSourceTargetMapDeveloperName}/field-mappings"
+      }
+    },
+    {
+      "action": "harmonize.dmo.field_mapping.update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "fieldSourceTargetMapDeveloperName", "source": "asset" },
+        { "name": "objectSourceTargetMapDeveloperName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/data-model-object-mappings/{objectSourceTargetMapDeveloperName}/field-mappings/{fieldSourceTargetMapDeveloperName}"
+      }
+    },
+    {
       "action": "harmonize.dmo.get",
       "namespace": "harmonize",
       "safety": "read",
@@ -1114,6 +2574,51 @@
       "requirements": [],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/data-model-objects" }
+    },
+    {
+      "action": "harmonize.dmo.relationship.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "dataModelObjectName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-model-objects/{dataModelObjectName}/relationships"
+      }
+    },
+    {
+      "action": "harmonize.dmo.relationship.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "name", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-model-objects/relationships/{name}" }
+    },
+    {
+      "action": "harmonize.dmo.relationship.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "dataModelObjectName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-model-objects/{dataModelObjectName}/relationships"
+      }
     },
     {
       "action": "harmonize.dmo.update",
@@ -1141,6 +2646,996 @@
       "requirements": [{ "name": "fields", "source": "payload" }],
       "requiredAnyOf": [],
       "endpoint": { "method": "POST", "path": "/local/event-date-recommend" }
+    },
+    {
+      "action": "harmonize.governance.access_policy.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/access-policies" }
+    },
+    {
+      "action": "harmonize.governance.access_policy.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "name", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-governance/access-policies/{name}" }
+    },
+    {
+      "action": "harmonize.governance.access_policy.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "name", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/access-policies/{name}" }
+    },
+    {
+      "action": "harmonize.governance.access_policy.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/access-policies" }
+    },
+    {
+      "action": "harmonize.governance.access_policy.rule.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "name", "source": "asset" },
+        { "name": "ruleName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/access-policies/{name}/rules/{ruleName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.access_policy.rule.replace",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "name", "source": "asset" },
+        { "name": "ruleName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PUT",
+        "path": "/ssot/data-governance/access-policies/{name}/rules/{ruleName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.access_policy.update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "name", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/data-governance/access-policies/{name}" }
+    },
+    {
+      "action": "harmonize.governance.auto_tagging_job.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/auto-tagging-jobs/{id}" }
+    },
+    {
+      "action": "harmonize.governance.auto_tagging_job.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/auto-tagging-jobs" }
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classification-assignments/actions/bulk-create"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classification-assignments/actions/bulk-delete"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/classification-assignments" }
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-governance/classification-assignments/{id}"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/classification-assignments/{id}"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/classification-assignments" }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classification-taxonomies/actions/bulk-create"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classification-taxonomies/actions/bulk-delete"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.bulk_update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classification-taxonomies/actions/bulk-update"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/classification-taxonomies" }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "name", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-governance/classification-taxonomies/{name}"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "name", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/classification-taxonomies/{name}"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/classification-taxonomies" }
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "name", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/data-governance/classification-taxonomies/{name}"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification.assignment.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/classifications/{fullyQualifiedName}/assignments"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classifications/actions/bulk-create"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classifications/actions/bulk-delete"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification.bulk_update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/classifications/actions/bulk-update"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/classifications" }
+    },
+    {
+      "action": "harmonize.governance.classification.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-governance/classifications/{fullyQualifiedName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/classifications/{fullyQualifiedName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.classification.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/classifications" }
+    },
+    {
+      "action": "harmonize.governance.classification.update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/data-governance/classifications/{fullyQualifiedName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/object-access-grants/actions/bulk-create"
+      }
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/object-access-grants/actions/bulk-delete"
+      }
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/object-access-grants" }
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "objectApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-governance/object-access-grants/{objectApiName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "objectApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/object-access-grants/{objectApiName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/object-access-grants" }
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-assignments/actions/bulk-create"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-assignments/actions/bulk-delete"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/tag-assignments" }
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-governance/tag-assignments/{id}" }
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/tag-assignments/{id}" }
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/tag-assignments" }
+    },
+    {
+      "action": "harmonize.governance.tag_detection_instruction.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-taxonomies/{fullyQualifiedName}/detection-instructions/actions/bulk-create"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_detection_instruction.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tags/{fullyQualifiedName}/detection-instructions"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.approve",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-suggestions/actions/approve"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.generate",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-suggestions/actions/generate"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "id", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/tag-suggestions/{id}" }
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/tag-suggestions" }
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.reject",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-suggestions/actions/reject"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.active_detection_tag.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/tag-taxonomies/{fullyQualifiedName}/tags-with-active-detection-instructions"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-taxonomies/actions/bulk-create"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-taxonomies/actions/bulk-delete"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.bulk_update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-governance/tag-taxonomies/actions/bulk-update"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/tag-taxonomies" }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-governance/tag-taxonomies/{fullyQualifiedName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/tag-taxonomies/{fullyQualifiedName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/tag-taxonomies" }
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/data-governance/tag-taxonomies/{fullyQualifiedName}"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag.assignment.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/tags/{fullyQualifiedName}/assignments"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag.bulk_create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/tags/actions/bulk-create" }
+    },
+    {
+      "action": "harmonize.governance.tag.bulk_delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/tags/actions/bulk-delete" }
+    },
+    {
+      "action": "harmonize.governance.tag.bulk_update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/tags/actions/bulk-update" }
+    },
+    {
+      "action": "harmonize.governance.tag.create",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/tags" }
+    },
+    {
+      "action": "harmonize.governance.tag.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-governance/tags/{fullyQualifiedName}" }
+    },
+    {
+      "action": "harmonize.governance.tag.detection_instruction.delete",
+      "namespace": "harmonize",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/data-governance/tags/{fullyQualifiedName}/detection-instructions/active"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag.detection_instruction.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-governance/tags/{fullyQualifiedName}/detection-instructions/active"
+      }
+    },
+    {
+      "action": "harmonize.governance.tag.get",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/tags/{fullyQualifiedName}" }
+    },
+    {
+      "action": "harmonize.governance.tag.list",
+      "namespace": "harmonize",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-governance/tags" }
+    },
+    {
+      "action": "harmonize.governance.tag.propagate",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-governance/tags/actions/propagate" }
+    },
+    {
+      "action": "harmonize.governance.tag.update",
+      "namespace": "harmonize",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "fullyQualifiedName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/data-governance/tags/{fullyQualifiedName}" }
     },
     {
       "action": "harmonize.ir_full.update",
@@ -1308,7 +3803,10 @@
       "mode": "fixture_mutation",
       "capability": "core",
       "fixturePolicy": "owned_only",
-      "requirements": [{ "name": "body", "source": "payload" }],
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "dataspace", "source": "literal" }
+      ],
       "requiredAnyOf": [],
       "endpoint": { "method": "POST", "path": "/ssot/data-model-object-mappings" }
     },
@@ -1681,6 +4179,99 @@
       "requiredAnyOf": []
     },
     {
+      "action": "prepare.custom_code.create",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-custom-code" }
+    },
+    {
+      "action": "prepare.custom_code.delete",
+      "namespace": "prepare",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "customCodeNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-custom-code/{customCodeNameOrId}" }
+    },
+    {
+      "action": "prepare.custom_code.execution.get",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "customCodeExecutionId", "source": "asset" },
+        { "name": "customCodeNameOrId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-custom-code/{customCodeNameOrId}/executions/{customCodeExecutionId}"
+      }
+    },
+    {
+      "action": "prepare.custom_code.execution.list",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "customCodeNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-custom-code/{customCodeNameOrId}/executions"
+      }
+    },
+    {
+      "action": "prepare.custom_code.get",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "customCodeNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-custom-code/{customCodeNameOrId}" }
+    },
+    {
+      "action": "prepare.custom_code.list",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-custom-code" }
+    },
+    {
+      "action": "prepare.custom_code.update",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "customCodeNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/data-custom-code/{customCodeNameOrId}" }
+    },
+    {
       "action": "prepare.datakit_component_deps",
       "namespace": "prepare",
       "safety": "read",
@@ -1690,6 +4281,7 @@
       "fixturePolicy": "none",
       "requirements": [
         { "name": "componentId", "source": "asset" },
+        { "name": "componentType", "source": "literal" },
         { "name": "dataKitId", "source": "asset" }
       ],
       "requiredAnyOf": [],
@@ -1744,6 +4336,42 @@
       "endpoint": { "method": "GET", "path": "/ssot/data-kits/deployment-jobs/{jobId}" }
     },
     {
+      "action": "prepare.datakit.component.update",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "data_kits",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataKitDevName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/data-kits/{dataKitDevName}" }
+    },
+    {
+      "action": "prepare.datakit.create",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "data_kits",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-kits" }
+    },
+    {
+      "action": "prepare.datakit.delete",
+      "namespace": "prepare",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "data_kits",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataKitDevName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-kits/{dataKitDevName}" }
+    },
+    {
       "action": "prepare.datakit.deploy",
       "namespace": "prepare",
       "safety": "confirmed",
@@ -1752,6 +4380,7 @@
       "capability": "data_kits",
       "fixturePolicy": "owned_only",
       "requirements": [
+        { "name": "asyncMode", "source": "literal" },
         { "name": "body", "source": "payload" },
         { "name": "dataKitDevName", "source": "asset" }
       ],
@@ -1803,6 +4432,7 @@
       "capability": "data_kits",
       "fixturePolicy": "owned_only",
       "requirements": [
+        { "name": "asyncMode", "source": "literal" },
         { "name": "body", "source": "payload" },
         { "name": "dataKitId", "source": "asset" }
       ],
@@ -1823,6 +4453,24 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "PUT", "path": "/ssot/data-spaces/{dataSpaceName}/members" }
+    },
+    {
+      "action": "prepare.dataspace_member.get",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "data_spaces",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "dataSpaceMemberObjectName", "source": "asset" },
+        { "name": "idOrName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-spaces/{idOrName}/members/{dataSpaceMemberObjectName}"
+      }
     },
     {
       "action": "prepare.dataspace_member.list",
@@ -1850,6 +4498,24 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "DELETE", "path": "/ssot/data-spaces/{dataSpaceName}/members" }
+    },
+    {
+      "action": "prepare.dataspace_member.sync",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "data_spaces",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "dataSpaceMemberObjectName", "source": "asset" },
+        { "name": "idOrName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-spaces/{idOrName}/members/{dataSpaceMemberObjectName}/actions/retry"
+      }
     },
     {
       "action": "prepare.dataspace.create",
@@ -1898,6 +4564,18 @@
       "requirements": [],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/data-spaces" }
+    },
+    {
+      "action": "prepare.dataspace.sync",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "data_spaces",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-spaces/{idOrName}/actions/retry" }
     },
     {
       "action": "prepare.dataspace.update",
@@ -2012,6 +4690,141 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "PATCH", "path": "/ssot/data-lake-objects/{dloName}" }
+    },
+    {
+      "action": "prepare.document_ai.configuration_data.extract",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/document-processing/actions/extract-data" }
+    },
+    {
+      "action": "prepare.document_ai.configuration.create",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/document-processing/configurations" }
+    },
+    {
+      "action": "prepare.document_ai.configuration.delete",
+      "namespace": "prepare",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/document-processing/configurations/{idOrApiName}"
+      }
+    },
+    {
+      "action": "prepare.document_ai.configuration.get",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "idOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/document-processing/configurations/{idOrApiName}"
+      }
+    },
+    {
+      "action": "prepare.document_ai.configuration.list",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/document-processing/configurations" }
+    },
+    {
+      "action": "prepare.document_ai.configuration.update",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "idOrApiName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "PATCH",
+        "path": "/ssot/document-processing/configurations/{idOrApiName}"
+      }
+    },
+    {
+      "action": "prepare.document_ai.global_config.get",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/document-processing/global-config" }
+    },
+    {
+      "action": "prepare.document_ai.process.run",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "idOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/document-processing/configurations/{idOrApiName}/actions/run"
+      }
+    },
+    {
+      "action": "prepare.document_ai.schema.detect",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/document-processing/actions/detect-schema" }
+    },
+    {
+      "action": "prepare.document_ai.schema.generate",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/document-processing/actions/generate-schema" }
     },
     {
       "action": "prepare.ingest_job.close",
@@ -2190,6 +5003,21 @@
       "endpoint": { "method": "GET", "path": "/ssot/data-transforms/{transformId}/schedule" }
     },
     {
+      "action": "prepare.transform.cancel",
+      "namespace": "prepare",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataTransformNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-transforms/{dataTransformNameOrId}/actions/cancel"
+      }
+    },
+    {
       "action": "prepare.transform.create",
       "namespace": "prepare",
       "safety": "confirmed",
@@ -2250,6 +5078,36 @@
       "endpoint": { "method": "POST", "path": "/ssot/data-transforms-validation" }
     },
     {
+      "action": "prepare.transform.rebuild",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataTransformNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-transforms/{dataTransformNameOrId}/actions/rebuild"
+      }
+    },
+    {
+      "action": "prepare.transform.retry",
+      "namespace": "prepare",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataTransformNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-transforms/{dataTransformNameOrId}/actions/retry"
+      }
+    },
+    {
       "action": "prepare.transform.run",
       "namespace": "prepare",
       "safety": "confirmed",
@@ -2260,6 +5118,36 @@
       "requirements": [{ "name": "transformId", "source": "asset" }],
       "requiredAnyOf": [],
       "endpoint": { "method": "POST", "path": "/ssot/data-transforms/{transformId}/actions/run" }
+    },
+    {
+      "action": "prepare.transform.run_history.list",
+      "namespace": "prepare",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "dataTransformNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/data-transforms/{dataTransformNameOrId}/run-history"
+      }
+    },
+    {
+      "action": "prepare.transform.status.refresh",
+      "namespace": "prepare",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "dataTransformNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/data-transforms/{dataTransformNameOrId}/actions/refresh-status"
+      }
     },
     {
       "action": "prepare.transform.update",
@@ -2289,6 +5177,54 @@
       "endpoint": { "method": "POST", "path": "/ssot/data-transforms-validation" }
     },
     {
+      "action": "query.datagraph.create",
+      "namespace": "query",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-graphs" }
+    },
+    {
+      "action": "query.datagraph.data_graph.activate",
+      "namespace": "query",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataGraphName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-graphs/{dataGraphName}/actions/activate" }
+    },
+    {
+      "action": "query.datagraph.delete",
+      "namespace": "query",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataGraphName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/data-graphs/{dataGraphName}" }
+    },
+    {
+      "action": "query.datagraph.get",
+      "namespace": "query",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "dataGraphName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/data-graphs/{dataGraphName}" }
+    },
+    {
       "action": "query.datagraph.lookup",
       "namespace": "query",
       "safety": "read",
@@ -2296,7 +5232,10 @@
       "mode": "asset_read",
       "capability": "core",
       "fixturePolicy": "none",
-      "requirements": [{ "name": "entity", "source": "asset" }],
+      "requirements": [
+        { "name": "entity", "source": "asset" },
+        { "name": "lookupKeys", "source": "literal" }
+      ],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/data-graphs/data/{entity}" }
     },
@@ -2327,6 +5266,18 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "GET", "path": "/ssot/data-graphs/data/{entity}/{id}" }
+    },
+    {
+      "action": "query.datagraph.refresh",
+      "namespace": "query",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "core",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "dataGraphName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/data-graphs/{dataGraphName}/actions/refresh" }
     },
     {
       "action": "query.insight.metadata_get",
@@ -2401,6 +5352,44 @@
       "endpoint": { "method": "POST", "path": "/connect/search/metadata/results" }
     },
     {
+      "action": "query.profile.calculated_insight.get",
+      "namespace": "query",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "ciName", "source": "asset" },
+        { "name": "dataModelName", "source": "asset" },
+        { "name": "id", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/profile/{dataModelName}/{id}/calculated-insights/{ciName}"
+      }
+    },
+    {
+      "action": "query.profile.child.search_key.get",
+      "namespace": "query",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "childDataModelName", "source": "asset" },
+        { "name": "dataModelName", "source": "asset" },
+        { "name": "id", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/profile/{dataModelName}/{id}/{childDataModelName}"
+      }
+    },
+    {
       "action": "query.profile.metadata",
       "namespace": "query",
       "safety": "read",
@@ -2441,6 +5430,21 @@
       "endpoint": { "method": "GET", "path": "/ssot/profile/{dataModelName}" }
     },
     {
+      "action": "query.profile.search_key.get",
+      "namespace": "query",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "dataModelName", "source": "asset" },
+        { "name": "id", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/profile/{dataModelName}/{id}" }
+    },
+    {
       "action": "query.sql.cancel",
       "namespace": "query",
       "safety": "destructive",
@@ -2476,6 +5480,18 @@
       "fixturePolicy": "none",
       "requirements": [{ "name": "queryId", "source": "asset" }],
       "requiredAnyOf": []
+    },
+    {
+      "action": "query.sql.next_batch.get",
+      "namespace": "query",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "query_v3",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "nextBatchId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/queryv2/{nextBatchId}" }
     },
     {
       "action": "query.sql.rows",
@@ -2514,6 +5530,30 @@
       "endpoint": { "method": "GET", "path": "/ssot/query-sql/{queryId}" }
     },
     {
+      "action": "query.sql.v1.query",
+      "namespace": "query",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "query_v3",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/query" }
+    },
+    {
+      "action": "query.sql.v2.query",
+      "namespace": "query",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "query_v3",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/queryv2" }
+    },
+    {
       "action": "query.sql.verify_rows",
       "namespace": "query",
       "safety": "safe_post",
@@ -2523,6 +5563,26 @@
       "fixturePolicy": "none",
       "requirements": [{ "name": "dloName", "source": "asset" }],
       "requiredAnyOf": []
+    },
+    {
+      "action": "query.universal_id.lookup",
+      "namespace": "query",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "dataSourceId", "source": "asset" },
+        { "name": "dataSourceObjectId", "source": "asset" },
+        { "name": "entityName", "source": "asset" },
+        { "name": "sourceRecordId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/universalIdLookup/{entityName}/{dataSourceId}/{dataSourceObjectId}/{sourceRecordId}"
+      }
     },
     {
       "action": "segment.ci.create",
@@ -2651,6 +5711,21 @@
       "endpoint": { "method": "POST", "path": "/ssot/calculated-insights/actions/validate" }
     },
     {
+      "action": "segment.count",
+      "namespace": "segment",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "segmentApiName", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/segments/{segmentApiName}/actions/count" }
+    },
+    {
       "action": "segment.create",
       "namespace": "segment",
       "safety": "confirmed",
@@ -2711,6 +5786,18 @@
       "endpoint": { "method": "GET", "path": "/ssot/segments" }
     },
     {
+      "action": "segment.members.list",
+      "namespace": "segment",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "core",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "segmentApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/segments/{segmentApiName}/members" }
+    },
+    {
       "action": "segment.publish",
       "namespace": "segment",
       "safety": "confirmed",
@@ -2736,6 +5823,534 @@
       ],
       "requiredAnyOf": [],
       "endpoint": { "method": "PATCH", "path": "/ssot/segments/{segmentId}" }
+    },
+    {
+      "action": "semantic.agent_config.create",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/agentic/agent" }
+    },
+    {
+      "action": "semantic.agent_config.delete",
+      "namespace": "semantic",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "agentIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "DELETE", "path": "/ssot/agentic/agent/{agentIdOrApiName}" }
+    },
+    {
+      "action": "semantic.agent_config.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "agentIdOrApiName", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/agentic/agent/{agentIdOrApiName}" }
+    },
+    {
+      "action": "semantic.agent_config.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/agentic/agents" }
+    },
+    {
+      "action": "semantic.knowledge_space.config.delete",
+      "namespace": "semantic",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "knowledgeSpaceConfigApiNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/knowledge-space/config/{knowledgeSpaceConfigApiNameOrId}"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.config.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "knowledgeSpaceConfigApiNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/knowledge-space/config/{knowledgeSpaceConfigApiNameOrId}"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.config.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/knowledge-space/config" }
+    },
+    {
+      "action": "semantic.knowledge_space.configuration.create",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/config" }
+    },
+    {
+      "action": "semantic.knowledge_space.create",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space" }
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research_as_knowledge_source.add",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "knowledgeSpaceApiNameOrId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/knowledge-space/space/{knowledgeSpaceApiNameOrId}/deep-research/source"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research_report.get",
+      "namespace": "semantic",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "researchId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/knowledge-space/deep-research/{researchId}/report"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.cancel",
+      "namespace": "semantic",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "researchId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/knowledge-space/deep-research/{researchId}/cancel"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.plan.update",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "researchId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/knowledge-space/deep-research/{researchId}" }
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.run",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "researchId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/knowledge-space/deep-research/{researchId}/run"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.status.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "researchId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/knowledge-space/deep-research/{researchId}" }
+    },
+    {
+      "action": "semantic.knowledge_space.delete",
+      "namespace": "semantic",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "knowledgeSpaceApiNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/knowledge-space/{knowledgeSpaceApiNameOrId}"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.details.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "knowledgeSpaceApiNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/knowledge-space/{knowledgeSpaceApiNameOrId}/details"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.file_chunk_summary.get",
+      "namespace": "semantic",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/summary" }
+    },
+    {
+      "action": "semantic.knowledge_space.file_status.get",
+      "namespace": "semantic",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/files/status" }
+    },
+    {
+      "action": "semantic.knowledge_space.file.index",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/index-files" }
+    },
+    {
+      "action": "semantic.knowledge_space.file.remove",
+      "namespace": "semantic",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/remove-files" }
+    },
+    {
+      "action": "semantic.knowledge_space.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "knowledgeSpaceApiNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/knowledge-space/{knowledgeSpaceApiNameOrId}" }
+    },
+    {
+      "action": "semantic.knowledge_space.knowledge_for_import.get",
+      "namespace": "semantic",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/getKnowledgeForImport" }
+    },
+    {
+      "action": "semantic.knowledge_space.knowledge_library.search",
+      "namespace": "semantic",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/library/search" }
+    },
+    {
+      "action": "semantic.knowledge_space.knowledge.import",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/importKnowledge" }
+    },
+    {
+      "action": "semantic.knowledge_space.library.create",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/library" }
+    },
+    {
+      "action": "semantic.knowledge_space.library.details.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "libraryId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/knowledge-space/library/{libraryId}/details" }
+    },
+    {
+      "action": "semantic.knowledge_space.library.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/knowledge-space/library" }
+    },
+    {
+      "action": "semantic.knowledge_space.library.remove",
+      "namespace": "semantic",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/library/remove-library" }
+    },
+    {
+      "action": "semantic.knowledge_space.library.update",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "id", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/knowledge-space/library/{id}" }
+    },
+    {
+      "action": "semantic.knowledge_space.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/knowledge-space" }
+    },
+    {
+      "action": "semantic.knowledge_space.presigned_url.get",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/presigned-urls" }
+    },
+    {
+      "action": "semantic.knowledge_space.provision",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "body", "source": "payload" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/knowledge-space/provision" }
+    },
+    {
+      "action": "semantic.knowledge_space.session.conversation.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "knowledgeSpaceApiNameOrId", "source": "asset" },
+        { "name": "knowledgeSpaceSessionId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/knowledge-space/{knowledgeSpaceApiNameOrId}/session/{knowledgeSpaceSessionId}/conversation"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.session.create",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "knowledgeSpaceApiNameOrId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "POST",
+        "path": "/ssot/knowledge-space/{knowledgeSpaceApiNameOrId}/sessions"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.session.delete",
+      "namespace": "semantic",
+      "safety": "destructive",
+      "implementation": "endpoint",
+      "mode": "fixture_cleanup",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [{ "name": "knowledgeSpaceSessionId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "DELETE",
+        "path": "/ssot/knowledge-space/session/{knowledgeSpaceSessionId}"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.session.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "knowledgeSpaceSessionId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/knowledge-space/session/{knowledgeSpaceSessionId}"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.session.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "semantic",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "knowledgeSpaceApiNameOrId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/knowledge-space/{knowledgeSpaceApiNameOrId}/sessions"
+      }
+    },
+    {
+      "action": "semantic.knowledge_space.update",
+      "namespace": "semantic",
+      "safety": "confirmed",
+      "implementation": "endpoint",
+      "mode": "fixture_mutation",
+      "capability": "semantic",
+      "fixturePolicy": "owned_only",
+      "requirements": [
+        { "name": "body", "source": "payload" },
+        { "name": "knowledgeSpaceApiNameOrId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "PATCH", "path": "/ssot/knowledge-space/{knowledgeSpaceApiNameOrId}" }
     },
     {
       "action": "semantic.ml.alert.update",
@@ -3194,6 +6809,30 @@
       }
     },
     {
+      "action": "semantic.ml.prediction_job.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "ml",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "jobId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/machine-learning/jobs/{jobId}" }
+    },
+    {
+      "action": "semantic.ml.prediction_job.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "catalog_read",
+      "capability": "ml",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/machine-learning/jobs" }
+    },
+    {
       "action": "semantic.ml.prediction_job.run",
       "namespace": "semantic",
       "safety": "confirmed",
@@ -3204,6 +6843,33 @@
       "requirements": [{ "name": "body", "source": "payload" }],
       "requiredAnyOf": [],
       "endpoint": { "method": "POST", "path": "/ssot/machine-learning/jobs" }
+    },
+    {
+      "action": "semantic.ml.prediction_job.task.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "ml",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "jobId", "source": "asset" },
+        { "name": "taskId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/machine-learning/jobs/{jobId}/tasks/{taskId}" }
+    },
+    {
+      "action": "semantic.ml.prediction_job.task.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "ml",
+      "fixturePolicy": "none",
+      "requirements": [{ "name": "jobId", "source": "asset" }],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "GET", "path": "/ssot/machine-learning/jobs/{jobId}/tasks" }
     },
     {
       "action": "semantic.ml.query_data_profile",
@@ -3252,6 +6918,18 @@
       "requirements": [{ "name": "body", "source": "payload" }],
       "requiredAnyOf": [],
       "endpoint": { "method": "POST", "path": "/ssot/machine-learning/query-setup-fields" }
+    },
+    {
+      "action": "semantic.ml.retriever.review",
+      "namespace": "semantic",
+      "safety": "safe_post",
+      "implementation": "endpoint",
+      "mode": "validation_post",
+      "capability": "ml",
+      "fixturePolicy": "none",
+      "requirements": [],
+      "requiredAnyOf": [],
+      "endpoint": { "method": "POST", "path": "/ssot/machine-learning/retrievers/actions/review" }
     },
     {
       "action": "semantic.ml.setup_version.create",
@@ -3320,6 +6998,43 @@
       "endpoint": {
         "method": "GET",
         "path": "/ssot/machine-learning/model-setups/{idOrName}/setup-versions"
+      }
+    },
+    {
+      "action": "semantic.ml.setup_version.partition.get",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "ml",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "modelSetupIdOrName", "source": "asset" },
+        { "name": "modelSetupPartitionId", "source": "asset" },
+        { "name": "modelSetupVersionId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/machine-learning/model-setups/{modelSetupIdOrName}/setup-versions/{modelSetupVersionId}/partitions/{modelSetupPartitionId}"
+      }
+    },
+    {
+      "action": "semantic.ml.setup_version.partition.list",
+      "namespace": "semantic",
+      "safety": "read",
+      "implementation": "endpoint",
+      "mode": "asset_read",
+      "capability": "ml",
+      "fixturePolicy": "none",
+      "requirements": [
+        { "name": "modelSetupIdOrName", "source": "asset" },
+        { "name": "modelSetupVersionId", "source": "asset" }
+      ],
+      "requiredAnyOf": [],
+      "endpoint": {
+        "method": "GET",
+        "path": "/ssot/machine-learning/model-setups/{modelSetupIdOrName}/setup-versions/{modelSetupVersionId}/partitions"
       }
     },
     {

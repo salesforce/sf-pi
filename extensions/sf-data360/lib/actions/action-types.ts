@@ -38,6 +38,7 @@ export interface Data360ActionDefinition {
   internalAction: string;
   phase: string;
   family: string;
+  promotionWave?: string;
   description: string;
   safety: D360OperationSafety;
   requiredParams: string[];
@@ -61,6 +62,7 @@ export interface Data360InternalActionDefinition {
   namespace?: Data360Namespace;
   phase: string;
   family: string;
+  promotionWave?: string;
   description: string;
   safety: D360OperationSafety;
   requiredParams: string[];

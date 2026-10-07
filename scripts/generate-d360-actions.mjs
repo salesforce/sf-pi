@@ -132,12 +132,15 @@ function buildActions() {
     (a, b) => (a.origin === "upstream" ? 0 : 1) - (b.origin === "upstream" ? 0 : 1),
   );
   for (const operation of orderedOperations) {
-    const rule = ruleForOperation(operation);
+    const promotion = operation.promotion ?? {};
+    const rule = operation.promotion
+      ? { namespace: promotion.namespace, phase: promotion.phase }
+      : ruleForOperation(operation);
     if (!rule) throw new Error(`No action rule matched ${operation.name} (${operation.family})`);
     const override = operationOverrides[operation.name] ?? {};
-    const internalOwner = override.namespace ?? rule.namespace;
+    const internalOwner = override.namespace ?? promotion.namespace ?? rule.namespace;
     const namespace = namespaceFor(internalOwner);
-    const internalAction = override.action ?? deriveAction(operation.name);
+    const internalAction = override.action ?? promotion.action ?? deriveAction(operation.name);
     if (PURE_COMPATIBILITY_ALIASES.has(operation.name)) {
       compatibilityOperations.push({ operation, namespace, internalAction });
       continue;
@@ -157,8 +160,9 @@ function buildActions() {
       action,
       internalOwner,
       internalAction,
-      phase: override.phase ?? rule.phase,
+      phase: override.phase ?? promotion.phase ?? rule.phase,
       family: operation.family,
+      ...(promotion.wave ? { promotionWave: promotion.wave } : {}),
       operationId: operation.name,
       capability: operation.name,
       description: override.description ?? operation.description,

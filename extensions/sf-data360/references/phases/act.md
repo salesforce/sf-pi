@@ -22,23 +22,25 @@ Data 360 Act phase. Use when managing activations, activation targets, downstrea
 ## Phase coverage
 
 - **Activation** — Send audiences downstream through activation targets.
+- **Clean Rooms** — Inspect privacy-safe Data 360 clean-room providers, collaborations, templates, and results.
+- **Communication Capping** — Inspect communication-capping configuration, dimensions, rules, and activation targets.
 - **DataAction** — Inspect data actions and action targets.
 - **Personalization** — Configure downstream personalization experiences, transformers, schemas, points, mobile previews, and engagement signals.
 - **Transforms and Actions** — Inspect SQL transforms and real-time data actions.
 
-- Capabilities: 42 (0 runbook-backed)
-- Safety mix: read=18, safe_post=0, confirmed=16, destructive=8
+- Capabilities: 121 (0 runbook-backed)
+- Safety mix: read=57, safe_post=2, confirmed=50, destructive=12
 
 ## Data 360 family actions
 
-- `sf_data360` `activate.activation_target.get` (activate, rest_operation, read) — Get target details.
-- `sf_data360` `activate.activation_target.list` (activate, rest_operation, read) — List activation targets.
-- `sf_data360` `activate.activation.get` (activate, rest_operation, read) — Get activation details.
-- `sf_data360` `activate.activation.list` (activate, rest_operation, read) — List activations.
-- `sf_data360` `activate.data_action_target.get` (activate, rest_operation, read) — Get target details.
-- `sf_data360` `activate.data_action_target.list` (activate, rest_operation, read) — List action targets.
-- `sf_data360` `activate.data_action.get` (activate, rest_operation, read) — Get action details.
-- `sf_data360` `activate.data_action.list` (activate, rest_operation, read) — List data actions.
+- `sf_data360` `activate.activation_external_platform.get` (activate, rest_operation, read) — Get activation external platform
+- `sf_data360` `activate.activation_external_platform.list` (activate, rest_operation, read) — Get activation external platforms
+- `sf_data360` `activate.activation_platform.get` (activate, rest_operation, read) — Get activation platform
+- `sf_data360` `activate.activation_platform.list` (activate, rest_operation, read) — Get activation platforms
+- `sf_data360` `activate.activation_platform.metadata.action_source.list` (activate, rest_operation, read) — Get action sources for an event
+- `sf_data360` `activate.activation_platform.metadata.event.list` (activate, rest_operation, read) — Get events for an activation platform
+- `sf_data360` `activate.activation_platform.metadata.partner_object_type.list` (activate, rest_operation, read) — Get partner-object types for an activation platform
+- `sf_data360` `activate.activation_target.available_ad_account.list` (activate, rest_operation, read) — Get available ad accounts
 
 ## Cross-phase routing
 

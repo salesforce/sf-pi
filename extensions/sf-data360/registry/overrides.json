@@ -1,4 +1,10 @@
 {
+  "connect_openapi_activate_clean_room_connection_test": {
+    "requiredParams": ["body"],
+    "optionalParams": [],
+    "safety": "safe_post",
+    "tips": "Pass a reviewed consumerOrgId and connector attributes. This endpoint validates connectivity and does not persist a clean-room resource."
+  },
   "d360_query_sql": {
     "description": "Run Data 360 SQL through Query API V3 by default, with explicit Connect fallback when tenant token exchange is unavailable.",
     "safety": "safe_post",
@@ -286,7 +292,7 @@
     "optionalParams": ["dataspace"]
   },
   "d360_datakit_component_deps": {
-    "requiredParams": ["dataKitId", "componentId"],
+    "requiredParams": ["dataKitId", "componentId", "componentType"],
     "safety": "read",
     "optionalParams": ["dataspace"]
   },
@@ -581,8 +587,8 @@
     "tips": "Use dry_run first; DLO schema changes can affect data streams, mappings, and search indexes."
   },
   "d360_dmo_mapping_create": {
-    "requiredParams": ["body"],
-    "optionalParams": ["dataspace"],
+    "requiredParams": ["body", "dataspace"],
+    "optionalParams": [],
     "safety": "confirmed",
     "tips": "Call d360_dlo_get and d360_dmo_get first to verify exact source/target field API names and types. Use dry_run first."
   },
@@ -860,8 +866,9 @@
     "tips": "Use this to discover dataKitId values before component, manifest, or deployment-status operations."
   },
   "d360_datakit_deploy": {
-    "requiredParams": ["dataKitDevName", "body"],
-    "optionalParams": ["dataspace", "asyncMode", "fbdkAccessibleInLob"],
+    "requiredParams": ["dataKitDevName", "asyncMode", "body"],
+    "optionalParams": ["dataspace", "fbdkAccessibleInLob"],
+    "parameterSchemas": { "asyncMode": { "type": "boolean" } },
     "safety": "confirmed",
     "tips": "Review the manifest, component dependencies, and target dataspace before deployment. Use dry_run before execution."
   },
@@ -876,10 +883,10 @@
     "tips": "Search index creation requires an embedding-capable model artifact; chat-completion-only orgs should report readiness as feature gated."
   },
   "d360_datagraph_lookup": {
-    "requiredParams": ["entity"],
-    "optionalParams": ["dataspace", "lookupKeys", "live", "limit"],
+    "requiredParams": ["entity", "lookupKeys"],
+    "optionalParams": ["dataspace", "live", "limit"],
     "safety": "read",
-    "tips": "Keep lookups bounded with lookupKeys or limit. Set live=true only when real-time graph lookup is required."
+    "tips": "Pass lookupKeys to identify the graph record. Keep lookups bounded with limit, and set live=true only when real-time graph lookup is required."
   },
   "d360_segment_list": {
     "optionalParams": ["limit", "offset", "dataspace"],
@@ -894,8 +901,8 @@
     "safety": "read"
   },
   "d360_standard_mapping_create": {
-    "requiredParams": ["body"],
-    "optionalParams": ["dataspace"],
+    "requiredParams": ["body", "dataspace"],
+    "optionalParams": [],
     "safety": "confirmed",
     "tips": "Review standard mapping preview output or verified DLO/DMO field details first. The `sf_data360` endpoint action sends the reviewed mapping payload; upstream MCP local bulk lookup is not embedded here. Use dry_run before execution."
   },
@@ -982,8 +989,9 @@
     "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_datakit_undeploy": {
-    "requiredParams": ["dataKitId", "body"],
+    "requiredParams": ["dataKitId", "asyncMode", "body"],
     "optionalParams": ["dataspace"],
+    "parameterSchemas": { "asyncMode": { "type": "boolean" } },
     "safety": "destructive",
     "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },

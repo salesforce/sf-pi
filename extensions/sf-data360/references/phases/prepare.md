@@ -22,26 +22,28 @@ Data 360 Prepare phase. Use when managing DLOs, data streams, data transforms, d
 ## Phase coverage
 
 - **DLO** — Read Data Lake Object catalog and raw lake schemas.
+- **Data Custom Code** — Inspect Data 360 custom-code deployments and executions.
 - **DataKit** — Inspect packaged Data 360 data kits and deployment bundles.
 - **DataStreams** — Inspect Data 360 ingestion streams.
 - **DataTransform** — Inspect SQL-based data transforms and schedules.
 - **Dataspace** — Inspect data spaces and data-space membership.
+- **Document AI** — Inspect Data 360 Document AI processing configuration.
 - **Ingestion** — Discover connectors, connections, data streams, and ingestion health surfaces.
 - **Transforms and Actions** — Inspect SQL transforms and real-time data actions.
 
-- Capabilities: 46 (0 runbook-backed)
-- Safety mix: read=20, safe_post=2, confirmed=18, destructive=6
+- Capabilities: 74 (0 runbook-backed)
+- Safety mix: read=29, safe_post=3, confirmed=32, destructive=10
 
 ## Data 360 family actions
 
 - `sf_data360` `prepare.csv_schema.infer` (prepare, local, read) — Infer an Ingestion API schema from a local CSV file.
+- `sf_data360` `prepare.custom_code.execution.get` (prepare, rest_operation, read) — Get custom code execution
+- `sf_data360` `prepare.custom_code.execution.list` (prepare, rest_operation, read) — Get custom code executions
+- `sf_data360` `prepare.custom_code.get` (prepare, rest_operation, read) — Get custom code deployment
+- `sf_data360` `prepare.custom_code.list` (prepare, rest_operation, read) — Get custom code deployments
 - `sf_data360` `prepare.datakit_component_deps` (prepare, rest_operation, read) — Get component dependencies.
 - `sf_data360` `prepare.datakit_component.status` (prepare, rest_operation, read) — Get component deployment status.
 - `sf_data360` `prepare.datakit_components` (prepare, rest_operation, read) — List org components available for inclusion in data kits.
-- `sf_data360` `prepare.datakit_deploy.status` (prepare, rest_operation, read) — Get deployment job status.
-- `sf_data360` `prepare.datakit.get` (prepare, rest_operation, read) — Get DataKit details.
-- `sf_data360` `prepare.datakit.list` (prepare, rest_operation, read) — List available DataKits.
-- `sf_data360` `prepare.datakit.manifest` (prepare, rest_operation, read) — Get DataKit manifest.
 
 ## Cross-phase routing
 

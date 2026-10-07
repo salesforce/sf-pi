@@ -24,6 +24,7 @@ export interface D360Operation {
   safety: D360OperationSafety;
   requiredParams?: string[];
   optionalParams?: string[];
+  headerParams?: string[];
   tips?: string;
 }
 

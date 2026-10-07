@@ -170,7 +170,7 @@ async function runExecute(
     };
   }
 
-  const { path, query, body } = resolveOperationRequest(operation, params);
+  const { path, query, headers, body } = resolveOperationRequest(operation, params);
   const apiPath = session.path(path, query);
   if (input.dry_run) {
     return {
@@ -186,6 +186,7 @@ async function runExecute(
         method: operation.method,
         path: apiPath,
         url: `${instanceUrl}${apiPath}`,
+        ...(headers ? { headers: sanitizeHeaders(headers) } : {}),
         body: body ?? null,
       },
       summary: `Resolved ${operation.name}`,
@@ -277,6 +278,7 @@ async function runExecute(
     method: operation.method,
     path,
     query,
+    headers,
     body,
     timeoutMs: input.timeout_ms ?? 120_000,
     signal,
@@ -298,6 +300,7 @@ async function runExecute(
       method: operation.method,
       path: apiPath,
       url: `${instanceUrl}${apiPath}`,
+      ...(headers ? { headers: sanitizeHeaders(headers) } : {}),
       body: body ?? null,
     },
     response: resp.body,
@@ -393,7 +396,7 @@ async function runRunbook(
 function resolveOperationRequest(
   operation: D360Operation,
   params: Record<string, unknown>,
-): { path: string; query?: QueryParams; body?: unknown } {
+): { path: string; query?: QueryParams; headers?: Record<string, string>; body?: unknown } {
   for (const required of operation.requiredParams ?? []) {
     if (params[required] === undefined || params[required] === null || params[required] === "") {
       throw new Error(`Missing required parameter '${required}' for ${operation.name}.`);
@@ -414,10 +417,14 @@ function resolveOperationRequest(
     [...operation.path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]),
   );
   const query: QueryParams = {};
+  const headerParamNames = new Set(operation.headerParams ?? []);
   const queryParamNames = [
     ...(operation.requiredParams ?? []),
     ...(operation.optionalParams ?? []),
-  ].filter((key) => !pathParamNames.has(key) && key !== "sql" && key !== "body");
+  ].filter(
+    (key) =>
+      !pathParamNames.has(key) && !headerParamNames.has(key) && key !== "sql" && key !== "body",
+  );
   for (const key of queryParamNames) {
     const value = params[key];
     if (
@@ -429,9 +436,34 @@ function resolveOperationRequest(
       query[key] = value as QueryParams[string];
     }
   }
+  if (operation.name === "d360_query_sql_rows" && query.offset === undefined) {
+    query.offset = 0;
+  }
+  const headers = Object.fromEntries(
+    [...headerParamNames]
+      .map((name) => [name, params[name]])
+      .filter((entry): entry is [string, string | number | boolean] =>
+        ["string", "number", "boolean"].includes(typeof entry[1]),
+      )
+      .map(([name, value]) => [name, String(value)]),
+  );
 
   const body = operation.method === "GET" ? undefined : buildOperationBody(operation, params);
-  return { path, query: Object.keys(query).length ? query : undefined, body };
+  return {
+    path,
+    query: Object.keys(query).length ? query : undefined,
+    headers: Object.keys(headers).length ? headers : undefined,
+    body,
+  };
+}
+
+function sanitizeHeaders(headers: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [
+      name,
+      /authorization|token|secret|api[-_]?key/i.test(name) ? "••••••" : value,
+    ]),
+  );
 }
 
 function buildOperationBody(operation: D360Operation, params: Record<string, unknown>): unknown {

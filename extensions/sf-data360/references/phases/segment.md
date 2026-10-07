@@ -24,8 +24,8 @@ Data 360 Segment phase. Use when managing audience segments, segment publish flo
 - **Calculated Insights** — Validate, run, and inspect calculated metrics and insights.
 - **Segment** — Create, inspect, and publish Data Cloud audience segments.
 
-- Capabilities: 19 (0 runbook-backed)
-- Safety mix: read=6, safe_post=2, confirmed=9, destructive=2
+- Capabilities: 21 (0 runbook-backed)
+- Safety mix: read=7, safe_post=3, confirmed=9, destructive=2
 
 ## Data 360 family actions
 
@@ -33,10 +33,10 @@ Data 360 Segment phase. Use when managing audience segments, segment publish flo
 - `sf_data360` `segment.ci.list` (segment, rest_operation, read) — List all CIs. Check status for ACTIVE.
 - `sf_data360` `segment.get` (segment, rest_operation, read) — Get segment by record ID or API name. Check segmentStatus for ACTIVE.
 - `sf_data360` `segment.list` (segment, rest_operation, read) — List all segments.
+- `sf_data360` `segment.members.list` (segment, rest_operation, read) — Get segment members
 - `sf_data360` `segment.ci.run.status` (segment, rest_operation, safe_post) — Get CI run status.
 - `sf_data360` `segment.ci.validate` (segment, rest_operation, safe_post) — Validate CI before creation.
-- `sf_data360` `segment.ci.create` (segment, rest_operation, confirmed) — Create CI. apiName must end with __cio. No COUNT(DISTINCT).
-- `sf_data360` `segment.ci.delete` (segment, rest_operation, destructive) — Delete CI. Breaks dependent segments.
+- `sf_data360` `segment.count` (segment, rest_operation, safe_post) — Count segment
 
 ## Cross-phase routing
 

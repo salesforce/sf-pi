@@ -1,0 +1,2742 @@
+{
+  "schemaVersion": 1,
+  "waves": [
+    {
+      "id": "wave1_activation_metadata_reads",
+      "label": "Activation metadata reads without required fixture identifiers",
+      "keys": [
+        "GET /ssot/activations/metadata/activatable-data-object-categories",
+        "GET /ssot/activations/metadata/limits/related-attribute-activation-quota",
+        "GET /ssot/activations/metadata/limits/related-attribute-configuration-limits"
+      ]
+    },
+    {
+      "id": "wave2_existing_family_reads",
+      "label": "Remaining reads in existing SDK product families",
+      "methods": ["GET"],
+      "families": [
+        "Activation External Platforms",
+        "Activation Platforms",
+        "Activation Targets",
+        "Activations",
+        "Calculated Insights",
+        "Connections",
+        "Data Action Targets",
+        "Data Graphs",
+        "Data Kits",
+        "Data Model Objects",
+        "Data Spaces",
+        "Data Transforms",
+        "Machine Learning",
+        "Profile",
+        "Query V1 & V2",
+        "Segments"
+      ]
+    },
+    {
+      "id": "wave3_new_family_reads",
+      "label": "Reads in new Connect product families",
+      "methods": ["GET"]
+    },
+    {
+      "id": "wave4_post_operations",
+      "label": "POST operations after safety and fixture review",
+      "methods": ["POST"]
+    },
+    {
+      "id": "wave5_update_operations",
+      "label": "PATCH and PUT operations with owned fixtures",
+      "methods": ["PATCH", "PUT"]
+    },
+    {
+      "id": "wave6_destructive_operations",
+      "label": "DELETE operations with exact ownership and cleanup proof",
+      "methods": ["DELETE"]
+    }
+  ],
+  "promotions": [
+    {
+      "key": "GET /ssot/activations/metadata/activatable-data-object-categories",
+      "name": "connect_openapi_activation_metadata_activatable_object_category_list",
+      "family": "Activation",
+      "wave": "wave1_activation_metadata_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.activatable_object_category.list",
+      "safety": "read",
+      "tips": "Use this metadata read before constructing an activation payload. Optionally scope it with dataSpace."
+    },
+    {
+      "key": "GET /ssot/activations/metadata/limits/related-attribute-activation-quota",
+      "name": "connect_openapi_activation_metadata_related_attribute_activation_quota_get",
+      "family": "Activation",
+      "wave": "wave1_activation_metadata_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.related_attribute_activation_quota.get",
+      "safety": "read",
+      "tips": "Read quota metadata before configuring related-attribute activation. Optionally scope it with activationId."
+    },
+    {
+      "key": "GET /ssot/activations/metadata/limits/related-attribute-configuration-limits",
+      "name": "connect_openapi_activation_metadata_related_attribute_configuration_limits_get",
+      "family": "Activation",
+      "wave": "wave1_activation_metadata_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.related_attribute_configuration_limits.get",
+      "safety": "read",
+      "tips": "Read related-attribute configuration limits before creating or updating an activation."
+    },
+    {
+      "key": "GET /ssot/activation-external-platforms",
+      "name": "connect_openapi_activate_activation_external_platform_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_external_platform.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-external-platforms/{}",
+      "name": "connect_openapi_activate_activation_external_platform_get",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_external_platform.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-platforms",
+      "name": "connect_openapi_activate_activation_platform_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-platforms/{}",
+      "name": "connect_openapi_activate_activation_platform_get",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-platforms/{}/metadata/action-sources",
+      "name": "connect_openapi_activate_activation_platform_metadata_action_source_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.metadata.action_source.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-platforms/{}/metadata/events",
+      "name": "connect_openapi_activate_activation_platform_metadata_event_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.metadata.event.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-platforms/{}/metadata/partner-object-types",
+      "name": "connect_openapi_activate_activation_platform_metadata_partner_object_type_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.metadata.partner_object_type.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-targets/{}/available-ad-accounts",
+      "name": "connect_openapi_activate_activation_target_available_ad_account_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.available_ad_account.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-targets/{}/partner-objects",
+      "name": "connect_openapi_activate_activation_target_partner_object_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.partner_object.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-targets/metadata/activation-platforms",
+      "name": "connect_openapi_activate_activation_target_metadata_activation_platform_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.metadata.activation_platform.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-targets/metadata/communication-capping-data-spaces",
+      "name": "connect_openapi_activate_activation_target_metadata_communication_capping_dataspace_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.metadata.communication_capping_dataspace.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-targets/metadata/dataspace-account-validation",
+      "name": "connect_openapi_activate_activation_target_metadata_dataspace_account_validate",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.metadata.dataspace_account.validate",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-targets/metadata/mc-enterprises",
+      "name": "connect_openapi_activate_activation_target_metadata_mc_enterprise_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.metadata.mc_enterprise.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activation-targets/metadata/target-platform-fields",
+      "name": "connect_openapi_activate_activation_target_metadata_platform_field_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.metadata.platform_field.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/{}/data",
+      "name": "connect_openapi_activate_activation_data_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.data.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/{}/history",
+      "name": "connect_openapi_activate_activation_history_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.history.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/metadata/channel-preferences",
+      "name": "connect_openapi_activate_activation_metadata_channel_preference_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.channel_preference.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/metadata/channels",
+      "name": "connect_openapi_activate_activation_metadata_channel_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.channel.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/metadata/consent-data-model-objects",
+      "name": "connect_openapi_activate_activation_metadata_consent_dmo_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.consent_dmo.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/metadata/data-sources",
+      "name": "connect_openapi_activate_activation_metadata_data_source_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.data_source.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/metadata/match-boost-identity-providers",
+      "name": "connect_openapi_activate_activation_metadata_match_boost_identity_provider_list",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.match_boost_identity_provider.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/activations/metadata/streaming-eligibility",
+      "name": "connect_openapi_activate_activation_metadata_streaming_eligibility_get",
+      "family": "Activation",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.metadata.streaming_eligibility.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/connections/{}/endpoints",
+      "name": "connect_openapi_connect_connection_endpoint_list",
+      "family": "Connection",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.endpoint.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/connections/{}/sitemap",
+      "name": "connect_openapi_connect_connection_sitemap_get",
+      "family": "Connection",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.sitemap.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-graphs/{}",
+      "name": "connect_openapi_query_datagraph_get",
+      "family": "Profile and Data Graph",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "datagraph.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-model-objects/{}/relationships",
+      "name": "connect_openapi_harmonize_dmo_relationship_list",
+      "family": "DMO",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "dmo.relationship.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-spaces/{}/members/{}",
+      "name": "connect_openapi_prepare_dataspace_member_get",
+      "family": "Dataspace",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "dataspace_member.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-transforms/{}/run-history",
+      "name": "connect_openapi_prepare_transform_run_history_list",
+      "family": "DataTransform",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "transform.run_history.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/machine-learning/jobs",
+      "name": "connect_openapi_semantic_ml_prediction_job_list",
+      "family": "MachineLearning",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "ml.prediction_job.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/machine-learning/jobs/{}",
+      "name": "connect_openapi_semantic_ml_prediction_job_get",
+      "family": "MachineLearning",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "ml.prediction_job.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/machine-learning/jobs/{}/tasks",
+      "name": "connect_openapi_semantic_ml_prediction_job_task_list",
+      "family": "MachineLearning",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "ml.prediction_job.task.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/machine-learning/jobs/{}/tasks/{}",
+      "name": "connect_openapi_semantic_ml_prediction_job_task_get",
+      "family": "MachineLearning",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "ml.prediction_job.task.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/machine-learning/model-setups/{}/setup-versions/{}/partitions",
+      "name": "connect_openapi_semantic_ml_setup_version_partition_list",
+      "family": "MachineLearning",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "ml.setup_version.partition.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/machine-learning/model-setups/{}/setup-versions/{}/partitions/{}",
+      "name": "connect_openapi_semantic_ml_setup_version_partition_get",
+      "family": "MachineLearning",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "ml.setup_version.partition.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/profile/{}/{}",
+      "name": "connect_openapi_query_profile_search_key_get",
+      "family": "Profile and Data Graph",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "profile.search_key.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/profile/{}/{}/{}",
+      "name": "connect_openapi_query_profile_child_search_key_get",
+      "family": "Profile and Data Graph",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "profile.child.search_key.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/profile/{}/{}/calculated-insights/{}",
+      "name": "connect_openapi_query_profile_calculated_insight_get",
+      "family": "Profile and Data Graph",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "profile.calculated_insight.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/queryv2/{}",
+      "name": "connect_openapi_query_sql_next_batch_get",
+      "family": "Query",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "sql.next_batch.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/segments/{}/members",
+      "name": "connect_openapi_segment_segment_members_list",
+      "family": "Segment",
+      "wave": "wave2_existing_family_reads",
+      "namespace": "segment",
+      "phase": "segment",
+      "action": "segment.members.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/access-policies",
+      "name": "connect_openapi_harmonize_governance_access_policy_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.access_policy.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/access-policies/{}",
+      "name": "connect_openapi_harmonize_governance_access_policy_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.access_policy.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/access-policies/{}/rules/{}",
+      "name": "connect_openapi_harmonize_governance_access_policy_rule_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.access_policy.rule.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/auto-tagging-jobs",
+      "name": "connect_openapi_harmonize_governance_auto_tagging_job_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.auto_tagging_job.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/auto-tagging-jobs/{}",
+      "name": "connect_openapi_harmonize_governance_auto_tagging_job_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.auto_tagging_job.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/classification-assignments",
+      "name": "connect_openapi_harmonize_governance_classification_assignment_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_assignment.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/classification-assignments/{}",
+      "name": "connect_openapi_harmonize_governance_classification_assignment_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_assignment.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/classification-taxonomies",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/classification-taxonomies/{}",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/classifications",
+      "name": "connect_openapi_harmonize_governance_classification_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/classifications/{}",
+      "name": "connect_openapi_harmonize_governance_classification_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/classifications/{}/assignments",
+      "name": "connect_openapi_harmonize_governance_classification_assignment_by_classification_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.assignment.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/object-access-grants",
+      "name": "connect_openapi_harmonize_governance_object_access_grant_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.object_access_grant.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/object-access-grants/{}",
+      "name": "connect_openapi_harmonize_governance_object_access_grant_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.object_access_grant.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tag-assignments",
+      "name": "connect_openapi_harmonize_governance_tag_assignment_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_assignment.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tag-assignments/{}",
+      "name": "connect_openapi_harmonize_governance_tag_assignment_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_assignment.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tag-suggestions",
+      "name": "connect_openapi_harmonize_governance_tag_suggestion_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_suggestion.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tag-suggestions/{}",
+      "name": "connect_openapi_harmonize_governance_tag_suggestion_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_suggestion.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tag-taxonomies",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tag-taxonomies/{}",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tag-taxonomies/{}/tags-with-active-detection-instructions",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_active_detection_tag_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.active_detection_tag.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tags",
+      "name": "connect_openapi_harmonize_governance_tag_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tags/{}",
+      "name": "connect_openapi_harmonize_governance_tag_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tags/{}/assignments",
+      "name": "connect_openapi_harmonize_governance_tag_assignment_by_tag_list",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.assignment.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-governance/tags/{}/detection-instructions/active",
+      "name": "connect_openapi_harmonize_governance_tag_detection_instruction_get",
+      "family": "Data Governance",
+      "wave": "wave3_new_family_reads",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.detection_instruction.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space",
+      "name": "connect_openapi_semantic_knowledge_space_list",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/{}",
+      "name": "connect_openapi_semantic_knowledge_space_get",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/{}/details",
+      "name": "connect_openapi_semantic_knowledge_space_details_get",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.details.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/{}/session/{}/conversation",
+      "name": "connect_openapi_semantic_knowledge_space_session_conversation_get",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.session.conversation.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/{}/sessions",
+      "name": "connect_openapi_semantic_knowledge_space_session_list",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.session.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/config",
+      "name": "connect_openapi_semantic_knowledge_space_config_list",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.config.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/config/{}",
+      "name": "connect_openapi_semantic_knowledge_space_config_get",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.config.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/deep-research/{}",
+      "name": "connect_openapi_semantic_knowledge_space_deep_research_status_get",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.deep_research.status.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/library",
+      "name": "connect_openapi_semantic_knowledge_space_library_list",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.library.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/library/{}/details",
+      "name": "connect_openapi_semantic_knowledge_space_library_details_get",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.library.details.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/knowledge-space/session/{}",
+      "name": "connect_openapi_semantic_knowledge_space_session_get",
+      "family": "Notebook AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.session.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/collaborations",
+      "name": "connect_openapi_activate_clean_room_collaboration_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/collaborations/{}/jobs",
+      "name": "connect_openapi_activate_clean_room_collaboration_query_job_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration.query_job.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/collaborations/{}/result-data-objects",
+      "name": "connect_openapi_activate_clean_room_collaboration_result_object_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration.result_object.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/providers",
+      "name": "connect_openapi_activate_clean_room_provider_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.provider.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/providers/{}",
+      "name": "connect_openapi_activate_clean_room_provider_get",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.provider.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/providers/{}/templates",
+      "name": "connect_openapi_activate_clean_room_provider_template_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.provider.template.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/specifications",
+      "name": "connect_openapi_activate_clean_room_specification_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.specification.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/templates",
+      "name": "connect_openapi_activate_clean_room_template_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.template.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-clean-room/templates/{}/collaborations",
+      "name": "connect_openapi_activate_clean_room_template_collaboration_list",
+      "family": "Clean Rooms",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.template.collaboration.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/communication-capping/{}",
+      "name": "connect_openapi_activate_communication_capping_get",
+      "family": "Communication Capping",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/communication-capping/{}/activation-targets",
+      "name": "connect_openapi_activate_communication_capping_activation_target_list",
+      "family": "Communication Capping",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.activation_target.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/communication-capping/{}/rules",
+      "name": "connect_openapi_activate_communication_capping_rule_list",
+      "family": "Communication Capping",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.rule.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/communication-capping/activation-target-capping-metadata/{}",
+      "name": "connect_openapi_activate_communication_capping_activation_target_metadata_get",
+      "family": "Communication Capping",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.activation_target_metadata.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/communication-capping/dimensions",
+      "name": "connect_openapi_activate_communication_capping_dimension_list",
+      "family": "Communication Capping",
+      "wave": "wave3_new_family_reads",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.dimension.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-custom-code",
+      "name": "connect_openapi_prepare_custom_code_list",
+      "family": "Data Custom Code",
+      "wave": "wave3_new_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "custom_code.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-custom-code/{}",
+      "name": "connect_openapi_prepare_custom_code_get",
+      "family": "Data Custom Code",
+      "wave": "wave3_new_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "custom_code.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-custom-code/{}/executions",
+      "name": "connect_openapi_prepare_custom_code_execution_list",
+      "family": "Data Custom Code",
+      "wave": "wave3_new_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "custom_code.execution.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-custom-code/{}/executions/{}",
+      "name": "connect_openapi_prepare_custom_code_execution_get",
+      "family": "Data Custom Code",
+      "wave": "wave3_new_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "custom_code.execution.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-share-target/{}",
+      "name": "connect_openapi_connect_data_share_target_get",
+      "family": "Data Shares",
+      "wave": "wave3_new_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share_target.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-share-targets/{}",
+      "name": "connect_openapi_connect_data_share_target_list",
+      "family": "Data Shares",
+      "wave": "wave3_new_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share_target.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-share/{}",
+      "name": "connect_openapi_connect_data_share_get",
+      "family": "Data Shares",
+      "wave": "wave3_new_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/data-shares",
+      "name": "connect_openapi_connect_data_share_list",
+      "family": "Data Shares",
+      "wave": "wave3_new_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/document-processing/configurations",
+      "name": "connect_openapi_prepare_document_ai_configuration_list",
+      "family": "Document AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.configuration.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/document-processing/configurations/{}",
+      "name": "connect_openapi_prepare_document_ai_configuration_get",
+      "family": "Document AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.configuration.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/document-processing/global-config",
+      "name": "connect_openapi_prepare_document_ai_global_config_get",
+      "family": "Document AI",
+      "wave": "wave3_new_family_reads",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.global_config.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/agentic/agent/{}",
+      "name": "connect_openapi_semantic_agent_config_get",
+      "family": "Agent Configuration",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "agent_config.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/agentic/agents",
+      "name": "connect_openapi_semantic_agent_config_list",
+      "family": "Agent Configuration",
+      "wave": "wave3_new_family_reads",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "agent_config.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/private-network-routes",
+      "name": "connect_openapi_connect_private_network_route_list",
+      "family": "Private Network Routes",
+      "wave": "wave3_new_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "private_network_route.list",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/private-network-routes/{}",
+      "name": "connect_openapi_connect_private_network_route_get",
+      "family": "Private Network Routes",
+      "wave": "wave3_new_family_reads",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "private_network_route.get",
+      "safety": "read"
+    },
+    {
+      "key": "GET /ssot/universalIdLookup/{}/{}/{}/{}",
+      "name": "connect_openapi_query_universal_id_lookup",
+      "family": "Universal ID Lookup",
+      "wave": "wave3_new_family_reads",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "universal_id.lookup",
+      "safety": "read"
+    },
+    {
+      "key": "POST /ssot/activation-platforms",
+      "name": "connect_openapi_activate_activation_platform_create",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-platforms/{}/actions/disable",
+      "name": "connect_openapi_activate_activation_platform_disable",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.disable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-platforms/{}/actions/enable",
+      "name": "connect_openapi_activate_activation_platform_enable",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.enable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-platforms/{}/actions/publish",
+      "name": "connect_openapi_activate_activation_platform_publish",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.publish",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-platforms/{}/actions/retry-sync",
+      "name": "connect_openapi_activate_activation_platform_sync_retry",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.sync.retry",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-platforms/{}/actions/set-privacy-type",
+      "name": "connect_openapi_activate_activation_platform_privacy_type_set",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.privacy_type.set",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-targets/actions/{}/assign-ad-account",
+      "name": "connect_openapi_activate_activation_target_ad_account_assign",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.ad_account.assign",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-targets/actions/{}/disable",
+      "name": "connect_openapi_activate_activation_target_disable",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.disable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-targets/actions/{}/enable",
+      "name": "connect_openapi_activate_activation_target_enable",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.enable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activation-targets/actions/{}/retry-sync",
+      "name": "connect_openapi_activate_activation_target_sync_retry",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_target.sync.retry",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activations/{}/actions/publish",
+      "name": "connect_openapi_activate_activation_publish",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.publish",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activations/actions/{}/disable",
+      "name": "connect_openapi_activate_activation_disable",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.disable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activations/actions/{}/enable",
+      "name": "connect_openapi_activate_activation_enable",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.enable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activations/actions/{}/full-refresh",
+      "name": "connect_openapi_activate_activation_full_refresh_run",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.full_refresh.run",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/activations/actions/{}/retry-sync",
+      "name": "connect_openapi_activate_activation_sync_retry",
+      "family": "Activation",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation.sync.retry",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/agentic/agent",
+      "name": "connect_openapi_semantic_agent_config_create",
+      "family": "Agent Configuration",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "agent_config.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/communication-capping",
+      "name": "connect_openapi_activate_communication_capping_configuration_create",
+      "family": "Communication Capping",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.configuration.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/communication-capping/{}/actions/disable",
+      "name": "connect_openapi_activate_communication_capping_disable",
+      "family": "Communication Capping",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.disable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/communication-capping/{}/actions/enable",
+      "name": "connect_openapi_activate_communication_capping_enable",
+      "family": "Communication Capping",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.enable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/communication-capping/{}/rules",
+      "name": "connect_openapi_activate_communication_capping_rule_create",
+      "family": "Communication Capping",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.rule.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/communication-capping/activation-target-capping-metadata/{}",
+      "name": "connect_openapi_activate_communication_capping_dimension_metadata_to_activation_target_map",
+      "family": "Communication Capping",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.dimension_metadata_to_activation_target.map",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/communication-capping/dimensions",
+      "name": "connect_openapi_activate_communication_capping_dimension_create",
+      "family": "Communication Capping",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.dimension.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/connections/{}/actions/{}",
+      "name": "connect_openapi_connect_connection_existing_connection_action_run",
+      "family": "Connection",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.existing_connection_action.run",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/connections/{}/actions/test",
+      "name": "connect_openapi_connect_connection_existing_connection_action_test",
+      "family": "Connection",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.existing_connection_action.test",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/connections/{}/databases",
+      "name": "connect_openapi_connect_connection_database_list",
+      "family": "Connection",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.database.list",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/connections/{}/objects/{}/preview",
+      "name": "connect_openapi_connect_connection_preview_get",
+      "family": "Connection",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.preview.get",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/connections/actions/{}",
+      "name": "connect_openapi_connect_connection_action_run",
+      "family": "Connection",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.action.run",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-action-targets/{}/signing-key",
+      "name": "connect_openapi_activate_data_action_target_signing_key_generate",
+      "family": "DataAction",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "data_action_target.signing_key.generate",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/collaborations",
+      "name": "connect_openapi_activate_clean_room_collaboration_create",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/collaborations/{}/actions/accept-invitation",
+      "name": "connect_openapi_activate_clean_room_collaboration_invitation_accept",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration_invitation.accept",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/collaborations/{}/actions/disable",
+      "name": "connect_openapi_activate_clean_room_collaboration_disable",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration.disable",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/collaborations/{}/actions/reject-invitation",
+      "name": "connect_openapi_activate_clean_room_collaboration_invitation_reject",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration_invitation.reject",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/collaborations/{}/actions/run",
+      "name": "connect_openapi_activate_clean_room_collaboration_query_run",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration.query.run",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/providers",
+      "name": "connect_openapi_activate_clean_room_provider_create",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.provider.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/specifications",
+      "name": "connect_openapi_activate_clean_room_specification_create",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.specification.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-clean-room/test-connection",
+      "name": "connect_openapi_activate_clean_room_connection_test",
+      "family": "Clean Rooms",
+      "wave": "wave4_post_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.connection.test",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/data-custom-code",
+      "name": "connect_openapi_prepare_custom_code_create",
+      "family": "Data Custom Code",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "custom_code.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/access-policies",
+      "name": "connect_openapi_harmonize_governance_access_policy_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.access_policy.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classification-assignments",
+      "name": "connect_openapi_harmonize_governance_classification_assignment_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_assignment.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classification-assignments/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_classification_assignment_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_assignment.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classification-assignments/actions/bulk-delete",
+      "name": "connect_openapi_harmonize_governance_classification_assignment_bulk_delete",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_assignment.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-governance/classification-taxonomies",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classification-taxonomies/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classification-taxonomies/actions/bulk-delete",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_bulk_delete",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-governance/classification-taxonomies/actions/bulk-update",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_bulk_update",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.bulk_update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classifications",
+      "name": "connect_openapi_harmonize_governance_classification_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classifications/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_classification_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/classifications/actions/bulk-delete",
+      "name": "connect_openapi_harmonize_governance_classification_bulk_delete",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-governance/classifications/actions/bulk-update",
+      "name": "connect_openapi_harmonize_governance_classification_bulk_update",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.bulk_update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/object-access-grants",
+      "name": "connect_openapi_harmonize_governance_object_access_grant_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.object_access_grant.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/object-access-grants/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_object_access_grant_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.object_access_grant.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/object-access-grants/actions/bulk-delete",
+      "name": "connect_openapi_harmonize_governance_object_access_grant_bulk_delete",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.object_access_grant.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-assignments",
+      "name": "connect_openapi_harmonize_governance_tag_assignment_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_assignment.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-assignments/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_tag_assignment_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_assignment.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-assignments/actions/bulk-delete",
+      "name": "connect_openapi_harmonize_governance_tag_assignment_bulk_delete",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_assignment.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-suggestions/actions/approve",
+      "name": "connect_openapi_harmonize_governance_tag_suggestion_approve",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_suggestion.approve",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-suggestions/actions/generate",
+      "name": "connect_openapi_harmonize_governance_tag_suggestion_generate",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_suggestion.generate",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-suggestions/actions/reject",
+      "name": "connect_openapi_harmonize_governance_tag_suggestion_reject",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_suggestion.reject",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-taxonomies",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-taxonomies/{}/detection-instructions/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_tag_detection_instruction_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_detection_instruction.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-taxonomies/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-taxonomies/actions/bulk-delete",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_bulk_delete",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-governance/tag-taxonomies/actions/bulk-update",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_bulk_update",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.bulk_update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tags",
+      "name": "connect_openapi_harmonize_governance_tag_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tags/{}/detection-instructions",
+      "name": "connect_openapi_harmonize_governance_tag_detection_instruction_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_detection_instruction.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tags/actions/bulk-create",
+      "name": "connect_openapi_harmonize_governance_tag_bulk_create",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.bulk_create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tags/actions/bulk-delete",
+      "name": "connect_openapi_harmonize_governance_tag_bulk_delete",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-governance/tags/actions/bulk-update",
+      "name": "connect_openapi_harmonize_governance_tag_bulk_update",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.bulk_update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-governance/tags/actions/propagate",
+      "name": "connect_openapi_harmonize_governance_tag_propagate",
+      "family": "Data Governance",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.propagate",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-graphs",
+      "name": "connect_openapi_query_datagraph_create",
+      "family": "Profile and Data Graph",
+      "wave": "wave4_post_operations",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "datagraph.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-graphs/{}/actions/activate",
+      "name": "connect_openapi_query_datagraph_data_graph_activate",
+      "family": "Profile and Data Graph",
+      "wave": "wave4_post_operations",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "datagraph.data_graph.activate",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-graphs/{}/actions/refresh",
+      "name": "connect_openapi_query_datagraph_refresh",
+      "family": "Profile and Data Graph",
+      "wave": "wave4_post_operations",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "datagraph.refresh",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-kits",
+      "name": "connect_openapi_prepare_datakit_create",
+      "family": "DataKit",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "datakit.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-model-objects/{}/relationships",
+      "name": "connect_openapi_harmonize_dmo_relationship_create",
+      "family": "DMO",
+      "wave": "wave4_post_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "dmo.relationship.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-share",
+      "name": "connect_openapi_connect_data_share_create",
+      "family": "Data Shares",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-share-target",
+      "name": "connect_openapi_connect_data_share_target_create",
+      "family": "Data Shares",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share_target.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-share/{}/actions/link",
+      "name": "connect_openapi_connect_data_share_link",
+      "family": "Data Shares",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share.link",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-share/{}/actions/unlink",
+      "name": "connect_openapi_connect_data_share_unlink",
+      "family": "Data Shares",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share.unlink",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-spaces/{}/actions/retry",
+      "name": "connect_openapi_prepare_dataspace_sync",
+      "family": "Dataspace",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "dataspace.sync",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-spaces/{}/members/{}/actions/retry",
+      "name": "connect_openapi_prepare_dataspace_member_sync",
+      "family": "Dataspace",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "dataspace_member.sync",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-transforms/{}/actions/cancel",
+      "name": "connect_openapi_prepare_transform_cancel",
+      "family": "DataTransform",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "transform.cancel",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/data-transforms/{}/actions/rebuild",
+      "name": "connect_openapi_prepare_transform_rebuild",
+      "family": "DataTransform",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "transform.rebuild",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/data-transforms/{}/actions/refresh-status",
+      "name": "connect_openapi_prepare_transform_status_refresh",
+      "family": "DataTransform",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "transform.status.refresh",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/data-transforms/{}/actions/retry",
+      "name": "connect_openapi_prepare_transform_retry",
+      "family": "DataTransform",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "transform.retry",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/document-processing/actions/detect-schema",
+      "name": "connect_openapi_prepare_document_ai_schema_detect",
+      "family": "Document AI",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.schema.detect",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/document-processing/actions/extract-data",
+      "name": "connect_openapi_prepare_document_ai_configuration_data_extract",
+      "family": "Document AI",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.configuration_data.extract",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/document-processing/actions/generate-schema",
+      "name": "connect_openapi_prepare_document_ai_schema_generate",
+      "family": "Document AI",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.schema.generate",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/document-processing/configurations",
+      "name": "connect_openapi_prepare_document_ai_configuration_create",
+      "family": "Document AI",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.configuration.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/document-processing/configurations/{}/actions/run",
+      "name": "connect_openapi_prepare_document_ai_process_run",
+      "family": "Document AI",
+      "wave": "wave4_post_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.process.run",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space",
+      "name": "connect_openapi_semantic_knowledge_space_create",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/{}/sessions",
+      "name": "connect_openapi_semantic_knowledge_space_session_create",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.session.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/config",
+      "name": "connect_openapi_semantic_knowledge_space_configuration_create",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.configuration.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/deep-research/{}/cancel",
+      "name": "connect_openapi_semantic_knowledge_space_deep_research_cancel",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.deep_research.cancel",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/deep-research/{}/report",
+      "name": "connect_openapi_semantic_knowledge_space_deep_research_report_get",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.deep_research_report.get",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/deep-research/{}/run",
+      "name": "connect_openapi_semantic_knowledge_space_deep_research_run",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.deep_research.run",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/files/status",
+      "name": "connect_openapi_semantic_knowledge_space_file_status_get",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.file_status.get",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/getKnowledgeForImport",
+      "name": "connect_openapi_semantic_knowledge_space_knowledge_for_import_get",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.knowledge_for_import.get",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/importKnowledge",
+      "name": "connect_openapi_semantic_knowledge_space_knowledge_import",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.knowledge.import",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/index-files",
+      "name": "connect_openapi_semantic_knowledge_space_file_index",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.file.index",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/library",
+      "name": "connect_openapi_semantic_knowledge_space_library_create",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.library.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/library/remove-library",
+      "name": "connect_openapi_semantic_knowledge_space_library_remove",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.library.remove",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/library/search",
+      "name": "connect_openapi_semantic_knowledge_space_knowledge_library_search",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.knowledge_library.search",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/presigned-urls",
+      "name": "connect_openapi_semantic_knowledge_space_presigned_url_get",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.presigned_url.get",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/provision",
+      "name": "connect_openapi_semantic_knowledge_space_provision",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.provision",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/remove-files",
+      "name": "connect_openapi_semantic_knowledge_space_file_remove",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.file.remove",
+      "safety": "destructive"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/space/{}/deep-research/source",
+      "name": "connect_openapi_semantic_knowledge_space_deep_research_as_knowledge_source_add",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.deep_research_as_knowledge_source.add",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/knowledge-space/summary",
+      "name": "connect_openapi_semantic_knowledge_space_file_chunk_summary_get",
+      "family": "Notebook AI",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.file_chunk_summary.get",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/machine-learning/retrievers/actions/review",
+      "name": "connect_openapi_semantic_ml_retriever_review",
+      "family": "MachineLearning",
+      "wave": "wave4_post_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "ml.retriever.review",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/private-network-routes",
+      "name": "connect_openapi_connect_private_network_route_create",
+      "family": "Private Network Routes",
+      "wave": "wave4_post_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "private_network_route.create",
+      "safety": "confirmed"
+    },
+    {
+      "key": "POST /ssot/query",
+      "name": "connect_openapi_query_sql_v1_query",
+      "family": "Query",
+      "wave": "wave4_post_operations",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "sql.v1.query",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/queryv2",
+      "name": "connect_openapi_query_sql_v2_query",
+      "family": "Query",
+      "wave": "wave4_post_operations",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "sql.v2.query",
+      "safety": "safe_post"
+    },
+    {
+      "key": "POST /ssot/segments/{}/actions/count",
+      "name": "connect_openapi_segment_segment_count",
+      "family": "Segment",
+      "wave": "wave4_post_operations",
+      "namespace": "segment",
+      "phase": "segment",
+      "action": "segment.count",
+      "safety": "safe_post"
+    },
+    {
+      "key": "PATCH /ssot/activation-platforms/{}",
+      "name": "connect_openapi_activate_activation_platform_update",
+      "family": "Activation",
+      "wave": "wave5_update_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/communication-capping/{}",
+      "name": "connect_openapi_activate_communication_capping_update",
+      "family": "Communication Capping",
+      "wave": "wave5_update_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/communication-capping/{}/rules/{}",
+      "name": "connect_openapi_activate_communication_capping_rule_update",
+      "family": "Communication Capping",
+      "wave": "wave5_update_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.rule.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/communication-capping/dimensions/{}",
+      "name": "connect_openapi_activate_communication_capping_dimension_update",
+      "family": "Communication Capping",
+      "wave": "wave5_update_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.dimension.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/communication-capping/dimensions/actions/swap-priority",
+      "name": "connect_openapi_activate_communication_capping_dimension_priority_swap",
+      "family": "Communication Capping",
+      "wave": "wave5_update_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.dimension.priority.swap",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-custom-code/{}",
+      "name": "connect_openapi_prepare_custom_code_update",
+      "family": "Data Custom Code",
+      "wave": "wave5_update_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "custom_code.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-governance/access-policies/{}",
+      "name": "connect_openapi_harmonize_governance_access_policy_update",
+      "family": "Data Governance",
+      "wave": "wave5_update_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.access_policy.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-governance/classification-taxonomies/{}",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_update",
+      "family": "Data Governance",
+      "wave": "wave5_update_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-governance/classifications/{}",
+      "name": "connect_openapi_harmonize_governance_classification_update",
+      "family": "Data Governance",
+      "wave": "wave5_update_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-governance/tag-taxonomies/{}",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_update",
+      "family": "Data Governance",
+      "wave": "wave5_update_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-governance/tags/{}",
+      "name": "connect_openapi_harmonize_governance_tag_update",
+      "family": "Data Governance",
+      "wave": "wave5_update_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-kits/{}",
+      "name": "connect_openapi_prepare_datakit_component_update",
+      "family": "DataKit",
+      "wave": "wave5_update_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "datakit.component.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-model-object-mappings/{}/field-mappings/{}",
+      "name": "connect_openapi_harmonize_dmo_field_mapping_update",
+      "family": "DMO",
+      "wave": "wave5_update_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "dmo.field_mapping.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/data-share/{}",
+      "name": "connect_openapi_connect_data_share_update",
+      "family": "Data Shares",
+      "wave": "wave5_update_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/document-processing/configurations/{}",
+      "name": "connect_openapi_prepare_document_ai_configuration_update",
+      "family": "Document AI",
+      "wave": "wave5_update_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.configuration.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/knowledge-space/{}",
+      "name": "connect_openapi_semantic_knowledge_space_update",
+      "family": "Notebook AI",
+      "wave": "wave5_update_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/knowledge-space/deep-research/{}",
+      "name": "connect_openapi_semantic_knowledge_space_deep_research_plan_update",
+      "family": "Notebook AI",
+      "wave": "wave5_update_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.deep_research.plan.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PATCH /ssot/knowledge-space/library/{}",
+      "name": "connect_openapi_semantic_knowledge_space_library_update",
+      "family": "Notebook AI",
+      "wave": "wave5_update_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.library.update",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PUT /ssot/connections/{}",
+      "name": "connect_openapi_connect_connection_replace",
+      "family": "Connection",
+      "wave": "wave5_update_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.replace",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PUT /ssot/connections/{}/sitemap",
+      "name": "connect_openapi_connect_connection_sitemap_upsert",
+      "family": "Connection",
+      "wave": "wave5_update_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "connection.sitemap.upsert",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PUT /ssot/data-clean-room/collaborations/{}/actions/refresh-metadata",
+      "name": "connect_openapi_activate_clean_room_collaboration_metadata_refresh",
+      "family": "Clean Rooms",
+      "wave": "wave5_update_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.collaboration.metadata.refresh",
+      "safety": "confirmed"
+    },
+    {
+      "key": "PUT /ssot/data-governance/access-policies/{}/rules/{}",
+      "name": "connect_openapi_harmonize_governance_access_policy_rule_replace",
+      "family": "Data Governance",
+      "wave": "wave5_update_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.access_policy.rule.replace",
+      "safety": "confirmed"
+    },
+    {
+      "key": "DELETE /ssot/activation-platforms/{}",
+      "name": "connect_openapi_activate_activation_platform_delete",
+      "family": "Activation",
+      "wave": "wave6_destructive_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "activation_platform.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/agentic/agent/{}",
+      "name": "connect_openapi_semantic_agent_config_delete",
+      "family": "Agent Configuration",
+      "wave": "wave6_destructive_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "agent_config.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/communication-capping/activation-target-capping-metadata/{}",
+      "name": "connect_openapi_activate_communication_capping_activation_target_metadata_delete",
+      "family": "Communication Capping",
+      "wave": "wave6_destructive_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.activation_target_metadata.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/communication-capping/rules/{}",
+      "name": "connect_openapi_activate_communication_capping_rule_delete",
+      "family": "Communication Capping",
+      "wave": "wave6_destructive_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "communication_capping.rule.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-clean-room/specifications/{}",
+      "name": "connect_openapi_activate_clean_room_specification_delete",
+      "family": "Clean Rooms",
+      "wave": "wave6_destructive_operations",
+      "namespace": "activate",
+      "phase": "act",
+      "action": "clean_room.specification.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-custom-code/{}",
+      "name": "connect_openapi_prepare_custom_code_delete",
+      "family": "Data Custom Code",
+      "wave": "wave6_destructive_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "custom_code.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/access-policies/{}",
+      "name": "connect_openapi_harmonize_governance_access_policy_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.access_policy.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/classification-assignments/{}",
+      "name": "connect_openapi_harmonize_governance_classification_assignment_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_assignment.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/classification-taxonomies/{}",
+      "name": "connect_openapi_harmonize_governance_classification_taxonomy_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification_taxonomy.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/classifications/{}",
+      "name": "connect_openapi_harmonize_governance_classification_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.classification.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/object-access-grants/{}",
+      "name": "connect_openapi_harmonize_governance_object_access_grant_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.object_access_grant.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/tag-assignments/{}",
+      "name": "connect_openapi_harmonize_governance_tag_assignment_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_assignment.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/tag-taxonomies/{}",
+      "name": "connect_openapi_harmonize_governance_tag_taxonomy_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag_taxonomy.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/tags/{}",
+      "name": "connect_openapi_harmonize_governance_tag_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-governance/tags/{}/detection-instructions/active",
+      "name": "connect_openapi_harmonize_governance_tag_detection_instruction_delete",
+      "family": "Data Governance",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "governance.tag.detection_instruction.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-graphs/{}",
+      "name": "connect_openapi_query_datagraph_delete",
+      "family": "Profile and Data Graph",
+      "wave": "wave6_destructive_operations",
+      "namespace": "query",
+      "phase": "retrieve",
+      "action": "datagraph.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-kits/{}",
+      "name": "connect_openapi_prepare_datakit_delete",
+      "family": "DataKit",
+      "wave": "wave6_destructive_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "datakit.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-model-object-mappings/{}/field-mappings",
+      "name": "connect_openapi_harmonize_dmo_field_mapping_bulk_delete",
+      "family": "DMO",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "dmo.field_mapping.bulk_delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-model-objects/relationships/{}",
+      "name": "connect_openapi_harmonize_dmo_relationship_delete",
+      "family": "DMO",
+      "wave": "wave6_destructive_operations",
+      "namespace": "harmonize",
+      "phase": "harmonize",
+      "action": "dmo.relationship.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-share-target/{}",
+      "name": "connect_openapi_connect_data_share_target_delete",
+      "family": "Data Shares",
+      "wave": "wave6_destructive_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share_target.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/data-share/{}",
+      "name": "connect_openapi_connect_data_share_delete",
+      "family": "Data Shares",
+      "wave": "wave6_destructive_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "data_share.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/document-processing/configurations/{}",
+      "name": "connect_openapi_prepare_document_ai_configuration_delete",
+      "family": "Document AI",
+      "wave": "wave6_destructive_operations",
+      "namespace": "prepare",
+      "phase": "prepare",
+      "action": "document_ai.configuration.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/knowledge-space/{}",
+      "name": "connect_openapi_semantic_knowledge_space_delete",
+      "family": "Notebook AI",
+      "wave": "wave6_destructive_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/knowledge-space/config/{}",
+      "name": "connect_openapi_semantic_knowledge_space_config_delete",
+      "family": "Notebook AI",
+      "wave": "wave6_destructive_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.config.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/knowledge-space/session/{}",
+      "name": "connect_openapi_semantic_knowledge_space_session_delete",
+      "family": "Notebook AI",
+      "wave": "wave6_destructive_operations",
+      "namespace": "semantic",
+      "phase": "semantic",
+      "action": "knowledge_space.session.delete",
+      "safety": "destructive"
+    },
+    {
+      "key": "DELETE /ssot/private-network-routes/{}",
+      "name": "connect_openapi_connect_private_network_route_delete",
+      "family": "Private Network Routes",
+      "wave": "wave6_destructive_operations",
+      "namespace": "connect",
+      "phase": "connect",
+      "action": "private_network_route.delete",
+      "safety": "destructive"
+    }
+  ]
+}

@@ -64,6 +64,19 @@ export function buildData360FixtureProfile(assets: Data360DiscoveredAssets): Dat
   set("prepare.dataspace_member.list", { dataSpaceName: stringValue(assets.dataspace, "name") });
   set("prepare.dlo.get", { dloName: stringValue(assets.dlo, "name") });
   set("harmonize.dmo.get", { dmoName: stringValue(assets.dmo, "name") });
+  set("harmonize.dmo.relationship.list", {
+    dataModelObjectName: stringValue(assets.dmo, "name"),
+  });
+  set("activate.activation.metadata.channel_preference.list", {
+    channel: "Email",
+    dataModelObjectApiName: stringValue(assets.dmo, "name"),
+  });
+  set("activate.activation.metadata.data_source.list", {
+    dataModelObjectApiName: stringValue(assets.dmo, "name"),
+  });
+  set("activate.activation.metadata.streaming_eligibility.get", {
+    dataModelObjectApiName: stringValue(assets.dmo, "name"),
+  });
   set("harmonize.dmo_mapping.list", {
     dmoDeveloperName: stringValue(assets.dmo, "name"),
   });
@@ -90,6 +103,12 @@ export function buildData360FixtureProfile(assets: Data360DiscoveredAssets): Dat
   set("prepare.transform.get", {
     transformId: stringValue(assets.transform, "name", "id"),
   });
+  set("prepare.transform.run_history.list", {
+    dataTransformNameOrId: stringValue(assets.transform, "name", "id"),
+  });
+  set("prepare.transform.status.refresh", {
+    dataTransformNameOrId: stringValue(assets.transform, "name", "id"),
+  });
   set("prepare.transform_schedule.get", {
     transformId: stringValue(assets.transform, "name", "id"),
   });
@@ -106,10 +125,24 @@ export function buildData360FixtureProfile(assets: Data360DiscoveredAssets): Dat
     set(action, { ciName });
   }
   set("segment.get", { segmentId: stringValue(assets.segment, "id", "apiName", "name") });
+  set("segment.members.list", {
+    segmentApiName: stringValue(assets.segment, "apiName", "name", "id"),
+  });
+  set("segment.count", {
+    segmentApiName: stringValue(assets.segment, "apiName", "name", "id"),
+    body: { preferApproxCount: true },
+  });
   set("activate.activation_target.get", {
     activationTargetId: stringValue(assets.activationTarget, "id", "name"),
   });
   set("activate.activation.get", { activationId: stringValue(assets.activation, "id", "name") });
+  set("activate.activation.data.list", {
+    activationId: stringValue(assets.activation, "id", "name"),
+    "X-Chatter-Entity-Encoding": "false",
+  });
+  set("activate.activation.history.list", {
+    activationId: stringValue(assets.activation, "id", "name"),
+  });
   set("activate.data_action_target.get", {
     dataActionTargetId: stringValue(assets.dataActionTarget, "id", "apiName"),
   });

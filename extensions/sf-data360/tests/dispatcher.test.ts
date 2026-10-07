@@ -61,6 +61,7 @@ function createDispatcherSession(): SalesforceSession {
     const pending = requestMock({
       method: input.method,
       url: path(input.path, input.query),
+      headers: input.headers,
       body:
         input.body === undefined
           ? undefined
@@ -192,6 +193,61 @@ describe("Data 360 dispatcher", () => {
       expect.objectContaining({
         method: "GET",
         url: "/services/data/v67.0/ssot/data-lake-objects?limit=5&offset=2&category=Other&dataspace=default",
+      }),
+    );
+  });
+
+  it("defaults Connect query row offsets to zero", async () => {
+    requestMock.mockResolvedValue({ data: [[1]], returnedRows: 1 });
+
+    const result = await runData360Action(
+      {
+        tool: "query",
+        action: "sql.rows",
+        target_org: "ExampleData360Org",
+        params: { queryId: "query-1" },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({ ok: true, capability: "d360_query_sql_rows" });
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "/services/data/v67.0/ssot/query-sql/query-1/rows?offset=0",
+      }),
+    );
+  });
+
+  it("forwards promoted OpenAPI header parameters without turning them into query params", async () => {
+    requestMock.mockResolvedValue({ records: [] });
+
+    const result = await runData360Action(
+      {
+        tool: "activate",
+        action: "activation.data.list",
+        target_org: "ExampleData360Org",
+        params: {
+          activationId: "activation-1",
+          "X-Chatter-Entity-Encoding": "false",
+        },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      capability: "connect_openapi_activate_activation_data_list",
+    });
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "/services/data/v67.0/ssot/activations/activation-1/data",
+        headers: { "X-Chatter-Entity-Encoding": "false" },
       }),
     );
   });

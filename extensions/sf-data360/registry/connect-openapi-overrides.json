@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "actions": {
+    "activate.clean_room.template.list": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["templates"],
+          "properties": {
+            "currentPageUrl": { "type": "string", "nullable": true },
+            "nextPageUrl": { "type": "string", "nullable": true },
+            "templates": { "type": "array", "items": { "type": "object" } },
+            "totalSize": { "type": "integer" }
+          }
+        }
+      },
+      "evidence": "Bounded live clean-room templates contain additional enum values and scalar query-template fields not represented by the published schema."
+    },
+    "activate.activation_external_platform.list": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["platforms"],
+          "properties": {
+            "currentPageUrl": { "type": "string" },
+            "nextPageUrl": { "type": "string", "nullable": true },
+            "platforms": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "status", "type"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "status": { "type": "string" },
+                  "type": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "evidence": "Bounded live responses use uppercase platform status and type values that are not included in the published enum."
+    },
+    "connect.private_network_route.list": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["routes"],
+          "properties": {
+            "currentPageUrl": { "type": "string", "nullable": true },
+            "nextPageUrl": { "type": "string", "nullable": true },
+            "routes": { "type": "array" },
+            "totalSize": { "type": "integer" }
+          }
+        }
+      },
+      "evidence": "Bounded live empty route collections return nextPageUrl as null while the published schema marks it as a non-null string."
+    },
+    "harmonize.dmo.relationship.list": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["relationships"],
+          "properties": {
+            "relationships": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sourceField": { "type": "object" },
+                  "sourceObject": { "type": "object" },
+                  "status": { "type": "string" },
+                  "targetField": { "type": "object" },
+                  "targetObject": { "type": "object" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "evidence": "Bounded live relationship responses include additional enum values and nullable key qualifier fields not represented by the published schema."
+    },
+    "harmonize.governance.access_policy.list": {
+      "responseStatusAliases": { "404": "400" },
+      "evidence": "A bounded live org without the access-policy resource returns HTTP 404 while OpenAPI declares HTTP 400 for unavailable requests."
+    },
+    "prepare.transform.status.refresh": {
+      "responseStatusAliases": { "201": "200" },
+      "evidence": "A bounded live transform status refresh returned HTTP 201 while OpenAPI declares HTTP 200."
+    },
+    "prepare.document_ai.configuration.list": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["configurations"],
+          "properties": {
+            "configurations": { "type": "array" },
+            "currentPageUrl": { "type": "string", "nullable": true },
+            "nextPageUrl": { "type": "string", "nullable": true },
+            "totalSize": { "type": "integer" }
+          }
+        }
+      },
+      "evidence": "Bounded live empty Document AI configuration collections return pagination URLs as null."
+    },
+    "query.sql.v1.query": {
+      "responseStatusAliases": { "201": "200" },
+      "responseSchemaOverrides": {
+        "201": {
+          "type": "object",
+          "required": ["data", "done", "queryId", "rowCount"],
+          "properties": {
+            "data": { "type": "array", "items": { "type": "object" } },
+            "done": { "type": "boolean" },
+            "metadata": { "type": "object" },
+            "queryId": { "type": "string" },
+            "rowCount": { "type": "integer" }
+          }
+        }
+      },
+      "evidence": "A bounded live Query V1 request returned HTTP 201 with object rows while OpenAPI declares HTTP 200."
+    },
+    "query.sql.v2.query": {
+      "responseStatusAliases": { "201": "200" },
+      "responseSchemaOverrides": {
+        "201": {
+          "type": "object",
+          "required": ["data", "done", "queryId", "rowCount"],
+          "properties": {
+            "data": { "type": "array", "items": { "type": "array" } },
+            "done": { "type": "boolean" },
+            "metadata": { "type": "object" },
+            "queryId": { "type": "string" },
+            "rowCount": { "type": "integer" }
+          }
+        }
+      },
+      "evidence": "A bounded live Query V2 request returned HTTP 201 with array rows while OpenAPI declares HTTP 200."
+    },
+    "query.sql.run": {
+      "satisfiedByAdapter": ["body"],
+      "responseStatusAliases": { "201": "200" },
+      "responseSchemaOverrides": {
+        "201": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "array",
+              "items": { "type": "array" }
+            },
+            "metadata": { "type": "array" },
+            "returnedRows": { "type": "integer" },
+            "status": { "type": "object" }
+          }
+        }
+      },
+      "evidence": "The SDK builds the Connect request body from the required sql parameter. A bounded live query returned HTTP 201 with array rows, while OpenAPI declares HTTP 200 with row envelopes."
+    },
+    "query.sql.rows": {
+      "parameterAliases": {
+        "dataspace": "dataspaceName",
+        "rowLimit": "limit"
+      },
+      "defaultedParams": {
+        "offset": 0
+      },
+      "allowSpecRequiredAsOptional": ["dataspace"],
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "array",
+              "items": { "type": "array" }
+            },
+            "metadata": { "type": "array" },
+            "returnedRows": { "type": "integer" }
+          }
+        }
+      },
+      "evidence": "A bounded live Connect query returned rows with offset=0 and no dataspace parameter. The rows endpoint returns data as arrays rather than QuerySqlRowRepresentation row envelopes."
+    },
+    "segment.ci.list": {
+      "parameterAliases": {
+        "batchSize": "limit"
+      },
+      "allowSpecRequiredAsOptional": ["offset"],
+      "evidence": "A bounded live Connect list request succeeded without offset."
+    },
+    "semantic.ml.prediction_job.list": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["jobs"],
+          "properties": {
+            "currentPageUrl": { "type": "string" },
+            "jobs": { "type": "array" },
+            "nextPageUrl": { "type": "string", "nullable": true },
+            "totalSize": { "type": "integer" }
+          }
+        }
+      },
+      "evidence": "Bounded live empty job collections return nextPageUrl as null while the published schema marks it as a non-null string."
+    }
+  }
+}

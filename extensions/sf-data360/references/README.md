@@ -7,6 +7,7 @@ These references support the single `sf_data360` Pi tool. Load only what the cur
 - [`quickstart.md`](./quickstart.md) — compact calls across the business namespaces.
 - [`action-coverage.md`](./action-coverage.md) — generated action and endpoint coverage rules.
 - [`action-parity.md`](./action-parity.md) — official upstream operation parity.
+- [`connect-openapi-parity.md`](./connect-openapi-parity.md) — official Connect OpenAPI method, path, and parameter parity.
 - [`safety.md`](./safety.md) — mutation intent, destructive gates, and tenant auth.
 - [`troubleshooting.md`](./troubleshooting.md) — API failure classification and recovery.
 - [`query-patterns.md`](./query-patterns.md) — bounded Query API V3 and profile/graph access.

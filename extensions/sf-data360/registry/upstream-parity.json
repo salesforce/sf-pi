@@ -10,8 +10,8 @@
     "upstreamTools": 246,
     "supportedUpstreamTools": 246,
     "missingUpstreamTools": 0,
-    "actionCount": 309,
-    "extraActions": 63,
+    "actionCount": 577,
+    "extraActions": 331,
     "exactShapes": 241,
     "adjustedShapes": 5,
     "payloadExamples": {
@@ -3224,11 +3224,564 @@
   ],
   "extras": [
     {
+      "action": "activate.activation_external_platform.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_external_platform_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_external_platform.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_external_platform_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_platform.create",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_platform.delete",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "activate.activation_platform.disable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_disable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_platform.enable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_enable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_platform.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_platform.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_platform.metadata.action_source.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_metadata_action_source_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_platform.metadata.event.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_metadata_event_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_platform.metadata.partner_object_type.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_metadata_partner_object_type_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_platform.privacy_type.set",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_privacy_type_set",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_platform.publish",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_publish",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_platform.sync.retry",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_sync_retry",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_platform.update",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_platform_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_target.ad_account.assign",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_ad_account_assign",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_target.available_ad_account.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_available_ad_account_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
       "action": "activate.activation_target.delete",
       "namespace": "activate",
       "operationId": "d360_activation_target_delete",
       "implementation": "endpoint_extension",
       "safety": "destructive"
+    },
+    {
+      "action": "activate.activation_target.disable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_disable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_target.enable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_enable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation_target.metadata.activation_platform.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_metadata_activation_platform_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_target.metadata.communication_capping_dataspace.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_metadata_communication_capping_dataspace_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_target.metadata.dataspace_account.validate",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_metadata_dataspace_account_validate",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_target.metadata.mc_enterprise.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_metadata_mc_enterprise_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_target.metadata.platform_field.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_metadata_platform_field_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_target.partner_object.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_partner_object_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation_target.sync.retry",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_target_sync_retry",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation.data.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_data_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.disable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_disable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation.enable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_enable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation.full_refresh.run",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_full_refresh_run",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation.history.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_history_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.activatable_object_category.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activation_metadata_activatable_object_category_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.channel_preference.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_metadata_channel_preference_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.channel.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_metadata_channel_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.consent_dmo.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_metadata_consent_dmo_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.data_source.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_metadata_data_source_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.match_boost_identity_provider.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_metadata_match_boost_identity_provider_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.related_attribute_activation_quota.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activation_metadata_related_attribute_activation_quota_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.related_attribute_configuration_limits.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activation_metadata_related_attribute_configuration_limits_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.metadata.streaming_eligibility.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_metadata_streaming_eligibility_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.activation.publish",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_publish",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.activation.sync.retry",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_activation_sync_retry",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.collaboration_invitation.accept",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_invitation_accept",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.collaboration_invitation.reject",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_invitation_reject",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.collaboration.create",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.collaboration.disable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_disable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.collaboration.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.collaboration.metadata.refresh",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_metadata_refresh",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.collaboration.query_job.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_query_job_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.collaboration.query.run",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_query_run",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "activate.clean_room.collaboration.result_object.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_collaboration_result_object_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.connection.test",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_connection_test",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "activate.clean_room.provider.create",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_provider_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.provider.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_provider_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.provider.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_provider_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.provider.template.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_provider_template_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.specification.create",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_specification_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.clean_room.specification.delete",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_specification_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "activate.clean_room.specification.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_specification_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.template.collaboration.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_template_collaboration_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.clean_room.template.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_clean_room_template_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.communication_capping.activation_target_metadata.delete",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_activation_target_metadata_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "activate.communication_capping.activation_target_metadata.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_activation_target_metadata_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.communication_capping.activation_target.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_activation_target_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.communication_capping.configuration.create",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_configuration_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.dimension_metadata_to_activation_target.map",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_dimension_metadata_to_activation_target_map",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.dimension.create",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_dimension_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.dimension.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_dimension_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.communication_capping.dimension.priority.swap",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_dimension_priority_swap",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.dimension.update",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_dimension_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.disable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_disable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.enable",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_enable",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.get",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.communication_capping.rule.create",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_rule_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.rule.delete",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_rule_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "activate.communication_capping.rule.list",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_rule_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "activate.communication_capping.rule.update",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_rule_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.communication_capping.update",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_communication_capping_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "activate.data_action_target.signing_key.generate",
+      "namespace": "activate",
+      "operationId": "connect_openapi_activate_data_action_target_signing_key_generate",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
     },
     {
       "action": "activate.data_action.delete",
@@ -3282,9 +3835,177 @@
       "safety": "read"
     },
     {
+      "action": "connect.connection.action.run",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_action_run",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.connection.database.list",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_database_list",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "connect.connection.endpoint.list",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_endpoint_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.connection.existing_connection_action.run",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_existing_connection_action_run",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.connection.existing_connection_action.test",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_existing_connection_action_test",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "connect.connection.preview.get",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_preview_get",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "connect.connection.replace",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_replace",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.connection.sitemap.get",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_sitemap_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.connection.sitemap.upsert",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_connection_sitemap_upsert",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
       "action": "connect.connections_sfdc.list",
       "namespace": "connect",
       "operationId": "d360_connections_sfdc_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.data_share_target.create",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_target_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.data_share_target.delete",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_target_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "connect.data_share_target.get",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_target_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.data_share_target.list",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_target_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.data_share.create",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.data_share.delete",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "connect.data_share.get",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.data_share.link",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_link",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.data_share.list",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.data_share.unlink",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_unlink",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.data_share.update",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_data_share_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.private_network_route.create",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_private_network_route_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "connect.private_network_route.delete",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_private_network_route_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "connect.private_network_route.get",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_private_network_route_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "connect.private_network_route.list",
+      "namespace": "connect",
+      "operationId": "connect_openapi_connect_private_network_route_list",
       "implementation": "endpoint_extension",
       "safety": "read"
     },
@@ -3356,6 +4077,545 @@
       "action": "harmonize.dmo_mapping.update",
       "namespace": "harmonize",
       "operationId": "d360_dmo_mapping_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.dmo.field_mapping.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_dmo_field_mapping_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.dmo.field_mapping.update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_dmo_field_mapping_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.dmo.relationship.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_dmo_relationship_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.dmo.relationship.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_dmo_relationship_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.dmo.relationship.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_dmo_relationship_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.access_policy.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_access_policy_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.access_policy.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_access_policy_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.access_policy.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_access_policy_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.access_policy.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_access_policy_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.access_policy.rule.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_access_policy_rule_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.access_policy.rule.replace",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_access_policy_rule_replace",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.access_policy.update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_access_policy_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.auto_tagging_job.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_auto_tagging_job_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.auto_tagging_job.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_auto_tagging_job_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_assignment_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_assignment_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_assignment_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_assignment_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_assignment_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification_assignment.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_assignment_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.bulk_update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_bulk_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification_taxonomy.update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_taxonomy_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification.assignment.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_assignment_by_classification_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.classification.bulk_update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_bulk_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.classification.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.classification.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.classification.update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_classification_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_object_access_grant_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_object_access_grant_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_object_access_grant_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_object_access_grant_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_object_access_grant_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.object_access_grant.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_object_access_grant_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_assignment_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_assignment_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_assignment_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_assignment_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_assignment_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_assignment.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_assignment_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_detection_instruction.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_detection_instruction_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_detection_instruction.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_detection_instruction_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.approve",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_suggestion_approve",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.generate",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_suggestion_generate",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_suggestion_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_suggestion_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_suggestion.reject",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_suggestion_reject",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.active_detection_tag.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_active_detection_tag_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.bulk_update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_bulk_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag_taxonomy.update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_taxonomy_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag.assignment.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_assignment_by_tag_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag.bulk_create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_bulk_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag.bulk_delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_bulk_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.tag.bulk_update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_bulk_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag.create",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.tag.detection_instruction.delete",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_detection_instruction_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "harmonize.governance.tag.detection_instruction.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_detection_instruction_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag.get",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag.list",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "harmonize.governance.tag.propagate",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_propagate",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "harmonize.governance.tag.update",
+      "namespace": "harmonize",
+      "operationId": "connect_openapi_harmonize_governance_tag_update",
       "implementation": "endpoint_extension",
       "safety": "confirmed"
     },
@@ -3540,11 +4800,172 @@
       "safety": "read"
     },
     {
+      "action": "prepare.custom_code.create",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_custom_code_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.custom_code.delete",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_custom_code_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "prepare.custom_code.execution.get",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_custom_code_execution_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.custom_code.execution.list",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_custom_code_execution_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.custom_code.get",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_custom_code_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.custom_code.list",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_custom_code_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.custom_code.update",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_custom_code_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.datakit.component.update",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_datakit_component_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.datakit.create",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_datakit_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.datakit.delete",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_datakit_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "prepare.dataspace_member.get",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_dataspace_member_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.dataspace_member.sync",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_dataspace_member_sync",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
       "action": "prepare.dataspace.delete",
       "namespace": "prepare",
       "operationId": "d360_dataspace_delete",
       "implementation": "endpoint_extension",
       "safety": "destructive"
+    },
+    {
+      "action": "prepare.dataspace.sync",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_dataspace_sync",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.document_ai.configuration_data.extract",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_configuration_data_extract",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.document_ai.configuration.create",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_configuration_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.document_ai.configuration.delete",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_configuration_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "prepare.document_ai.configuration.get",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_configuration_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.document_ai.configuration.list",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_configuration_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.document_ai.configuration.update",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_configuration_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.document_ai.global_config.get",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_global_config_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.document_ai.process.run",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_process_run",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.document_ai.schema.detect",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_schema_detect",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.document_ai.schema.generate",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_document_ai_schema_generate",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
     },
     {
       "action": "prepare.ingest_job.close",
@@ -3578,6 +4999,76 @@
       "safety": "confirmed"
     },
     {
+      "action": "prepare.transform.cancel",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_transform_cancel",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "prepare.transform.rebuild",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_transform_rebuild",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.transform.retry",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_transform_retry",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "prepare.transform.run_history.list",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_transform_run_history_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "prepare.transform.status.refresh",
+      "namespace": "prepare",
+      "operationId": "connect_openapi_prepare_transform_status_refresh",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "query.datagraph.create",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_datagraph_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "query.datagraph.data_graph.activate",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_datagraph_data_graph_activate",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "query.datagraph.delete",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_datagraph_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "query.datagraph.get",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_datagraph_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "query.datagraph.refresh",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_datagraph_refresh",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
       "action": "query.insight.metadata_get",
       "namespace": "query",
       "operationId": "d360_insights_metadata_get",
@@ -3585,9 +5076,30 @@
       "safety": "read"
     },
     {
+      "action": "query.profile.calculated_insight.get",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_profile_calculated_insight_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "query.profile.child.search_key.get",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_profile_child_search_key_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
       "action": "query.profile.metadata_model",
       "namespace": "query",
       "operationId": "d360_profile_metadata_model",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "query.profile.search_key.get",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_profile_search_key_get",
       "implementation": "endpoint_extension",
       "safety": "read"
     },
@@ -3604,10 +5116,374 @@
       "safety": "read"
     },
     {
+      "action": "query.sql.next_batch.get",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_sql_next_batch_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "query.sql.v1.query",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_sql_v1_query",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "query.sql.v2.query",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_sql_v2_query",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
       "action": "query.sql.verify_rows",
       "namespace": "query",
       "implementation": "local",
       "safety": "safe_post"
+    },
+    {
+      "action": "query.universal_id.lookup",
+      "namespace": "query",
+      "operationId": "connect_openapi_query_universal_id_lookup",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "segment.count",
+      "namespace": "segment",
+      "operationId": "connect_openapi_segment_segment_count",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "segment.members.list",
+      "namespace": "segment",
+      "operationId": "connect_openapi_segment_segment_members_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.agent_config.create",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_agent_config_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.agent_config.delete",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_agent_config_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "semantic.agent_config.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_agent_config_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.agent_config.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_agent_config_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.config.delete",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_config_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "semantic.knowledge_space.config.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_config_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.config.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_config_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.configuration.create",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_configuration_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.create",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research_as_knowledge_source.add",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_deep_research_as_knowledge_source_add",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research_report.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_deep_research_report_get",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.cancel",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_deep_research_cancel",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.plan.update",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_deep_research_plan_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.run",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_deep_research_run",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.deep_research.status.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_deep_research_status_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.delete",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "semantic.knowledge_space.details.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_details_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.file_chunk_summary.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_file_chunk_summary_get",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "semantic.knowledge_space.file_status.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_file_status_get",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "semantic.knowledge_space.file.index",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_file_index",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.file.remove",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_file_remove",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "semantic.knowledge_space.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.knowledge_for_import.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_knowledge_for_import_get",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "semantic.knowledge_space.knowledge_library.search",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_knowledge_library_search",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "semantic.knowledge_space.knowledge.import",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_knowledge_import",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.library.create",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_library_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.library.details.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_library_details_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.library.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_library_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.library.remove",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_library_remove",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "semantic.knowledge_space.library.update",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_library_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.presigned_url.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_presigned_url_get",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.provision",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_provision",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.session.conversation.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_session_conversation_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.session.create",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_session_create",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.knowledge_space.session.delete",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_session_delete",
+      "implementation": "endpoint_extension",
+      "safety": "destructive"
+    },
+    {
+      "action": "semantic.knowledge_space.session.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_session_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.session.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_session_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.knowledge_space.update",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_knowledge_space_update",
+      "implementation": "endpoint_extension",
+      "safety": "confirmed"
+    },
+    {
+      "action": "semantic.ml.prediction_job.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_ml_prediction_job_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.ml.prediction_job.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_ml_prediction_job_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.ml.prediction_job.task.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_ml_prediction_job_task_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.ml.prediction_job.task.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_ml_prediction_job_task_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.ml.retriever.review",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_ml_retriever_review",
+      "implementation": "endpoint_extension",
+      "safety": "safe_post"
+    },
+    {
+      "action": "semantic.ml.setup_version.partition.get",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_ml_setup_version_partition_get",
+      "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "semantic.ml.setup_version.partition.list",
+      "namespace": "semantic",
+      "operationId": "connect_openapi_semantic_ml_setup_version_partition_list",
+      "implementation": "endpoint_extension",
+      "safety": "read"
     }
   ]
 }

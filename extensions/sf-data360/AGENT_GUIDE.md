@@ -56,10 +56,11 @@ npm run e2e:data360 -- \
   --target-org <alias> \
   --live-read \
   --live-safe-post \
+  --contract-validate \
   --fixture-profile /tmp/data360-fixtures.json
 ```
 
-Fixture profiles can contain org IDs and stay private with mode `0o600`; never commit them. Mutating lifecycle coverage remains fixture-owned, dry-run first, exact-target gated, and reverse-cleaned.
+Fixture profiles can contain org IDs and stay private with mode `0o600`; never commit them. `--contract-validate` checks Connect method, path, documented status, and recursive JSON request/response shapes; reviewed live-shape differences remain explicit overrides. OpenAPI-only coverage is promoted through `registry/connect-openapi-promotions.json`; every remaining operation must stay assigned to a reviewed wave. Mutating lifecycle coverage remains fixture-owned, dry-run first, exact-target gated, and reverse-cleaned.
 
 ## Boundaries
 

@@ -22,14 +22,15 @@ Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, i
 ## Phase coverage
 
 - **DMO** — Read Data Model Object catalog and schemas.
+- **Data Governance** — Inspect Data 360 policies, classifications, taxonomies, tags, assignments, and governance jobs.
 - **Identity Resolution** — Inspect identity resolution rulesets and profile unification setup.
 - **Mappings** — Inspect DLO-to-DMO mappings and field mappings.
 - **Semantic Retrieval** — Inspect retrievers, search indexes, and semantic data models for RAG and BI.
 - **Smart** — Local helper algorithms for field matching, mapping suggestions, and data stream payload enhancement.
 - **StandardMappings** — Create standard DLO-to-DMO mappings from predefined mapping definitions.
 
-- Capabilities: 46 (0 runbook-backed)
-- Safety mix: read=7, safe_post=5, confirmed=24, destructive=10
+- Capabilities: 123 (0 runbook-backed)
+- Safety mix: read=33, safe_post=5, confirmed=57, destructive=28
 
 ## Data 360 family actions
 
@@ -37,10 +38,10 @@ Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, i
 - `sf_data360` `harmonize.dmo_mapping.list` (harmonize, rest_operation, read) — List mappings by DMO name or CRM source.
 - `sf_data360` `harmonize.dmo.get` (harmonize, rest_operation, read) — Get full DMO schema including all fields.
 - `sf_data360` `harmonize.dmo.list` (harmonize, rest_operation, read) — List all Data Model Objects. Filter by category.
-- `sf_data360` `harmonize.ir.get` (harmonize, rest_operation, read) — Get ruleset details.
-- `sf_data360` `harmonize.ir.list` (harmonize, rest_operation, read) — List identity resolution rulesets.
-- `sf_data360` `harmonize.event_date_recommend` (harmonize, rest_operation, safe_post) — Show mutable vs immutable date field scores.
-- `sf_data360` `harmonize.preview_field_matches` (harmonize, rest_operation, safe_post) — Dry-run field matching with confidence scores.
+- `sf_data360` `harmonize.dmo.relationship.list` (harmonize, rest_operation, read) — Get field source target relationships
+- `sf_data360` `harmonize.governance.access_policy.get` (harmonize, rest_operation, read) — Get access policy
+- `sf_data360` `harmonize.governance.access_policy.list` (harmonize, rest_operation, read) — Get access policies
+- `sf_data360` `harmonize.governance.access_policy.rule.get` (harmonize, rest_operation, read) — Get access policy rule
 
 ## Cross-phase routing
 

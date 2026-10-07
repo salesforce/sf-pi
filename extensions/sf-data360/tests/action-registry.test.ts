@@ -106,6 +106,139 @@ describe("sf_data360 action registry", () => {
     });
   });
 
+  it("requires OpenAPI-mandated Data Kit and data-graph selectors", () => {
+    expect(findPublicData360Action("prepare.datakit_component_deps")).toMatchObject({
+      requiredParams: ["dataKitId", "componentId", "componentType"],
+      optionalParams: ["dataspace"],
+    });
+    expect(findPublicData360Action("prepare.datakit.deploy")).toMatchObject({
+      requiredParams: ["dataKitDevName", "asyncMode", "body"],
+      inputSchema: {
+        properties: { asyncMode: { type: "boolean" } },
+      },
+    });
+    expect(findPublicData360Action("prepare.datakit.undeploy")).toMatchObject({
+      requiredParams: ["dataKitId", "asyncMode", "body"],
+      inputSchema: {
+        properties: { asyncMode: { type: "boolean" } },
+      },
+    });
+    expect(findPublicData360Action("query.datagraph.lookup")).toMatchObject({
+      requiredParams: ["entity", "lookupKeys"],
+      optionalParams: ["dataspace", "live", "limit"],
+    });
+    for (const actionName of [
+      "harmonize.dmo_mapping.create",
+      "harmonize.standard_mapping.create",
+    ]) {
+      expect(findPublicData360Action(actionName), actionName).toMatchObject({
+        requiredParams: ["body", "dataspace"],
+      });
+    }
+  });
+
+  it("publishes Wave 1 Connect OpenAPI promotions as read-only activation actions", () => {
+    const promoted = getPublicData360Actions().filter(
+      (action) => action.promotionWave === "wave1_activation_metadata_reads",
+    );
+    expect(promoted).toHaveLength(3);
+    expect(promoted.every((action) => action.namespace === "activate")).toBe(true);
+    expect(promoted.every((action) => action.safety === "read")).toBe(true);
+    expect(promoted.map((action) => action.action)).toEqual([
+      "activate.activation.metadata.activatable_object_category.list",
+      "activate.activation.metadata.related_attribute_activation_quota.get",
+      "activate.activation.metadata.related_attribute_configuration_limits.get",
+    ]);
+  });
+
+  it("publishes the complete Wave 2 existing-family read surface", () => {
+    const promoted = getPublicData360Actions().filter(
+      (action) => action.promotionWave === "wave2_existing_family_reads",
+    );
+    expect(promoted).toHaveLength(39);
+    expect(promoted.every((action) => action.safety === "read")).toBe(true);
+    expect(promoted.map((action) => action.action)).toEqual(
+      expect.arrayContaining([
+        "activate.activation.history.list",
+        "connect.connection.endpoint.list",
+        "harmonize.dmo.relationship.list",
+        "prepare.dataspace_member.get",
+        "query.profile.search_key.get",
+        "segment.members.list",
+        "semantic.ml.prediction_job.list",
+      ]),
+    );
+  });
+
+  it("publishes the complete Wave 3 new-family read surface", () => {
+    const promoted = getPublicData360Actions().filter(
+      (action) => action.promotionWave === "wave3_new_family_reads",
+    );
+    expect(promoted).toHaveLength(66);
+    expect(promoted.every((action) => action.safety === "read")).toBe(true);
+    expect(promoted.map((action) => action.action)).toEqual(
+      expect.arrayContaining([
+        "harmonize.governance.access_policy.list",
+        "semantic.knowledge_space.list",
+        "activate.clean_room.collaboration.list",
+        "activate.communication_capping.dimension.list",
+        "prepare.custom_code.list",
+        "connect.data_share.list",
+        "prepare.document_ai.configuration.list",
+        "semantic.agent_config.list",
+        "connect.private_network_route.list",
+        "query.universal_id.lookup",
+      ]),
+    );
+  });
+
+  it("publishes the complete Wave 4 POST surface with reviewed safety", () => {
+    const promoted = getPublicData360Actions().filter(
+      (action) => action.promotionWave === "wave4_post_operations",
+    );
+    expect(promoted).toHaveLength(112);
+    expect(
+      promoted.reduce<Record<string, number>>((counts, action) => {
+        counts[action.safety] = (counts[action.safety] ?? 0) + 1;
+        return counts;
+      }, {}),
+    ).toEqual({ confirmed: 86, safe_post: 15, destructive: 11 });
+    expect(promoted.map((action) => action.action)).toEqual(
+      expect.arrayContaining([
+        "query.sql.v2.query",
+        "segment.count",
+        "connect.connection.existing_connection_action.test",
+        "harmonize.governance.classification.bulk_delete",
+        "semantic.knowledge_space.file.remove",
+      ]),
+    );
+  });
+
+  it("publishes complete Wave 5 and Wave 6 mutation surfaces", () => {
+    const updates = getPublicData360Actions().filter(
+      (action) => action.promotionWave === "wave5_update_operations",
+    );
+    const deletes = getPublicData360Actions().filter(
+      (action) => action.promotionWave === "wave6_destructive_operations",
+    );
+    expect(updates).toHaveLength(22);
+    expect(updates.every((action) => action.safety === "confirmed")).toBe(true);
+    expect(deletes).toHaveLength(26);
+    expect(deletes.every((action) => action.safety === "destructive")).toBe(true);
+    expect([...updates, ...deletes].map((action) => action.action)).toEqual(
+      expect.arrayContaining([
+        "activate.activation_platform.update",
+        "connect.connection.sitemap.upsert",
+        "harmonize.governance.tag.update",
+        "semantic.knowledge_space.library.update",
+        "activate.activation_platform.delete",
+        "harmonize.governance.tag.delete",
+        "prepare.document_ai.configuration.delete",
+        "semantic.knowledge_space.session.delete",
+      ]),
+    );
+  });
+
   it("publishes exact discovery action parameter contracts", () => {
     expect(findPublicData360Action("discover.action.search")).toMatchObject({
       requiredParams: [],
