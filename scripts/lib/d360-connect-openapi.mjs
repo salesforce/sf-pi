@@ -181,7 +181,7 @@ export function validateConnectLiveResult(snapshot, action, result, overrideValu
     : {};
   const responseSchemaOverride =
     responseSchemaOverrides[observedStatus] ?? responseSchemaOverrides[declaredStatus];
-  const responseBody = validateDeclaredBody(
+  const declaredResponseBody = validateDeclaredBody(
     responseSchemaOverride
       ? [
           {
@@ -195,7 +195,14 @@ export function validateConnectLiveResult(snapshot, action, result, overrideValu
     "response",
     snapshot,
   );
-  const responseOverrideApplied = Boolean(responseSchemaOverride) || responseStatusOverrideApplied;
+  const responseBody = applyValidationExceptions(
+    declaredResponseBody,
+    stringArray(override.responseValidationExceptions),
+  );
+  const responseOverrideApplied =
+    Boolean(responseSchemaOverride) ||
+    responseStatusOverrideApplied ||
+    responseBody.exceptions.length > 0;
   const status =
     !methodMatches || !pathMatches
       ? "request_drift"
@@ -227,6 +234,7 @@ export function validateConnectLiveResult(snapshot, action, result, overrideValu
     },
     requestBodyErrors: requestBody.errors,
     responseBodyErrors: responseBody.errors,
+    responseBodyExceptions: responseBody.exceptions,
     responseSchemas: (response?.content ?? []).map((entry) => entry.schema).filter(Boolean),
     responseStatusOverride: responseStatusOverrideApplied
       ? { observed: observedStatus, declared: declaredStatus }
@@ -234,6 +242,28 @@ export function validateConnectLiveResult(snapshot, action, result, overrideValu
     overrideEvidence: responseOverrideApplied ? stringValue(override.evidence) : undefined,
     summary: contractValidationSummary(status, observedStatus),
   };
+}
+
+function applyValidationExceptions(validation, exceptions) {
+  if (validation.status !== "fail" || !exceptions.length) {
+    return { ...validation, exceptions: [] };
+  }
+  const allowed = new Set(exceptions);
+  const errors = [];
+  const accepted = [];
+  for (const error of validation.errors) {
+    if (allowed.has(normalizeValidationError(error))) accepted.push(error);
+    else errors.push(error);
+  }
+  return {
+    status: errors.length ? "fail" : "pass",
+    errors,
+    exceptions: accepted,
+  };
+}
+
+function normalizeValidationError(error) {
+  return String(error).replace(/\[\d+\]/g, "[*]");
 }
 
 function validateDeclaredBody(content, value, required, mode, snapshot) {

@@ -1416,7 +1416,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live org where activation external-platform detail is disabled returns an HTTP 403 error envelope although the published operation declares only HTTP 200."
         }
       ]
     },
@@ -1583,7 +1584,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -1610,7 +1612,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -1833,7 +1836,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live activation collection returns activations as an array while the published schema declares one activation object."
         }
       ]
     },
@@ -2252,7 +2256,7 @@
           "defaultedParams": [],
           "relaxedRequired": ["offset"],
           "parameterAliases": { "batchSize": "limit" },
-          "overrideEvidence": "A bounded live Connect list request succeeded without offset."
+          "overrideEvidence": "A bounded live Connect list request succeeded without offset. A bounded live response contains nullable fields not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -2667,7 +2671,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live connector metadata response uses scalar and nullable attribute fields where the published schema declares nested objects; the stable top-level connector envelope is validated."
         }
       ]
     },
@@ -2694,7 +2699,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -2721,7 +2727,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -2748,7 +2755,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4061,7 +4069,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4088,7 +4097,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live DLO get returns a dataLakeObjects collection envelope and uppercase status values while the published schema declares one unwrapped object."
         }
       ]
     },
@@ -4115,7 +4125,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4142,7 +4153,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4169,7 +4181,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4196,7 +4209,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4418,7 +4432,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4446,7 +4461,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live data-space member response uses an uppercase status spelling not represented by the published enum."
         }
       ]
     },
@@ -4473,7 +4489,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4500,7 +4517,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4527,7 +4545,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings, response shapes not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4554,7 +4573,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings, response shapes not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -4609,7 +4629,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains response shapes not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -5206,7 +5227,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -5233,7 +5255,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -5373,7 +5396,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -5400,7 +5424,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -5591,7 +5616,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -5618,7 +5644,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -6058,7 +6085,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains nullable fields, response shapes not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -6085,7 +6113,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live response contains nullable fields, response shapes not represented by the published schema; only the listed validation paths are accepted."
         }
       ]
     },
@@ -8121,7 +8150,8 @@
           "adapterSatisfied": [],
           "defaultedParams": [],
           "relaxedRequired": [],
-          "parameterAliases": {}
+          "parameterAliases": {},
+          "overrideEvidence": "A bounded live existing-connection test returned HTTP 201 while the published operation declares HTTP 200."
         }
       ]
     },

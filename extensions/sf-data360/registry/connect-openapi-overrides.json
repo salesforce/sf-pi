@@ -185,7 +185,13 @@
         "batchSize": "limit"
       },
       "allowSpecRequiredAsOptional": ["offset"],
-      "evidence": "A bounded live Connect list request succeeded without offset."
+      "evidence": "A bounded live Connect list request succeeded without offset. A bounded live response contains nullable fields not represented by the published schema; only the listed validation paths are accepted.",
+      "responseValidationExceptions": [
+        "$.collection.nextPageToken must not be null",
+        "$.collection.nextPageUrl must not be null",
+        "$.collection.previousPageToken must not be null",
+        "$.collection.previousPageUrl must not be null"
+      ]
     },
     "semantic.ml.prediction_job.list": {
       "responseSchemaOverrides": {
@@ -201,6 +207,313 @@
         }
       },
       "evidence": "Bounded live empty job collections return nextPageUrl as null while the published schema marks it as a non-null string."
+    },
+    "activate.activation_target.get": {
+      "responseValidationExceptions": ["$.status must be one of the declared enum values"],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "activate.activation_target.list": {
+      "responseValidationExceptions": [
+        "$.activationTargets[*].status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "activate.activation.list": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "properties": {
+            "activations": {
+              "type": "array",
+              "items": {
+                "ref": "#/components/schemas/ActivationRepresentation"
+              }
+            },
+            "batchSize": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            },
+            "orderByExpression": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "evidence": "A bounded live activation collection returns activations as an array while the published schema declares one activation object."
+    },
+    "activate.data_action_target.get": {
+      "responseValidationExceptions": [
+        "$.status must be one of the declared enum values",
+        "$.type must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "activate.data_action_target.list": {
+      "responseValidationExceptions": [
+        "$.currentPageUrl must not be null",
+        "$.dataActionTargets[*].status must be one of the declared enum values",
+        "$.dataActionTargets[*].type must be one of the declared enum values",
+        "$.nextPageUrl must not be null"
+      ],
+      "evidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "activate.data_action.list": {
+      "responseValidationExceptions": [
+        "$.currentPageUrl must not be null",
+        "$.dataActions[*].dataActionSources[*].subscriptionModes[*] must be one of the declared enum values",
+        "$.dataActions[*].dataActionStatus must be one of the declared enum values",
+        "$.nextPageUrl must not be null"
+      ],
+      "evidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "harmonize.dmo_mapping.get": {
+      "responseValidationExceptions": ["$.status must be one of the declared enum values"],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "harmonize.dmo_mapping.list": {
+      "responseValidationExceptions": [
+        "$.objectSourceTargetMaps[*].status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "harmonize.dmo.get": {
+      "responseValidationExceptions": ["$.category must be one of the declared enum values"],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "harmonize.dmo.list": {
+      "responseValidationExceptions": [
+        "$.dataModelObject[*].category must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "prepare.dataspace_member.list": {
+      "responseValidationExceptions": [
+        "$.members[*].status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "prepare.dlo.get": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["dataLakeObjects"],
+          "properties": {
+            "dataLakeObjects": {
+              "type": "array",
+              "items": {
+                "ref": "#/components/schemas/DataLakeObjectRepresentation"
+              }
+            }
+          }
+        }
+      },
+      "responseValidationExceptions": [
+        "$.dataLakeObjects[*].status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live DLO get returns a dataLakeObjects collection envelope and uppercase status values while the published schema declares one unwrapped object."
+    },
+    "prepare.dlo.list": {
+      "responseValidationExceptions": [
+        "$.dataLakeObjects[*].category must be one of the declared enum values",
+        "$.dataLakeObjects[*].dataLakeFieldInfoRepresentation[*].dataType must be one of the declared enum values",
+        "$.dataLakeObjects[*].status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "prepare.stream.get": {
+      "responseValidationExceptions": [
+        "$.dataAccessMode must be one of the declared enum values",
+        "$.dataLakeObjectInfo.status must be one of the declared enum values",
+        "$.dataStreamType must be one of the declared enum values",
+        "$.lastRunStatus must be one of the declared enum values",
+        "$.sourceFields[*].datatype must be one of the declared enum values",
+        "$.status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "prepare.stream.list": {
+      "responseValidationExceptions": [
+        "$.dataStreams[*].dataAccessMode must be one of the declared enum values",
+        "$.dataStreams[*].dataLakeObjectInfo.status must be one of the declared enum values",
+        "$.dataStreams[*].dataStreamType must be one of the declared enum values",
+        "$.dataStreams[*].lastRunStatus must be one of the declared enum values",
+        "$.dataStreams[*].refreshConfig.frequency.frequencyType must be one of the declared enum values",
+        "$.dataStreams[*].sourceFields[*].datatype must be one of the declared enum values",
+        "$.dataStreams[*].status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "prepare.transform_schedule.get": {
+      "responseValidationExceptions": ["$ must match at least one oneOf schema"],
+      "evidence": "A bounded live response contains response shapes not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "prepare.transform.get": {
+      "responseValidationExceptions": [
+        "$.creationType must be one of the declared enum values",
+        "$.definition must match at least one oneOf schema",
+        "$.fullRunFrequency must be one of the declared enum values",
+        "$.lastRunStatus must be one of the declared enum values",
+        "$.status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings, response shapes not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "prepare.transform.list": {
+      "responseValidationExceptions": [
+        "$.dataTransforms[*].creationType must be one of the declared enum values",
+        "$.dataTransforms[*].definition must match at least one oneOf schema",
+        "$.dataTransforms[*].fullRunFrequency must be one of the declared enum values",
+        "$.dataTransforms[*].lastRunStatus must be one of the declared enum values",
+        "$.dataTransforms[*].status must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings, response shapes not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.ml.configured_model.get": {
+      "responseValidationExceptions": [
+        "$.foundationalModel.minorVersionName must not be null",
+        "$.inputTypes[*].name must be one of the declared enum values",
+        "$.parameters[*].type must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.ml.configured_model.list": {
+      "responseValidationExceptions": [
+        "$.configuredModels[*].foundationalModel.minorVersionName must not be null",
+        "$.configuredModels[*].inputTypes[*].name must be one of the declared enum values",
+        "$.configuredModels[*].parameters[*].type must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings, nullable fields not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.ml.model_artifact.get": {
+      "responseValidationExceptions": [
+        "$.parameters[*].type must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.ml.model_artifact.list": {
+      "responseValidationExceptions": [
+        "$.modelArtifacts[*].parameters[*].type must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.retriever.get": {
+      "responseValidationExceptions": ["$.queryType must be one of the declared enum values"],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.retriever.list": {
+      "responseValidationExceptions": [
+        "$.retrievers[*].dataSourceType must be one of the declared enum values",
+        "$.retrievers[*].queryType must be one of the declared enum values"
+      ],
+      "evidence": "A bounded live response contains enum spellings not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.search_index.get": {
+      "responseValidationExceptions": [
+        "$.attachmentDmoId must not be null",
+        "$.attachmentDmoName must not be null",
+        "$.description must not be null",
+        "$.indexConfiguration must not be null",
+        "$.transcribeDmoDeveloperName must not be null",
+        "$.transcribeDmoName must not be null",
+        "$.vectorEmbedding.vectorEmbeddingRelatedFields[*].fieldRelationshipPathId must not be null",
+        "$.vectorEmbedding.vectorEmbeddingRelatedFields[*].relationships[*].parentRelationshipId must not be null",
+        "$.vectorEmbeddingConfiguration.embeddingModel.userValues[*].value must be an object",
+        "$.vectorEmbeddingConfiguration.index.userValues[*].value must be an object",
+        "$.version must not be null"
+      ],
+      "evidence": "A bounded live response contains nullable fields, response shapes not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "semantic.search_index.list": {
+      "responseValidationExceptions": [
+        "$.nextPageUrl must not be null",
+        "$.semanticSearchDefinitionDetails[*].attachmentDmoId must not be null",
+        "$.semanticSearchDefinitionDetails[*].attachmentDmoName must not be null",
+        "$.semanticSearchDefinitionDetails[*].description must not be null",
+        "$.semanticSearchDefinitionDetails[*].indexConfiguration must not be null",
+        "$.semanticSearchDefinitionDetails[*].transcribeDmoDeveloperName must not be null",
+        "$.semanticSearchDefinitionDetails[*].transcribeDmoName must not be null",
+        "$.semanticSearchDefinitionDetails[*].vectorEmbedding.vectorEmbeddingRelatedFields[*].fieldRelationshipPathId must not be null",
+        "$.semanticSearchDefinitionDetails[*].vectorEmbedding.vectorEmbeddingRelatedFields[*].relationships[*].parentRelationshipId must not be null",
+        "$.semanticSearchDefinitionDetails[*].vectorEmbeddingConfiguration.embeddingModel.userValues[*].value must be an object",
+        "$.semanticSearchDefinitionDetails[*].vectorEmbeddingConfiguration.index.userValues[*].value must be an object",
+        "$.semanticSearchDefinitionDetails[*].version must not be null"
+      ],
+      "evidence": "A bounded live response contains nullable fields, response shapes not represented by the published schema; only the listed validation paths are accepted."
+    },
+    "connect.connector.metadata": {
+      "responseSchemaOverrides": {
+        "200": {
+          "type": "object",
+          "required": ["advancedAttributes", "connectionAttributes", "label", "name"],
+          "properties": {
+            "advancedAttributes": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "connectionAttributes": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "description": {
+              "type": "string"
+            },
+            "features": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "iconUrl": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "evidence": "A bounded live connector metadata response uses scalar and nullable attribute fields where the published schema declares nested objects; the stable top-level connector envelope is validated."
+    },
+    "activate.activation_external_platform.get": {
+      "responseStatusAliases": {
+        "403": "200"
+      },
+      "responseSchemaOverrides": {
+        "403": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["errorCode", "message"],
+            "properties": {
+              "errorCode": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "evidence": "A bounded live org where activation external-platform detail is disabled returns an HTTP 403 error envelope although the published operation declares only HTTP 200."
+    },
+    "connect.connection.existing_connection_action.test": {
+      "responseStatusAliases": {
+        "201": "200"
+      },
+      "evidence": "A bounded live existing-connection test returned HTTP 201 while the published operation declares HTTP 200."
+    },
+    "prepare.dataspace_member.get": {
+      "responseValidationExceptions": ["$.status must be one of the declared enum values"],
+      "evidence": "A bounded live data-space member response uses an uppercase status spelling not represented by the published enum."
     }
   }
 }

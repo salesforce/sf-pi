@@ -60,6 +60,10 @@ components:
           type: array
           items:
             type: object
+            properties:
+              status:
+                type: string
+                enum: [Active]
     DataModelObjectInput:
       type: object
       required: [label]
@@ -254,6 +258,31 @@ describe("Data 360 Connect OpenAPI contract", () => {
       fail: false,
       checks: { responseStatus: true },
       responseStatusOverride: { observed: "201", declared: "200" },
+    });
+
+    const enumDrift = {
+      status: 200,
+      request: { method: "GET", path: "/services/data/v68.0/ssot/data-spaces" },
+      response: { dataSpaces: [{ status: "ACTIVE" }] },
+    };
+    expect(validateConnectLiveResult(snapshot, action, enumDrift)).toMatchObject({
+      status: "response_body_drift",
+      fail: true,
+      responseBodyErrors: ["$.dataSpaces[0].status must be one of the declared enum values"],
+    });
+    expect(
+      validateConnectLiveResult(snapshot, action, enumDrift, {
+        responseValidationExceptions: [
+          "$.dataSpaces[*].status must be one of the declared enum values",
+        ],
+        evidence: "A bounded live response uses an additional documented state spelling.",
+      }),
+    ).toMatchObject({
+      status: "conformant_with_override",
+      fail: false,
+      checks: { responseBody: "pass_override" },
+      responseBodyErrors: [],
+      responseBodyExceptions: ["$.dataSpaces[0].status must be one of the declared enum values"],
     });
   });
 
