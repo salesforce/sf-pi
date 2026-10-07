@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Public-safe seed-profile builder for recursive sf_data360 live reads. */
+/** Public-safe fixture-profile builder for recursive sf_data360 live reads. */
 
-export interface Data360SeedProfile {
+export interface Data360FixtureProfile {
   defaults?: Record<string, unknown>;
   actions?: Record<string, Record<string, unknown>>;
 }
@@ -49,7 +49,7 @@ export interface Data360DiscoveredAssets {
   manifestPath?: string;
 }
 
-export function buildData360SeedProfile(assets: Data360DiscoveredAssets): Data360SeedProfile {
+export function buildData360FixtureProfile(assets: Data360DiscoveredAssets): Data360FixtureProfile {
   const actions: Record<string, Record<string, unknown>> = {};
   const set = (action: string, params: Record<string, unknown>): void => {
     if (Object.values(params).every(hasValue)) actions[action] = params;

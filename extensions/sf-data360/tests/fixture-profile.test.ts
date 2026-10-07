@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { buildData360SeedProfile } from "../../../scripts/e2e/data360/seed-profile.ts";
+import { buildData360FixtureProfile } from "../../../scripts/e2e/data360/fixture-profile.ts";
 
-describe("sf_data360 recursive seed profiles", () => {
+describe("sf_data360 recursive fixture profiles", () => {
   it("derives action-scoped read parameters without leaking unrelated IDs", () => {
-    const profile = buildData360SeedProfile({
+    const profile = buildData360FixtureProfile({
       dataspace: { name: "default" },
       dlo: { name: "Example__dll" },
       dmo: { name: "Example__dlm" },

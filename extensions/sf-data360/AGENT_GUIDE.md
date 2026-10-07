@@ -45,21 +45,21 @@ Use generated recursive test contracts to classify every action before live exec
 npm run generate-d360-test-contracts:check
 ```
 
-For private non-production coverage, discover bounded org-local identifiers into an ignored seed profile, then run reads and validation-only POSTs:
+For private non-production coverage, discover bounded org-local identifiers into an ignored fixture profile, then run reads and validation-only POSTs:
 
 ```bash
-npm run e2e:data360:seed -- \
+npm run e2e:data360:fixtures -- \
   --target-org <alias> \
-  --output /tmp/data360-seeds.json
+  --output /tmp/data360-fixtures.json
 
 npm run e2e:data360 -- \
   --target-org <alias> \
   --live-read \
   --live-safe-post \
-  --seed-profile /tmp/data360-seeds.json
+  --fixture-profile /tmp/data360-fixtures.json
 ```
 
-Seed profiles can contain org IDs and stay private with mode `0o600`; never commit them. Mutating lifecycle coverage remains fixture-owned, dry-run first, exact-target gated, and reverse-cleaned.
+Fixture profiles can contain org IDs and stay private with mode `0o600`; never commit them. Mutating lifecycle coverage remains fixture-owned, dry-run first, exact-target gated, and reverse-cleaned.
 
 ## Boundaries
 

@@ -30,7 +30,7 @@ import type {
 } from "../../extensions/sf-data360/lib/actions/action-types.ts";
 import { runSfData360Action } from "../../extensions/sf-data360/lib/sdk.ts";
 import { presentSfData360Result } from "../../extensions/sf-data360/lib/result.ts";
-import type { Data360SeedProfile } from "./data360/seed-profile.ts";
+import type { Data360FixtureProfile } from "./data360/fixture-profile.ts";
 import {
   buildDloData360LifecyclePlan,
   buildDmoData360LifecyclePlan,
@@ -97,7 +97,7 @@ export interface Data360SweepOptions {
   liveRead?: boolean;
   liveSafePost?: boolean;
   maxLiveRead?: number;
-  seedProfile?: Data360SeedProfile;
+  fixtureProfile?: Data360FixtureProfile;
   mutationLifecycle?: Data360MutationLifecycleName;
   mutate?: boolean;
   runId?: string;
@@ -150,7 +150,7 @@ export function buildData360SweepPlan(
     | "liveRead"
     | "liveSafePost"
     | "maxLiveRead"
-    | "seedProfile"
+    | "fixtureProfile"
   > = {},
 ): Data360SweepRecord[] {
   const selected = actions.filter((action) => matchesFilters(action, options));
@@ -200,7 +200,7 @@ export function buildData360SweepPlan(
       (options.liveRead && action.safety === "read") ||
       (options.liveSafePost && action.safety === "safe_post")
     ) {
-      const params = paramsForLiveRead(action, options.seedProfile);
+      const params = paramsForLiveRead(action, options.fixtureProfile);
       if (!params) {
         records.push({
           ...baseRecord(action, "live_read"),
@@ -237,13 +237,13 @@ export function paramsForDryRun(action: Data360ActionDefinition): Record<string,
 
 export function paramsForLiveRead(
   action: Data360ActionDefinition,
-  seedProfile?: Data360SeedProfile,
+  fixtureProfile?: Data360FixtureProfile,
 ): Record<string, unknown> | undefined {
   if (action.safety !== "read" && action.safety !== "safe_post") return undefined;
   const special = specialLiveParams(action);
-  const actionSeeds = seedProfile?.actions?.[action.action] ?? {};
-  const defaults = seedProfile?.defaults ?? {};
-  const params: Record<string, unknown> = { ...special, ...actionSeeds };
+  const actionFixtures = fixtureProfile?.actions?.[action.action] ?? {};
+  const defaults = fixtureProfile?.defaults ?? {};
+  const params: Record<string, unknown> = { ...special, ...actionFixtures };
   const supported = new Set([
     ...(action.requiredParams ?? []),
     ...(action.optionalParams ?? []),
@@ -252,16 +252,17 @@ export function paramsForLiveRead(
   for (const name of supported) {
     if (params[name] === undefined && defaults[name] !== undefined) params[name] = defaults[name];
   }
-  if ((action.requiredParams ?? []).some((name) => !hasSeedValue(params[name]))) return undefined;
+  if ((action.requiredParams ?? []).some((name) => !hasFixtureValue(params[name])))
+    return undefined;
   if (
     action.requiredAnyOf?.length &&
-    !action.requiredAnyOf.some((group) => group.every((name) => hasSeedValue(params[name])))
+    !action.requiredAnyOf.some((group) => group.every((name) => hasFixtureValue(params[name])))
   ) {
     return undefined;
   }
   if (
     action.safety === "safe_post" &&
-    !Object.keys(actionSeeds).length &&
+    !Object.keys(actionFixtures).length &&
     !Object.keys(special).length
   ) {
     return undefined;
@@ -643,7 +644,7 @@ function specialLiveParams(action: Data360ActionDefinition): Record<string, unkn
   }
 }
 
-function hasSeedValue(value: unknown): boolean {
+function hasFixtureValue(value: unknown): boolean {
   return value !== undefined && value !== null && value !== "";
 }
 
@@ -860,9 +861,11 @@ export function parseData360SweepArgs(argv: string[]): Data360SweepOptions {
     else if (arg === "--no-missing-params") options.includeMissingParams = false;
     else if (arg === "--live-read") options.liveRead = true;
     else if (arg === "--live-safe-post") options.liveSafePost = true;
-    else if (arg === "--seed-profile") {
+    else if (arg === "--fixture-profile") {
       const profilePath = path.resolve(argv[++i] ?? "");
-      options.seedProfile = JSON.parse(readFileSync(profilePath, "utf8")) as Data360SeedProfile;
+      options.fixtureProfile = JSON.parse(
+        readFileSync(profilePath, "utf8"),
+      ) as Data360FixtureProfile;
     } else if (arg === "--max-live-read") options.maxLiveRead = Number(argv[++i]);
     else if (arg === "--mutation-lifecycle") {
       const lifecycle = argv[++i];
@@ -880,7 +883,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseData360SweepArgs(process.argv.slice(2));
   if (!options.targetOrg) {
     console.error(
-      "Usage: node --experimental-strip-types scripts/e2e/data360-action-sweep.ts --target-org <alias> [--namespace <name>] [--live-read] [--live-safe-post] [--seed-profile <json>] [--mutation-lifecycle dlo|dmo --mutate --run-id <id>]",
+      "Usage: node --experimental-strip-types scripts/e2e/data360-action-sweep.ts --target-org <alias> [--namespace <name>] [--live-read] [--live-safe-post] [--fixture-profile <json>] [--mutation-lifecycle dlo|dmo --mutate --run-id <id>]",
     );
     process.exit(2);
   }

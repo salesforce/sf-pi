@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Discover bounded org-local assets and write a private sf_data360 seed profile. */
+/** Discover bounded org-local assets and write a private sf_data360 fixture profile. */
 import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -9,7 +9,10 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { detectEnvironment } from "../../lib/common/sf-environment/detect.ts";
 import { runSfData360Action } from "../../extensions/sf-data360/lib/sdk.ts";
-import { buildData360SeedProfile, type Data360DiscoveredAssets } from "./data360/seed-profile.ts";
+import {
+  buildData360FixtureProfile,
+  type Data360DiscoveredAssets,
+} from "./data360/fixture-profile.ts";
 
 interface Options {
   targetOrg: string;
@@ -24,14 +27,14 @@ interface Options {
 const options = parseArgs(process.argv.slice(2));
 if (!options.targetOrg || !options.output) {
   console.error(
-    "Usage: node --experimental-strip-types scripts/e2e/data360-seed-profile.ts --target-org <alias> --output <private-json> [--data-kit-dev-name <name>] [--component-type DataStreamBundle] [--profile-model <name> --profile-filter <filter> --profile-fields <fields>]",
+    "Usage: node --experimental-strip-types scripts/e2e/data360-fixture-profile.ts --target-org <alias> --output <private-json> [--data-kit-dev-name <name>] [--component-type DataStreamBundle] [--profile-model <name> --profile-filter <filter> --profile-fields <fields>]",
   );
   process.exit(2);
 }
 const outputPath = path.resolve(options.output);
 const workspaceRelative = path.relative(process.cwd(), outputPath);
 if (!workspaceRelative.startsWith("..") && !path.isAbsolute(workspaceRelative)) {
-  throw new Error("Data 360 seed profiles must be written outside the repository workspace.");
+  throw new Error("Data 360 fixture profiles must be written outside the repository workspace.");
 }
 const env = await detectEnvironment(exec, process.cwd());
 const ctx = { cwd: process.cwd(), hasUI: false } as ExtensionContext;
@@ -201,11 +204,11 @@ if (connectionId) {
     { mode: 0o600 },
   );
 }
-const profile = buildData360SeedProfile(assets);
+const profile = buildData360FixtureProfile(assets);
 mkdirSync(path.dirname(outputPath), { recursive: true });
 writeFileSync(outputPath, JSON.stringify(profile, null, 2), { mode: 0o600 });
-console.log(`Data 360 seed profile wrote ${outputPath}`);
-console.log(`Seeded actions: ${Object.keys(profile.actions ?? {}).length}`);
+console.log(`Data 360 fixture profile wrote ${outputPath}`);
+console.log(`Fixture-covered actions: ${Object.keys(profile.actions ?? {}).length}`);
 
 function rootDiscovery(): Array<[string, string, Record<string, unknown>]> {
   return [

@@ -173,7 +173,7 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run e2e:d360-stdm`
 - `npm run e2e:d360-tracing`
 - `npm run e2e:data360`
-- `npm run e2e:data360:seed`
+- `npm run e2e:data360:fixtures`
 - `npm run e2e:instruction-behavior`
 - `npm run e2e:sf-apex-harness`
 - `npm run e2e:sf-browser-harden`

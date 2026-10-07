@@ -61,10 +61,10 @@ describe("sf_data360 action sweep", () => {
     );
   });
 
-  it("uses action-scoped seed profiles for asset reads and safe POSTs", () => {
+  it("uses action-scoped fixture profiles for asset reads and safe POSTs", () => {
     const dloGet = findPublicData360Action("prepare.dlo.get")!;
     const ciValidate = findPublicData360Action("segment.ci.validate")!;
-    const seedProfile = {
+    const fixtureProfile = {
       defaults: { dataspace: "default" },
       actions: {
         "prepare.dlo.get": { dloName: "Example__dll" },
@@ -74,7 +74,7 @@ describe("sf_data360 action sweep", () => {
     const plan = buildData360SweepPlan([dloGet, ciValidate], {
       liveRead: true,
       liveSafePost: true,
-      seedProfile,
+      fixtureProfile,
     });
     expect(plan).toEqual(
       expect.arrayContaining([

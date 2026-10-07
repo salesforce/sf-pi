@@ -5,20 +5,20 @@
       "script": "e2e:data360",
       "entry": "scripts/e2e/data360-action-sweep.ts",
       "title": "SF Data 360 action sweep",
-      "summary": "Exercises the single sf_data360 action catalog, generated recursive test contracts, private seed profiles, and sweep-owned mutation lifecycles through the production dispatcher and transports.",
+      "summary": "Exercises the single sf_data360 action catalog, generated recursive test contracts, private fixture profiles, and sweep-owned mutation lifecycles through the production dispatcher and transports.",
       "target": "Explicit non-production org",
       "posture": "bounded-mutation",
       "artifacts": "JSON and Markdown reports in a temporary or caller-selected directory",
-      "arguments": "--target-org <alias> [--live-read] [--live-safe-post] [--seed-profile <private-json>] [--mutation-lifecycle dlo|dmo --mutate --run-id <id>]"
+      "arguments": "--target-org <alias> [--live-read] [--live-safe-post] [--fixture-profile <private-json>] [--mutation-lifecycle dlo|dmo --mutate --run-id <id>]"
     },
     {
-      "script": "e2e:data360:seed",
-      "entry": "scripts/e2e/data360-seed-profile.ts",
-      "title": "SF Data 360 private seed discovery",
+      "script": "e2e:data360:fixtures",
+      "entry": "scripts/e2e/data360-fixture-profile.ts",
+      "title": "SF Data 360 private fixture discovery",
       "summary": "Discovers bounded org-local identifiers for recursive sf_data360 reads without committing target-specific values.",
       "target": "Explicit non-production org",
       "posture": "read-only",
-      "artifacts": "Mode-0o600 JSON seed profile at the caller-selected path",
+      "artifacts": "Mode-0o600 JSON fixture profile at the caller-selected path",
       "arguments": "--target-org <alias> --output <private-json> [--data-kit-dev-name <name>] [--profile-model <name> --profile-filter <filter> --profile-fields <fields>]"
     },
     {
