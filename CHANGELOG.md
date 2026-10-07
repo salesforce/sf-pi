@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.333.0](https://github.com/salesforce/sf-pi/compare/v0.332.0...v0.333.0) (2026-10-07)
+
+
+### Features
+
+* **sf-data360:** surface paged runs and orchestration traces ([963560a](https://github.com/salesforce/sf-pi/commit/963560a1a892f92140e0df2aa169dd42e74c4899))
+
+
+### Bug Fixes
+
+* **sf-data360:** reconcile live Connect response contracts ([85221fc](https://github.com/salesforce/sf-pi/commit/85221fc53cec0a85482880f6cdb7e57bac9399b9))
+
 ## [0.332.0](https://github.com/salesforce/sf-pi/compare/v0.331.2...v0.332.0) (2026-10-07)
 
 
