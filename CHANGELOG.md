@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.331.0](https://github.com/salesforce/sf-pi/compare/v0.330.0...v0.331.0) (2026-10-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sf-data360:** replace all d360 and data360_* tools with sf_data360 business actions.
+
+### Features
+
+* **sf-data360:** unify Data 360 SDK surface ([#794](https://github.com/salesforce/sf-pi/issues/794)) ([09264db](https://github.com/salesforce/sf-pi/commit/09264db51155ef1834141fbb5e5d15600864d7a0))
+
 ## [0.330.0](https://github.com/salesforce/sf-pi/compare/v0.329.0...v0.330.0) (2026-10-06)
 
 
