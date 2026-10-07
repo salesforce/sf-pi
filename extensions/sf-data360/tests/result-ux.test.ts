@@ -77,7 +77,7 @@ describe("Data 360 result UX", () => {
 
     expect(result.report).toContain("semantic_retrieval");
     expect(result.report).toContain("Phases");
-    expect(result.report).toContain("semantic retriever.create");
+    expect(result.report).toContain("sf_data360 semantic.retriever.create");
   });
 
   it("renders catalog.search as a compact action table", async () => {

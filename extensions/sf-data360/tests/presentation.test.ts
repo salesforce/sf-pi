@@ -186,6 +186,42 @@ describe("Data 360 Run Card presentation", () => {
     expect(dryRunCard).toContain("Dry run · not executed");
   });
 
+  it("renders partial readiness as a warning instead of a successful outcome", async () => {
+    const presented = await presentSfData360Result(
+      { action: "orchestrate.agent_behavior_investigation.run" },
+      {
+        ok: true,
+        action: "orchestrate.agent_behavior_investigation.run",
+        namespace: "orchestrate",
+        readiness: "partial",
+        missingSurfaces: ["Agent Platform Tracing"],
+        summary: "Agent behavior investigation complete",
+      },
+      "summary",
+    );
+
+    expect(presented.content[0]?.text).toContain("⚠️");
+    expect(presented.details.digest).toMatchObject({ status: "warning" });
+  });
+
+  it("does not invent a Connect transport when no request was attempted", async () => {
+    const presented = await presentSfData360Result(
+      { action: "query.this_does_not_exist" },
+      {
+        ok: false,
+        tool: "sf_data360",
+        action: "query.this_does_not_exist",
+        namespace: "query",
+        error: "UNKNOWN_ACTION",
+        summary: "Unknown action",
+      },
+      "summary",
+    );
+
+    expect(presented.content[0]?.text).not.toContain("Transport:");
+    expect(presented.details.digest).not.toHaveProperty("transport");
+  });
+
   it("uses a unique icon for every business namespace", () => {
     const namespaces = [
       "discover",

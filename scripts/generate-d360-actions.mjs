@@ -68,6 +68,12 @@ const META_ACTIONS = [
     internalAction: "query.sql.metadata",
     family: "Query",
   }),
+  meta("query.sql.chunk", "Fetch one preferred Query API V3 result chunk.", {
+    namespace: "query",
+    internalOwner: "query",
+    internalAction: "query.sql.chunk",
+    family: "Query",
+  }),
   meta("api.request", "Call an exact versionless Data 360 Connect REST endpoint.", {
     namespace: "api",
     internalOwner: "api",
@@ -78,22 +84,28 @@ const META_ACTIONS = [
 
 function meta(action, description, options = {}) {
   const namespace = options.namespace ?? "discover";
-  const requiredParams =
-    action === "discover.route"
-      ? ["intent"]
-      : action === "query.sql.metadata"
-        ? ["queryId"]
-        : action === "api.request"
-          ? ["method", "path"]
-          : [];
-  const optionalParams =
-    action === "api.request"
-      ? ["api_family", "authSessionId", "query", "body"]
-      : action === "query.sql.metadata"
-        ? ["authSessionId"]
-        : action.startsWith("discover.action.")
-          ? ["action", "query", "limit"]
-          : [];
+  const contracts = {
+    "discover.route": { required: ["intent"], optional: ["query", "limit"] },
+    "discover.readiness.probe": { required: [], optional: [] },
+    "discover.action.list": { required: [], optional: ["namespace", "limit"] },
+    "discover.action.search": { required: [], optional: ["query", "intent", "limit"] },
+    "discover.action.describe": { required: ["action"], optional: [] },
+    "discover.action.example": { required: ["action"], optional: ["variant"] },
+    "query.sql.metadata": { required: ["queryId"], optional: ["authSessionId"] },
+    "query.sql.chunk": { required: ["queryId", "chunkId"], optional: ["authSessionId"] },
+    "api.request": {
+      required: ["method", "path"],
+      optional: ["api_family", "authSessionId", "query", "body"],
+    },
+  };
+  const contract = contracts[action] ?? { required: [], optional: [] };
+  const requiredParams = contract.required;
+  const optionalParams = contract.optional;
+  const inputSchema = buildInputSchema(requiredParams, optionalParams);
+  if (action === "discover.route" || action === "discover.action.search") {
+    if (inputSchema.properties.query) inputSchema.properties.query = { type: "string" };
+    if (inputSchema.properties.intent) inputSchema.properties.intent = { type: "string" };
+  }
   return {
     namespace,
     action,
@@ -105,7 +117,7 @@ function meta(action, description, options = {}) {
     safety: "read",
     requiredParams,
     optionalParams,
-    inputSchema: buildInputSchema(requiredParams, optionalParams),
+    inputSchema,
     implementation: { kind: "local", name: action },
     aliases: [],
   };

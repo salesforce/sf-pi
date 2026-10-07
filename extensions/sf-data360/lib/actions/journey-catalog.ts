@@ -4,12 +4,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { Data360ActionOwner } from "./action-types.ts";
-
 export type JourneyConfidence = "high" | "medium" | "low";
 
 export interface JourneyActionRef {
-  tool: Data360ActionOwner;
+  tool: "sf_data360";
   action: string;
 }
 
@@ -30,7 +28,7 @@ export interface IntentPlanResult {
   journey: Data360JourneyDefinition;
   confidence: JourneyConfidence;
   missingInputs: string[];
-  targetTool: Data360ActionOwner;
+  targetTool: "sf_data360";
   targetAction: string;
 }
 
@@ -67,17 +65,16 @@ export function planData360Intent(utterance: string): IntentPlanResult {
       journey: fallback,
       confidence: "low",
       missingInputs: fallback.requiredInputs,
-      targetTool: "orchestrate",
-      targetAction: "journey.describe",
+      targetTool: "sf_data360",
+      targetAction: fallback.planAction,
     };
   }
   return {
     journey: best.journey,
     confidence: best.score >= 3 ? "high" : best.score >= 2 ? "medium" : "low",
     missingInputs: best.journey.requiredInputs,
-    targetTool: best.journey.name === "agent_behavior_investigation" ? "observe" : "orchestrate",
-    targetAction:
-      best.journey.name === "agent_behavior_investigation" ? "actions.search" : "journey.describe",
+    targetTool: "sf_data360",
+    targetAction: best.journey.planAction,
   };
 }
 

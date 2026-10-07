@@ -54,6 +54,11 @@ describe("sf_data360 action registry", () => {
       operationId: "d360_datastream_create_ingest_api",
       safety: "confirmed",
     });
+    expect(findPublicData360Action("query.sql.chunk")).toMatchObject({
+      namespace: "query",
+      implementation: { kind: "local", name: "query.sql.chunk" },
+      requiredParams: ["queryId", "chunkId"],
+    });
     expect(findPublicData360Action("query.sql.verify_rows")).toMatchObject({
       namespace: "query",
       implementation: { kind: "local", name: "sql.verify_rows" },
@@ -67,6 +72,31 @@ describe("sf_data360 action registry", () => {
       namespace: "orchestrate",
       implementation: { kind: "journey", name: "ingest_csv" },
     });
+  });
+
+  it("publishes exact discovery action parameter contracts", () => {
+    expect(findPublicData360Action("discover.action.search")).toMatchObject({
+      requiredParams: [],
+      optionalParams: expect.arrayContaining(["query", "intent", "limit"]),
+      inputSchema: {
+        properties: { query: { type: "string" }, intent: { type: "string" } },
+      },
+    });
+    expect(findPublicData360Action("discover.action.describe")).toMatchObject({
+      requiredParams: ["action"],
+      inputSchema: { required: ["action"], properties: { action: { type: "string" } } },
+    });
+    expect(findPublicData360Action("discover.action.list")).toMatchObject({
+      optionalParams: expect.arrayContaining(["namespace", "limit"]),
+    });
+  });
+
+  it("classifies in-memory auth-state changes as confirmed mutations", () => {
+    for (const actionName of ["connect.auth.pkce_start", "connect.auth.clear"]) {
+      expect(findPublicData360Action(actionName), actionName).toMatchObject({
+        safety: "confirmed",
+      });
+    }
   });
 
   it("keeps destructive guidance target-neutral and Guardrail-aware", () => {

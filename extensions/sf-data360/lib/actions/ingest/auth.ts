@@ -32,6 +32,18 @@ export interface TenantIngestPkceStartResult {
   secretStorage: "memory_only";
 }
 
+export interface TenantIngestPkceStartPlan {
+  authorization: {
+    endpoint: string;
+    clientId: string;
+    redirectUri: string;
+    scopes: string[];
+    codeChallengeMethod: "S256";
+  };
+  storesSecrets: false;
+  executesNetworkCalls: false;
+}
+
 export interface TenantIngestExchangeDryRun {
   steps: Array<{ method: "POST"; url?: string; path?: string; bodyFields: string[] }>;
   storesSecrets: false;
@@ -41,7 +53,7 @@ export interface TenantIngestExchangeDryRun {
 export interface TenantIngestExchangeResult {
   auth: TenantIngestAuthStatus;
   token: { tokenType?: string; expiresIn?: number };
-  authSession: { id: string; tenantHost: string; expiresAt?: string };
+  authSession: { id: string; targetOrg: string; tenantHost: string; expiresAt?: string };
   storesSecrets: false;
 }
 
@@ -61,6 +73,7 @@ export interface TenantIngestTokenExchange {
 
 export interface Data360TenantTokenSession {
   id: string;
+  targetOrg: string;
   tenantHost: string;
   accessToken: string;
   tokenType?: string;
@@ -68,6 +81,7 @@ export interface Data360TenantTokenSession {
 }
 
 interface PkceSession {
+  targetOrg: string;
   loginUrl: string;
   clientId: string;
   redirectUri: string;
@@ -87,7 +101,16 @@ const DEFAULT_PKCE_SCOPES = ["api", "cdp_ingest_api", "cdp_query_api", "refresh_
  * Salesforce REST instance URL. The shared tenant-session contract keeps that
  * distinction explicit for direct Ingestion API actions.
  */
-export function inspectTenantIngestAuth(params: Record<string, unknown>): TenantIngestAuthStatus {
+export function inspectTenantIngestAuth(
+  params: Record<string, unknown>,
+  targetOrg: string,
+): TenantIngestAuthStatus {
+  const authSessionId =
+    typeof params.authSessionId === "string" ? params.authSessionId.trim() : undefined;
+  const session = getData360TenantTokenSession(authSessionId, targetOrg);
+  if (session) {
+    return { required: true, status: "ready", tenantHost: session.tenantHost };
+  }
   const tenantHost = typeof params.tenantHost === "string" ? params.tenantHost.trim() : "";
   return {
     required: true,
@@ -96,8 +119,26 @@ export function inspectTenantIngestAuth(params: Record<string, unknown>): Tenant
   };
 }
 
+export function planTenantIngestPkceStart(
+  params: Record<string, unknown>,
+): TenantIngestPkceStartPlan {
+  const loginUrl = normalizeUrl(requiredString(params.loginUrl, "loginUrl"));
+  return {
+    authorization: {
+      endpoint: `${loginUrl}/services/oauth2/authorize`,
+      clientId: requiredString(params.clientId, "clientId"),
+      redirectUri: requiredString(params.redirectUri, "redirectUri"),
+      scopes: normalizeScopes(params.scopes),
+      codeChallengeMethod: "S256",
+    },
+    storesSecrets: false,
+    executesNetworkCalls: false,
+  };
+}
+
 export function startTenantIngestPkce(
   params: Record<string, unknown>,
+  targetOrg: string,
 ): TenantIngestPkceStartResult {
   const loginUrl = normalizeUrl(requiredString(params.loginUrl, "loginUrl"));
   const clientId = requiredString(params.clientId, "clientId");
@@ -115,6 +156,7 @@ export function startTenantIngestPkce(
   url.searchParams.set("code_challenge", codeChallenge);
   url.searchParams.set("code_challenge_method", "S256");
   pkceSessions.set(state, {
+    targetOrg,
     loginUrl,
     clientId,
     redirectUri,
@@ -145,8 +187,9 @@ export function tenantIngestTokenExchange(): TenantIngestTokenExchange {
 
 export function planTenantIngestExchange(
   params: Record<string, unknown>,
+  targetOrg?: string,
 ): TenantIngestExchangeDryRun {
-  const input = parsePkceExchangeInput(params);
+  const input = parsePkceExchangeInput(params, targetOrg);
   return {
     storesSecrets: false,
     executesNetworkCalls: false,
@@ -167,9 +210,10 @@ export function planTenantIngestExchange(
 
 export async function exchangePkceForTenantIngestAuth(
   params: Record<string, unknown>,
+  targetOrg: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<TenantIngestExchangeResult> {
-  const input = parsePkceExchangeInput(params);
+  const input = parsePkceExchangeInput(params, targetOrg);
   const salesforceToken = await exchangePkceForSalesforceToken(input, fetchFn);
   const dataCloudToken = await exchangeSalesforceTokenForDataCloudToken(
     salesforceToken.instanceUrl,
@@ -178,6 +222,7 @@ export async function exchangePkceForTenantIngestAuth(
   );
   const tenantHost = hostFromUrl(dataCloudToken.instanceUrl);
   const authSession = storeData360TenantSession({
+    targetOrg,
     tenantHost,
     accessToken: dataCloudToken.accessToken,
     tokenType: dataCloudToken.tokenType,
@@ -248,19 +293,27 @@ async function exchangePkceForSalesforceToken(
   return { accessToken, instanceUrl };
 }
 
-export function listData360TenantTokenSessions(): Array<{
+export function listData360TenantTokenSessions(targetOrg?: string): Array<{
   id: string;
+  targetOrg: string;
   tenantHost: string;
   expiresAt?: string;
 }> {
-  const sessions: Array<{ id: string; tenantHost: string; expiresAt?: string }> = [];
+  const sessions: Array<{
+    id: string;
+    targetOrg: string;
+    tenantHost: string;
+    expiresAt?: string;
+  }> = [];
   for (const [id, session] of tokenSessions.entries()) {
     if (session.expiresAt && session.expiresAt <= Date.now()) {
       tokenSessions.delete(id);
       continue;
     }
+    if (targetOrg && session.targetOrg !== targetOrg) continue;
     sessions.push({
       id,
+      targetOrg: session.targetOrg,
       tenantHost: session.tenantHost,
       ...(session.expiresAt ? { expiresAt: new Date(session.expiresAt).toISOString() } : {}),
     });
@@ -268,19 +321,27 @@ export function listData360TenantTokenSessions(): Array<{
   return sessions;
 }
 
-export function clearData360TenantTokenSessions(id?: string): number {
-  if (id) return tokenSessions.delete(id) ? 1 : 0;
-  const count = tokenSessions.size;
-  tokenSessions.clear();
-  return count;
+export function clearData360TenantTokenSessions(id?: string, targetOrg?: string): number {
+  if (id) {
+    const session = tokenSessions.get(id);
+    if (!session || (targetOrg && session.targetOrg !== targetOrg)) return 0;
+    return tokenSessions.delete(id) ? 1 : 0;
+  }
+  let cleared = 0;
+  for (const [sessionId, session] of tokenSessions.entries()) {
+    if (targetOrg && session.targetOrg !== targetOrg) continue;
+    if (tokenSessions.delete(sessionId)) cleared++;
+  }
+  return cleared;
 }
 
 export function getData360TenantTokenSession(
   id: string | undefined,
+  targetOrg?: string,
 ): Data360TenantTokenSession | undefined {
   if (!id) return undefined;
   const session = tokenSessions.get(id);
-  if (!session) return undefined;
+  if (!session || (targetOrg && session.targetOrg !== targetOrg)) return undefined;
   if (session.expiresAt && session.expiresAt <= Date.now()) {
     tokenSessions.delete(id);
     return undefined;
@@ -289,6 +350,7 @@ export function getData360TenantTokenSession(
 }
 
 function storeData360TenantSession(input: {
+  targetOrg: string;
   tenantHost: string;
   accessToken: string;
   tokenType?: string;
@@ -299,6 +361,7 @@ function storeData360TenantSession(input: {
   tokenSessions.set(id, { id, ...input, expiresAt });
   return {
     id,
+    targetOrg: input.targetOrg,
     tenantHost: input.tenantHost,
     ...(expiresAt ? { expiresAt: new Date(expiresAt).toISOString() } : {}),
   };
@@ -338,7 +401,10 @@ async function parseJsonResponse(response: Response): Promise<Record<string, unk
   return body as Record<string, unknown>;
 }
 
-function parsePkceExchangeInput(params: Record<string, unknown>): TenantIngestExchangeInput {
+function parsePkceExchangeInput(
+  params: Record<string, unknown>,
+  targetOrg?: string,
+): TenantIngestExchangeInput {
   const strategy = normalizeStrategy(params.strategy);
   if (strategy !== "pkce") throw new Error("Only PKCE auth exchange is implemented in this slice.");
   const authorizationCode = requiredString(params.authorizationCode, "authorizationCode");
@@ -346,6 +412,9 @@ function parsePkceExchangeInput(params: Record<string, unknown>): TenantIngestEx
     const session = pkceSessions.get(params.pkceState.trim());
     if (!session)
       throw new Error("Unknown or expired PKCE state. Start a new auth.pkce_start flow.");
+    if (targetOrg && session.targetOrg !== targetOrg) {
+      throw new Error("PKCE state belongs to a different Salesforce target org.");
+    }
     return { ...session, authorizationCode };
   }
   return {

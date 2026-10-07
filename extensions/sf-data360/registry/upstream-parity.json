@@ -10,8 +10,8 @@
     "upstreamTools": 246,
     "supportedUpstreamTools": 246,
     "missingUpstreamTools": 0,
-    "actionCount": 308,
-    "extraActions": 62,
+    "actionCount": 309,
+    "extraActions": 63,
     "exactShapes": 241,
     "adjustedShapes": 5,
     "payloadExamples": {
@@ -3242,7 +3242,7 @@
       "action": "connect.auth.clear",
       "namespace": "connect",
       "implementation": "tenant_ingest_auth",
-      "safety": "read"
+      "safety": "confirmed"
     },
     {
       "action": "connect.auth.exchange",
@@ -3254,7 +3254,7 @@
       "action": "connect.auth.pkce_start",
       "namespace": "connect",
       "implementation": "tenant_ingest_auth",
-      "safety": "read"
+      "safety": "confirmed"
     },
     {
       "action": "connect.auth.plan",
@@ -3589,6 +3589,12 @@
       "namespace": "query",
       "operationId": "d360_profile_metadata_model",
       "implementation": "endpoint_extension",
+      "safety": "read"
+    },
+    {
+      "action": "query.sql.chunk",
+      "namespace": "query",
+      "implementation": "local",
       "safety": "read"
     },
     {

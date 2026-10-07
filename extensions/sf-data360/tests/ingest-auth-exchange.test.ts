@@ -32,6 +32,7 @@ describe("Data 360 PKCE ingest auth exchange", () => {
         tool: "connect",
         action: "auth.pkce_start",
         target_org: "ExampleData360Org",
+        allow_mutation: true,
         params: {
           loginUrl: "https://test.salesforce.com",
           clientId: "public-client-id",
@@ -157,6 +158,7 @@ describe("Data 360 PKCE ingest auth exchange", () => {
         tool: "connect",
         action: "auth.pkce_start",
         target_org: "ExampleData360Org",
+        allow_mutation: true,
         params: {
           loginUrl: "https://test.salesforce.com",
           clientId: "public-client-id",

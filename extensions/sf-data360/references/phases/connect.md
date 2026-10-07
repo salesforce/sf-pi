@@ -29,14 +29,14 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 
 ## Data 360 family actions
 
-- `sf_data360` `connect.auth.clear` (connect, tenant_ingest_auth, read) — Clear one or all in-memory Data Cloud ingest auth sessions.
-- `sf_data360` `connect.auth.pkce_start` (connect, tenant_ingest_auth, read) — Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.
 - `sf_data360` `connect.auth.plan` (connect, tenant_ingest_auth, read) — Plan a headless-safe Data Cloud tenant ingest auth setup path without persisting credentials.
-- `sf_data360` `connect.auth.sessions` (connect, tenant_ingest_auth, read) — List in-memory Data Cloud ingest auth sessions without tokens.
+- `sf_data360` `connect.auth.sessions` (connect, tenant_ingest_auth, read) — List in-memory Data Cloud ingest auth sessions bound to the target org without tokens.
 - `sf_data360` `connect.auth.status` (connect, tenant_ingest_auth, read) — Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.
 - `sf_data360` `connect.connection_endpoints` (connect, rest_operation, read) — List pre-configured connection endpoints.
 - `sf_data360` `connect.connection.get` (connect, rest_operation, read) — Get connection details. connectorType REQUIRED.
 - `sf_data360` `connect.connection.list` (connect, rest_operation, read) — List connections. connectorType REQUIRED.
+- `sf_data360` `connect.connections_sfdc.list` (connect, rest_operation, read) — List Salesforce CRM connections.
+- `sf_data360` `connect.connector.list` (connect, rest_operation, read) — Discover supported connector types.
 
 ## Cross-phase routing
 

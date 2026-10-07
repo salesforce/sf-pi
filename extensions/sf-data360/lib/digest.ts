@@ -95,7 +95,7 @@ export function buildData360Digest(input: BuildData360DigestInput): Data360RunDi
             dataspace: stringValue(result.dataspaceName),
           }
         : undefined,
-    transport,
+    ...(transport ? { transport } : {}),
     api_calls: apiCallsFor(result, transport),
     sections: sections.filter((section) =>
       Boolean(section.rows?.length || section.code?.lines.length || section.table?.rows.length),
@@ -435,6 +435,7 @@ function apiCallFromRequest(
 
 function transportFor(result: Record<string, unknown>): Data360RunDigest["transport"] | undefined {
   const used = inferTransport(result);
+  if (!used) return undefined;
   const warning = arrayValue(result.warnings)
     .map(String)
     .find((value) => /query api v3 unavailable/i.test(value));
@@ -447,7 +448,7 @@ function transportFor(result: Record<string, unknown>): Data360RunDigest["transp
   };
 }
 
-function inferTransport(result: Record<string, unknown>): Data360Transport {
+function inferTransport(result: Record<string, unknown>): Data360Transport | undefined {
   const explicit = stringValue(result.transport);
   if (explicit === "connect") return "connect";
   if (explicit === "query-v3") return "query-v3";
@@ -459,7 +460,10 @@ function inferTransport(result: Record<string, unknown>): Data360Transport {
   if (path.startsWith("/api/v3/query")) return "query-v3";
   if (path.startsWith("/api/v1/ingest")) return "ingestion";
   if (path.startsWith("/local/")) return "local";
-  return "connect";
+  if (path.startsWith("/services/data/") || /^https:\/\/.*\/services\/data\//i.test(path)) {
+    return "connect";
+  }
+  return undefined;
 }
 
 function queryTable(
@@ -524,7 +528,11 @@ function statusFor(result: Record<string, unknown>): Data360RunStatus {
   return warningsFor(result) ? "warning" : "pass";
 }
 function warningsFor(result: Record<string, unknown>): boolean {
-  return Array.isArray(result.warnings) && result.warnings.length > 0;
+  return (
+    (Array.isArray(result.warnings) && result.warnings.length > 0) ||
+    result.readiness === "partial" ||
+    (Array.isArray(result.missingSurfaces) && result.missingSurfaces.length > 0)
+  );
 }
 function outcomeStatus(result: Record<string, unknown>, status: Data360RunStatus): string {
   const responseStatus = stringValue(objectValue(result.response).status);
@@ -545,10 +553,19 @@ function namespaceFor(action: string, value: unknown): Data360Namespace {
   return candidate in NAMESPACE_META ? (candidate as Data360Namespace) : "api";
 }
 function resourceCount(result: Record<string, unknown>): number | undefined {
-  for (const source of [result, objectValue(result.response)]) {
+  const response = objectValue(result.response);
+  for (const source of [result, response]) {
     for (const key of ["count", "total", "totalSize", "resourceCount"]) {
       const count = numberValue(source[key]);
       if (count !== undefined) return count;
+    }
+  }
+  for (const [key, value] of Object.entries(response)) {
+    if (["data", "metadata", "fields", "dataFields"].includes(key) || !Array.isArray(value)) {
+      continue;
+    }
+    if (value.length === 0 || value.some((entry) => entry && typeof entry === "object")) {
+      return value.length;
     }
   }
   return undefined;

@@ -40,6 +40,8 @@ export const PROBES: Array<{ name: string; path: string; requiredForReady?: bool
   { name: "data_transforms", path: "/ssot/data-transforms?limit=1" },
   { name: "data_actions", path: "/ssot/data-actions?limit=1" },
   { name: "semantic_models", path: "/ssot/semantic/models?limit=1" },
+  { name: "data_kits", path: "/ssot/data-kits?limit=1" },
+  { name: "personalization_org", path: "/personalization/external-apps/org" },
   { name: "profile_metadata", path: "/ssot/profile/metadata" },
   { name: "metadata_entities_dmo", path: "/ssot/metadata-entities?entityType=DataModelObject" },
   { name: "agent_platform_tracing_dlo", path: "/ssot/data-lake-objects/ObservabilitySpans__dll" },
@@ -101,7 +103,9 @@ export function summarizeReadiness(probes: ProbeResult[]): {
     ["enabled_populated", "enabled_empty", "ok"].includes(probe.state),
   );
   const populated = successes.some((probe) => probe.state === "enabled_populated");
-  const gated = probes.filter((probe) => probe.state === "feature_gated");
+  const unavailable = probes.filter(
+    (probe) => !["enabled_populated", "enabled_empty", "ok"].includes(probe.state),
+  );
   const required = new Set(
     PROBES.filter((probe) => probe.requiredForReady).map((probe) => probe.name),
   );
@@ -111,7 +115,7 @@ export function summarizeReadiness(probes: ProbeResult[]): {
       ["enabled_populated", "enabled_empty", "ok"].includes(probe.state),
   );
 
-  if (requiredSuccess.length === required.size && gated.length === 0) {
+  if (requiredSuccess.length === required.size && unavailable.length === 0) {
     return {
       state: populated ? "ready" : "ready_empty",
       guidance: populated

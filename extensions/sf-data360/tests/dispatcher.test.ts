@@ -172,6 +172,30 @@ describe("Data 360 dispatcher", () => {
     expect(connectSalesforceMock).toHaveBeenCalledTimes(1);
   });
 
+  it("honors DLO list bounds through the declared endpoint contract", async () => {
+    requestMock.mockResolvedValue({ dataLakeObjects: [], totalSize: 0 });
+
+    const result = await runData360Action(
+      {
+        tool: "prepare",
+        action: "dlo.list",
+        target_org: "ExampleData360Org",
+        params: { limit: 5, offset: 2, category: "Other", dataspace: "default" },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+
+    expect(result).toMatchObject({ ok: true, capability: "d360_dlo_list" });
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "/services/data/v67.0/ssot/data-lake-objects?limit=5&offset=2&category=Other&dataspace=default",
+      }),
+    );
+  });
+
   it("searches the cross-family catalog through discover", async () => {
     const result = await runData360Action(
       {
@@ -276,6 +300,33 @@ describe("Data 360 dispatcher", () => {
       safety: { level: "read", requiresConfirmation: false },
     });
     expect(connectSalesforceMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks every non-GET raw REST request until mutation is explicitly allowed", async () => {
+    for (const method of ["POST", "PATCH", "PUT", "DELETE"] as const) {
+      const result = await runData360Action(
+        {
+          tool: "api",
+          action: "rest.request",
+          params: {
+            method,
+            path: "/ssot/data-lake-objects/Example__dll",
+            body: { name: "Example__dll" },
+          },
+          target_org: "ExampleData360Org",
+        },
+        env,
+        ctx,
+        undefined,
+      );
+
+      expect(result, method).toMatchObject({
+        ok: false,
+        error: "CONFIRMATION_REQUIRED",
+        summary: "Raw Data 360 REST request requires dry_run review and allow_mutation=true.",
+      });
+    }
+    expect(requestMock).not.toHaveBeenCalled();
   });
 
   it("dry-runs Data 360 readiness probes through discover", async () => {

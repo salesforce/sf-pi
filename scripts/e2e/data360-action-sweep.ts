@@ -39,7 +39,13 @@ import {
 } from "./data360/lifecycle.ts";
 
 export type Data360SweepStage =
-  "describe" | "metadata" | "dry_run" | "missing_params" | "live_read" | Data360LifecycleStage;
+  | "describe"
+  | "metadata"
+  | "dry_run"
+  | "mutation_gate"
+  | "missing_params"
+  | "live_read"
+  | Data360LifecycleStage;
 export type Data360SweepOutcome =
   | "ok"
   | "platform_error"
@@ -123,6 +129,12 @@ export function buildData360SweepPlan(
         summary: "Skipped dry-run: action needs a fixture or interactive workflow.",
       });
     }
+    if (canProbeMutationGate(action)) {
+      records.push({
+        ...baseRecord(action, "mutation_gate"),
+        params: paramsForMutationGate(action),
+      });
+    }
     if (options.includeMissingParams !== false && (action.requiredParams?.length ?? 0) > 0) {
       records.push(baseRecord(action, "missing_params"));
     }
@@ -171,6 +183,23 @@ export function paramsForLiveRead(
     default:
       return undefined;
   }
+}
+
+export function canProbeMutationGate(action: Data360ActionDefinition): boolean {
+  if (action.action === "api.request") return true;
+  if (action.safety !== "confirmed" && action.safety !== "destructive") return false;
+  return !["journey", "local"].includes(action.implementation?.kind ?? "");
+}
+
+export function paramsForMutationGate(action: Data360ActionDefinition): Record<string, unknown> {
+  if (action.action === "api.request") {
+    return {
+      method: "POST",
+      path: "/ssot/data-lake-objects",
+      body: { name: "PiData360MutationGate__dll" },
+    };
+  }
+  return paramsForDryRun(action);
 }
 
 export function canDryRun(action: Data360ActionDefinition): boolean {
@@ -305,6 +334,25 @@ async function runData360SweepRecord(
       return result.ok === false
         ? fail(record, String(result.summary ?? result.error ?? "dry-run failed"))
         : pass(record, "dry-run ok");
+    }
+    if (record.stage === "mutation_gate") {
+      const result = await runSfData360Action(
+        {
+          action: record.action,
+          target_org: targetOrg,
+          params: record.params,
+        },
+        env,
+        ctx,
+        undefined,
+      );
+      const blob = JSON.stringify(result).toLowerCase();
+      return result.ok === false &&
+        (result.error === "CONFIRMATION_REQUIRED" ||
+          blob.includes("allow_mutation") ||
+          blob.includes("dry_run"))
+        ? pass(record, "mutation blocked before execution")
+        : fail(record, "Mutation gate did not block execution without allow_mutation=true.");
     }
     if (record.stage === "live_read") {
       const input: SfData360Input = {

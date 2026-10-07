@@ -14,6 +14,8 @@ export interface InteractivePkceReadyEvent {
 }
 
 export interface InteractivePkceOptions {
+  /** Target-org binding for the in-memory PKCE and tenant-token sessions. */
+  targetOrg?: string;
   /** Internal test seam; public action params must not control browser opening directly. */
   authorizationOpener?: (url: string) => void;
   fetchFn?: typeof fetch;
@@ -25,7 +27,7 @@ export interface InteractivePkceResult {
   ok: true;
   auth: TenantIngestAuthStatus;
   token: { tokenType?: string; expiresIn?: number };
-  authSession: { id: string; tenantHost: string; expiresAt?: string };
+  authSession: { id: string; targetOrg: string; tenantHost: string; expiresAt?: string };
   storesSecrets: false;
   secretStorage: "memory_only";
 }
@@ -61,6 +63,7 @@ export async function runInteractivePkceAuth(
 
         const exchanged = await exchangePkceForTenantIngestAuth(
           { strategy: "pkce", pkceState: state, authorizationCode: code },
+          options.targetOrg ?? "unscoped",
           options.fetchFn ?? fetch,
         );
         clearTimeout(timeout);
@@ -80,7 +83,10 @@ export async function runInteractivePkceAuth(
     server.listen(redirect.port, redirect.host, async () => {
       try {
         const callbackUrl = actualBaseUrl(server, redirect);
-        started = startTenantIngestPkce({ ...params, redirectUri: callbackUrl });
+        started = startTenantIngestPkce(
+          { ...params, redirectUri: callbackUrl },
+          options.targetOrg ?? "unscoped",
+        );
         const authorizationUrl = validateSalesforceAuthorizationUrl(started.authorization.url);
         const ready = {
           authorizationUrl,

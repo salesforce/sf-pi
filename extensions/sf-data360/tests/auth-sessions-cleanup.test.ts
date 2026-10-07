@@ -94,6 +94,41 @@ describe("Data 360 auth sessions and cleanup", () => {
     );
     const id = (exchange.authSession as { id: string }).id;
 
+    const status = await runData360Action(
+      {
+        tool: "connect",
+        action: "auth.status",
+        target_org: "ExampleData360Org",
+        params: { authSessionId: id },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+    expect(status).toMatchObject({
+      ok: true,
+      auth: {
+        required: true,
+        status: "ready",
+        tenantHost: "tenant.example.c360a.salesforce.com",
+      },
+    });
+    const otherOrgStatus = await runData360Action(
+      {
+        tool: "connect",
+        action: "auth.status",
+        target_org: "OtherData360Org",
+        params: { authSessionId: id },
+      },
+      env,
+      ctx,
+      undefined,
+    );
+    expect(otherOrgStatus).toMatchObject({
+      ok: true,
+      auth: { required: true, status: "not_configured" },
+    });
+
     const list = await runData360Action(
       { tool: "connect", action: "auth.sessions", target_org: "ExampleData360Org" },
       env,
@@ -114,6 +149,34 @@ describe("Data 360 auth sessions and cleanup", () => {
           tool: "connect",
           action: "auth.clear",
           target_org: "ExampleData360Org",
+          dry_run: true,
+          params: { authSessionId: id },
+        },
+        env,
+        ctx,
+        undefined,
+      ),
+    ).resolves.toMatchObject({ ok: true, dryRun: true, cleared: 0, wouldClear: 1 });
+    await expect(
+      runData360Action(
+        {
+          tool: "connect",
+          action: "auth.clear",
+          target_org: "ExampleData360Org",
+          params: { authSessionId: id },
+        },
+        env,
+        ctx,
+        undefined,
+      ),
+    ).resolves.toMatchObject({ ok: false, error: "CONFIRMATION_REQUIRED" });
+    await expect(
+      runData360Action(
+        {
+          tool: "connect",
+          action: "auth.clear",
+          target_org: "ExampleData360Org",
+          allow_mutation: true,
           params: { authSessionId: id },
         },
         env,

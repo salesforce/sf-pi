@@ -1,9 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 
-import { classifyConnectionProbeResult, summarizeReadiness } from "../lib/readiness.ts";
+import { classifyConnectionProbeResult, PROBES, summarizeReadiness } from "../lib/readiness.ts";
 
 describe("sf-data360 readiness probe", () => {
+  it("covers phase-specific DataKit, Personalization, and tracing surfaces", () => {
+    expect(PROBES.map((probe) => probe.name)).toEqual(
+      expect.arrayContaining(["data_kits", "personalization_org", "agent_platform_tracing_dlo"]),
+    );
+  });
+
   it("classifies populated and empty list responses", () => {
     expect(
       classifyConnectionProbeResult("data_spaces", "/ssot/data-spaces", 200, {
@@ -94,6 +100,14 @@ describe("sf-data360 readiness probe", () => {
       summarizeReadiness([
         { name: "dmo_catalog", path: "/ssot/data-model-objects?limit=1", state: "enabled_empty" },
         { name: "data_streams", path: "/ssot/data-streams?limit=1", state: "feature_gated" },
+      ]).state,
+    ).toBe("partial");
+
+    expect(
+      summarizeReadiness([
+        { name: "data_spaces", path: "/ssot/data-spaces", state: "enabled_populated" },
+        { name: "dmo_catalog", path: "/ssot/data-model-objects?limit=1", state: "enabled_empty" },
+        { name: "data_kits", path: "/ssot/data-kits?limit=1", state: "cli_error" },
       ]).state,
     ).toBe("partial");
 

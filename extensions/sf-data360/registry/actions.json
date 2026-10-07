@@ -1078,8 +1078,8 @@
     "internalAction": "auth.clear",
     "phase": "connect",
     "family": "Connection",
-    "description": "Clear one or all in-memory Data Cloud ingest auth sessions.",
-    "safety": "read",
+    "description": "Clear one or all in-memory Data Cloud ingest auth sessions bound to the target org.",
+    "safety": "confirmed",
     "requiredParams": [],
     "optionalParams": ["authSessionId"],
     "inputSchema": {
@@ -1089,7 +1089,8 @@
       "additionalProperties": true
     },
     "implementation": { "kind": "tenant_ingest_auth", "name": "auth.clear" },
-    "aliases": ["ingest_auth.clear"]
+    "aliases": ["ingest_auth.clear"],
+    "tips": "Dry-run first; execution removes in-memory tenant sessions and requires allow_mutation=true."
   },
   {
     "namespace": "connect",
@@ -1140,7 +1141,7 @@
     "phase": "connect",
     "family": "Connection",
     "description": "Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.",
-    "safety": "read",
+    "safety": "confirmed",
     "requiredParams": ["loginUrl", "clientId", "redirectUri"],
     "optionalParams": ["scopes"],
     "inputSchema": {
@@ -1155,7 +1156,8 @@
       "additionalProperties": true
     },
     "implementation": { "kind": "tenant_ingest_auth", "name": "auth.pkce_start" },
-    "aliases": ["ingest_auth.pkce_start"]
+    "aliases": ["ingest_auth.pkce_start"],
+    "tips": "Dry-run first; execution stores a short-lived PKCE verifier in memory and requires allow_mutation=true."
   },
   {
     "namespace": "connect",
@@ -1184,7 +1186,7 @@
     "internalAction": "auth.sessions",
     "phase": "connect",
     "family": "Connection",
-    "description": "List in-memory Data Cloud ingest auth sessions without tokens.",
+    "description": "List in-memory Data Cloud ingest auth sessions bound to the target org without tokens.",
     "safety": "read",
     "requiredParams": [],
     "optionalParams": [],
@@ -1207,10 +1209,10 @@
     "description": "Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.",
     "safety": "read",
     "requiredParams": [],
-    "optionalParams": ["tenantHost"],
+    "optionalParams": ["authSessionId", "tenantHost"],
     "inputSchema": {
       "type": "object",
-      "properties": { "tenantHost": { "type": "string" } },
+      "properties": { "authSessionId": { "type": "string" }, "tenantHost": { "type": "string" } },
       "required": [],
       "additionalProperties": true
     },
@@ -1712,16 +1714,12 @@
     "family": "Discovery",
     "description": "Describe one action, endpoint, safety, and parameters.",
     "safety": "read",
-    "requiredParams": [],
-    "optionalParams": ["action", "query", "limit"],
+    "requiredParams": ["action"],
+    "optionalParams": [],
     "inputSchema": {
       "type": "object",
-      "properties": {
-        "action": { "type": "string" },
-        "limit": { "type": "integer" },
-        "query": { "type": "object", "additionalProperties": true }
-      },
-      "required": [],
+      "properties": { "action": { "type": "string" } },
+      "required": ["action"],
       "additionalProperties": true
     },
     "implementation": { "kind": "local", "name": "discover.action.describe" },
@@ -1736,16 +1734,12 @@
     "family": "Discovery",
     "description": "Return a curated payload example for one action.",
     "safety": "read",
-    "requiredParams": [],
-    "optionalParams": ["action", "query", "limit"],
+    "requiredParams": ["action"],
+    "optionalParams": ["variant"],
     "inputSchema": {
       "type": "object",
-      "properties": {
-        "action": { "type": "string" },
-        "limit": { "type": "integer" },
-        "query": { "type": "object", "additionalProperties": true }
-      },
-      "required": [],
+      "properties": { "action": { "type": "string" }, "variant": { "type": "string" } },
+      "required": ["action"],
       "additionalProperties": true
     },
     "implementation": { "kind": "local", "name": "discover.action.example" },
@@ -1761,14 +1755,10 @@
     "description": "List registered Data 360 actions.",
     "safety": "read",
     "requiredParams": [],
-    "optionalParams": ["action", "query", "limit"],
+    "optionalParams": ["namespace", "limit"],
     "inputSchema": {
       "type": "object",
-      "properties": {
-        "action": { "type": "string" },
-        "limit": { "type": "integer" },
-        "query": { "type": "object", "additionalProperties": true }
-      },
+      "properties": { "limit": { "type": "integer" }, "namespace": { "type": "string" } },
       "required": [],
       "additionalProperties": true
     },
@@ -1785,13 +1775,13 @@
     "description": "Search Data 360 actions by business intent.",
     "safety": "read",
     "requiredParams": [],
-    "optionalParams": ["action", "query", "limit"],
+    "optionalParams": ["query", "intent", "limit"],
     "inputSchema": {
       "type": "object",
       "properties": {
-        "action": { "type": "string" },
+        "intent": { "type": "string" },
         "limit": { "type": "integer" },
-        "query": { "type": "object", "additionalProperties": true }
+        "query": { "type": "string" }
       },
       "required": [],
       "additionalProperties": true
@@ -1829,10 +1819,14 @@
     "description": "Route natural-language Data 360 intent to business actions.",
     "safety": "read",
     "requiredParams": ["intent"],
-    "optionalParams": [],
+    "optionalParams": ["query", "limit"],
     "inputSchema": {
       "type": "object",
-      "properties": { "intent": { "type": "string" } },
+      "properties": {
+        "intent": { "type": "string" },
+        "limit": { "type": "integer" },
+        "query": { "type": "string" }
+      },
       "required": ["intent"],
       "additionalProperties": true
     },
@@ -4720,6 +4714,30 @@
     "endpoint": { "method": "DELETE", "path": "/ssot/query-sql/{queryId}" },
     "aliases": ["d360_query_sql_cancel"],
     "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review. Execution requires a verified non-production target, dry_run review, allow_mutation=true, and Pi confirmation."
+  },
+  {
+    "namespace": "query",
+    "action": "query.sql.chunk",
+    "internalOwner": "query",
+    "internalAction": "query.sql.chunk",
+    "phase": "query",
+    "family": "Query",
+    "description": "Fetch one preferred Query API V3 result chunk.",
+    "safety": "read",
+    "requiredParams": ["queryId", "chunkId"],
+    "optionalParams": ["authSessionId"],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "authSessionId": { "type": "string" },
+        "chunkId": { "type": "string" },
+        "queryId": { "type": "string" }
+      },
+      "required": ["queryId", "chunkId"],
+      "additionalProperties": true
+    },
+    "implementation": { "kind": "local", "name": "query.sql.chunk" },
+    "aliases": []
   },
   {
     "namespace": "query",
