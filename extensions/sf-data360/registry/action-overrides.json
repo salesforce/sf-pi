@@ -1,0 +1,735 @@
+{
+  "operations": {
+    "d360_ingest_api_connections_list": {
+      "phase": "connect",
+      "action": "source.list_ingest_api",
+      "aliases": ["connection.list_ingest_api"],
+      "namespace": "connect"
+    },
+    "d360_ingest_api_schema_get": {
+      "phase": "connect",
+      "action": "source_schema.get",
+      "aliases": ["ingest_api.schema.get"],
+      "namespace": "connect"
+    },
+    "d360_ingest_api_schema_test": {
+      "phase": "connect",
+      "action": "source_schema.test",
+      "aliases": ["ingest_api.schema.test"],
+      "namespace": "connect"
+    },
+    "d360_ingest_api_schema_put": {
+      "phase": "connect",
+      "action": "source_schema.put",
+      "aliases": ["ingest_api.schema.put"],
+      "namespace": "connect"
+    },
+    "d360_datastream_create_ingest_api": {
+      "phase": "prepare",
+      "action": "stream.create_ingest_api",
+      "aliases": ["data_stream.create_ingest_api"],
+      "namespace": "prepare"
+    },
+    "d360_query_sql": {
+      "phase": "retrieve",
+      "action": "sql.run",
+      "namespace": "query"
+    },
+    "d360_query_sql_status": {
+      "phase": "retrieve",
+      "action": "sql.status",
+      "namespace": "query"
+    },
+    "d360_query_sql_rows": {
+      "phase": "retrieve",
+      "action": "sql.rows",
+      "namespace": "query"
+    },
+    "d360_query_sql_cancel": {
+      "phase": "retrieve",
+      "action": "sql.cancel",
+      "namespace": "query"
+    },
+    "d360_metadata_entities": {
+      "phase": "retrieve",
+      "action": "metadata.entities",
+      "namespace": "query"
+    },
+    "d360_metadata_search": {
+      "phase": "retrieve",
+      "action": "metadata.search",
+      "namespace": "query"
+    },
+    "d360_metadata": {
+      "phase": "retrieve",
+      "action": "metadata.query",
+      "namespace": "query"
+    },
+    "d360_profile_metadata_model": {
+      "phase": "retrieve",
+      "action": "profile.metadata_model",
+      "namespace": "query"
+    },
+    "d360_insights_metadata_get": {
+      "phase": "retrieve",
+      "action": "insight.metadata_get",
+      "namespace": "query"
+    },
+    "d360_dataaction_list": {
+      "action": "data_action.list"
+    },
+    "d360_dataaction_get": {
+      "action": "data_action.get"
+    },
+    "d360_dataaction_create": {
+      "action": "data_action.create"
+    },
+    "d360_dataaction_delete": {
+      "action": "data_action.delete"
+    },
+    "d360_data_actions_list": {
+      "action": "data_action.list.catalog"
+    },
+    "d360_dataaction_target_list": {
+      "action": "data_action_target.list"
+    },
+    "d360_dataaction_target_get": {
+      "action": "data_action_target.get"
+    },
+    "d360_dataaction_target_create": {
+      "action": "data_action_target.create"
+    },
+    "d360_dataaction_target_update": {
+      "action": "data_action_target.update"
+    },
+    "d360_dataaction_target_delete": {
+      "action": "data_action_target.delete"
+    },
+    "d360_activations_list": {
+      "action": "activation.list"
+    },
+    "d360_activation_list": {
+      "action": "activation.list.compat"
+    },
+    "d360_calculated_insights_list": {
+      "action": "ci.list"
+    },
+    "d360_ci_list": {
+      "action": "ci.list.compat"
+    },
+    "d360_ci_run_status": {
+      "action": "ci.run.status"
+    },
+    "d360_segments_list": {
+      "action": "segment.list"
+    },
+    "d360_segment_list": {
+      "action": "segment.list.compat"
+    },
+    "d360_sdm_list": {
+      "action": "semantic_model.list"
+    },
+    "d360_sdm_get": {
+      "action": "semantic_model.get"
+    },
+    "d360_sdm_create": {
+      "action": "semantic_model.create"
+    },
+    "d360_sdm_update": {
+      "action": "semantic_model.update"
+    },
+    "d360_sdm_delete": {
+      "action": "semantic_model.delete"
+    },
+    "d360_sdm_clone": {
+      "action": "semantic_model.clone"
+    },
+    "d360_sdm_validate": {
+      "action": "semantic_model.validate.compat"
+    },
+    "d360_semantic_models_list": {
+      "action": "semantic_model.list.catalog"
+    },
+    "d360_semantic_model_get": {
+      "action": "semantic_model.get.catalog"
+    },
+    "d360_semantic_model_validate": {
+      "action": "semantic_model.validate"
+    },
+    "d360_sdm_dependencies": {
+      "action": "semantic_model.dependencies"
+    },
+    "d360_sdm_query": {
+      "action": "semantic_model.query"
+    },
+    "d360_semantic_query": {
+      "action": "semantic_model.query.gateway"
+    },
+    "d360_sdm_formula_metadata": {
+      "action": "semantic_model.formula_metadata"
+    },
+    "d360_sdm_permissions": {
+      "action": "semantic_model.permissions"
+    },
+    "d360_sdm_data_objects_list": {
+      "action": "semantic_model.data_object.list"
+    },
+    "d360_sdm_data_object_get": {
+      "action": "semantic_model.data_object.get"
+    },
+    "d360_sdm_data_object_create": {
+      "action": "semantic_model.data_object.create"
+    },
+    "d360_sdm_data_object_update": {
+      "action": "semantic_model.data_object.update"
+    },
+    "d360_sdm_data_object_delete": {
+      "action": "semantic_model.data_object.delete"
+    },
+    "d360_sdm_dimensions_list": {
+      "action": "semantic_model.dimension.list"
+    },
+    "d360_sdm_measurements_list": {
+      "action": "semantic_model.measurement.list"
+    },
+    "d360_sdm_calc_dims_list": {
+      "action": "semantic_model.calculated_dimension.list"
+    },
+    "d360_sdm_calc_dim_get": {
+      "action": "semantic_model.calculated_dimension.get"
+    },
+    "d360_sdm_calc_dim_create": {
+      "action": "semantic_model.calculated_dimension.create"
+    },
+    "d360_sdm_calc_dim_update": {
+      "action": "semantic_model.calculated_dimension.update"
+    },
+    "d360_sdm_calc_dim_delete": {
+      "action": "semantic_model.calculated_dimension.delete"
+    },
+    "d360_sdm_calc_measures_list": {
+      "action": "semantic_model.calculated_measure.list"
+    },
+    "d360_sdm_calc_measure_get": {
+      "action": "semantic_model.calculated_measure.get"
+    },
+    "d360_sdm_calc_measure_create": {
+      "action": "semantic_model.calculated_measure.create"
+    },
+    "d360_sdm_calc_measure_update": {
+      "action": "semantic_model.calculated_measure.update"
+    },
+    "d360_sdm_calc_measure_delete": {
+      "action": "semantic_model.calculated_measure.delete"
+    },
+    "d360_sdm_metrics_list": {
+      "action": "semantic_model.metric.list"
+    },
+    "d360_sdm_metric_get": {
+      "action": "semantic_model.metric.get"
+    },
+    "d360_sdm_metric_create": {
+      "action": "semantic_model.metric.create"
+    },
+    "d360_sdm_metric_update": {
+      "action": "semantic_model.metric.update"
+    },
+    "d360_sdm_metric_delete": {
+      "action": "semantic_model.metric.delete"
+    },
+    "d360_sdm_relationships_list": {
+      "action": "semantic_model.relationship.list"
+    },
+    "d360_sdm_relationship_get": {
+      "action": "semantic_model.relationship.get"
+    },
+    "d360_sdm_relationship_create": {
+      "action": "semantic_model.relationship.create"
+    },
+    "d360_sdm_relationship_update": {
+      "action": "semantic_model.relationship.update"
+    },
+    "d360_sdm_relationship_delete": {
+      "action": "semantic_model.relationship.delete"
+    },
+    "d360_retrievers_list": {
+      "action": "retriever.list"
+    },
+    "d360_retriever_list": {
+      "action": "retriever.list.compat"
+    },
+    "d360_retriever_config_list": {
+      "action": "retriever.config.list"
+    },
+    "d360_retriever_config_get": {
+      "action": "retriever.config.get"
+    },
+    "d360_retriever_config_create": {
+      "action": "retriever.config.create"
+    },
+    "d360_retriever_config_update": {
+      "action": "retriever.config.update"
+    },
+    "d360_retriever_config_delete": {
+      "action": "retriever.config.delete"
+    },
+    "d360_search_indexes_list": {
+      "action": "search_index.list"
+    },
+    "d360_search_index_list": {
+      "action": "search_index.list.compat"
+    },
+    "d360_search_index_process_history": {
+      "action": "search_index.process_history"
+    },
+    "d360_model_artifact_list": {
+      "action": "model_artifact.list"
+    },
+    "d360_connection_db_schemas_list": {
+      "phase": "connect",
+      "action": "connection.db_schemas.list",
+      "aliases": ["connection.database_schemas.list"],
+      "namespace": "connect"
+    },
+    "d360_connection_objects_list": {
+      "phase": "connect",
+      "action": "connection.objects.list",
+      "namespace": "connect"
+    },
+    "d360_connection_object_fields_describe": {
+      "phase": "connect",
+      "action": "connection.object_fields.describe",
+      "aliases": ["connection.objects.fields.describe"],
+      "namespace": "connect"
+    },
+    "d360_datastream_create_third_party_connectors": {
+      "phase": "prepare",
+      "action": "stream.create_third_party_connector",
+      "aliases": ["data_stream.create_third_party_connector"],
+      "namespace": "prepare"
+    },
+    "d360_transform_prepare": {
+      "phase": "prepare",
+      "action": "transform.prepare",
+      "aliases": ["transform.validate_prepare"],
+      "namespace": "prepare"
+    },
+    "d360_prediction_job_def_list": {
+      "action": "ml.prediction_job_def.list"
+    },
+    "d360_prediction_job_def_get": {
+      "action": "ml.prediction_job_def.get"
+    },
+    "d360_prediction_job_def_create": {
+      "action": "ml.prediction_job_def.create"
+    },
+    "d360_prediction_job_def_create_regression": {
+      "action": "ml.prediction_job_def.create_regression"
+    },
+    "d360_prediction_job_def_create_binary_classification": {
+      "action": "ml.prediction_job_def.create_binary_classification"
+    },
+    "d360_prediction_job_def_create_multiclass_classification": {
+      "action": "ml.prediction_job_def.create_multiclass_classification"
+    },
+    "d360_prediction_job_def_create_sentiment_detection": {
+      "action": "ml.prediction_job_def.create_sentiment_detection"
+    },
+    "d360_prediction_job_def_create_topic_classification": {
+      "action": "ml.prediction_job_def.create_topic_classification"
+    },
+    "d360_prediction_job_def_create_clustering": {
+      "action": "ml.prediction_job_def.create_clustering"
+    },
+    "d360_prediction_job_def_update": {
+      "action": "ml.prediction_job_def.update"
+    },
+    "d360_prediction_job_def_activate": {
+      "action": "ml.prediction_job_def.activate"
+    },
+    "d360_prediction_job_def_deactivate": {
+      "action": "ml.prediction_job_def.deactivate"
+    },
+    "d360_prediction_job_def_delete": {
+      "action": "ml.prediction_job_def.delete"
+    },
+    "d360_prediction_job_run": {
+      "action": "ml.prediction_job.run"
+    },
+    "d360_ml_predict": {
+      "action": "ml.predict"
+    },
+    "d360_ml_setup_version_inspector_metrics_get": {
+      "action": "ml.setup_version.inspector_metrics.get"
+    },
+    "d360_ml_alerts_query": {
+      "action": "ml.alerts.query"
+    },
+    "d360_ml_alert_update": {
+      "action": "ml.alert.update"
+    },
+    "d360_ml_model_artifact_list": {
+      "action": "ml.model_artifact.list"
+    },
+    "d360_ml_model_artifact_get": {
+      "action": "ml.model_artifact.get"
+    },
+    "d360_ml_model_artifact_update": {
+      "action": "ml.model_artifact.update"
+    },
+    "d360_ml_model_artifact_delete": {
+      "action": "ml.model_artifact.delete"
+    },
+    "d360_ml_configured_model_list": {
+      "action": "ml.configured_model.list"
+    },
+    "d360_ml_configured_model_get": {
+      "action": "ml.configured_model.get"
+    },
+    "d360_ml_configured_model_create": {
+      "action": "ml.configured_model.create"
+    },
+    "d360_ml_configured_model_update": {
+      "action": "ml.configured_model.update"
+    },
+    "d360_ml_configured_model_delete": {
+      "action": "ml.configured_model.delete"
+    },
+    "d360_ml_configured_model_activate": {
+      "action": "ml.configured_model.activate"
+    },
+    "d360_ml_configured_model_history_list": {
+      "action": "ml.configured_model.history.list"
+    },
+    "d360_ml_configured_model_history_get": {
+      "action": "ml.configured_model.history.get"
+    },
+    "d360_ml_query_setup_fields": {
+      "action": "ml.query_setup_fields"
+    },
+    "d360_ml_query_data_profile": {
+      "action": "ml.query_data_profile"
+    },
+    "d360_ml_query_outcome": {
+      "action": "ml.query_outcome"
+    },
+    "d360_ml_query_row_count": {
+      "action": "ml.query_row_count"
+    },
+    "d360_ml_model_setup_list": {
+      "action": "ml.model_setup.list"
+    },
+    "d360_ml_model_setup_get": {
+      "action": "ml.model_setup.get"
+    },
+    "d360_ml_model_setup_create": {
+      "action": "ml.model_setup.create"
+    },
+    "d360_ml_model_setup_update": {
+      "action": "ml.model_setup.update"
+    },
+    "d360_ml_model_setup_delete": {
+      "action": "ml.model_setup.delete"
+    },
+    "d360_ml_setup_version_list": {
+      "action": "ml.setup_version.list"
+    },
+    "d360_ml_setup_version_get": {
+      "action": "ml.setup_version.get"
+    },
+    "d360_ml_setup_version_create": {
+      "action": "ml.setup_version.create"
+    },
+    "d360_ml_setup_version_update": {
+      "action": "ml.setup_version.update"
+    },
+    "d360_p13n_engagement_signals_list": {
+      "action": "personalization.engagement_signals.list",
+      "aliases": ["p13n.engagement_signals.list"]
+    },
+    "d360_p13n_org_info_get": {
+      "action": "personalization.org_info.get",
+      "aliases": ["p13n.org_info.get"]
+    },
+    "d360_p13n_mobile_preview_create": {
+      "action": "personalization.mobile_preview.create",
+      "aliases": ["p13n.mobile_preview.create"]
+    },
+    "d360_p13n_experience_config_list": {
+      "action": "personalization.experience_config.list",
+      "aliases": ["p13n.experience_config.list"]
+    },
+    "d360_p13n_experience_config_get": {
+      "action": "personalization.experience_config.get",
+      "aliases": ["p13n.experience_config.get"]
+    },
+    "d360_p13n_experience_config_create": {
+      "action": "personalization.experience_config.create",
+      "aliases": ["p13n.experience_config.create"]
+    },
+    "d360_p13n_experience_config_update": {
+      "action": "personalization.experience_config.update",
+      "aliases": ["p13n.experience_config.update"]
+    },
+    "d360_p13n_experience_config_delete": {
+      "action": "personalization.experience_config.delete",
+      "aliases": ["p13n.experience_config.delete"]
+    },
+    "d360_p13n_transformer_list": {
+      "action": "personalization.transformer.list",
+      "aliases": ["p13n.transformer.list"]
+    },
+    "d360_p13n_transformer_get": {
+      "action": "personalization.transformer.get",
+      "aliases": ["p13n.transformer.get"]
+    },
+    "d360_p13n_transformer_create": {
+      "action": "personalization.transformer.create",
+      "aliases": ["p13n.transformer.create"]
+    },
+    "d360_p13n_transformer_update": {
+      "action": "personalization.transformer.update",
+      "aliases": ["p13n.transformer.update"]
+    },
+    "d360_p13n_transformer_delete": {
+      "action": "personalization.transformer.delete",
+      "aliases": ["p13n.transformer.delete"]
+    },
+    "d360_p13n_schema_create": {
+      "action": "personalization.schema.create",
+      "aliases": ["p13n.schema.create"]
+    },
+    "d360_p13n_schema_get": {
+      "action": "personalization.schema.get",
+      "aliases": ["p13n.schema.get"]
+    },
+    "d360_p13n_schema_update": {
+      "action": "personalization.schema.update",
+      "aliases": ["p13n.schema.update"]
+    },
+    "d360_p13n_schema_delete": {
+      "action": "personalization.schema.delete",
+      "aliases": ["p13n.schema.delete"]
+    },
+    "d360_p13n_point_create": {
+      "action": "personalization.point.create",
+      "aliases": ["p13n.point.create"]
+    },
+    "d360_p13n_point_get": {
+      "action": "personalization.point.get",
+      "aliases": ["p13n.point.get"]
+    },
+    "d360_p13n_point_update": {
+      "action": "personalization.point.update",
+      "aliases": ["p13n.point.update"]
+    },
+    "d360_p13n_point_delete": {
+      "action": "personalization.point.delete",
+      "aliases": ["p13n.point.delete"]
+    }
+  },
+  "localActions": [
+    {
+      "phase": "retrieve",
+      "family": "Query",
+      "action": "sql.verify_rows",
+      "description": "Build a bounded row-count verification query for a Data Lake Object.",
+      "safety": "safe_post",
+      "requiredParams": ["dloName"],
+      "optionalParams": ["dataspaceName"],
+      "implementation": {
+        "kind": "local",
+        "name": "sql.verify_rows"
+      },
+      "aliases": ["sql.count_dlo"],
+      "namespace": "query"
+    },
+    {
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.create",
+      "description": "Create a tenant Ingestion API bulk ingest job.",
+      "safety": "confirmed",
+      "requiredParams": ["sourceName", "object"],
+      "optionalParams": ["operation", "tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.create"
+      },
+      "aliases": ["tenant_ingest.job.create"],
+      "namespace": "prepare"
+    },
+    {
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.upload_csv",
+      "description": "Upload CSV bytes to an open tenant Ingestion API bulk ingest job.",
+      "safety": "confirmed",
+      "requiredParams": ["jobId", "csvPath"],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.upload_csv"
+      },
+      "aliases": ["tenant_ingest.job.upload_csv"],
+      "namespace": "prepare"
+    },
+    {
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.close",
+      "description": "Close a tenant Ingestion API bulk ingest job by marking upload complete.",
+      "safety": "confirmed",
+      "requiredParams": ["jobId"],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.close"
+      },
+      "aliases": ["tenant_ingest.job.close"],
+      "namespace": "prepare"
+    },
+    {
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "ingest_job.poll",
+      "description": "Poll tenant Ingestion API bulk ingest job status.",
+      "safety": "read",
+      "requiredParams": ["jobId"],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest",
+        "name": "ingest_job.poll"
+      },
+      "aliases": ["tenant_ingest.job.poll"],
+      "namespace": "prepare"
+    },
+    {
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.status",
+      "description": "Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": ["tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.status"
+      },
+      "aliases": ["ingest_auth.status"],
+      "namespace": "connect"
+    },
+    {
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.plan",
+      "description": "Plan a headless-safe Data Cloud tenant ingest auth setup path without persisting credentials.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": ["strategy", "tenantHost"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.plan"
+      },
+      "aliases": ["ingest_auth.plan"],
+      "namespace": "connect"
+    },
+    {
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.exchange",
+      "description": "Exchange a PKCE Salesforce authorization code for Data Cloud tenant token metadata without returning tokens.",
+      "safety": "confirmed",
+      "requiredParams": [
+        "strategy",
+        "loginUrl",
+        "clientId",
+        "redirectUri",
+        "authorizationCode",
+        "codeVerifier"
+      ],
+      "optionalParams": [],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.exchange"
+      },
+      "aliases": ["ingest_auth.exchange_pkce"],
+      "namespace": "connect"
+    },
+    {
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.pkce_start",
+      "description": "Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.",
+      "safety": "read",
+      "requiredParams": ["loginUrl", "clientId", "redirectUri"],
+      "optionalParams": ["scopes"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.pkce_start"
+      },
+      "aliases": ["ingest_auth.pkce_start"],
+      "namespace": "connect"
+    },
+    {
+      "phase": "prepare",
+      "family": "Ingestion",
+      "action": "csv_schema.infer",
+      "description": "Infer an Ingestion API schema from a local CSV file.",
+      "safety": "read",
+      "requiredParams": ["csvPath", "schemaName", "primaryKey"],
+      "optionalParams": ["recordModifiedField"],
+      "implementation": {
+        "kind": "local",
+        "name": "csv_schema.infer"
+      },
+      "aliases": ["csv.infer_schema"],
+      "namespace": "prepare"
+    },
+    {
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.sessions",
+      "description": "List in-memory Data Cloud ingest auth sessions without tokens.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": [],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.sessions"
+      },
+      "aliases": ["ingest_auth.sessions"],
+      "namespace": "connect"
+    },
+    {
+      "phase": "connect",
+      "family": "Connection",
+      "action": "auth.clear",
+      "description": "Clear one or all in-memory Data Cloud ingest auth sessions.",
+      "safety": "read",
+      "requiredParams": [],
+      "optionalParams": ["authSessionId"],
+      "implementation": {
+        "kind": "tenant_ingest_auth",
+        "name": "auth.clear"
+      },
+      "aliases": ["ingest_auth.clear"],
+      "namespace": "connect"
+    },
+    {
+      "phase": "observe",
+      "family": "Agent Observability",
+      "action": "stdm.session_otel",
+      "description": "Export one recent Agentforce session as pre-joined OpenTelemetry JSON.",
+      "safety": "read",
+      "requiredParams": ["session_id"],
+      "optionalParams": [],
+      "implementation": {
+        "kind": "local",
+        "name": "stdm.session_otel"
+      },
+      "aliases": ["agent_observability.stdm_session_otel", "stdm.otel"],
+      "namespace": "observe"
+    }
+  ]
+}

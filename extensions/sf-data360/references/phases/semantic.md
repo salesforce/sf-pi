@@ -11,13 +11,13 @@ Data 360 Semantic phase. Use when managing semantic models, search indexes, retr
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -29,14 +29,14 @@ Data 360 Semantic phase. Use when managing semantic models, search indexes, retr
 
 ## Data 360 family actions
 
-- `data360_semantic` `ml.configured_model.get` (rest_operation, read) — Get a configured model by id or developer name.
-- `data360_semantic` `ml.configured_model.history.get` (rest_operation, read) — Get one configured-model history snapshot.
-- `data360_semantic` `ml.configured_model.history.list` (rest_operation, read) — List history snapshots for a configured model.
-- `data360_semantic` `ml.configured_model.list` (rest_operation, read) — List configured models. Filter by assetIdOrName + assetType (ModelArtifact|ModelSetup) to find configured models bound to a specific artifact or setup.
-- `data360_semantic` `ml.model_artifact.get` (rest_operation, read) — Get a trained model artifact. Carries the parameters, inputFields, outputFields, source/setupContainer back-links.
-- `data360_semantic` `ml.model_artifact.list` (rest_operation, read) — List trained model artifacts. Filter by modelType, sourceType, dataCloudOneVisibility.
-- `data360_semantic` `ml.model_setup.get` (rest_operation, read) — Get a model-setup container by id or developer name.
-- `data360_semantic` `ml.model_setup.list` (rest_operation, read) — List model-setup containers. Filters: search, modelType, modelCapability, setupType, connectorType. Pagination via limit/offset.
+- `sf_data360` `semantic.ml.configured_model.get` (semantic, rest_operation, read) — Get a configured model by id or developer name.
+- `sf_data360` `semantic.ml.configured_model.history.get` (semantic, rest_operation, read) — Get one configured-model history snapshot.
+- `sf_data360` `semantic.ml.configured_model.history.list` (semantic, rest_operation, read) — List history snapshots for a configured model.
+- `sf_data360` `semantic.ml.configured_model.list` (semantic, rest_operation, read) — List configured models. Filter by assetIdOrName + assetType (ModelArtifact|ModelSetup) to find configured models bound to a specific artifact or setup.
+- `sf_data360` `semantic.ml.model_artifact.get` (semantic, rest_operation, read) — Get a trained model artifact. Carries the parameters, inputFields, outputFields, source/setupContainer back-links.
+- `sf_data360` `semantic.ml.model_artifact.list` (semantic, rest_operation, read) — List trained model artifacts. Filter by modelType, sourceType, dataCloudOneVisibility.
+- `sf_data360` `semantic.ml.model_setup.get` (semantic, rest_operation, read) — Get a model-setup container by id or developer name.
+- `sf_data360` `semantic.ml.model_setup.list` (semantic, rest_operation, read) — List model-setup containers. Filters: search, modelType, modelCapability, setupType, connectorType. Pagination via limit/offset.
 
 ## Cross-phase routing
 
@@ -54,4 +54,4 @@ Data 360 Semantic phase. Use when managing semantic models, search indexes, retr
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

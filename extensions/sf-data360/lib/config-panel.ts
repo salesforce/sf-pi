@@ -3,14 +3,13 @@
  * Settings/status panel for sf-data360.
  *
  * Keeps the standardized Manager drill-down experience while exposing one
- * low-risk preference: default output mode for data360_* tool calls when the
+ * low-risk preference: default output mode for sf_data360 calls when the
  * caller omits output_mode.
  */
 import { type Focusable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
 import { isSfPiExtensionEnabled } from "../../../lib/common/sf-pi-extension-state.ts";
-import { DATA360_V2_TOOL_DEFS } from "./v2/tools.ts";
 import {
   DATA360_OUTPUT_MODES,
   describeData360SettingsSource,
@@ -108,21 +107,20 @@ class SfData360ConfigPanel implements Focusable {
     lines.push(pad(""));
 
     lines.push(pad(` ${t.fg("muted", "When enabled:")}`));
-    for (const tool of DATA360_V2_TOOL_DEFS.slice(0, 6)) {
-      lines.push(
-        pad(`   ${toolDot(t, enabled)} ${tool.name.padEnd(22)} ${t.fg("dim", tool.label)}`),
-      );
-    }
     lines.push(
-      pad(`   ${t.fg("dim", `… ${DATA360_V2_TOOL_DEFS.length - 6} more data360_* tools`)}`),
+      pad(
+        `   ${toolDot(t, enabled)} ${"sf_data360".padEnd(22)} ${t.fg("dim", "One SDK tool · 11 business namespaces")}`,
+      ),
     );
+    lines.push(
+      pad(`   ${t.fg("dim", "discover · connect · prepare · harmonize · segment · activate")}`),
+    );
+    lines.push(pad(`   ${t.fg("dim", "query · semantic · observe · orchestrate · api")}`));
     lines.push(pad(""));
 
     lines.push(pad(` ${t.fg("muted", "Safety:")}`));
     lines.push(pad(`   ${t.fg("dim", "•")} dry_run is available before mutating calls`));
-    lines.push(
-      pad(`   ${t.fg("dim", "•")} Confirmed actions need allow_confirmed; SF Guardrail owns HITL`),
-    );
+    lines.push(pad(`   ${t.fg("dim", "•")} Mutations need allow_mutation; SF Guardrail owns HITL`));
     lines.push(pad(`   ${t.fg("dim", "•")} Headless writes require SF_GUARDRAIL_ALLOW_HEADLESS=1`));
     lines.push(pad(""));
 

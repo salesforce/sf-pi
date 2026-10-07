@@ -1,7 +1,8 @@
 ---
 id: "0067"
-status: accepted
+status: superseded
 date: 2026-06-24
+supersededBy: ["0141"]
 ---
 
 # Data 360 tools use Run Digests for presentation

@@ -47,7 +47,7 @@ export function planPresetConflicts(
       recommendation: {
         resolution: "native-only",
         summary:
-          "Keep the typed SF Data 360 families. Enable the hosted MCP only for an explicit comparison or missing capability.",
+          "Keep the single sf_data360 SDK tool. Enable the hosted MCP only for explicit comparison or contract-drift investigation.",
       },
     };
   }

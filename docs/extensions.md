@@ -114,7 +114,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-data360">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF Data 360</strong>
-  <span>Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch</span>
+  <span>One Pi-native Data 360 SDK tool with discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and API actions</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-data360</code></span>
 </a>
 </div>

@@ -11,7 +11,7 @@ export function createTestSalesforceOrg(
     orgType?: "sandbox" | "scratch" | "developer" | "production";
   } = {},
 ) {
-  const alias = options.alias ?? "AgentforceSTDM";
+  const alias = options.alias ?? "ExampleData360Org";
   let apiVersion = options.apiVersion ?? "50.0";
   const instanceUrl =
     options.orgType === "developer"
@@ -45,7 +45,7 @@ export function createTestSalesforceOrg(
 export function testConfigAggregator() {
   return {
     getInfo: (key: string) => ({
-      value: key === "target-org" ? "AgentforceSTDM" : undefined,
+      value: key === "target-org" ? "ExampleData360Org" : undefined,
       location: "Global",
     }),
   };

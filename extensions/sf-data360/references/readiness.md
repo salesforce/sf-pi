@@ -2,7 +2,7 @@
 
 Data Cloud is not exposed as one universal API switch. One surface can be
 reachable while another is gated, empty, or not provisioned for the current
-user. Use `data360_discover` with `action: "readiness.probe"` before multi-step
+user. Use `discover` with `action: "readiness.probe"` before multi-step
 work when readiness is uncertain.
 
 ## Readiness states
@@ -21,7 +21,7 @@ work when readiness is uncertain.
 
 ## Probe count semantics
 
-`data360_discover readiness.probe` is a readiness classifier, not a complete
+`discover readiness.probe` is a readiness classifier, not a complete
 inventory tool.
 
 Some probes intentionally use `limit=1`. For endpoints that do not return an explicit `totalSize`, `total`, or `count`, the reported count may be only the number of returned items.
@@ -30,7 +30,7 @@ Use probe counts to determine whether a surface is reachable, populated, empty, 
 
 ## Good first probes
 
-`data360_discover readiness.probe` samples a curated set of read-only surfaces
+`discover readiness.probe` samples a curated set of read-only surfaces
 including:
 
 - data spaces

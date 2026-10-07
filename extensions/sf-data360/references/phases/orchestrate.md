@@ -11,13 +11,13 @@ Data 360 Orchestrate phase. Use for cross-phase Data 360 planning, pipeline setu
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -28,14 +28,14 @@ Data 360 Orchestrate phase. Use for cross-phase Data 360 planning, pipeline setu
 
 ## Data 360 family actions
 
-- `data360_orchestrate` `activate_segment.plan` (journey, read) — Plan activation target and activation creation steps without mutation.
-- `data360_orchestrate` `agent_behavior_investigation.plan` (journey, read) — Plan Agentforce STDM and platform tracing queries for an agent/session investigation.
-- `data360_orchestrate` `agent_behavior_investigation.run` (journey, read) — Run read-only Agentforce STDM and platform tracing investigation actions and summarize findings.
-- `data360_orchestrate` `build_segment.plan` (journey, read) — Plan calculated insight and segment creation/publish steps without mutation.
-- `data360_orchestrate` `cleanup.discover_owned` (journey, read) — Discover explicit cleanup candidates by safe prefixes and produce cleanup.plan parameters without deleting anything.
-- `data360_orchestrate` `cleanup.plan` (journey, read) — Plan cleanup of explicitly owned Data 360 resources.
-- `data360_orchestrate` `ingest_csv.plan` (journey, read) — Plan Route A local CSV ingestion through Ingestion API source schema, data stream, tenant ingest job, and SQL verification.
-- `data360_orchestrate` `intent.plan` (journey, read) — Route a natural-language Data 360 user utterance to a recommended journey and next action.
+- `sf_data360` `orchestrate.activate_segment.plan` (orchestrate, journey, read) — Plan activation target and activation creation steps without mutation.
+- `sf_data360` `orchestrate.agent_behavior_investigation.plan` (orchestrate, journey, read) — Plan Agentforce STDM and platform tracing queries for an agent/session investigation.
+- `sf_data360` `orchestrate.agent_behavior_investigation.run` (orchestrate, journey, read) — Run read-only Agentforce STDM and platform tracing investigation actions and summarize findings.
+- `sf_data360` `orchestrate.build_segment.plan` (orchestrate, journey, read) — Plan calculated insight and segment creation/publish steps without mutation.
+- `sf_data360` `orchestrate.cleanup.discover_owned` (orchestrate, journey, read) — Discover explicit cleanup candidates by safe prefixes and produce cleanup.plan parameters without deleting anything.
+- `sf_data360` `orchestrate.cleanup.plan` (orchestrate, journey, read) — Plan cleanup of explicitly owned Data 360 resources.
+- `sf_data360` `orchestrate.ingest_csv.plan` (orchestrate, journey, read) — Plan Route A local CSV ingestion through Ingestion API source schema, data stream, tenant ingest job, and SQL verification.
+- `sf_data360` `orchestrate.intent.plan` (orchestrate, journey, read) — Route a natural-language Data 360 user utterance to a recommended journey and next action.
 
 ## Cross-phase routing
 
@@ -53,4 +53,4 @@ Data 360 Orchestrate phase. Use for cross-phase Data 360 planning, pipeline setu
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

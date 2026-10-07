@@ -150,15 +150,6 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Flow Scanner rules fail
 - A scan wrote unexpected files
 
-**[SF Data 360](./extensions/sf-data360.md#troubleshooting)**
-
-- A DMO list returns too much data
-- Metadata search fails while DMO/DLO lists work
-- A connector detail returns `NOT_FOUND`
-- The family tools are missing
-- A mutation is blocked headlessly
-- A versioned path is rejected
-
 **[SF Docs](./extensions/sf-docs.md#troubleshooting)**
 
 - SF Docs is not configured

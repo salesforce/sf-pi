@@ -1,100 +1,29 @@
 # SF Data 360 Query Patterns
 
-Data Cloud SQL is not CRM SOQL. Use these patterns when inventing SQL,
-calculated insight SQL, profile reads, or semantic queries.
+`sf_data360` prefers Data 360 Query API V3 for `query.sql.*` actions. If the authenticated org token cannot be exchanged for a Query V3 tenant token, the action falls back to the equivalent Connect API endpoint and returns explicit transport evidence and a warning. Pass `transport: "query_v3"` for strict V3-only execution or `transport: "connect"` for an explicit Connect request.
 
-## Discovery before query
+## Preferred sequence
 
-1. Run `data360_discover` with `action: "readiness.probe"` if readiness is uncertain.
-2. Use `data360_harmonize dmo.list` and `data360_prepare dlo.list` to find candidate objects.
-3. Use `data360_query dmo_describe` or `dlo_describe` to verify field names.
-4. Start with `data360_query sql.run`, `COUNT(*)`, and a small bound.
-5. Use `sql.status` and `sql.rows` only after the query shape works.
+1. Discover objects and fields with `harmonize.dmo.list/get` or `prepare.dlo.list/get`.
+2. Use `query.sql.run` with `queryRowLimit` or an explicit SQL `LIMIT`.
+3. When the response is asynchronous, use `query.sql.status`.
+4. Inspect schema with `query.sql.metadata` before broad row retrieval.
+5. Page with `query.sql.rows` using bounded offset/limit or byte limits.
+6. Cancel abandoned work with `query.sql.cancel`.
 
-## Query endpoint shapes
-
-All three Data 360 query endpoints accept the same body: a single `sql`
-field. Do not use `query`; the parser rejects it.
+## Submit
 
 ```json
-{ "sql": "SELECT COUNT(*) row_count FROM SomeObject__dlm", "rowLimit": 1 }
+{
+  "action": "query.sql.run",
+  "params": {
+    "sql": "SELECT COUNT(*) AS total FROM Example__dlm",
+    "transferMode": "ADAPTIVE",
+    "queryRowLimit": 10
+  }
+}
 ```
 
-| Endpoint               | Notes                                                                              |
-| ---------------------- | ---------------------------------------------------------------------------------- |
-| `POST /ssot/query-sql` | Preferred. Optional `rowLimit`. Use `/{queryId}` and `/{queryId}/rows` for async.  |
-| `POST /ssot/queryv2`   | Synchronous. May return `nextBatchId` for pagination via `/queryv2/{nextBatchId}`. |
-| `POST /ssot/query`     | V1 legacy. Same `sql` body. Prefer query-sql or queryv2 for new work.              |
+V3 supports `ADAPTIVE` and `ASYNC` transfer modes, parameter styles, typed parameters, query settings, row limits, and bounded result ranges. JSON is the default response format. Apache Arrow remains an opt-in future adapter when a workflow needs binary columnar results.
 
-## Table and field naming
-
-- Use names verified from DLO/DMO/metadata; do not guess `__c` field names.
-- A catalog object can exist while the query plane rejects it
-  (table not queryable, external lake access blocked).
-- Quote table names if needed; if the catalog name is rejected, retry
-  unquoted before assuming the table is missing.
-
-## DMO record query loop
-
-1. Select the DMO with `data360_harmonize dmo.list`.
-2. Describe it with `data360_query dmo_describe`; pick a few non-sensitive
-   verified fields (ids, statuses, timestamps).
-3. Run `SELECT COUNT(*) record_count FROM SomeObject__dlm` through
-   `data360_query sql.run` first.
-4. `SELECT FieldA__c, FieldB__c FROM SomeObject__dlm LIMIT 5` second.
-5. Keep both SQL `LIMIT` and request `rowLimit` small.
-
-## Profile API
-
-- `dataModelName` is the full DMO API name with the `__dlm` suffix.
-- `GET /ssot/profile/{dataModelName}` requires
-  `filters=[Field__c=Value]` (plural, bracketed). Singular `filter=` and
-  RSQL operators are rejected. Combine with `fields=Field1,Field2` to
-  limit the projection.
-- `GET /ssot/profile/{dataModelName}/{id}` and child/CI variants require
-  `orderby` whenever `offset` is supplied. The path segment is the
-  unified profile id, not a `__c` field value.
-
-## Calculated insight SQL rules
-
-Stricter than ad-hoc query SQL:
-
-- Fully qualified `table.field` references in projection and `GROUP BY`.
-- Prefer `APPROX_COUNT_DISTINCT(...)` over `COUNT(DISTINCT ...)`.
-- Avoid subqueries, subquery aliases, and unsupported casts (e.g.
-  `CAST(... AS FLOAT)`).
-- Let the API derive dimensions/measures from the expression.
-- Connect REST endpoints under `/ssot/calculated-insights/{apiName}`
-  require `apiName` ending in `__cio`. The
-  `/ssot/insight/calculated-insights/{ciName}` family needs an existing
-  CI; discover names with `GET /ssot/calculated-insights` first.
-
-## Segment SQL
-
-Segment DBT SQL must:
-
-- Use unaliased fully-qualified identifiers in the primary projection.
-- Project both the primary key and key qualifier of the segmentOn
-  entity.
-
-```sql
-SELECT DISTINCT base.ssot__Id__c, base.KQ_Id__c
-FROM UnifiedOrBaseEntity__dlm AS base
-```
-
-See `data-shapes.md` for the full segment create body.
-
-## Semantic queries
-
-Semantic queries use `/semantic-engine/gateway`, not `/ssot/query-sql`.
-Use `tableField` for data-object fields and `semanticField` for
-model-level calculated fields, dimensions, or metrics. The full body
-shape is in `data-shapes.md` under "Semantic engine query".
-
-## Recovery
-
-- `DataModelEntity not found` → wrong table name or not queryable; pick another verified DMO/DLO and retry.
-- `Couldn't find CDP tenant ID` → query-plane readiness issue, not a global Data Cloud outage.
-- External lake errors can coexist with healthy catalog, stream, and semantic endpoints.
-- Fall back to catalog/metadata probes and `COUNT(*)` smoke before
-  retrying the failing query.
+The older Direct Query API V1/V2 contracts are not part of the runtime. Exact Connect REST query endpoints remain reachable through named endpoint actions or `api.request` when explicitly required.

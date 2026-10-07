@@ -23,14 +23,14 @@ import { connectSalesforce } from "../../lib/common/sf-conn/index.ts";
 import {
   classifyConnectionProbeResult,
   summarizeReadiness,
-} from "../../extensions/sf-data360/lib/probe-tool.ts";
+} from "../../extensions/sf-data360/lib/readiness.ts";
 import { classifyD360Request } from "../../extensions/sf-data360/lib/safety.ts";
 import {
   buildMetadataExecutionPlan,
   summarizeMetadataOutput,
   type D360MetadataInput,
-} from "../../extensions/sf-data360/lib/metadata-tool.ts";
-import { resolveRequest } from "../../extensions/sf-data360/lib/api-tool.ts";
+} from "../../extensions/sf-data360/lib/metadata.ts";
+import { resolveRequest } from "../../extensions/sf-data360/lib/api-client.ts";
 
 const ALIAS = process.argv[2] ?? process.env.D360_E2E_ORG;
 if (!ALIAS) {

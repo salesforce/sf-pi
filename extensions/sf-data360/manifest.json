@@ -1,42 +1,33 @@
 {
   "id": "sf-data360",
   "name": "SF Data 360",
-  "description": "Data Cloud/Data 360 v2 family tools \u2014 discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch",
+  "description": "One Pi-native Data 360 SDK tool with discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and API actions",
   "category": "agent-tool",
   "maturity": "stable",
   "defaultEnabled": true,
   "configurable": true,
   "commands": ["/sf-data360"],
-  "tools": [
-    "data360_discover",
-    "data360_connect",
-    "data360_prepare",
-    "data360_harmonize",
-    "data360_segment",
-    "data360_activate",
-    "data360_query",
-    "data360_semantic",
-    "data360_observe",
-    "data360_orchestrate",
-    "data360_api"
-  ],
+  "tools": ["sf_data360"],
   "events": ["session_start", "session_shutdown", "resources_discover"],
   "docs": {
     "intentGroup": "Work with Data Cloud",
     "editingRules": "AGENTS.md",
     "agentGuide": "AGENT_GUIDE.md",
-    "summary": "Data 360 v2 family tool surface over the generated operation registry: compact action discovery, dry-run planning, shared target/version resolution, safety confirmation, bounded output, journey orchestration, and a raw REST escape hatch through the Salesforce Connection Module.",
+    "summary": "One Pi-native sf_data360 SDK surface over a generated business action and endpoint registry, with direct Connect/Query/Ingestion transports, rich Data 360 Run Cards, dry-run safety, structured output, and orchestrated journeys.",
     "primaryFiles": [
       "index.ts",
-      "lib/v2/tools.ts",
-      "lib/v2/dispatcher.ts",
-      "lib/v2/action-registry.ts",
+      "lib/sf-data360-tool.ts",
+      "lib/sdk.ts",
+      "lib/digest.ts",
+      "lib/render.ts",
+      "lib/actions/dispatcher.ts",
+      "lib/actions/action-registry.ts",
       "lib/safety.ts"
     ],
     "safety": [
       "No MCP runtime or Java subprocess is used.",
-      "The v2 data360_* tools route through the shared Salesforce Connection Module, action registry, and existing safety gates.",
-      "Mutating calls are classified by method/path and confirmed when required.",
+      "The sf_data360 tool routes business-namespaced actions through the shared Salesforce Connection Module and direct Data 360 tenant transports.",
+      "Mutating calls require dry-run review, allow_mutation=true, and Guardrail mediation.",
       "The extension uses plain reference docs instead of contributing Agent Skills."
     ],
     "referenceRoots": [
@@ -50,11 +41,6 @@
         "index": "references/README.md",
         "role": "generated-current",
         "generatedBy": "scripts/generate-d360-references.mjs"
-      },
-      {
-        "path": "references/compatibility",
-        "index": "references/compatibility/README.md",
-        "role": "compatibility"
       }
     ]
   }

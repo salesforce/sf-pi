@@ -1,0 +1,288 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/** Compact Data 360 metadata planning and summarization helpers. */
+
+type MetadataActionValue = "list_dmos" | "describe_dmo" | "list_dlos" | "describe_dlo";
+
+export interface D360MetadataInput {
+  action: MetadataActionValue;
+  api_name?: string;
+  category?: string;
+  max_fields?: number;
+  max_results?: number;
+  target_org?: string;
+  timeout_ms?: number;
+}
+
+interface MetadataExecutionPlan {
+  path: string;
+  kind: "list" | "describe";
+  entityType: "DataModelObject" | "DataLakeObject";
+}
+
+interface MetadataEntity {
+  category?: string;
+  displayName?: string;
+  label?: string;
+  name?: string;
+  type?: string;
+}
+
+interface DataField {
+  name?: string;
+  label?: string;
+  type?: string;
+  dataType?: string;
+  isPrimaryKey?: boolean;
+  isMapped?: boolean;
+  usageTag?: string;
+  creationType?: string;
+}
+
+export function buildMetadataExecutionPlan(input: D360MetadataInput): MetadataExecutionPlan {
+  switch (input.action) {
+    case "list_dmos":
+      return {
+        path: "/ssot/metadata-entities?entityType=DataModelObject",
+        kind: "list",
+        entityType: "DataModelObject",
+      };
+    case "list_dlos":
+      return {
+        path: "/ssot/metadata-entities?entityType=DataLakeObject",
+        kind: "list",
+        entityType: "DataLakeObject",
+      };
+    case "describe_dmo":
+      return {
+        path: `/ssot/data-model-objects/${requiredApiName(input)}`,
+        kind: "describe",
+        entityType: "DataModelObject",
+      };
+    case "describe_dlo":
+      return {
+        path: `/ssot/data-lake-objects/${requiredApiName(input)}`,
+        kind: "describe",
+        entityType: "DataLakeObject",
+      };
+    default:
+      return assertNever(input.action);
+  }
+}
+
+export function summarizeMetadataOutput(
+  input: D360MetadataInput,
+  rawJson: string,
+  rawOutputPath: string,
+): { text: string; details: Record<string, unknown> } {
+  const parsed = parseJson(rawJson);
+  if (!parsed || typeof parsed !== "object") {
+    return {
+      text: `Data 360 metadata response was not JSON. Raw output: ${rawOutputPath}`,
+      details: { rawOutputPath },
+    };
+  }
+
+  if (input.action === "list_dmos" || input.action === "list_dlos") {
+    return summarizeMetadataList(input, parsed as Record<string, unknown>, rawOutputPath);
+  }
+  return summarizeMetadataDescription(
+    input,
+    unwrapDescription(parsed as Record<string, unknown>),
+    rawOutputPath,
+  );
+}
+
+function unwrapDescription(parsed: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(parsed.dataModelObject) && parsed.dataModelObject.length === 1) {
+    return parsed.dataModelObject[0] as Record<string, unknown>;
+  }
+  if (Array.isArray(parsed.dataLakeObjects) && parsed.dataLakeObjects.length === 1) {
+    return parsed.dataLakeObjects[0] as Record<string, unknown>;
+  }
+  if (Array.isArray(parsed.items) && parsed.items.length === 1) {
+    return parsed.items[0] as Record<string, unknown>;
+  }
+  return parsed;
+}
+
+function summarizeMetadataList(
+  input: D360MetadataInput,
+  parsed: Record<string, unknown>,
+  rawOutputPath: string,
+): { text: string; details: Record<string, unknown> } {
+  const allEntities = extractMetadataEntities(parsed);
+  const category = input.category?.trim().toLowerCase();
+  const entities = category
+    ? allEntities.filter((entity) => entity.category?.toLowerCase() === category)
+    : allEntities;
+  entities.sort((a, b) =>
+    `${a.category ?? ""}\u0000${a.displayName ?? a.label ?? ""}\u0000${a.name ?? ""}`.localeCompare(
+      `${b.category ?? ""}\u0000${b.displayName ?? b.label ?? ""}\u0000${b.name ?? ""}`,
+    ),
+  );
+
+  const label = input.action === "list_dmos" ? "DMOs" : "DLOs";
+  const availableCategories = uniqueSorted(
+    allEntities.map((entity) => entity.category).filter((value): value is string => Boolean(value)),
+  );
+  const categoryCounts = countByCategory(allEntities);
+  const maxResults = normalizeMaxResults(input.max_results);
+  const shownEntities = entities.slice(0, maxResults);
+  const lines = [
+    `Found ${entities.length} ${label}${category ? ` in category ${input.category}` : ""}.`,
+    `Showing ${shownEntities.length} of ${entities.length}. Raw output: ${rawOutputPath}`,
+  ];
+  if (categoryCounts.length > 0) {
+    lines.push(
+      `Category counts: ${categoryCounts.map(([name, count]) => `${name}=${count}`).join(", ")}.`,
+    );
+  }
+  if (category && entities.length === 0 && availableCategories.length > 0) {
+    lines.push(
+      `No compact metadata category matched. Available categories: ${availableCategories.join(", ")}.`,
+      "Note: compact metadata categories can differ from detailed DLO/DMO schema categories.",
+    );
+  }
+  if (entities.length > shownEntities.length) {
+    lines.push(
+      `Use category or max_results to narrow the inline table; the full response is saved above.`,
+    );
+  }
+  if (shownEntities.length > 0) {
+    lines.push("", "| Category | Display Name | API Name |", "|---|---|---|");
+    for (const entity of shownEntities) {
+      lines.push(
+        `| ${escapeTable(entity.category ?? "")} | ${escapeTable(
+          entity.displayName ?? entity.label ?? "",
+        )} | \`${escapeTable(entity.name ?? "")}\` |`,
+      );
+    }
+  }
+
+  return {
+    text: lines.join("\n"),
+    details: {
+      count: entities.length,
+      shownCount: shownEntities.length,
+      unfilteredCount: allEntities.length,
+      category: input.category,
+      availableCategories,
+      categoryCounts: Object.fromEntries(categoryCounts),
+      rawOutputPath,
+    },
+  };
+}
+
+function summarizeMetadataDescription(
+  input: D360MetadataInput,
+  parsed: Record<string, unknown>,
+  rawOutputPath: string,
+): { text: string; details: Record<string, unknown> } {
+  const fields = extractFields(parsed);
+  const maxFields = normalizeMaxFields(input.max_fields);
+  const shownFields = fields.slice(0, maxFields);
+  const lines = [
+    `${parsed.label ?? parsed.displayName ?? parsed.name ?? input.api_name}`,
+    `API name: \`${parsed.name ?? input.api_name ?? ""}\``,
+    `Category: ${parsed.category ?? "(unknown)"}`,
+    `Data space: ${parsed.dataSpaceName ?? "(unknown)"}`,
+    `Enabled: ${formatUnknownBoolean(parsed.isEnabled)}`,
+    `Segmentable: ${formatUnknownBoolean(parsed.isSegmentable)}`,
+    `Editable: ${formatUnknownBoolean(parsed.isEditable)}`,
+    `Fields: ${fields.length}${fields.length > shownFields.length ? ` (showing ${shownFields.length})` : ""}`,
+    `Raw output: ${rawOutputPath}`,
+  ];
+
+  if (shownFields.length > 0) {
+    lines.push(
+      "",
+      "| Field | Label | Type | Primary Key | Mapped | Usage |",
+      "|---|---|---|---:|---:|---|",
+    );
+    for (const field of shownFields) {
+      lines.push(
+        `| \`${escapeTable(field.name ?? "")}\` | ${escapeTable(field.label ?? "")} | ${escapeTable(
+          field.type ?? field.dataType ?? "",
+        )} | ${field.isPrimaryKey ? "yes" : ""} | ${field.isMapped ? "yes" : ""} | ${escapeTable(
+          field.usageTag ?? "",
+        )} |`,
+      );
+    }
+  }
+
+  return {
+    text: lines.join("\n"),
+    details: {
+      apiName: parsed.name ?? input.api_name,
+      fieldCount: fields.length,
+      shownFieldCount: shownFields.length,
+      rawOutputPath,
+    },
+  };
+}
+
+function extractMetadataEntities(parsed: Record<string, unknown>): MetadataEntity[] {
+  if (Array.isArray(parsed.metadata)) return parsed.metadata as MetadataEntity[];
+  if (Array.isArray(parsed.dataModelObject)) return parsed.dataModelObject as MetadataEntity[];
+  if (Array.isArray(parsed.dataLakeObjects)) return parsed.dataLakeObjects as MetadataEntity[];
+  if (Array.isArray(parsed.items)) return parsed.items as MetadataEntity[];
+  return [];
+}
+
+function extractFields(parsed: Record<string, unknown>): DataField[] {
+  if (Array.isArray(parsed.fields)) return parsed.fields as DataField[];
+  if (Array.isArray(parsed.dataFields)) return parsed.dataFields as DataField[];
+  return [];
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+}
+
+function countByCategory(entities: MetadataEntity[]): Array<[string, number]> {
+  const counts = new Map<string, number>();
+  for (const entity of entities) {
+    const category = entity.category || "(none)";
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+  }
+  return Array.from(counts).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function requiredApiName(input: D360MetadataInput): string {
+  const apiName = input.api_name?.trim();
+  if (!apiName) throw new Error(`${input.action} requires api_name.`);
+  return encodeURIComponent(apiName);
+}
+
+function normalizeMaxFields(maxFields: number | undefined): number {
+  if (typeof maxFields !== "number" || !Number.isFinite(maxFields)) return 50;
+  return Math.max(0, Math.floor(maxFields));
+}
+
+function normalizeMaxResults(maxResults: number | undefined): number {
+  if (typeof maxResults !== "number" || !Number.isFinite(maxResults)) return 25;
+  return Math.max(0, Math.floor(maxResults));
+}
+
+function formatUnknownBoolean(value: unknown): string {
+  return typeof value === "boolean" ? String(value) : "(unknown)";
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return text.trim() ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
+function escapeTable(value: string): string {
+  // Escape `\` first, then `|`, so a literal backslash in the cell value
+  // can't pair with the inserted `\` from the pipe-escape pass and break
+  // the markdown table column separator.
+  return value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported metadata action: ${String(value)}`);
+}

@@ -46,8 +46,8 @@
   },
   {
     "id": "data360-segment-change",
-    "prompt": "Modify a Data 360 audience segment. Invoke the owning phase tool for the first plan or validation step before mutation.",
-    "expected_first_tools": ["data360_segment", "data360_orchestrate"]
+    "prompt": "Modify a Data 360 audience segment. Invoke the owning SDK tool with a segment.* or orchestrate.* planning action before mutation.",
+    "expected_first_tools": ["sf_data360"]
   },
   {
     "id": "salesforce-setup-ui",

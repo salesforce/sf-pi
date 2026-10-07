@@ -74,11 +74,11 @@ _Salesforce Code Analyzer workflows for pi: setup readiness, explicit scans, rul
 
 ### [SF Data 360](./extensions/sf-data360)
 
-_Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch_
+_One Pi-native Data 360 SDK tool with discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and API actions_
 
 - Default: **on**
 - Commands: `/sf-data360`
-- Tools: `data360_discover`, `data360_connect`, `data360_prepare`, `data360_harmonize`, `data360_segment`, `data360_activate`, `data360_query`, `data360_semantic`, `data360_observe`, `data360_orchestrate`, `data360_api`
+- Tools: `sf_data360`
 
 ### [SF Docs](./extensions/sf-docs)
 

@@ -2,101 +2,98 @@
 
 ## What It Does
 
-SF Data 360 gives agents a Pi-native, lifecycle-oriented Data 360 surface without
-loading hundreds of endpoint-specific tools into every prompt:
+SF Data 360 is a Pi-native SDK surface over Salesforce Data 360 APIs. It exposes one custom system tool, `sf_data360`, and keeps the complete endpoint catalog behind business-namespaced actions.
 
-- `data360_discover` — readiness, action discovery, examples, and routing.
-- `data360_connect` — connectors, connections, endpoints, and source schemas.
-- `data360_prepare` — dataspaces, DLOs, streams, ingest jobs, transforms, and DataKits.
-- `data360_harmonize` — DMOs, mappings, relationships, identity resolution, and data graphs.
-- `data360_segment` — calculated insights and segment lifecycle.
-- `data360_activate` — activations, targets, data actions, and personalization.
-- `data360_query` — SQL, metadata, profiles, graphs, counts, samples, and verification.
-- `data360_semantic` — semantic models, metrics, search indexes, retrievers, and ML surfaces.
-- `data360_observe` — Agentforce sessions, spans, errors, traces, and latency.
-- `data360_orchestrate` — journeys, manifests, plans, sweeps, and cleanup.
-- `data360_api` — a raw REST escape hatch for unpromoted endpoints.
+### Business namespaces
 
-Current workflows use only these family tools and their actions. Retained legacy
-modules support explicitly labeled compatibility proof and selected adapters;
-they are not the public operating surface.
+```text
+discover.*     readiness, routing, contracts, examples
+connect.*      connectors, connections, source schemas, authentication
+prepare.*      dataspaces, DLOs, streams, ingestion, transforms, DataKits
+harmonize.*    DMOs, mappings, identity resolution, relationships
+segment.*      calculated insights and audience lifecycle
+activate.*     activation targets, activations, data actions, personalization
+query.*        Query API V3 SQL, metadata, profiles, graphs, verification
+semantic.*     semantic models, search indexes, retrievers, ML
+observe.*      Agentforce STDM and platform tracing
+orchestrate.*  multi-phase plans, journeys, manifests, cleanup
+api.*          exact endpoint escape hatch
+```
 
-## Discovering actions
+## Examples
 
-Every family uses the same envelope: `action`, `params`, `target_org`, `dry_run`,
-`allow_confirmed`, and `output_mode`. Start with `actions.search` or
-`action.describe` when the exact action is unknown.
+```json
+{
+  "action": "discover.route",
+  "params": { "intent": "connect Snowflake and make customer data queryable" }
+}
+```
 
-For DMO/DLO work, list narrowly, inspect the selected object, count rows, then
-sample verified non-sensitive fields. Large responses remain artifact-first;
-`summary`, `inline`, and `file_only` control prompt-visible detail.
+```json
+{
+  "action": "prepare.dlo.list",
+  "params": { "limit": 10 },
+  "target_org": "my-data360-sandbox"
+}
+```
+
+```json
+{
+  "action": "query.sql.run",
+  "params": {
+    "sql": "SELECT COUNT(*) AS total FROM Example__dlm",
+    "transferMode": "ADAPTIVE",
+    "queryRowLimit": 10
+  },
+  "target_org": "my-data360-sandbox"
+}
+```
+
+```json
+{
+  "action": "segment.publish",
+  "params": { "segmentApiName": "ExampleSegment" },
+  "target_org": "my-data360-sandbox",
+  "dry_run": true
+}
+```
+
+## How It Works
+
+- One static Pi tool schema keeps startup and prompt footprint bounded.
+- A generated action catalog provides full known endpoint coverage without registering one tool per endpoint.
+- Connect REST uses the shared Salesforce Connection Module.
+- SQL uses Data 360 Query API V3 by default.
+- Tenant ingestion uses the Data 360 Ingestion API.
+- `api.request` provides day-zero reach for an exact unpromoted endpoint.
+- The official hosted Data 360 MCP and public reference repository provide parity evidence; neither is a runtime dependency.
+- Results use rich Data 360 Run Cards modeled after SF Apex: API rails, readable SQL, request/response payloads, domain tables, transport fallbacks, evidence, and next steps.
+
+## Run Cards
+
+Every business namespace has a distinct icon and title. Collapsed cards show the action, target, API rail, outcome, key counts, warnings, and next step. Expanded cards add readable SQL, complete request URLs, bounded JSON request/response bodies, metadata or result tables, execution-chain calls, and artifact paths.
+
+`summary` returns a compact model digest and normal human card. `inline` adds a bounded semantic preview instead of dumping raw JSON. `file_only` preserves the same card and stores the full response as an artifact. Programmatic callers receive stable `structuredContent` alongside the human digest.
 
 ## Commands
 
-- `/sf-data360` — open SF Data 360 in the Manager, or print concise status in
-  non-interactive mode.
-- `/sf-data360 status` — print enablement, tools, target, and API version.
-- `/sf-data360 help` — show command and family guidance.
+- `/sf-data360` — open the Manager detail page.
+- `/sf-data360 status` — show enablement, the single tool, target, and API policy.
+- `/sf-data360 help` — show tool and namespace guidance.
 
 ## Configuration
 
-**SF Pi Manager → SF Data 360 → Settings** stores one low-risk default under
-`sfPi.data360`:
+**SF Pi Manager → SF Data 360 → Settings** controls `sfPi.data360.defaultOutputMode`: `summary` (default), `inline`, or `file_only`. An explicit `output_mode` wins for one call. Target org and API versions come from the shared Salesforce connection context unless `target_org` is explicit.
 
-- `defaultOutputMode`: `summary` (default), `inline`, or `file_only`.
-
-An explicit `output_mode` always wins for the current call.
+Query API V3 requires a tenant token with `cdp_query_api`. The `connect.auth.*` PKCE flow requests both `cdp_query_api` and `cdp_ingest_api` and returns an in-memory `authSessionId` that Query and Ingestion actions can share. Without a usable V3 tenant session, `query.sql.*` uses the equivalent Connect API endpoint and reports that fallback; set `transport: "query_v3"` to fail instead.
 
 ## Safety and Data Boundaries
 
-- No MCP runtime or Java subprocess is used. Family actions route through the
-  shared Salesforce Connection Module and generated action registry.
-- Read-only `GET` and recognized safe query/search/validate/test `POST` paths can
-  run directly. Publish, deploy, run, update, and delete shapes are classified
-  for confirmation.
-- Use `dry_run: true` before mutation to inspect the action, method, path, target,
-  org type, and safety decision.
-- Confirmed family actions also require `allow_confirmed: true`; this expresses
-  intent but never replaces SF Guardrail approval. Headless confirmation remains
-  blocked unless the process explicitly sets `SF_GUARDRAIL_ALLOW_HEADLESS=1`.
-- Mutating journeys disclose child mutation families and retain a separate
-  execution-chain session entry for audit.
-- Plain references are progressively disclosed and do not become Agent Skills or
-  always-on prompt content.
+Read and recognized safe-query actions execute directly. Mutations require a reviewed `dry_run`, `allow_mutation: true`, and SF Guardrail mediation. Destructive execution additionally requires a verified non-production target and human confirmation, except for exact sweep-owned cleanup fixtures. Operator-approved unattended mutation uses the central `SF_GUARDRAIL_ALLOW_HEADLESS=1` path; hard blocks remain authoritative.
 
 ## References
 
-Use [`references/README.md`](./references/README.md) to choose the current
-workflow, action-coverage, data-shape, query, tracing, or phase reference.
-Generated phase material names its generator. Retained facade evidence is
-isolated under `references/compatibility/` and is not normal operating guidance.
-
-The public upstream reference repository remains available at
-<https://github.com/forcedotcom/d360-mcp-server>. SF Pi imports public operation
-and payload-shape metadata, then curates it into the family surface.
-
-## Troubleshooting
-
-**A DMO list returns too much data:** Use `data360_harmonize` with `dmo.list`, a
-category filter, and a bounded output mode.
-
-**Metadata search fails while DMO/DLO lists work:** Treat this as search-plane
-readiness. Use `data360_query` metadata actions or the corresponding harmonize
-or prepare get action.
-
-**A connector detail returns `NOT_FOUND`:** Use the connector catalog `name`,
-which can differ from the connection's `connectorType`.
-
-**The family tools are missing:** Check whether `sf-data360` was disabled in the
-Manager, then run `/reload`.
-
-**A mutation is blocked headlessly:** Re-run as a dry run and review the resolved
-request. Unattended automation requires the central Guardrail operator path;
-hard blocks still apply.
-
-**A versioned path is rejected:** Pass a versionless resource. Shared connection
-logic selects the target's advertised API version or an explicit configured
-fallback and otherwise fails before the business request.
+Start at [`references/README.md`](./references/README.md). Generated phase references describe endpoint coverage without expanding the runtime tool surface.
 
 ## File Structure
 

@@ -1,42 +1,42 @@
 # SF Data 360 Agent Guide
 
-Use the Data 360 family tool that owns the current phase. Every family shares action discovery, dry-run/confirmation, target-org resolution, bounded transport, and compact result artifacts.
+Use the single `sf_data360` Pi system tool for Data 360 work. Its `action` selects one business namespace while `params` carries the exact API contract.
 
-## Phase routing
+## Business routing
 
-- Discover readiness and catalog actions: `data360_discover`
-- Connections, connectors, endpoints, source schemas: `data360_connect`
-- Data spaces, DLOs, streams, ingest jobs, transforms, DataKits: `data360_prepare`
-- DMOs, mappings, relationships, identity resolution, unified profiles: `data360_harmonize`
-- Calculated insights and segments: `data360_segment`
-- Activations, targets, data actions, personalization: `data360_activate`
-- SQL, metadata, profile, graph, count, sample, verification: `data360_query`
-- Semantic models, search indexes, retrievers, metrics, ML: `data360_semantic`
-- Agentforce STDM sessions, spans, trace trees, errors, latency: `data360_observe`
-- Cross-phase journeys, manifests, sweeps, cleanup: `data360_orchestrate`
-- Known unsupported endpoint escape hatch: `data360_api`
+- `discover.*` — readiness, intent routing, action search, contracts, and examples.
+- `connect.*` — connectors, connections, source schemas, and tenant authentication.
+- `prepare.*` — dataspaces, DLOs, streams, ingestion jobs, transforms, and DataKits.
+- `harmonize.*` — DMOs, mappings, relationships, identity resolution, and data graphs.
+- `segment.*` — calculated insights and audience segments.
+- `activate.*` — activations, targets, data actions, and personalization.
+- `query.*` — Query API V3 SQL, metadata, profiles, graphs, counts, and samples.
+- `semantic.*` — semantic models, metrics, search indexes, retrievers, and ML.
+- `observe.*` — Agentforce STDM, traces, errors, and latency.
+- `orchestrate.*` — multi-phase plans, manifests, journeys, and cleanup.
+- `api.*` — exact endpoint escape hatch.
 
 ## Operating loop
 
-1. Use `actions.search` and `action.describe` when the action contract is unclear.
-2. Probe readiness before workflows whose org capability is uncertain.
-3. Inspect source and target fields before mappings.
-4. Validate calculated insights and check segment status before activation.
-5. Use plan/dry-run for confirmed or destructive actions; review the returned operation before `allow_confirmed=true`.
-6. Prefer count, sample, and row verification before broad reads.
-7. Keep full responses and journey evidence in Data 360 Artifacts.
+1. Call `discover.route` or `discover.action.search` when the action is unclear.
+2. Call `discover.action.describe` before a complex endpoint or mutation.
+3. Establish readiness and inspect source/target schema before dependent work.
+4. Use `dry_run: true` before mutation.
+5. Pass `allow_mutation: true` only after reviewing the plan; Guardrail approval remains separate.
+6. Prefer count, sample, or verification actions before broad reads.
+7. Use `api.request` only for an exact endpoint that has no named action yet.
 
-## Focused references
+## API transports
 
-Use [`references/README.md`](./references/README.md) to select one current
-workflow reference. Material under `references/compatibility/` is legacy facade
-evidence and must not drive public tool selection.
+- Connect REST uses the shared Salesforce Connection Module and versionless resource paths.
+- `query.sql.*` uses Data 360 Query API V3 and a cached tenant token exchange.
+- `prepare.ingest.*` uses the tenant Ingestion API.
+- The hosted Data 360 MCP is a parity source, not a runtime dependency.
+
+## Result contract
+
+The model receives a compact semantic digest and stable structured content. Humans receive a Data 360 Run Card with a namespace-specific icon, full API rail, readable SQL, bounded request/response payloads, result tables, transport fallback, evidence, and next-step sections. Raw broad payloads remain artifacts instead of becoming the primary transcript.
 
 ## Boundaries
 
-Use standard `sf_soql` for CRM SOQL. Use `data360_observe` for production Agentforce telemetry and Agent Script tools for local authoring/preview/eval. Do not hand-roll REST calls when a family action exists.
-
-## Related domain skills
-
-Prefer the `data360_*` family tool when it can do the action. If it cannot, read one of these Salesforce skills:
-`data360-connect` · `data360-prepare` · `data360-harmonize` · `data360-segment` · `data360-activate` · `data360-query` · `data360-orchestrate` · `data360-schema-get` · `data360-code-extension-generate` · `agentforce-d360-analyze` · `agentforce-observe`
+Use `sf_soql` for CRM SOQL. Use Agent Script tools for local agent development. Use `observe.*` for production Agentforce telemetry. Do not hand-roll REST or shell out when `sf_data360` owns the endpoint.

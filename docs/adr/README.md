@@ -28,7 +28,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0024: SF Code Analyzer onboarding is cache-first and dismissible](./0024-sf-code-analyzer-cache-first-onboarding.md) — 2026-05-30
 - [0025: SF Code Analyzer does not create a shadow rule configuration store](./0025-sf-code-analyzer-configuration-boundary.md) — 2026-05-30
 - [0026: ApexGuru auto insights are default-on when cached availability is enabled](./0026-sf-code-analyzer-apexguru-auto-insights.md) — 2026-05-30
-- [0027: Data 360 v2 uses pi-native family tools over a shared action registry](./0027-data-360-v2-family-tools.md) — 2026-06-01
 - [0028: SF Agent Script Uses Official AgentScript Packages](./0028-official-agentscript-packages.md) — 2026-06-03
 - [0029: Agent Script Uses Minimal Structured Mutation](./0029-minimal-structured-agent-script-mutation.md) — 2026-06-04
 - [0030: SF Browser comprehensive navigation via verified Destination Packs and a dev-time hardening harness](./0030-sf-browser-destination-packs-navigation-hardening.md) — 2026-06-08
@@ -61,7 +60,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0063: SF Docs uses a small family-tool extension shape](./0063-sf-docs-uses-a-small-family-tool-extension-shape.md) — 2026-06-23
 - [0064: SF Docs adds no MCP or SSE runtime dependencies](./0064-sf-docs-adds-no-mcp-or-sse-runtime-dependencies.md) — 2026-06-23
 - [0065: SF Docs separates result cards from evidence packets](./0065-sf-docs-separates-result-cards-from-evidence-packets.md) — 2026-06-23
-- [0067: Data 360 tools use Run Digests for presentation](./0067-data-360-run-digest-presentation.md) — 2026-06-24
 - [0068: Fresh Ephemeral Herdr Lanes](./0068-fresh-ephemeral-herdr-lanes.md) — 2026-06-24
 - [0069: SF Apex is an API-native Apex Lifecycle Extension](./0069-sf-apex-api-native-lifecycle-extension.md) — 2026-06-28
 - [0070: SF SOQL is an API-native Query Lifecycle Extension](./0070-sf-soql-api-native-query-lifecycle-extension.md) — 2026-06-28
@@ -95,7 +93,6 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0103: Salesforce Org Connections Use One Shared Module](./0103-shared-salesforce-connection-module.md) — 2026-08-09
 - [0104: Manifests Are Attested Against Real Runtime Registration](./0104-manifest-runtime-surface-attestation.md) — 2026-08-10
 - [0105: Extension References Are Role-Routed](./0105-extension-references-are-role-routed.md) — 2026-08-11
-- [0106: Data 360 live proof uses the v2 registry and dispatcher](./0106-data-360-live-proof-uses-the-v2-dispatcher.md) — 2026-08-11
 - [0107: SF tldraw validates Spec v2 at execute instead of advertising the union](./0107-tldraw-validates-spec-v2-at-execute.md) — 2026-08-19
 - [0108: Managed skill invocation stamps use an effective tree](./0108-managed-skill-invocation-stamps.md) — 2026-08-21
 - [0110: SF Docs ships with no default endpoint](./0110-sf-docs-ships-with-no-default-endpoint.md) — 2026-09-08
@@ -121,6 +118,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0137: SF MCP Separates Connection and Tool Access](./0137-sf-mcp-separated-configuration-and-product-families.md) — 2026-10-04
 - [0139: SF Docs Restores Pi-Owned Bearer Authentication](./0139-sf-docs-restores-pi-owned-bearer-authentication.md) — 2026-10-05
 - [0140: Pi 1.0.4 audit edge and focused tool profiles](./0140-pi-104-audit-edge-and-focused-tool-profiles.md) — 2026-10-05
+- [0141: Data 360 is one Pi-native SDK tool with a hard cutover](./0141-data-360-single-sdk-tool-hard-cutover.md) — 2026-10-06
 
 ## Proposed
 
@@ -134,6 +132,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0010: Data 360 capability sweeps are facade-first and fixture-owned](./0010-d360-capability-sweep.md) — 2026-05-19 — superseded by [ADR 0106](./0106-data-360-live-proof-uses-the-v2-dispatcher.md)
 - [0015: SF Brain provides conditional Herdr Workflow Mode](./0015-sf-brain-herdr-workflow-mode.md) — 2026-05-24 — superseded by [ADR 0093](./0093-salesforce-instruction-surface-and-progressive-docs.md)
 - [0019: Pi 0.77/0.78 compatibility-preserving adoption](./0019-pi-077-078-compatibility-preserving-adoption.md) — 2026-05-29 — superseded by [ADR 0031](./0031-pi-079-agent-workflow-alignment.md)
+- [0027: Data 360 v2 uses pi-native family tools over a shared action registry](./0027-data-360-v2-family-tools.md) — 2026-06-01 — superseded by [ADR 0141](./0141-data-360-single-sdk-tool-hard-cutover.md)
 - [0044: SF Guardrail defaults to confirmable Power Tool mode](./0044-sf-guardrail-defaults-to-confirmable-power-tool-mode.md) — 2026-06-13 — superseded by [ADR 0052](./0052-sf-guardrail-is-rule-behavior-only.md)
 - [0045: SF Guardrail hard-block themes start with two presets](./0045-sf-guardrail-hard-block-themes-start-with-two-presets.md) — 2026-06-13 — superseded by [ADR 0052](./0052-sf-guardrail-is-rule-behavior-only.md)
 - [0047: SF Guardrail settings use a section chooser](./0047-sf-guardrail-settings-use-section-chooser.md) — 2026-06-15 — superseded by [ADR 0049](./0049-sf-guardrail-routine-preferences-live-in-pi-settings.md)
@@ -141,9 +140,11 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0059: Pi 0.79.10 runtime floor](./0059-pi-07910-runtime-floor.md) — 2026-06-22 — superseded by [ADR 0066](./0066-pi-0802-runtime-floor.md)
 - [0060: SF Docs uses Pi auth store for its docs credential](./0060-sf-docs-uses-pi-auth-store.md) — 2026-06-23 — superseded by [ADR 0111](./0111-sf-docs-uses-endpoint-only-pi-login.md)
 - [0066: Pi 0.80.2 runtime floor](./0066-pi-0802-runtime-floor.md) — 2026-06-23 — superseded by [ADR 0076](./0076-pi-0806-runtime-delegation.md)
+- [0067: Data 360 tools use Run Digests for presentation](./0067-data-360-run-digest-presentation.md) — 2026-06-24 — superseded by [ADR 0141](./0141-data-360-single-sdk-tool-hard-cutover.md)
 - [0073: SF Docs routes Developer reference lookups to LegacyDeveloper](./0073-sf-docs-routes-developer-reference-lookups-to-legacydeveloper.md) — 2026-07-04 — superseded by [ADR 0113](./0113-sf-docs-uses-explicit-grounding-and-literal-primitives.md)
 - [0077: Dynamic Gateway Model Catalog](./0077-dynamic-gateway-model-catalog.md) — 2026-08-05 — superseded by [ADR 0122](./0122-gateway-catalog-requires-pi-backed-ids.md)
 - [0088: Pi 0.82.0 Runtime Floor](./0088-pi-082-runtime-floor.md) — 2026-07-27 — superseded by [ADR 0109](./0109-pi-084-runtime-floor.md)
+- [0106: Data 360 live proof uses the v2 registry and dispatcher](./0106-data-360-live-proof-uses-the-v2-dispatcher.md) — 2026-08-11 — superseded by [ADR 0141](./0141-data-360-single-sdk-tool-hard-cutover.md)
 - [0109: Pi 0.84.0 Runtime Floor](./0109-pi-084-runtime-floor.md) — 2026-08-25 — superseded by [ADR 0118](./0118-pi-086-runtime-floor.md)
 - [0111: SF Docs Uses Endpoint-Only Pi Login](./0111-sf-docs-uses-endpoint-only-pi-login.md) — 2026-09-09 — superseded by [ADR 0139](./0139-sf-docs-restores-pi-owned-bearer-authentication.md)
 - [0118: Pi 0.86.0 Runtime Floor](./0118-pi-086-runtime-floor.md) — 2026-09-21 — superseded by [ADR 0119](./0119-pi-087-runtime-floor-and-actionable-settlement.md)

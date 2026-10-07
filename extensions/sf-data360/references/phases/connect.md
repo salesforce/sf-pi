@@ -11,13 +11,13 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -29,14 +29,14 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 
 ## Data 360 family actions
 
-- `data360_connect` `auth.clear` (tenant_ingest_auth, read) — Clear one or all in-memory Data Cloud ingest auth sessions.
-- `data360_connect` `auth.pkce_start` (tenant_ingest_auth, read) — Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.
-- `data360_connect` `auth.plan` (tenant_ingest_auth, read) — Plan a headless-safe Data Cloud tenant ingest auth setup path without persisting credentials.
-- `data360_connect` `auth.sessions` (tenant_ingest_auth, read) — List in-memory Data Cloud ingest auth sessions without tokens.
-- `data360_connect` `auth.status` (tenant_ingest_auth, read) — Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.
-- `data360_connect` `connection_endpoints` (rest_operation, read) — List pre-configured connection endpoints.
-- `data360_connect` `connection.get` (rest_operation, read) — Get connection details. connectorType REQUIRED.
-- `data360_connect` `connection.list` (rest_operation, read) — List connections. connectorType REQUIRED.
+- `sf_data360` `connect.auth.clear` (connect, tenant_ingest_auth, read) — Clear one or all in-memory Data Cloud ingest auth sessions.
+- `sf_data360` `connect.auth.pkce_start` (connect, tenant_ingest_auth, read) — Start a PKCE authorization flow for Data Cloud ingest auth and keep the code verifier in memory only.
+- `sf_data360` `connect.auth.plan` (connect, tenant_ingest_auth, read) — Plan a headless-safe Data Cloud tenant ingest auth setup path without persisting credentials.
+- `sf_data360` `connect.auth.sessions` (connect, tenant_ingest_auth, read) — List in-memory Data Cloud ingest auth sessions without tokens.
+- `sf_data360` `connect.auth.status` (connect, tenant_ingest_auth, read) — Inspect whether Data Cloud tenant ingest auth is configured for Ingestion API jobs.
+- `sf_data360` `connect.connection_endpoints` (connect, rest_operation, read) — List pre-configured connection endpoints.
+- `sf_data360` `connect.connection.get` (connect, rest_operation, read) — Get connection details. connectorType REQUIRED.
+- `sf_data360` `connect.connection.list` (connect, rest_operation, read) — List connections. connectorType REQUIRED.
 
 ## Cross-phase routing
 
@@ -54,4 +54,4 @@ Data 360 Connect phase. Use when managing connections, connectors, source system
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

@@ -9,21 +9,21 @@ import type { Data360ExecutionChainEntryData } from "../lib/approval-ledger.ts";
 const chain: Data360ExecutionChainEntryData = {
   timestamp: Date.UTC(2026, 6, 6, 20, 0, 0),
   sessionId: "session-1",
-  parentTool: "data360_orchestrate",
-  parentAction: "manifest.run",
+  parentTool: "sf_data360",
+  parentAction: "orchestrate.manifest.run",
   targetOrg: "AgentforceSTDM",
   journey_fingerprint: "abc123def4567890",
   ok: true,
   executionChain: [
     {
-      tool: "data360_connect",
-      action: "source_schema.put",
+      tool: "sf_data360",
+      action: "connect.source_schema.put",
       ok: true,
       summary: "schema uploaded",
     },
     {
-      tool: "data360_prepare",
-      action: "ingest_job.upload_csv",
+      tool: "sf_data360",
+      action: "prepare.ingest_job.upload_csv",
       ok: true,
       summary: "uploaded csv",
     },
@@ -36,9 +36,9 @@ describe("sf-guardrail status rendering", () => {
 
     expect(text).toContain("No guardrail decisions recorded this session.");
     expect(text).toContain("related Data 360 execution chains (1)");
-    expect(text).toContain("data360_orchestrate manifest.run");
-    expect(text).toContain("data360_connect source_schema.put");
-    expect(text).toContain("data360_prepare ingest_job.upload_csv");
+    expect(text).toContain("sf_data360 orchestrate.manifest.run");
+    expect(text).toContain("sf_data360 connect.source_schema.put");
+    expect(text).toContain("sf_data360 prepare.ingest_job.upload_csv");
   });
 
   it("includes recent Data 360 execution chains in status output", () => {

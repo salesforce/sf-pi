@@ -1,6 +1,6 @@
 # SF Data 360 Data Shapes
 
-Verified Connect REST request shapes behind current `data360_*` family actions.
+Verified request shapes behind the current `sf_data360` business actions.
 Each entity lists the underlying endpoint, required input fields, one canonical
 example, and lifecycle gotchas. Use `action.describe` before applying a shape.
 Verify against live org metadata before mutating; live errors are the

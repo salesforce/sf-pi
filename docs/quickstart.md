@@ -66,7 +66,7 @@ pi --no-mcp --tools read,bash,edit,write,'sf_browser_*'
 pi --no-mcp --tools read,bash,edit,write,'agentscript_*'
 
 # Data 360
-pi --no-mcp --tools read,bash,edit,write,'data360_*'
+pi --no-mcp --tools read,bash,edit,write,sf_data360
 ```
 
 `--no-mcp` makes these examples fully independent of configured MCP servers.

@@ -13,10 +13,10 @@ users actually did.
 ## Pre-flight
 
 - **Probe first.** STDM only writes when _Agentforce Activity_ data streams are
-  turned on in the org. Run `data360_discover readiness.probe` before any query.
-- **Resolve the data space.** Run `data360_prepare dataspace.list`, select an
+  turned on in the org. Run `discover readiness.probe` before any query.
+- **Resolve the data space.** Run `prepare dataspace.list`, select an
   active data space, and pass its name as `dataspaceName` to
-  `data360_query sql.run`.
+  `query sql.run`.
 - **Resolve the agent name.** STDM filters on `MasterLabel`
   (display name). It usually matches the `.agent` file's
   `config.label` but not always. When unsure:
@@ -127,7 +127,7 @@ Plus the propagation lag: STDM is eventually consistent. Sessions land
 
 ## Three queries that cover ~80% of agent observability work
 
-Run each query with `data360_query` action `sql.run` and params
+Run each query with `query` action `sql.run` and params
 `{ "sql": "...", "dataspaceName": "<name>" }`. Quote DMO names with double
 quotes; that is Data 360 SQL grammar, not SOQL.
 
