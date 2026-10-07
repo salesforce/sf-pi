@@ -119,6 +119,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0139: SF Docs Restores Pi-Owned Bearer Authentication](./0139-sf-docs-restores-pi-owned-bearer-authentication.md) — 2026-10-05
 - [0140: Pi 1.0.4 audit edge and focused tool profiles](./0140-pi-104-audit-edge-and-focused-tool-profiles.md) — 2026-10-05
 - [0141: Data 360 is one Pi-native SDK tool with a hard cutover](./0141-data-360-single-sdk-tool-hard-cutover.md) — 2026-10-06
+- [0142: Data 360 cards prioritize observed API work](./0142-data-360-cards-prioritize-observed-api-work.md) — 2026-10-07
 
 ## Proposed
 

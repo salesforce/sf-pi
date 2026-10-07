@@ -1,9 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { describe, expect, it } from "vitest";
+import { buildData360Digest, compactDigestText } from "../lib/digest.ts";
 import { presentSfData360Result } from "../lib/result.ts";
-import { namespaceIcon, renderData360DigestMarkdown } from "../lib/render.ts";
+import {
+  namespaceIcon,
+  renderData360DigestMarkdown,
+  renderSfData360Result,
+} from "../lib/render.ts";
 import { formatData360Sql } from "../lib/sql-format.ts";
 import type { Data360RunDigest } from "../lib/types.ts";
+
+const theme = {
+  fg: (_color: string, text: string) => text,
+  bold: (text: string) => text,
+} as Theme;
 
 const queryResult = {
   ok: true,
@@ -87,6 +99,9 @@ describe("Data 360 Run Card presentation", () => {
     });
     expect(presented.structuredContent).toMatchObject({
       outcome: { action: "query.sql.run", status: "warning" },
+      request: { method: "POST" },
+      api_calls: expect.arrayContaining([expect.objectContaining({ method: "POST" })]),
+      next_step: "Use query.sql.metadata for schema or query.sql.rows for additional pages.",
     });
   });
 
@@ -101,8 +116,13 @@ describe("Data 360 Run Card presentation", () => {
     expect(collapsed).toContain(
       "https://example.my.salesforce.com/services/data/v67.0/ssot/query-sql",
     );
-    expect(collapsed).toContain("expand for SQL, complete request/response");
+    expect(collapsed).toContain("—— 📥 Request ——");
+    expect(collapsed).toContain("—— 📤 Response ——");
+    expect(collapsed).toContain("expand for SQL");
+    expect(collapsed).not.toContain("complete request/response");
     expect(collapsed).not.toContain("—— 🧾 SQL ——");
+    expect(collapsed).not.toContain("—— 📄 Evidence ——");
+    expect(collapsed).not.toContain("—— ➡️ Next Step ——");
 
     const rendered = renderData360DigestMarkdown(digest, { expanded: true });
     expect(rendered).toContain("⚠️ 🧮 Data 360 Query");
@@ -114,7 +134,115 @@ describe("Data 360 Run Card presentation", () => {
     expect(rendered).toContain("—— 📥 Request ——");
     expect(rendered).toContain("—— 📤 Response ——");
     expect(rendered).toContain("Id__c");
+    expect(rendered).not.toContain("—— 📄 Evidence ——");
+    expect(rendered).not.toContain("—— ➡️ Next Step ——");
     expect(rendered).not.toContain("\\n");
+  });
+
+  it("keeps evidence and next-step guidance model-visible but out of the human card", () => {
+    const digest = buildData360Digest({
+      input: { action: "harmonize.dmo.list" },
+      result: {
+        ok: true,
+        action: "harmonize.dmo.list",
+        namespace: "harmonize",
+        next_actions: ["Inspect the selected DMO."],
+        response: { dataModelObject: [] },
+        summary: "DMOs listed",
+      },
+      artifactPath: "artifacts/example-data360-output.json",
+      outputMode: "summary",
+    });
+
+    expect(digest.sections.map((section) => section.title)).toEqual(
+      expect.arrayContaining(["Evidence", "Next Step"]),
+    );
+    expect(compactDigestText(digest)).toContain("Evidence:");
+    expect(compactDigestText(digest)).toContain("Next:");
+    expect(renderData360DigestMarkdown(digest)).not.toContain("Evidence");
+    expect(renderData360DigestMarkdown(digest)).not.toContain("Next Step");
+    expect(renderData360DigestMarkdown(digest, { expanded: true })).not.toContain("Evidence");
+    expect(renderData360DigestMarkdown(digest, { expanded: true })).not.toContain("Next Step");
+  });
+
+  it("highlights offset pagination and keeps the collapsed response preview to eight lines", () => {
+    const dataModelObject = Array.from({ length: 200 }, (_value, index) => ({
+      name: `Example_${index + 401}__dlm`,
+      label: `Example ${index + 401}`,
+      id: `record-${index + 401}`,
+    }));
+    const digest = buildData360Digest({
+      input: {
+        action: "harmonize.dmo.list",
+        params: { limit: 200, offset: 400 },
+      },
+      result: {
+        ok: true,
+        action: "harmonize.dmo.list",
+        namespace: "harmonize",
+        targetOrg: "ExampleData360Org",
+        instanceUrl: "https://example.my.salesforce.com",
+        operationId: "d360_dmo_list",
+        safety: "read",
+        status: 200,
+        transport: "connect",
+        request: {
+          method: "GET",
+          path: "/services/data/v68.0/ssot/data-model-objects?limit=200&offset=400",
+        },
+        response: { dataModelObject },
+        summary: "DMOs listed",
+      },
+      outputMode: "summary",
+    });
+
+    expect(digest.pagination).toMatchObject({
+      kind: "offset",
+      offset: 400,
+      limit: 200,
+      page: 3,
+      start: 401,
+      end: 600,
+      returned: 200,
+    });
+    const card = renderData360DigestMarkdown(digest);
+    expect(card).toContain("Page 3 · items 401–600 · batch size 200");
+    expect(card).toContain("offset=400 · limit=200 · returned=200");
+    expect(card).toContain("—— 📥 Request ——");
+    expect(card).toContain("🔒 Safety");
+    expect(card).toContain("—— 📤 Response ——");
+    expect(card).toContain('"dataModelObject": [');
+    expect(card).toContain("response preview capped at 8 lines");
+    expect(card).not.toContain('"name": "Example_402__dlm"');
+  });
+
+  it("keeps the mandatory scaffold bounded at narrow and wide terminal widths", () => {
+    const digest = buildData360Digest({
+      input: { action: "harmonize.dmo.list", params: { limit: 200, offset: 400 } },
+      result: {
+        ok: true,
+        action: "harmonize.dmo.list",
+        namespace: "harmonize",
+        targetOrg: "ExampleData360Org",
+        instanceUrl: "https://example.my.salesforce.com",
+        operationId: "d360_dmo_list",
+        safety: "read",
+        status: 200,
+        transport: "connect",
+        request: {
+          method: "GET",
+          path: "/services/data/v68.0/ssot/data-model-objects?limit=200&offset=400",
+        },
+        response: { dataModelObject: [{ name: "Example__dlm", label: "Example" }] },
+        summary: "DMOs listed",
+      },
+      outputMode: "summary",
+    });
+    const component = renderSfData360Result({ details: { digest } }, { expanded: false }, theme);
+    for (const width of [48, 80, 120]) {
+      const lines = component.render(width);
+      expect(lines.every((line) => visibleWidth(line) <= width)).toBe(true);
+    }
   });
 
   it("renders metadata fields and mutation payloads as structured cards", async () => {
@@ -220,6 +348,39 @@ describe("Data 360 Run Card presentation", () => {
 
     expect(presented.content[0]?.text).not.toContain("Transport:");
     expect(presented.details.digest).not.toHaveProperty("transport");
+  });
+
+  it("uses one mandatory card scaffold across every business namespace", () => {
+    const namespaces = [
+      "discover",
+      "connect",
+      "prepare",
+      "harmonize",
+      "segment",
+      "activate",
+      "query",
+      "semantic",
+      "observe",
+      "orchestrate",
+      "api",
+    ] as const;
+    for (const namespace of namespaces) {
+      const digest = buildData360Digest({
+        input: { action: `${namespace}.example` },
+        result: {
+          ok: true,
+          action: `${namespace}.example`,
+          namespace,
+          summary: `${namespace} completed`,
+        },
+        outputMode: "summary",
+      });
+      const card = renderData360DigestMarkdown(digest);
+      expect(card).toContain("   API");
+      expect(card).toContain("—— 🎯 Outcome ——");
+      expect(card).toContain("—— 📥 Request ——");
+      expect(card).toContain("—— 📤 Response ——");
+    }
   });
 
   it("uses a unique icon for every business namespace", () => {

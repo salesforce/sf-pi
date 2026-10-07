@@ -59,31 +59,37 @@ export function renderData360DigestMarkdown(
   const lines = [
     `${statusIcon(digest.status)} ${digest.icon} ${digest.title} · ${digest.action}${target ? ` · ${target}` : ""}`,
   ];
+  if (digest.pagination) lines.push(`   📚 ${digest.pagination.label}`);
   appendApiRail(lines, digest);
 
-  const visibleSections = digest.sections.filter((section) => {
-    if (section.expandedOnly && !expanded) return false;
+  const humanSections = digest.sections.filter(
+    (section) => section.title !== "Evidence" && section.title !== "Next Step",
+  );
+  const visibleSections = humanSections.filter((section) => {
     if (expanded) return true;
-    return ["Outcome", "Results", "Warnings", "Failure", "Evidence", "Next Step"].includes(
+    return ["Outcome", "Results", "Warnings", "Failure", "Request", "Response"].includes(
       section.title,
     );
   });
   for (const section of visibleSections) appendSection(lines, section, expanded);
 
   if (!expanded) {
-    const hidden = digest.sections.filter((section) => !visibleSections.includes(section)).length;
+    const hidden = humanSections.filter((section) => !visibleSections.includes(section)).length;
     if (hidden > 0)
       lines.push(
         "",
-        `  … expand for SQL, complete request/response, and ${hidden} more section${hidden === 1 ? "" : "s"}`,
+        `  … expand for SQL, tables, and ${hidden} more module section${hidden === 1 ? "" : "s"}`,
       );
   }
   return lines.join("\n");
 }
 
 function appendApiRail(lines: string[], digest: Data360RunDigest): void {
-  if (!digest.api_calls?.length) return;
   lines.push("   API");
+  if (!digest.api_calls?.length) {
+    lines.push("   │ ℹ️ No API request recorded");
+    return;
+  }
   for (const call of digest.api_calls.slice(0, 8)) {
     const state =
       call.outcome === "failed"
@@ -99,17 +105,36 @@ function appendApiRail(lines: string[], digest: Data360RunDigest): void {
       `   │ ${state} ${pad(call.transport, 9)} ${pad(call.method, 7)} ${call.url}${status}${duration}`,
     );
     if (call.detail) lines.push(`   │   ↳ ${clip(call.detail, 220)}`);
+    if (call.pagination) {
+      const facts = [
+        call.pagination.label,
+        call.pagination.offset === undefined ? undefined : `offset=${call.pagination.offset}`,
+        call.pagination.limit === undefined ? undefined : `limit=${call.pagination.limit}`,
+        call.pagination.returned === undefined ? undefined : `returned=${call.pagination.returned}`,
+      ].filter(Boolean);
+      lines.push(`   │   📚 ${facts.join(" · ")}`);
+    }
   }
 }
 
 function appendSection(lines: string[], section: Data360RunSection, expanded: boolean): void {
-  const rows = expanded
-    ? (section.rows ?? [])
-    : (section.rows ?? []).slice(0, section.title === "Outcome" ? 7 : 4);
+  const rows =
+    expanded || section.title === "Request" || section.title === "Response"
+      ? (section.rows ?? [])
+      : (section.rows ?? []).slice(0, section.title === "Outcome" ? 7 : 4);
   const tableRows = expanded
     ? (section.table?.rows ?? [])
     : (section.table?.rows ?? []).slice(0, 3);
-  const codeLines = expanded ? (section.code?.lines ?? []) : [];
+  const codeLines =
+    section.title === "Response"
+      ? (section.code?.lines ?? []).slice(0, 8)
+      : section.title === "Request"
+        ? expanded
+          ? (section.code?.lines ?? [])
+          : (section.code?.lines ?? []).slice(0, 8)
+        : expanded
+          ? (section.code?.lines ?? [])
+          : [];
   if (!rows.length && !tableRows.length && !codeLines.length) return;
   lines.push("", `—— ${section.icon} ${section.title} ——`);
   for (const row of rows) lines.push(`  ${row.icon} ${pad(row.label, 14)} ${row.value}`);
@@ -117,8 +142,17 @@ function appendSection(lines: string[], section: Data360RunSection, expanded: bo
     appendTable(lines, section.table.columns, tableRows, section.table.omittedRows);
   if (section.code && codeLines.length) {
     for (const line of codeLines) lines.push(`  ${line}`);
-    if (section.code.omittedLines)
-      lines.push(`  … ${section.code.omittedLines} more line(s) in evidence`);
+    const hiddenCodeLines = Math.max(
+      section.code.omittedLines ?? 0,
+      section.code.lines.length + (section.code.omittedLines ?? 0) - codeLines.length,
+    );
+    if (hiddenCodeLines) {
+      lines.push(
+        section.title === "Response"
+          ? `  … response preview capped at 8 lines · ${hiddenCodeLines} more line(s) returned`
+          : `  … ${hiddenCodeLines} more request line(s) omitted`,
+      );
+    }
   }
 }
 
@@ -150,7 +184,7 @@ function appendTable(
         .join(" │ ")}`,
     );
   }
-  if (omittedRows) lines.push(`  … ${omittedRows} more row(s) in response evidence`);
+  if (omittedRows) lines.push(`  … ${omittedRows} more row(s) returned`);
 }
 
 function styleCard(text: string, digest: Data360RunDigest, theme: Theme): string {
@@ -160,6 +194,7 @@ function styleCard(text: string, digest: Data360RunDigest, theme: Theme): string
       if (index === 0) return theme.fg(statusTheme(digest.status), theme.bold(line));
       if (line.startsWith("—— ")) return theme.fg("toolTitle", theme.bold(line));
       if (line === "   API") return theme.fg("muted", line);
+      if (line.includes("📚")) return theme.fg("accent", line);
       if (line.startsWith("   │")) return theme.fg("dim", line);
       if (line.trimStart().startsWith("…")) return theme.fg("muted", line);
       return line;

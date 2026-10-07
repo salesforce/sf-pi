@@ -20,6 +20,8 @@
  *   session_start          | Re-register tools if enabled; reset shared connections once per session
  *   session_shutdown       | Reset tool-registration state
  *   resources_discover     | Re-register tools on reload; no skill contribution
+ *   tool_result            | Accumulate grounded Data 360 API calls for the current turn
+ *   message_end            | Append one bounded top-level Mermaid trace for multi-call turns
  *   /sf-data360 (no args)  | Open SF Data 360 in the SF Pi Manager
  *   /sf-data360 status     | Print enablement, tools, target org, and API version
  *   /sf-data360 help       | Print command usage
@@ -27,7 +29,11 @@
  *   sf_data360 read        | Call Connect, Query V3, or Ingestion APIs directly
  *   sf_data360 mutation    | Require reviewed intent and Guardrail mediation
  */
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  ToolResultEvent,
+} from "@earendil-works/pi-coding-agent";
 
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
@@ -57,12 +63,19 @@ import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.t
 import { registerSfData360Tool, SF_DATA360_TOOL_NAME } from "./lib/sf-data360-tool.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { buildSfData360Doctor } from "./lib/extension-doctor.ts";
+import {
+  buildData360OrchestrationTrace,
+  data360TraceMarkdown,
+  data360TraceRunFromDetails,
+  type Data360TraceRun,
+} from "./lib/orchestration-diagram.ts";
 
 const COMMAND_NAME = "sf-data360";
 export default function sfData360(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-data360")) return;
 
   let toolsRegistered = false;
+  const pendingTrace: Data360TraceRun[] = [];
 
   function ensureToolsRegistered(): void {
     if (toolsRegistered) return;
@@ -71,6 +84,7 @@ export default function sfData360(pi: ExtensionAPI) {
   }
 
   pi.on("session_start", (event, ctx) => {
+    pendingTrace.length = 0;
     beginSalesforceConnectionSession(event);
     // /reload can reuse the same extension closure. Re-register on reload so
     // tool schemas, renderers, and registry-backed closures pick up code/data
@@ -80,6 +94,32 @@ export default function sfData360(pi: ExtensionAPI) {
   });
   pi.on("session_shutdown", () => {
     toolsRegistered = false;
+    pendingTrace.length = 0;
+  });
+  pi.on("tool_result", (event) => captureData360Trace(event, pendingTrace));
+  pi.on("message_end", (event) => {
+    if (event.message.role !== "assistant" || pendingTrace.length === 0) return undefined;
+    if (event.message.content.some((part) => part.type === "toolCall")) return undefined;
+    const trace = buildData360OrchestrationTrace(pendingTrace);
+    pendingTrace.length = 0;
+    if (!trace) return undefined;
+    const existingText = event.message.content
+      .filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join("\n");
+    if (existingText.includes(trace.mermaid)) return undefined;
+    return {
+      message: {
+        ...event.message,
+        content: [
+          ...event.message.content,
+          { type: "text" as const, text: `\n\n${data360TraceMarkdown(trace)}` },
+        ],
+      },
+    };
+  });
+  pi.on("agent_settled", () => {
+    pendingTrace.length = 0;
   });
 
   registerManagerDetailActions(pi, "sf-data360", buildSfData360ManagerActions(pi));
@@ -109,6 +149,12 @@ export default function sfData360(pi: ExtensionAPI) {
       await withSafeCommandHandler(ctx, COMMAND_NAME, () => handleCommand(pi, ctx, args || ""));
     },
   });
+}
+
+function captureData360Trace(event: ToolResultEvent, pending: Data360TraceRun[]): void {
+  if (event.toolName !== SF_DATA360_TOOL_NAME || event.isError) return;
+  const run = data360TraceRunFromDetails(event.details);
+  if (run) pending.push(run);
 }
 
 // Action ids for the /sf-data360 settings panel. Mirrors the pattern used by

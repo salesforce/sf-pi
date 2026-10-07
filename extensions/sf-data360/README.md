@@ -68,13 +68,15 @@ api.*          exact endpoint escape hatch
 - Tenant ingestion uses the Data 360 Ingestion API.
 - `api.request` provides day-zero reach for an exact unpromoted endpoint.
 - The official Connect OpenAPI document, hosted Data 360 MCP, and public reference repository provide complementary parity evidence; none is a runtime dependency.
-- Results use rich Data 360 Run Cards modeled after SF Apex: API rails, readable SQL, request/response payloads, domain tables, transport fallbacks, evidence, and next steps.
+- Results use rich Data 360 Run Cards modeled after SF Apex: API rails, readable SQL, always-visible request/response previews, domain tables, transport fallbacks, prominent pagination, and grounded orchestration traces.
 
 ## Run Cards
 
-Every business namespace has a distinct icon and title. Collapsed cards show the action, target, API rail, outcome, key counts, warnings, and next step. Expanded cards add readable SQL, complete request URLs, bounded JSON request/response bodies, metadata or result tables, execution-chain calls, and artifact paths.
+Every business namespace has a distinct icon and title. Collapsed and expanded cards always show the API rail, outcome, complete request metadata, and a response preview capped at eight JSON lines. Offset pagination is promoted from a query-string detail into an explicit page, item range, batch size, offset, limit, and returned-count annotation. Domain-specific SQL, metadata, and result tables remain additive.
 
-`summary` returns a compact model digest and normal human card. `inline` adds a bounded semantic preview instead of dumping raw JSON. `file_only` preserves the same card and stores the full response as an artifact. Programmatic callers receive stable `structuredContent` alongside the human digest.
+Evidence artifacts and next-step guidance remain in the semantic digest and stable `structuredContent` for models and programmatic callers, but they are not rendered as human card sections. `summary` returns the compact model digest and normal human card. `inline` adds a bounded semantic preview instead of dumping raw JSON. `file_only` preserves the same card and stores the full response as an artifact.
+
+When one assistant turn observes two or more non-local Data 360 API calls, SF Data 360 appends one bounded, top-level Mermaid trace grouped by business namespace. The trace is a projection of observed calls, pagination, and outcomes; it does not infer unexecuted dependencies or embed raw utterances and URLs.
 
 ## Commands
 

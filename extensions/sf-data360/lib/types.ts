@@ -24,7 +24,19 @@ export interface Data360RunSection {
   rows?: Data360DigestRow[];
   code?: { language: "sql" | "json" | "text"; lines: string[]; omittedLines?: number };
   table?: Data360DigestTable;
-  expandedOnly?: boolean;
+}
+
+export interface Data360PaginationDigest {
+  kind: "offset" | "cursor" | "chunk" | "batch";
+  label: string;
+  offset?: number;
+  limit?: number;
+  page?: number;
+  totalPages?: number;
+  start?: number;
+  end?: number;
+  returned?: number;
+  total?: number;
 }
 
 export interface Data360ApiCallRailItem {
@@ -35,6 +47,7 @@ export interface Data360ApiCallRailItem {
   durationMs?: number;
   outcome?: "success" | "warning" | "failed" | "planned";
   detail?: string;
+  pagination?: Data360PaginationDigest;
 }
 
 export interface Data360RunDigest {
@@ -55,6 +68,7 @@ export interface Data360RunDigest {
     fallback?: { from: Data360Transport; reason: string };
   };
   api_calls?: Data360ApiCallRailItem[];
+  pagination?: Data360PaginationDigest;
   sections: Data360RunSection[];
   artifacts?: Array<{ path: string; kind: string; label?: string }>;
   next_step?: string;
@@ -68,8 +82,12 @@ export type Data360StructuredResult = JsonObject & {
     summary: string;
   };
   data?: JsonValue;
+  request?: JsonValue;
   transport?: JsonValue;
+  api_calls?: JsonValue;
+  pagination?: JsonValue;
   artifacts?: JsonValue;
+  next_step?: JsonValue;
 };
 
 export interface SfData360ToolResult {

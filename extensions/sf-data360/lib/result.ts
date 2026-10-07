@@ -31,7 +31,7 @@ export async function presentSfData360Result(
     summary: digest.summary,
     data: { digest, outcome: structuredContent.outcome },
     ...(artifactPath ? { truncation: { truncated: false, fullOutputPath: artifactPath } } : {}),
-    renderHints: { profile: "balanced", collapsedLines: 12, expandedMaxLines: 120 },
+    renderHints: { profile: "balanced", collapsedLines: 36, expandedMaxLines: 120 },
   } as SfPiToolResultEnvelope;
   return {
     content: [{ type: "text", text }],

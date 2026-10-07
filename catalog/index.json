@@ -365,7 +365,10 @@
     "events": [
       "session_start",
       "session_shutdown",
-      "resources_discover"
+      "resources_discover",
+      "tool_result",
+      "message_end",
+      "agent_settled"
     ],
     "docs": {
       "intentGroup": "Work with Data Cloud",
@@ -405,7 +408,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 10032
+    "srcLoc": 10445
   },
   {
     "id": "sf-devbar",

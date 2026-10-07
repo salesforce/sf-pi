@@ -27,8 +27,12 @@ const OutputSchema = Type.Object({
     summary: Type.String(),
   }),
   data: Type.Optional(Type.Any()),
+  request: Type.Optional(Type.Any()),
   transport: Type.Optional(Type.Any()),
+  api_calls: Type.Optional(Type.Array(Type.Any())),
+  pagination: Type.Optional(Type.Any()),
   artifacts: Type.Optional(Type.Array(Type.Any())),
+  next_step: Type.Optional(Type.String()),
 });
 
 const Params = Type.Object({

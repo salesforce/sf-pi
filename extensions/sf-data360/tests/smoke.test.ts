@@ -40,7 +40,14 @@ describe("sf-data360 extension smoke", () => {
     expect(manifest.defaultEnabled).toBe(true);
     expect(manifest.configurable).toBe(true);
     expect(manifest.tools).toEqual(["sf_data360"]);
-    expect(manifest.events).toEqual(["session_start", "session_shutdown", "resources_discover"]);
+    expect(manifest.events).toEqual([
+      "session_start",
+      "session_shutdown",
+      "resources_discover",
+      "tool_result",
+      "message_end",
+      "agent_settled",
+    ]);
   });
 
   it("registers flat slash-command completions", async () => {

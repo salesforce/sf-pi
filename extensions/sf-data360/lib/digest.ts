@@ -43,6 +43,9 @@ export function buildData360Digest(input: BuildData360DigestInput): Data360RunDi
   const summary =
     stringValue(result.summary) ?? `${action} ${status === "fail" ? "failed" : "completed"}`;
   const transport = transportFor(result);
+  const requestEvidence = objectValue(result.request);
+  const pagination = paginationFor(result, requestEvidence, input.input.params);
+  const apiCalls = apiCallsFor(result, transport, input.input.params, pagination);
   const sections: Data360RunSection[] = [];
 
   sections.push({ icon: "🎯", title: "Outcome", rows: outcomeRows(result, status, transport) });
@@ -55,7 +58,7 @@ export function buildData360Digest(input: BuildData360DigestInput): Data360RunDi
   if (collection) sections.push(collection);
   const request = requestSection(result, transport);
   if (request) sections.push(request);
-  const response = responseSection(result);
+  const response = responseSection(result, transport);
   if (response) sections.push(response);
   const warning = warningSection(result, transport);
   if (warning) sections.push(warning);
@@ -96,7 +99,8 @@ export function buildData360Digest(input: BuildData360DigestInput): Data360RunDi
           }
         : undefined,
     ...(transport ? { transport } : {}),
-    api_calls: apiCallsFor(result, transport),
+    ...(apiCalls?.length ? { api_calls: apiCalls } : {}),
+    ...(pagination ? { pagination } : {}),
     sections: sections.filter((section) =>
       Boolean(section.rows?.length || section.code?.lines.length || section.table?.rows.length),
     ),
@@ -120,8 +124,12 @@ export function structuredResultFromDigest(
         summary: digest.summary,
       },
       data: result.response ?? result.result ?? result.results ?? result.actions,
+      request: result.request,
       transport: digest.transport,
+      api_calls: digest.api_calls,
+      pagination: digest.pagination,
       artifacts: digest.artifacts,
+      next_step: digest.next_step,
     }),
   ) as Data360StructuredResult;
 }
@@ -152,7 +160,8 @@ export function compactDigestText(digest: Data360RunDigest): string {
     ? ` ${transportLabel(digest.transport.fallback.from)} was unavailable; ${transportLabel(digest.transport.used)} fallback was used.`
     : "";
   const evidence = digest.artifacts?.[0]?.path ? ` Evidence: ${digest.artifacts[0].path}.` : "";
-  return `${statusIcon(digest.status)} ${digest.action} ${status}: ${digest.summary}${useful.length ? ` · ${useful.join(" · ")}` : ""}.${fallback}${evidence}`
+  const next = digest.next_step ? ` Next: ${digest.next_step}` : "";
+  return `${statusIcon(digest.status)} ${digest.action} ${status}: ${digest.summary}${useful.length ? ` · ${useful.join(" · ")}` : ""}.${fallback}${evidence}${next}`
     .replace(/\.\./g, ".")
     .trim();
 }
@@ -291,13 +300,22 @@ function requestSection(
   transport: Data360RunDigest["transport"],
 ): Data360RunSection | undefined {
   const request = objectValue(result.request);
-  if (!Object.keys(request).length) return undefined;
   const rows: Data360DigestRow[] = [];
   addRow(rows, "🔀", "Transport", transport ? transportLabel(transport.used) : undefined);
   addRow(rows, "📨", "Method", request.method);
   addRow(rows, "🔗", "URL", completeUrl(result, request));
   addRow(rows, "⚙️", "Operation", result.operationId ?? result.operation);
   addRow(rows, "🔒", "Safety", result.safety);
+  if (!Object.keys(request).length) {
+    rows.push({
+      icon: transport?.used === "local" ? "💻" : "ℹ️",
+      label: "Request",
+      value:
+        transport?.used === "local"
+          ? "Local operation · no network request"
+          : "No API request recorded",
+    });
+  }
   const body = request.body;
   const bodyRecord = objectValue(body);
   const payloadWithoutSql = Object.fromEntries(
@@ -311,24 +329,40 @@ function requestSection(
     icon: "📥",
     title: "Request",
     rows,
-    code: hasPayload ? jsonCode(payloadWithoutSql, 40) : undefined,
+    code: hasPayload ? jsonCode(sanitizePayload(payloadWithoutSql), 40) : undefined,
   };
 }
 
-function responseSection(result: Record<string, unknown>): Data360RunSection | undefined {
-  if (result.response === undefined) return undefined;
+function responseSection(
+  result: Record<string, unknown>,
+  transport: Data360RunDigest["transport"],
+): Data360RunSection {
   const response = objectValue(result.response);
   const rows: Data360DigestRow[] = [];
   addRow(rows, "🌐", "HTTP", result.status);
   addRow(rows, "🧾", "Returned rows", response.returnedRows);
   addRow(rows, "📦", "Total", response.totalSize ?? response.total ?? response.count);
   addRow(rows, "🗝️", "Keys", Object.keys(response).join(", ") || undefined);
+  if (result.response === undefined) {
+    rows.push({
+      icon: result.dryRun === true ? "🟡" : "ℹ️",
+      label: "Response",
+      value:
+        result.dryRun === true
+          ? "Not executed · dry run"
+          : Object.keys(objectValue(result.request)).length
+            ? "No response body returned"
+            : transport?.used === "local"
+              ? "No API response · local operation"
+              : "No API response recorded",
+    });
+  }
   return {
     icon: "📤",
     title: "Response",
     rows,
-    code: jsonCode(sanitizePayload(result.response), 45),
-    expandedOnly: true,
+    code:
+      result.response === undefined ? undefined : jsonCode(sanitizePayload(result.response), 45),
   };
 }
 
@@ -364,12 +398,23 @@ function failureSection(result: Record<string, unknown>): Data360RunSection | un
 function apiCallsFor(
   result: Record<string, unknown>,
   transport: Data360RunDigest["transport"],
+  params: Record<string, unknown> | undefined,
+  pagination: Data360RunDigest["pagination"],
 ): Data360ApiCallRailItem[] | undefined {
   const request = objectValue(result.request);
   const chain = arrayValue(result.executionChain).map(objectValue);
   const probes = arrayValue(result.probes).map(objectValue);
   if (!Object.keys(request).length && !transport?.fallback && !chain.length && !probes.length) {
-    return undefined;
+    if (transport?.used !== "local") return undefined;
+    return [
+      {
+        transport: "LOCAL",
+        method: "LOCAL",
+        url: "No network request",
+        outcome: result.ok === false ? "failed" : result.dryRun === true ? "planned" : "success",
+        detail: stringValue(result.action),
+      },
+    ];
   }
   const calls: Data360ApiCallRailItem[] = [];
   if (transport?.fallback) {
@@ -385,12 +430,21 @@ function apiCallsFor(
     });
   }
   if (Object.keys(request).length) {
-    calls.push(apiCallFromRequest(result, request, transport?.used ?? inferTransport(result)));
+    calls.push(
+      apiCallFromRequest(
+        result,
+        request,
+        transport?.used ?? inferTransport(result),
+        pagination ?? paginationFor(result, request, params),
+      ),
+    );
   }
   for (const step of chain.slice(0, 8 - calls.length)) {
     const stepRequest = objectValue(step.request);
     if (!Object.keys(stepRequest).length) continue;
-    calls.push(apiCallFromRequest(step, stepRequest, inferTransport(step)));
+    calls.push(
+      apiCallFromRequest(step, stepRequest, inferTransport(step), paginationFor(step, stepRequest)),
+    );
   }
   for (const probe of probes.slice(0, 8 - calls.length)) {
     const path = stringValue(probe.path);
@@ -411,6 +465,7 @@ function apiCallFromRequest(
   result: Record<string, unknown>,
   request: Record<string, unknown>,
   transport: Data360Transport,
+  pagination?: Data360RunDigest["pagination"],
 ): Data360ApiCallRailItem {
   return {
     transport: transportRailLabel(transport),
@@ -430,7 +485,107 @@ function apiCallFromRequest(
       stringValue(result.operationId) ??
       stringValue(result.operation) ??
       stringValue(result.action),
+    ...(pagination ? { pagination } : {}),
   };
+}
+
+function paginationFor(
+  result: Record<string, unknown>,
+  request: Record<string, unknown>,
+  params: Record<string, unknown> = {},
+): Data360RunDigest["pagination"] | undefined {
+  const query = requestQuery(request);
+  const offset = numericParam(query.offset ?? params.offset);
+  const limit = numericParam(
+    query.limit ??
+      query.pageSize ??
+      query.batchSize ??
+      params.limit ??
+      params.pageSize ??
+      params.batchSize,
+  );
+  if (offset !== undefined && offset >= 0 && limit !== undefined && limit > 0) {
+    const response = objectValue(result.response);
+    const returned = rowCount(result) ?? collectionItemCount(response);
+    const total = firstNumber([response.totalSize, response.total]);
+    const page = Math.floor(offset / limit) + 1;
+    const totalPages = total === undefined ? undefined : Math.max(1, Math.ceil(total / limit));
+    const start = returned && returned > 0 ? offset + 1 : undefined;
+    const end = returned && returned > 0 ? offset + returned : undefined;
+    const pageLabel = `Page ${page}${totalPages ? ` of ${totalPages}` : ""}`;
+    const rangeLabel =
+      start !== undefined && end !== undefined
+        ? `items ${start}–${end}`
+        : `offset ${offset} · returned ${returned ?? "unknown"}`;
+    return {
+      kind: "offset",
+      label: `${pageLabel} · ${rangeLabel} · batch size ${limit}`,
+      offset,
+      limit,
+      page,
+      ...(totalPages ? { totalPages } : {}),
+      ...(start !== undefined ? { start } : {}),
+      ...(end !== undefined ? { end } : {}),
+      ...(returned !== undefined ? { returned } : {}),
+      ...(total !== undefined ? { total } : {}),
+    };
+  }
+  const chunkId = stringParam(query.chunkId ?? params.chunkId);
+  if (chunkId) return { kind: "chunk", label: `Chunk ${safeOpaqueLabel(chunkId)}` };
+  const batchId = stringParam(query.nextBatchId ?? params.nextBatchId);
+  if (batchId) return { kind: "batch", label: "Next batch" };
+  const cursor = stringParam(
+    query.cursor ?? query.pageToken ?? query.nextPageToken ?? params.cursor ?? params.pageToken,
+  );
+  return cursor ? { kind: "cursor", label: "Cursor page" } : undefined;
+}
+
+function requestQuery(request: Record<string, unknown>): Record<string, unknown> {
+  const query = { ...objectValue(request.query) };
+  const raw = stringValue(request.url) ?? stringValue(request.path);
+  if (!raw) return query;
+  try {
+    const parsed = new URL(raw, "https://sf-pi.invalid");
+    for (const [key, value] of parsed.searchParams.entries()) query[key] ??= value;
+  } catch {
+    // The request metadata remains useful even when a non-standard path cannot be parsed.
+  }
+  return query;
+}
+
+function collectionItemCount(response: Record<string, unknown>): number | undefined {
+  for (const [key, value] of Object.entries(response)) {
+    if (["data", "metadata", "fields", "dataFields"].includes(key) || !Array.isArray(value)) {
+      continue;
+    }
+    return value.length;
+  }
+  return undefined;
+}
+
+function firstNumber(values: unknown[]): number | undefined {
+  for (const value of values) {
+    const parsed = numericParam(value);
+    if (parsed !== undefined) return parsed;
+  }
+  return undefined;
+}
+
+function numericParam(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function stringParam(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return undefined;
+}
+
+function safeOpaqueLabel(value: string): string {
+  return /^[A-Za-z0-9_-]{1,16}$/.test(value) ? value : "requested";
 }
 
 function transportFor(result: Record<string, unknown>): Data360RunDigest["transport"] | undefined {

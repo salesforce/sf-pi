@@ -48,7 +48,7 @@ Open its Manager detail or change its package state with:
 - **Commands:** `/sf-data360`
 - **LLM tools:** `sf_data360`
 - **Providers:** _none_
-- **Events/hooks:** `session_start`, `session_shutdown`, `resources_discover`
+- **Events/hooks:** `session_start`, `session_shutdown`, `resources_discover`, `tool_result`, `message_end`, `agent_settled`
 
 </details>
 

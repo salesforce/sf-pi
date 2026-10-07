@@ -8,7 +8,14 @@
   "configurable": true,
   "commands": ["/sf-data360"],
   "tools": ["sf_data360"],
-  "events": ["session_start", "session_shutdown", "resources_discover"],
+  "events": [
+    "session_start",
+    "session_shutdown",
+    "resources_discover",
+    "tool_result",
+    "message_end",
+    "agent_settled"
+  ],
   "docs": {
     "intentGroup": "Work with Data Cloud",
     "editingRules": "AGENTS.md",

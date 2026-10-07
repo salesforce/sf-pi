@@ -35,7 +35,7 @@ Use the single `sf_data360` Pi system tool for Data 360 work. Its `action` selec
 
 ## Result contract
 
-The model receives a compact semantic digest and stable structured content. Humans receive a Data 360 Run Card with a namespace-specific icon, full API rail, readable SQL, bounded request/response payloads, result tables, transport fallback, evidence, and next-step sections. Raw broad payloads remain artifacts instead of becoming the primary transcript.
+The model receives a compact semantic digest and stable structured content, including artifacts, next-step guidance, API calls, and pagination. Human Run Cards use a namespace-specific icon and always show the API rail, outcome, request, and an eight-line response preview; evidence and next-step sections stay model-only. Offset pages are labeled with their page, item range, batch size, offset, limit, and returned count. Multi-call turns append one grounded, bounded Mermaid orchestration trace outside the card. Raw broad payloads remain artifacts instead of becoming the primary transcript.
 
 ## Recursive coverage
 
