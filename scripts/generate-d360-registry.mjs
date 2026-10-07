@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Generate the sf-data360 facade operation registry.
+ * Generate the sf_data360 endpoint operation registry.
  *
- * The upstream snapshot intentionally contains only operation identity and REST
- * shape. Local overrides supply safety, parameter metadata, and operational
- * tips. This keeps future upstream imports reviewable while forcing every
- * executable operation to declare a safety level before it reaches d360.
+ * The upstream snapshot supplies operation identity and REST shape. Local
+ * overlays add safety, parameter metadata, and operational guidance before an
+ * endpoint becomes executable through the single Pi SDK tool.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -109,10 +108,10 @@ function needsBody(operation) {
 
 function defaultTips(operation) {
   if (operation.safety === "destructive") {
-    return "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output.";
+    return "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review.";
   }
   if (operation.safety === "confirmed") {
-    return "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request.";
+    return "Use dry_run first; execution requires allow_mutation=true after reviewing the resolved request.";
   }
   return undefined;
 }

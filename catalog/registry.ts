@@ -99,13 +99,13 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-data360",
     name: "SF Data 360",
-    description: "Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch",
+    description: "One Pi-native Data 360 SDK tool with discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and API actions",
     file: "extensions/sf-data360/index.ts",
     category: "agent-tool",
     maturity: "stable",
     defaultEnabled: true,
     commands: ["/sf-data360"],
-    tools: ["data360_discover","data360_connect","data360_prepare","data360_harmonize","data360_segment","data360_activate","data360_query","data360_semantic","data360_observe","data360_orchestrate","data360_api"],
+    tools: ["sf_data360"],
     events: ["session_start","session_shutdown","resources_discover"],
     configurable: true,
     getConfigPanel: async () => {

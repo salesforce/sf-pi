@@ -1,8 +1,9 @@
 ---
 id: "0106"
-status: accepted
+status: superseded
 date: 2026-08-11
 supersedes: ["0010"]
+supersededBy: ["0141"]
 ---
 
 # Data 360 live proof uses the v2 registry and dispatcher

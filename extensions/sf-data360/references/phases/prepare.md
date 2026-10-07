@@ -11,13 +11,13 @@ Data 360 Prepare phase. Use when managing DLOs, data streams, data transforms, d
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -34,14 +34,14 @@ Data 360 Prepare phase. Use when managing DLOs, data streams, data transforms, d
 
 ## Data 360 family actions
 
-- `data360_prepare` `csv_schema.infer` (local, read) — Infer an Ingestion API schema from a local CSV file.
-- `data360_prepare` `datakit_component_deps` (rest_operation, read) — Get component dependencies.
-- `data360_prepare` `datakit_component.status` (rest_operation, read) — Get component deployment status.
-- `data360_prepare` `datakit_components` (rest_operation, read) — List org components available for inclusion in data kits.
-- `data360_prepare` `datakit_deploy.status` (rest_operation, read) — Get deployment job status.
-- `data360_prepare` `datakit.get` (rest_operation, read) — Get DataKit details.
-- `data360_prepare` `datakit.list` (rest_operation, read) — List available DataKits.
-- `data360_prepare` `datakit.manifest` (rest_operation, read) — Get DataKit manifest.
+- `sf_data360` `prepare.csv_schema.infer` (prepare, local, read) — Infer an Ingestion API schema from a local CSV file.
+- `sf_data360` `prepare.datakit_component_deps` (prepare, rest_operation, read) — Get component dependencies.
+- `sf_data360` `prepare.datakit_component.status` (prepare, rest_operation, read) — Get component deployment status.
+- `sf_data360` `prepare.datakit_components` (prepare, rest_operation, read) — List org components available for inclusion in data kits.
+- `sf_data360` `prepare.datakit_deploy.status` (prepare, rest_operation, read) — Get deployment job status.
+- `sf_data360` `prepare.datakit.get` (prepare, rest_operation, read) — Get DataKit details.
+- `sf_data360` `prepare.datakit.list` (prepare, rest_operation, read) — List available DataKits.
+- `sf_data360` `prepare.datakit.manifest` (prepare, rest_operation, read) — Get DataKit manifest.
 
 ## Cross-phase routing
 
@@ -59,4 +59,4 @@ Data 360 Prepare phase. Use when managing DLOs, data streams, data transforms, d
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

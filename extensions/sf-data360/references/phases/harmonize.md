@@ -11,13 +11,13 @@ Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, i
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -33,14 +33,14 @@ Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, i
 
 ## Data 360 family actions
 
-- `data360_harmonize` `dmo_mapping.get` (rest_operation, read) — Get mapping configuration.
-- `data360_harmonize` `dmo_mapping.list` (rest_operation, read) — List mappings by DMO name or CRM source.
-- `data360_harmonize` `dmo.get` (rest_operation, read) — Get full DMO schema including all fields.
-- `data360_harmonize` `dmo.list` (rest_operation, read) — List all Data Model Objects. Filter by category.
-- `data360_harmonize` `identity.list` (rest_operation, read) — List identity resolution rulesets.
-- `data360_harmonize` `ir.get` (rest_operation, read) — Get ruleset details.
-- `data360_harmonize` `ir.list` (rest_operation, read) — List identity resolution rulesets.
-- `data360_harmonize` `event_date_recommend` (rest_operation, safe_post) — Show mutable vs immutable date field scores.
+- `sf_data360` `harmonize.dmo_mapping.get` (harmonize, rest_operation, read) — Get mapping configuration.
+- `sf_data360` `harmonize.dmo_mapping.list` (harmonize, rest_operation, read) — List mappings by DMO name or CRM source.
+- `sf_data360` `harmonize.dmo.get` (harmonize, rest_operation, read) — Get full DMO schema including all fields.
+- `sf_data360` `harmonize.dmo.list` (harmonize, rest_operation, read) — List all Data Model Objects. Filter by category.
+- `sf_data360` `harmonize.ir.get` (harmonize, rest_operation, read) — Get ruleset details.
+- `sf_data360` `harmonize.ir.list` (harmonize, rest_operation, read) — List identity resolution rulesets.
+- `sf_data360` `harmonize.event_date_recommend` (harmonize, rest_operation, safe_post) — Show mutable vs immutable date field scores.
+- `sf_data360` `harmonize.preview_field_matches` (harmonize, rest_operation, safe_post) — Dry-run field matching with confidence scores.
 
 ## Cross-phase routing
 
@@ -58,4 +58,4 @@ Data 360 Harmonize phase. Use when managing DMOs, mappings, standard mappings, i
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

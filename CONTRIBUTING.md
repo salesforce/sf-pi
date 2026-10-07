@@ -112,6 +112,8 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run generate-catalog`
 - `npm run generate-catalog:check`
 - `npm run generate-catalog:check-staged`
+- `npm run generate-d360-actions`
+- `npm run generate-d360-actions:check`
 - `npm run generate-d360-parity`
 - `npm run generate-d360-parity:check`
 - `npm run generate-d360-payload-examples`
@@ -120,8 +122,6 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run generate-d360-references:check`
 - `npm run generate-d360-registry`
 - `npm run generate-d360-registry:check`
-- `npm run generate-d360-v2-actions`
-- `npm run generate-d360-v2-actions:check`
 - `npm run import-d360-upstream`
 - `npm run import-d360-upstream:check`
 
@@ -170,7 +170,7 @@ This complete inventory is generated from `package.json`; edit that file and run
 
 - `npm run e2e:d360-stdm`
 - `npm run e2e:d360-tracing`
-- `npm run e2e:data360-v2`
+- `npm run e2e:data360`
 - `npm run e2e:instruction-behavior`
 - `npm run e2e:sf-apex-harness`
 - `npm run e2e:sf-browser-harden`

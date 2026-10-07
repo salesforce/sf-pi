@@ -11,7 +11,7 @@ three modes:
 - **`sql`** — browse Data 360 DMO/DLO catalogs and run visible SELECT SQL.
 
 It is a human explorer, not an agent query author, write surface, or replacement
-for the `sf_soql` and `data360_*` lifecycle tools.
+for the `sf_soql` and `sf_data360` lifecycle tools.
 
 ## Commands
 

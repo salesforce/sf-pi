@@ -48,21 +48,21 @@ const CLAIMS: Partial<Record<McpPresetId, Readonly<Record<string, ToolConflictCl
       owners: ["sf-data360"],
       relationship: "partial",
       reason:
-        "The native SF Data 360 families provide typed discovery, while MCP search can still reveal Connect API families.",
+        "The native sf_data360 SDK provides business action discovery, while MCP search can still reveal hosted Connect API families.",
       recommendedExposure: "codemode",
     },
     payload_examples: {
       owners: ["sf-data360"],
       relationship: "partial",
       reason:
-        "The native families ground payloads through typed actions; MCP examples remain complementary contract evidence.",
+        "The native sf_data360 action catalog grounds payloads and schemas; MCP examples remain complementary contract evidence.",
       recommendedExposure: "codemode",
     },
     execute: {
       owners: ["sf-data360"],
       relationship: "direct",
       reason:
-        "Execute dispatches broad Data 360 operations already owned by the typed SF Data 360 lifecycle families.",
+        "Execute dispatches broad Data 360 operations already owned by the sf_data360 SDK action catalog.",
       broad: true,
       recommendedExposure: "hidden",
     },

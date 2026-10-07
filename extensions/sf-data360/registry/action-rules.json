@@ -1,0 +1,69 @@
+[
+  {
+    "phase": "prepare",
+    "operationNames": ["d360_data_streams_list"],
+    "namespace": "prepare"
+  },
+  {
+    "phase": "act",
+    "operationNames": ["d360_data_actions_list"],
+    "namespace": "activate"
+  },
+  {
+    "phase": "retrieve",
+    "families": ["Query", "Metadata", "Profile and Data Graph"],
+    "namespace": "query"
+  },
+  {
+    "phase": "connect",
+    "families": ["Connection", "Ingestion"],
+    "namespace": "connect"
+  },
+  {
+    "phase": "prepare",
+    "families": [
+      "Dataspace",
+      "DLO",
+      "DataStreams",
+      "DataTransform",
+      "DataKit",
+      "Transforms and Actions"
+    ],
+    "namespace": "prepare"
+  },
+  {
+    "phase": "harmonize",
+    "families": ["DMO", "Mappings", "StandardMappings", "Smart", "Identity Resolution"],
+    "namespace": "harmonize"
+  },
+  {
+    "phase": "segment",
+    "families": ["Calculated Insights", "Segment"],
+    "namespace": "segment"
+  },
+  {
+    "phase": "act",
+    "families": ["Activation", "DataAction"],
+    "namespace": "activate"
+  },
+  {
+    "phase": "act",
+    "families": ["Personalization"],
+    "namespace": "activate"
+  },
+  {
+    "phase": "semantic",
+    "families": ["Semantic Retrieval"],
+    "namespace": "semantic"
+  },
+  {
+    "phase": "semantic",
+    "families": ["MachineLearning"],
+    "namespace": "semantic"
+  },
+  {
+    "phase": "observe",
+    "families": ["Agent Observability"],
+    "namespace": "observe"
+  }
+]

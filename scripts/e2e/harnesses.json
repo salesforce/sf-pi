@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "harnesses": [
     {
-      "script": "e2e:data360-v2",
-      "entry": "scripts/e2e/data360-v2-action-sweep.ts",
-      "title": "Data 360 v2 action sweep",
-      "summary": "Exercises every current data360_* family and the sweep-owned DLO lifecycle through the real v2 registry and dispatcher.",
+      "script": "e2e:data360",
+      "entry": "scripts/e2e/data360-action-sweep.ts",
+      "title": "SF Data 360 action sweep",
+      "summary": "Exercises the single sf_data360 action catalog and sweep-owned DLO lifecycle through the production dispatcher and transports.",
       "target": "Explicit non-production org",
       "posture": "bounded-mutation",
       "artifacts": "JSON and Markdown reports in a temporary or caller-selected directory",
@@ -14,8 +14,8 @@
     {
       "script": "e2e:d360-stdm",
       "entry": "scripts/e2e/d360-stdm-e2e.ts",
-      "title": "Data 360 STDM compatibility smoke",
-      "summary": "Exercises retained low-level metadata, readiness, safety, and bounded SQL modules.",
+      "title": "Data 360 STDM transport smoke",
+      "summary": "Exercises metadata, readiness, safety, and bounded observability query Modules.",
       "target": "Explicit non-production org",
       "posture": "read-only",
       "artifacts": "Console proof only",

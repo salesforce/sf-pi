@@ -1,6 +1,6 @@
 # SF Data 360 Examples
 
-Curated public-safe examples for the `data360_*` family tools. For full
+Curated public-safe examples for the single `sf_data360` tool. For full
 create/update shapes use `references/data-shapes.md`; for query patterns use
 `references/query-patterns.md`. These snippets show the smaller, common workflow
 steps that do not warrant a full data-shape entry.
@@ -9,7 +9,7 @@ steps that do not warrant a full data-shape entry.
 
 ```json
 {
-  "tool": "data360_query",
+  "tool": "query",
   "action": "metadata.search",
   "params": {
     "body": {
@@ -25,7 +25,7 @@ steps that do not warrant a full data-shape entry.
 
 ```json
 {
-  "tool": "data360_harmonize",
+  "tool": "harmonize",
   "action": "dmo.list",
   "params": { "category": "Profile", "max_results": 25 }
 }
@@ -33,7 +33,7 @@ steps that do not warrant a full data-shape entry.
 
 ```json
 {
-  "tool": "data360_prepare",
+  "tool": "prepare",
   "action": "dlo.get",
   "params": { "dloName": "Example__dll", "max_fields": 25 }
 }
@@ -47,7 +47,7 @@ object name before describing fields.
 
 ```json
 {
-  "tool": "data360_connect",
+  "tool": "connect",
   "action": "connection.db_schemas.list",
   "params": {
     "connectionId": "example-connection-id",
@@ -58,7 +58,7 @@ object name before describing fields.
 
 ```json
 {
-  "tool": "data360_connect",
+  "tool": "connect",
   "action": "connection.object_fields.describe",
   "params": {
     "connectionId": "example-connection-id",
@@ -72,7 +72,7 @@ object name before describing fields.
 
 ```json
 {
-  "tool": "data360_prepare",
+  "tool": "prepare",
   "action": "transform.prepare",
   "params": {
     "body": {
@@ -90,7 +90,7 @@ object name before describing fields.
 
 ```json
 {
-  "tool": "data360_semantic",
+  "tool": "semantic",
   "action": "ml.model_artifact.list",
   "params": { "limit": 10 }
 }
@@ -98,7 +98,7 @@ object name before describing fields.
 
 ```json
 {
-  "tool": "data360_semantic",
+  "tool": "semantic",
   "action": "ml.predict",
   "params": {
     "body": {
@@ -114,7 +114,7 @@ object name before describing fields.
 
 ```json
 {
-  "tool": "data360_activate",
+  "tool": "activate",
   "action": "personalization.experience_config.list",
   "params": {
     "idOrAppSourceIdOrName": "ExampleConnector",
@@ -131,7 +131,7 @@ object name before describing fields.
 
 ```json
 {
-  "tool": "data360_query",
+  "tool": "query",
   "action": "profile.query",
   "params": {
     "dataModelName": "ssot__Individual__dlm",
@@ -149,7 +149,7 @@ pass `offset`.
 
 ```json
 {
-  "tool": "data360_segment",
+  "tool": "segment",
   "action": "ci.run",
   "params": { "ciName": "Customer_Order_Summary__cio" },
   "dry_run": true
@@ -158,7 +158,7 @@ pass `offset`.
 
 ```json
 {
-  "tool": "data360_segment",
+  "tool": "segment",
   "action": "ci.get",
   "params": { "ciName": "Customer_Order_Summary__cio" }
 }
@@ -171,20 +171,20 @@ still `PROCESSING`, deleting can still work after review:
 
 ```json
 {
-  "tool": "data360_segment",
+  "tool": "segment",
   "action": "segment.delete",
   "params": { "segmentApiName": "Example_Segment" },
   "dry_run": true
 }
 ```
 
-Then rerun with `allow_confirmed: true` only after reviewing the dry-run.
+Then rerun with `allow_mutation: true` only after reviewing the dry-run.
 
 ## Data stream cleanup with DLO
 
 ```json
 {
-  "tool": "data360_orchestrate",
+  "tool": "orchestrate",
   "action": "cleanup.plan",
   "params": {
     "dataStreamIds": ["1ds000000000000AAA"],

@@ -11,13 +11,13 @@ Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -30,14 +30,14 @@ Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile
 
 ## Data 360 family actions
 
-- `data360_query` `data_spaces.list` (rest_operation, read) — List Data 360 data spaces.
-- `data360_query` `datagraph.lookup` (rest_operation, read) — Lookup by natural key.
-- `data360_query` `datagraph.metadata` (rest_operation, read) — List data graph entities or get schema.
-- `data360_query` `datagraph.query` (rest_operation, read) — Query data graphs. Set live=true for real-time.
-- `data360_query` `dlo_describe` (rest_operation, read) — Describe one Data Lake Object by API name.
-- `data360_query` `dmo_describe` (rest_operation, read) — Describe one Data Model Object by API name.
-- `data360_query` `insight.metadata_get` (rest_operation, read) — Discover one calculated insight metadata definition.
-- `data360_query` `insights.metadata` (rest_operation, read) — Discover CI names and available dimensions/measures.
+- `sf_data360` `query.datagraph.lookup` (query, rest_operation, read) — Lookup by natural key.
+- `sf_data360` `query.datagraph.metadata` (query, rest_operation, read) — List data graph entities or get schema.
+- `sf_data360` `query.datagraph.query` (query, rest_operation, read) — Query data graphs. Set live=true for real-time.
+- `sf_data360` `query.insight.metadata_get` (query, rest_operation, read) — Discover one calculated insight metadata definition.
+- `sf_data360` `query.insights.metadata` (query, rest_operation, read) — Discover CI names and available dimensions/measures.
+- `sf_data360` `query.insights.query` (query, rest_operation, read) — Query calculated insights with dimensions and measures.
+- `sf_data360` `query.metadata.entities` (query, rest_operation, read) — List paginated metadata entities. entityType required.
+- `sf_data360` `query.metadata.query` (query, rest_operation, read) — Get metadata for entity. ALWAYS use entityName filter.
 
 ## Cross-phase routing
 
@@ -55,4 +55,4 @@ Data 360 Retrieve phase. Use when running Data 360 SQL, metadata search, profile
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

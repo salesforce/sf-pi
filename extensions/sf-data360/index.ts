@@ -7,9 +7,8 @@
  * Design:
  * - No MCP server/client support.
  * - No 180 always-on generated operation tools.
- * - One pi-native v2 family tool surface (`data360_*`) over the shared
- *   action registry/dispatcher, plus plain reference docs for progressive
- *   disclosure.
+ * - One Pi-native `sf_data360` SDK tool over the generated business action
+ *   registry and direct API transports, with progressive disclosure.
  * - sf-data360 does not contribute Agent Skills; disabling the extension removes
  *   its tools on reload/new sessions.
  *
@@ -17,16 +16,16 @@
  *
  *   Event/Trigger          | Result
  *   -----------------------|-----------------------------------------------------------
- *   extension load         | Register data360_* family tools and /sf-data360
+ *   extension load         | Register sf_data360 and /sf-data360
  *   session_start          | Re-register tools if enabled; reset shared connections once per session
  *   session_shutdown       | Reset tool-registration state
  *   resources_discover     | Re-register tools on reload; no skill contribution
  *   /sf-data360 (no args)  | Open SF Data 360 in the SF Pi Manager
  *   /sf-data360 status     | Print enablement, tools, target org, and API version
  *   /sf-data360 help       | Print command usage
- *   data360_* dry_run      | Resolve target/version/request without the business mutation
- *   data360_* read         | Call Data 360 REST through the shared Salesforce Connection Module
- *   data360_* mutating     | Confirm dangerous calls according to safety policy
+ *   sf_data360 dry_run     | Resolve target/transport/request without business mutation
+ *   sf_data360 read        | Call Connect, Query V3, or Ingestion APIs directly
+ *   sf_data360 mutation    | Require reviewed intent and Guardrail mediation
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
@@ -55,7 +54,7 @@ import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { isSfPiExtensionEnabled } from "../../lib/common/sf-pi-extension-state.ts";
-import { registerData360V2Tools, DATA360_V2_TOOL_DEFS } from "./lib/v2/tools.ts";
+import { registerSfData360Tool, SF_DATA360_TOOL_NAME } from "./lib/sf-data360-tool.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { buildSfData360Doctor } from "./lib/extension-doctor.ts";
 
@@ -67,7 +66,7 @@ export default function sfData360(pi: ExtensionAPI) {
 
   function ensureToolsRegistered(): void {
     if (toolsRegistered) return;
-    registerData360V2Tools(pi);
+    registerSfData360Tool(pi);
     toolsRegistered = true;
   }
 
@@ -87,7 +86,7 @@ export default function sfData360(pi: ExtensionAPI) {
 
   // Contribute a small org-connectivity + readiness probe to the
   // aggregated `/sf-pi doctor` view. Deep readiness remains available through
-  // data360_discover readiness actions.
+  // discover readiness actions.
   registerExtensionDoctor("sf-data360", buildSfData360Doctor(pi));
 
   pi.on("resources_discover", (event) => {
@@ -99,7 +98,7 @@ export default function sfData360(pi: ExtensionAPI) {
   });
 
   pi.registerCommand(COMMAND_NAME, {
-    description: "Show Data 360 family-tool status and usage",
+    description: "Show SF Data 360 SDK tool status and usage",
     // Single source of truth for completions — SF_DATA360_ACTIONS drives
     // the panel rows, the completions, and the auto-generated help block.
     getArgumentCompletions: (prefix: string) =>
@@ -207,7 +206,7 @@ async function handleSfData360Action(
 }
 
 function formatData360ToolNames(): string {
-  return DATA360_V2_TOOL_DEFS.map((tool) => tool.name).join(", ");
+  return SF_DATA360_TOOL_NAME;
 }
 
 function buildStatusText(enabled: boolean, env: SfEnvironment): string {
@@ -222,7 +221,7 @@ function buildStatusText(enabled: boolean, env: SfEnvironment): string {
     `Org type: ${env.org.orgType}`,
     "Request API: resolved lazily by the shared Salesforce Connection Module (org latest → configured fallback)",
     "",
-    "Use data360_* family tools for Data 360 work; read extensions/sf-data360/references/ for deeper guidance.",
+    "Use sf_data360 business actions for Data 360 work; read extensions/sf-data360/references/ for deeper guidance.",
   ].join("\n");
 }
 
@@ -252,7 +251,7 @@ async function emitOutput(
 
 function buildHelpText(enabled: boolean): string {
   return [
-    "SF Data 360 — agent-first family tools",
+    "SF Data 360 — one agent-first SDK tool",
     "",
     formatHelpFromActions(SF_DATA360_ACTIONS, COMMAND_NAME),
     "",
@@ -262,13 +261,13 @@ function buildHelpText(enabled: boolean): string {
     `  Re-enable: /sf-pi enable sf-data360`,
     `  Disable: /sf-pi disable sf-data360`,
     "",
-    "Tools when enabled:",
-    ...DATA360_V2_TOOL_DEFS.map((tool) => `  ${tool.name.padEnd(24)} ${tool.description}`),
+    "Tool when enabled:",
+    `  ${SF_DATA360_TOOL_NAME.padEnd(24)} One Data 360 SDK surface with business-namespaced actions.`,
     "",
     "Recommended workflow:",
-    "  1. Pick the lifecycle family: discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, or orchestrate.",
-    "  2. Use actions.search or action.describe inside that family when the exact action is unclear.",
-    "  3. Use dry_run:true before confirmed/destructive actions and plan-first orchestrated journeys.",
-    "  4. Use data360_api only as the raw REST escape hatch for endpoints not yet promoted to family actions.",
+    "  1. Call sf_data360 with an action under discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, or api.",
+    "  2. Use discover.action.search or discover.action.describe when the exact action is unclear.",
+    "  3. Use dry_run:true before mutations and plan-first orchestrated journeys.",
+    "  4. Use api.request only as the exact REST escape hatch for an unpromoted endpoint.",
   ].join("\n");
 }

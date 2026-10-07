@@ -1,0 +1,345 @@
+[
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "journey.list",
+    "description": "List curated Data 360 outcome journeys that map user intent to tools and actions.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "journey.list"
+    },
+    "aliases": ["journey.catalog.list"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "journey.describe",
+    "description": "Describe one curated Data 360 outcome journey, including phases, inputs, verification, and available actions.",
+    "safety": "read",
+    "requiredParams": ["journey"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "journey.describe"
+    },
+    "aliases": ["journey.catalog.describe"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "intent.plan",
+    "description": "Route a natural-language Data 360 user utterance to a recommended journey and next action.",
+    "safety": "read",
+    "requiredParams": ["utterance"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "intent.plan"
+    },
+    "aliases": ["intent.route"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "ingest_csv.plan",
+    "description": "Plan Route A local CSV ingestion through Ingestion API source schema, data stream, tenant ingest job, and SQL verification.",
+    "safety": "read",
+    "requiredParams": ["sourceName", "schemaObjectName", "streamName", "csvPath"],
+    "optionalParams": ["connectionId", "dataspaceName", "dloName"],
+    "implementation": {
+      "kind": "journey",
+      "name": "ingest_csv"
+    },
+    "aliases": ["journey.ingest_csv.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "ingest_auth.pkce_interactive",
+    "description": "Run an interactive localhost PKCE flow for Data Cloud ingest auth and return sanitized in-memory auth session metadata.",
+    "safety": "confirmed",
+    "requiredParams": ["loginUrl", "clientId", "redirectUri"],
+    "optionalParams": ["scopes"],
+    "implementation": {
+      "kind": "journey",
+      "name": "ingest_auth.pkce_interactive"
+    },
+    "aliases": ["journey.ingest_auth.pkce_interactive"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "manifest.validate",
+    "description": "Validate a Data 360 CSV ingestion manifest.",
+    "safety": "read",
+    "requiredParams": ["manifestPath"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "manifest.validate"
+    },
+    "aliases": ["journey.manifest.validate"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "manifest.plan",
+    "description": "Plan a multi-file Data 360 CSV ingestion manifest without mutation.",
+    "safety": "read",
+    "requiredParams": ["manifestPath"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "manifest.plan"
+    },
+    "aliases": ["journey.manifest.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "manifest.run",
+    "description": "Run a Data 360 CSV ingestion manifest through source schema, streams, jobs, and verification.",
+    "safety": "confirmed",
+    "requiredParams": ["manifestPath", "authSessionId"],
+    "optionalParams": [],
+    "implementation": {
+      "kind": "journey",
+      "name": "manifest.run"
+    },
+    "aliases": ["journey.manifest.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "ingest_csv.run",
+    "description": "Run a single CSV ingestion journey or dry-run its manifest-backed plan.",
+    "safety": "confirmed",
+    "requiredParams": [
+      "csvPath",
+      "sourceName",
+      "connectionId",
+      "schemaName",
+      "streamName",
+      "primaryKey"
+    ],
+    "optionalParams": ["authSessionId"],
+    "implementation": {
+      "kind": "journey",
+      "name": "ingest_csv.run"
+    },
+    "aliases": ["journey.ingest_csv.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "cleanup.plan",
+    "description": "Plan cleanup of explicitly owned Data 360 resources.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["dataStreamIds", "shouldDeleteDataLakeObject"],
+    "implementation": {
+      "kind": "journey",
+      "name": "cleanup.plan"
+    },
+    "aliases": ["journey.cleanup.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "cleanup.run",
+    "description": "Run cleanup of explicitly owned Data 360 resources after confirmation.",
+    "safety": "destructive",
+    "requiredParams": [],
+    "optionalParams": ["dataStreamIds", "shouldDeleteDataLakeObject"],
+    "implementation": {
+      "kind": "journey",
+      "name": "cleanup.run"
+    },
+    "aliases": ["journey.cleanup.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "make_data_usable.plan",
+    "description": "Plan how to connect, land, model, map, and verify new data without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["sourceType", "targetModel"],
+    "implementation": {
+      "kind": "journey",
+      "name": "make_data_usable.plan"
+    },
+    "aliases": ["journey.make_data_usable.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "agent_behavior_investigation.plan",
+    "description": "Plan Agentforce STDM and platform tracing queries for an agent/session investigation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["agentOrSession", "timeRange"],
+    "implementation": {
+      "kind": "journey",
+      "name": "agent_behavior_investigation.plan"
+    },
+    "aliases": ["journey.agent_behavior_investigation.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "agent_behavior_investigation.run",
+    "description": "Run read-only Agentforce STDM and platform tracing investigation actions and summarize findings.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["session_id", "trace_id", "since", "limit"],
+    "implementation": {
+      "kind": "journey",
+      "name": "agent_behavior_investigation.run"
+    },
+    "aliases": ["journey.agent_behavior_investigation.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "semantic_retrieval.plan",
+    "description": "Plan semantic model, search index, and retriever setup for RAG or BI-style retrieval without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["sourceObjects", "retrievalUseCase"],
+    "implementation": {
+      "kind": "journey",
+      "name": "semantic_retrieval.plan"
+    },
+    "aliases": ["journey.semantic_retrieval.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "build_segment.plan",
+    "description": "Plan calculated insight and segment creation/publish steps without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["profileDmo", "segmentDefinition"],
+    "implementation": {
+      "kind": "journey",
+      "name": "build_segment.plan"
+    },
+    "aliases": ["journey.build_segment.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "activate_segment.plan",
+    "description": "Plan activation target and activation creation steps without mutation.",
+    "safety": "read",
+    "requiredParams": [],
+    "optionalParams": ["segment", "target"],
+    "implementation": {
+      "kind": "journey",
+      "name": "activate_segment.plan"
+    },
+    "aliases": ["journey.activate_segment.plan"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "make_data_usable.run",
+    "description": "Run CSV ingestion and return harmonization next steps that make landed data usable.",
+    "safety": "confirmed",
+    "requiredParams": ["manifestPath", "authSessionId"],
+    "optionalParams": ["pollIntervalMs", "maxPolls"],
+    "implementation": {
+      "kind": "journey",
+      "name": "make_data_usable.run"
+    },
+    "aliases": ["journey.make_data_usable.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "semantic_retrieval.run",
+    "description": "Run semantic search-index and retriever setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": [
+      "searchIndexBody",
+      "retrieverBody",
+      "retrieverConfigBody",
+      "retrieverIdOrName",
+      "semanticModelName"
+    ],
+    "implementation": {
+      "kind": "journey",
+      "name": "semantic_retrieval.run"
+    },
+    "aliases": ["journey.semantic_retrieval.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "build_segment.run",
+    "description": "Run calculated insight and segment setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": ["ciValidateBody", "ciBody", "ciName", "segmentBody", "segmentId"],
+    "implementation": {
+      "kind": "journey",
+      "name": "build_segment.run"
+    },
+    "aliases": ["journey.build_segment.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "activate_segment.run",
+    "description": "Run activation target and activation setup from reviewed payloads.",
+    "safety": "confirmed",
+    "requiredParams": [],
+    "optionalParams": ["segmentId", "activationTargetBody", "activationBody", "activationId"],
+    "implementation": {
+      "kind": "journey",
+      "name": "activate_segment.run"
+    },
+    "aliases": ["journey.activate_segment.run"],
+    "namespace": "orchestrate"
+  },
+  {
+    "phase": "orchestrate",
+    "family": "Journey",
+    "action": "cleanup.discover_owned",
+    "description": "Discover explicit cleanup candidates by safe prefixes and produce cleanup.plan parameters without deleting anything.",
+    "safety": "read",
+    "requiredParams": ["prefixes"],
+    "optionalParams": ["maxResults", "shouldDeleteDataLakeObject"],
+    "implementation": {
+      "kind": "journey",
+      "name": "cleanup.discover_owned"
+    },
+    "aliases": ["journey.cleanup.discover_owned"],
+    "namespace": "orchestrate"
+  }
+]

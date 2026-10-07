@@ -1,9 +1,20 @@
 {
   "d360_query_sql": {
+    "description": "Run Data 360 SQL through Query API V3 by default, with explicit Connect fallback when tenant token exchange is unavailable.",
     "safety": "safe_post",
     "requiredParams": ["sql"],
-    "optionalParams": ["dataspaceName"],
-    "tips": "Always bound broad queries with LIMIT or a trace/session/id predicate."
+    "optionalParams": [
+      "transport",
+      "authSessionId",
+      "transferMode",
+      "paramStyle",
+      "parameters",
+      "settings",
+      "resultRange",
+      "queryRowLimit",
+      "dataspaceName"
+    ],
+    "tips": "Bound broad queries with queryRowLimit or SQL LIMIT. Use transport=query_v3 for strict V3 or transport=connect for an exact Connect request."
   },
   "d360_data_spaces_list": {
     "safety": "read"
@@ -80,11 +91,19 @@
   },
   "d360_query_sql_status": {
     "requiredParams": ["queryId"],
+    "optionalParams": ["transport", "authSessionId", "dataspaceName"],
     "safety": "read"
   },
   "d360_query_sql_rows": {
     "requiredParams": ["queryId"],
-    "optionalParams": ["limit", "offset"],
+    "optionalParams": [
+      "transport",
+      "authSessionId",
+      "limit",
+      "offset",
+      "byteLimit",
+      "dataspaceName"
+    ],
     "safety": "read"
   },
   "d360_metadata_entities": {
@@ -838,7 +857,7 @@
   "d360_metadata": {
     "optionalParams": ["entityName", "entityType", "dataspace"],
     "safety": "read",
-    "tips": "Use entityName or entityType to avoid broad metadata payloads. For compact DMO/DLO discovery, prefer the d360_metadata Pi tool."
+    "tips": "Use entityName or entityType to avoid broad metadata payloads. For compact DMO/DLO discovery, prefer `sf_data360` metadata actions."
   },
   "d360_model_artifact_list": {
     "optionalParams": ["limit", "offset"],
@@ -867,157 +886,158 @@
     "requiredParams": ["body"],
     "optionalParams": ["dataspace"],
     "safety": "confirmed",
-    "tips": "Review standard mapping preview output or verified DLO/DMO field details first. The REST facade sends the reviewed mapping payload; upstream MCP local bulk lookup is not embedded here. Use dry_run before execution."
+    "tips": "Review standard mapping preview output or verified DLO/DMO field details first. The `sf_data360` endpoint action sends the reviewed mapping payload; upstream MCP local bulk lookup is not embedded here. Use dry_run before execution."
   },
   "d360_query_sql_cancel": {
     "requiredParams": ["queryId"],
+    "optionalParams": ["transport", "authSessionId", "dataspaceName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dmo_delete": {
     "requiredParams": ["dmoName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dlo_delete": {
     "requiredParams": ["dloName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dmo_mapping_delete": {
     "requiredParams": ["mappingName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dmo_field_mapping_delete": {
     "requiredParams": ["mappingName", "fieldMappingName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_datastream_delete": {
     "requiredParams": ["dataStreamId"],
     "optionalParams": ["shouldDeleteDataLakeObject", "dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_connection_delete": {
     "requiredParams": ["connectionId", "connectorType"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_segment_delete": {
     "requiredParams": ["segmentApiName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_ci_delete": {
     "requiredParams": ["ciName"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_ir_delete": {
     "requiredParams": ["identityResolutionId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_activation_delete": {
     "requiredParams": ["activationId"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_activation_target_delete": {
     "requiredParams": ["activationTargetId"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dataspace_delete": {
     "requiredParams": ["dataSpaceName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dataspace_member_remove": {
     "requiredParams": ["dataSpaceName", "memberNames"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output.",
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review.",
     "path": "/ssot/data-spaces/{dataSpaceName}/members"
   },
   "d360_transform_delete": {
     "requiredParams": ["transformId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_datakit_undeploy": {
     "requiredParams": ["dataKitId", "body"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dataaction_delete": {
     "requiredParams": ["dataActionId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Delete the data action before deleting its data action target. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Delete the data action before deleting its data action target. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_dataaction_target_delete": {
     "requiredParams": ["dataActionTargetId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_sdm_delete": {
     "requiredParams": ["modelApiNameOrId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_sdm_data_object_delete": {
     "requiredParams": ["modelApiNameOrId", "dataObjectNameOrId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_sdm_calc_dim_delete": {
     "requiredParams": ["modelApiNameOrId", "calculatedDimensionId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_sdm_calc_measure_delete": {
     "requiredParams": ["modelApiNameOrId", "calculatedMeasureId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_sdm_metric_delete": {
     "requiredParams": ["modelApiNameOrId", "metricNameOrId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_sdm_relationship_delete": {
     "requiredParams": ["modelApiNameOrId", "relationshipId"],
     "optionalParams": ["dataspace"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_search_index_delete": {
     "requiredParams": ["searchIndexApiNameOrId"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_retriever_delete": {
     "requiredParams": ["retrieverIdOrName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_retriever_config_delete": {
     "requiredParams": ["retrieverIdOrName", "configurationIdOrName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_standard_mapping_preview": {
     "requiredParams": ["sourceObjectName"],
@@ -1182,82 +1202,82 @@
   "d360_prediction_job_def_create": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_create_regression": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_create_binary_classification": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_create_multiclass_classification": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_create_sentiment_detection": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_create_topic_classification": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_create_clustering": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_ml_configured_model_create": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_ml_model_setup_create": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_update": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_activate": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_deactivate": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_ml_model_artifact_update": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_ml_configured_model_update": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_ml_configured_model_activate": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_ml_model_setup_update": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_run": {
     "safety": "confirmed",
@@ -1267,7 +1287,7 @@
   "d360_ml_alert_update": {
     "safety": "confirmed",
     "requiredParams": ["alertId", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_ml_setup_version_create": {
     "safety": "confirmed",
@@ -1277,27 +1297,27 @@
   "d360_ml_setup_version_update": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "versionId", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_prediction_job_def_delete": {
     "safety": "destructive",
     "requiredParams": ["idOrName"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_ml_model_artifact_delete": {
     "safety": "destructive",
     "requiredParams": ["idOrName"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_ml_configured_model_delete": {
     "safety": "destructive",
     "requiredParams": ["idOrName"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_ml_model_setup_delete": {
     "safety": "destructive",
     "requiredParams": ["idOrName"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_p13n_experience_config_list": {
     "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs",
@@ -1326,7 +1346,7 @@
       "disableRelatedExperiences"
     ],
     "safety": "confirmed",
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_experience_config_get": {
     "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
@@ -1339,14 +1359,14 @@
     "requiredParams": ["idOrAppSourceIdOrName", "nameParam", "body"],
     "optionalParams": ["isWpmUrlRequired", "disableRelatedExperiences"],
     "safety": "confirmed",
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_experience_config_delete": {
     "path": "/personalization/external-apps/{idOrAppSourceIdOrName}/personalization-experience-configs/{nameParam}",
     "requiredParams": ["idOrAppSourceIdOrName", "nameParam"],
     "optionalParams": ["isWpmUrlRequired", "disableRelatedExperiences"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_p13n_mobile_preview_create": {
     "safety": "confirmed",
@@ -1367,12 +1387,12 @@
   "d360_p13n_transformer_update": {
     "requiredParams": ["idOrName", "body"],
     "safety": "confirmed",
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_transformer_delete": {
     "requiredParams": ["idOrName"],
     "safety": "destructive",
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_p13n_transformer_list": {
     "safety": "read",
@@ -1393,12 +1413,12 @@
   "d360_p13n_transformer_create": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_schema_create": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_schema_get": {
     "safety": "read",
@@ -1407,17 +1427,17 @@
   "d360_p13n_schema_update": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_schema_delete": {
     "safety": "destructive",
     "requiredParams": ["idOrName"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   },
   "d360_p13n_point_create": {
     "safety": "confirmed",
     "requiredParams": ["body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_point_get": {
     "safety": "read",
@@ -1426,11 +1446,11 @@
   "d360_p13n_point_update": {
     "safety": "confirmed",
     "requiredParams": ["idOrName", "body"],
-    "tips": "Use dry_run first; actual execution requires allow_confirmed=true after reviewing the resolved request."
+    "tips": "Use dry_run first; actual execution requires allow_mutation=true after reviewing the resolved request."
   },
   "d360_p13n_point_delete": {
     "safety": "destructive",
     "requiredParams": ["idOrName"],
-    "tips": "Destructive operation. Actual execution is allowed only with target_org='AgentforceSTDM', allow_confirmed=true, and interactive Pi confirmation after reviewing dry_run output."
+    "tips": "Destructive operation. Execution requires a verified non-production target, allow_mutation=true, and Pi confirmation after dry_run review."
   }
 }

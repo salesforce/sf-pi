@@ -11,13 +11,13 @@ Data 360 Observe phase. Use when analyzing Agentforce STDM sessions, conversatio
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -28,13 +28,13 @@ Data 360 Observe phase. Use when analyzing Agentforce STDM sessions, conversatio
 
 ## Data 360 family actions
 
-- `data360_observe` `stdm.find_sessions` (runbook, read) — Find recent Agentforce STDM sessions by optional agent API name and time window.
-- `data360_observe` `stdm.session_timeline` (runbook, read) — Fetch an STDM conversation timeline for a session id.
-- `data360_observe` `trace.error_traces` (runbook, read) — Find recent Agent Platform Tracing ERROR spans.
-- `data360_observe` `trace.join_interaction_trace` (runbook, read) — Join one STDM interaction to messages, steps, and Platform Tracing spans.
-- `data360_observe` `trace.operation_latency_summary` (runbook, read) — Aggregate Platform Tracing duration by operation name.
-- `data360_observe` `trace.trace_tree` (runbook, read) — Fetch and reconstruct a Platform Tracing span tree by trace id.
-- `data360_observe` `stdm.session_otel` (local, read) — Export one recent Agentforce session as pre-joined OpenTelemetry JSON.
+- `sf_data360` `observe.stdm.find_sessions` (observe, runbook, read) — Find recent Agentforce STDM sessions by optional agent API name and time window.
+- `sf_data360` `observe.stdm.session_timeline` (observe, runbook, read) — Fetch an STDM conversation timeline for a session id.
+- `sf_data360` `observe.trace.error_traces` (observe, runbook, read) — Find recent Agent Platform Tracing ERROR spans.
+- `sf_data360` `observe.trace.join_interaction_trace` (observe, runbook, read) — Join one STDM interaction to messages, steps, and Platform Tracing spans.
+- `sf_data360` `observe.trace.operation_latency_summary` (observe, runbook, read) — Aggregate Platform Tracing duration by operation name.
+- `sf_data360` `observe.trace.trace_tree` (observe, runbook, read) — Fetch and reconstruct a Platform Tracing span tree by trace id.
+- `sf_data360` `observe.stdm.session_otel` (observe, local, read) — Export one recent Agentforce session as pre-joined OpenTelemetry JSON.
 
 ## Cross-phase routing
 
@@ -52,4 +52,4 @@ Data 360 Observe phase. Use when analyzing Agentforce STDM sessions, conversatio
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

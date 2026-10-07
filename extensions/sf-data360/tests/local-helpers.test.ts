@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
 
-import { isLocalD360Helper, runLocalD360Helper } from "../lib/facade/local-helpers.ts";
+import { isLocalD360Helper, runLocalD360Helper } from "../lib/local-helpers.ts";
 
 describe("d360 local facade helpers", () => {
   it("previews bundled standard mappings and returns a create payload", () => {

@@ -3,7 +3,7 @@
  * Adapter that contributes a small Data 360 health summary to the
  * aggregated `/sf-pi doctor` view.
  *
- * Why we don't just reuse `d360_probe`:
+ * Why we don't run `sf_data360 discover.readiness.probe` automatically:
  *   - The full probe runs 15 parallel HTTP calls; even at sub-second wall
  *     clock it pulls more data than `/sf-pi doctor` needs.
  *   - `/sf-pi doctor` budgets each registered provider at ~5 seconds total
@@ -11,7 +11,7 @@
  * Instead, this adapter answers two cheap questions:
  *   1. Is the active sf-pi target org connected?
  *   2. Does the cheapest readiness probe (`/ssot/data-spaces`) return OK?
- * Users who want the full picture still run `d360_probe` directly.
+ * Users who want the full picture run `sf_data360` with `discover.readiness.probe`.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
@@ -21,7 +21,7 @@ import {
   getSharedSfEnvironment,
 } from "../../../lib/common/sf-environment/shared-runtime.ts";
 import { connectSalesforce } from "../../../lib/common/sf-conn/index.ts";
-import { classifyConnectionProbeResult } from "./probe-tool.ts";
+import { classifyConnectionProbeResult } from "./readiness.ts";
 
 const QUICK_PROBE_PATH = "/ssot/data-spaces";
 const QUICK_PROBE_TIMEOUT_MS = 4_000;
@@ -108,7 +108,7 @@ export function buildSfData360Doctor(pi: ExtensionAPI) {
         detail: probe.message ?? `${probePath} (${probe.exitCode ?? "?"})`,
         fix:
           severity === "warn"
-            ? "Run `d360_probe` for the full readiness map and surface-level details."
+            ? "Run `sf_data360` with `discover.readiness.probe` for the full readiness map."
             : undefined,
       });
     } catch (error) {
@@ -117,7 +117,7 @@ export function buildSfData360Doctor(pi: ExtensionAPI) {
         severity: "warn",
         title: "Quick Data 360 probe failed",
         detail: error instanceof Error ? error.message : String(error),
-        fix: "Run `d360_probe` for a full diagnostic; check sf org list and Data 360 entitlement.",
+        fix: "Run `sf_data360` with `discover.readiness.probe`; check org auth and Data 360 entitlement.",
       });
     }
 

@@ -705,14 +705,14 @@ describe("Safety Kernel", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("confirms Data 360 allow_confirmed execution paths without mediating dry-runs", async () => {
+  it("confirms Data 360 allow_mutation execution paths without mediating dry-runs", async () => {
     mockedEnv = env("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
-      toolName: "data360_orchestrate",
+      toolName: "sf_data360",
       input: {
-        action: "manifest.run",
-        allow_confirmed: true,
+        action: "orchestrate.manifest.run",
+        allow_mutation: true,
         params: { manifestPath: "data/manifest.json" },
       },
       cwd: "/project",
@@ -723,12 +723,12 @@ describe("Safety Kernel", () => {
       action: "confirm",
       feature: "nativeToolGate",
       ruleId: "native-data360-confirmed-execute",
-      subject: "data360_orchestrate manifest.run",
+      subject: "sf_data360 orchestrate.manifest.run",
       orgAlias: "DevInt",
       orgType: "sandbox",
     });
     expect(decision?.approvalScope).toMatchObject({
-      operationFamily: "data360 manifest",
+      operationFamily: "data360 orchestrate.manifest",
       riskTier: "data360_confirmed_execution_exact",
     });
     expect(decision?.approvalScope?.detail).toContain("journey_fingerprint=");
@@ -737,36 +737,40 @@ describe("Safety Kernel", () => {
 
     await expect(
       evaluateSafety({
-        toolName: "data360_connect",
-        input: { action: "auth.exchange", allow_confirmed: true, params: { strategy: "pkce" } },
-        cwd: "/project",
-        config: readBundledConfig(),
-      }),
-    ).resolves.toMatchObject({
-      action: "confirm",
-      ruleId: "native-data360-confirmed-execute",
-      subject: "data360_connect auth.exchange",
-    });
-
-    await expect(
-      evaluateSafety({
-        toolName: "data360_orchestrate",
-        input: { action: "ingest_auth.pkce_interactive", allow_confirmed: true },
-        cwd: "/project",
-        config: readBundledConfig(),
-      }),
-    ).resolves.toMatchObject({
-      action: "confirm",
-      ruleId: "native-data360-confirmed-execute",
-      subject: "data360_orchestrate ingest_auth.pkce_interactive",
-    });
-
-    await expect(
-      evaluateSafety({
-        toolName: "data360_orchestrate",
+        toolName: "sf_data360",
         input: {
-          action: "manifest.run",
-          allow_confirmed: true,
+          action: "connect.auth.exchange",
+          allow_mutation: true,
+          params: { strategy: "pkce" },
+        },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toMatchObject({
+      action: "confirm",
+      ruleId: "native-data360-confirmed-execute",
+      subject: "sf_data360 connect.auth.exchange",
+    });
+
+    await expect(
+      evaluateSafety({
+        toolName: "sf_data360",
+        input: { action: "orchestrate.ingest_auth.pkce_interactive", allow_mutation: true },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toMatchObject({
+      action: "confirm",
+      ruleId: "native-data360-confirmed-execute",
+      subject: "sf_data360 orchestrate.ingest_auth.pkce_interactive",
+    });
+
+    await expect(
+      evaluateSafety({
+        toolName: "sf_data360",
+        input: {
+          action: "orchestrate.manifest.run",
+          allow_mutation: true,
           dry_run: true,
           params: { manifestPath: "data/manifest.json" },
         },
@@ -780,10 +784,10 @@ describe("Safety Kernel", () => {
     mockedEnv = env("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
-      toolName: "data360_semantic",
+      toolName: "sf_data360",
       input: {
-        action: "search_index.create",
-        allow_confirmed: true,
+        action: "semantic.search_index.create",
+        allow_mutation: true,
         params: { body: { name: "DemoIndex" } },
       },
       cwd: "/project",
@@ -794,20 +798,20 @@ describe("Safety Kernel", () => {
       action: "confirm",
       feature: "nativeToolGate",
       ruleId: "native-data360-confirmed-execute",
-      subject: "data360_semantic search_index.create",
+      subject: "sf_data360 semantic.search_index.create",
     });
     expect(decision?.approvalScope).toMatchObject({
-      operationFamily: "data360 search_index",
+      operationFamily: "data360 semantic.search_index",
       riskTier: "data360_confirmed_execution_exact",
     });
   });
 
   it("lists declared child mutations for segment publishing journeys", async () => {
     const decision = await evaluateSafety({
-      toolName: "data360_orchestrate",
+      toolName: "sf_data360",
       input: {
-        action: "build_segment.run",
-        allow_confirmed: true,
+        action: "orchestrate.build_segment.run",
+        allow_mutation: true,
         params: { segmentId: "Segment_A" },
       },
       cwd: "/project",
@@ -815,13 +819,17 @@ describe("Safety Kernel", () => {
     });
 
     expect(decision?.approvalScope?.detail).toContain("segment.publish");
-    expect(decision?.approvalScope?.detail).toContain("ci.create");
+    expect(decision?.approvalScope?.detail).toContain("segment.ci.create");
   });
 
-  it("does not mediate Data 360 read-like actions even when allow_confirmed is present", async () => {
+  it("does not mediate Data 360 read-like actions even when allow_mutation is present", async () => {
     const decision = await evaluateSafety({
-      toolName: "data360_discover",
-      input: { action: "actions.search", allow_confirmed: true, params: { query: "stream" } },
+      toolName: "sf_data360",
+      input: {
+        action: "discover.action.search",
+        allow_mutation: true,
+        params: { query: "stream" },
+      },
       cwd: "/project",
       config: readBundledConfig(),
     });
@@ -829,14 +837,34 @@ describe("Safety Kernel", () => {
     expect(decision).toBeUndefined();
   });
 
+  it("mediates Query API cancellation even though query reads are otherwise safe", async () => {
+    mockedEnv = env("DevInt", "sandbox");
+    await expect(
+      evaluateSafety({
+        toolName: "sf_data360",
+        input: {
+          action: "query.sql.cancel",
+          allow_mutation: true,
+          params: { queryId: "query-1" },
+        },
+        cwd: "/project",
+        config: readBundledConfig(),
+      }),
+    ).resolves.toMatchObject({
+      action: "confirm",
+      ruleId: "native-data360-confirmed-execute",
+      subject: "sf_data360 query.sql.cancel",
+    });
+  });
+
   it("confirms Data 360 raw REST escape hatch execution", async () => {
     mockedEnv = env("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
-      toolName: "data360_api",
+      toolName: "sf_data360",
       input: {
-        action: "rest.request",
-        allow_confirmed: true,
+        action: "api.request",
+        allow_mutation: true,
         params: { method: "DELETE", path: "/ssot/data-lake-objects/Test__dlm" },
       },
       cwd: "/project",
@@ -844,7 +872,7 @@ describe("Safety Kernel", () => {
     });
 
     expect(decision?.approvalScope).toMatchObject({
-      operationFamily: "data360 raw rest",
+      operationFamily: "data360 exact api",
       riskTier: "data360_confirmed_execution_exact",
     });
   });

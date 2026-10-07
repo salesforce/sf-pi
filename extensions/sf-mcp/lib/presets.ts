@@ -335,7 +335,7 @@ const PRESETS: readonly McpPreset[] = [
         relationship: "direct",
         capabilities: ["data360.query", "data360.configuration", "data360.activation"],
         reason:
-          "SF Data 360 already owns typed discovery, dry-run planning, execution, orchestration, and artifacts.",
+          "The single sf_data360 SDK tool already owns business discovery, direct API execution, planning, safety, and evidence.",
       },
     ],
   },

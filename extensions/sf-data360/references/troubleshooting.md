@@ -5,14 +5,14 @@ Each entry: symptom → cause → fix. Lifecycle-shape gotchas live in
 
 ## Auth and CLI
 
-- **`sf` returns auth error.** Run `sf org login web --set-default --alias my-sandbox`. Then retry the `data360_*` call or pass `target_org` explicitly.
-- **Raw `sf api request rest` rejected `--json`.** Prefer `data360_api` `rest.request`. If using raw CLI fallback, don't pass `--json`; pipe stdout to `jq` and ignore beta warnings on stderr.
-- **Raw DELETE failed with `No 'mode' found in 'body' entry`.** Prefer `data360_api` `rest.request` or the matching family action; the tool handles request shape normalization.
+- **Org authentication fails.** Reauthenticate the intended Salesforce target, then retry `sf_data360` with `target_org` explicitly.
+- **Raw `sf api request rest` rejected `--json`.** Prefer `api` `rest.request`. If using raw CLI fallback, don't pass `--json`; pipe stdout to `jq` and ignore beta warnings on stderr.
+- **Raw DELETE failed with `No 'mode' found in 'body' entry`.** Prefer `api` `rest.request` or the matching family action; the tool handles request shape normalization.
 
 ## Output size and discovery
 
 - **Endpoint returned too much data.** Use `output_mode: "summary"` or `"file_only"`. Add `limit`/`rowLimit`/`offset`/`batchSize` query parameters.
-- **Metadata request is too broad.** Prefer `data360_harmonize dmo.list/get`, `data360_prepare dlo.list/get`, or `data360_query metadata.entities/search/get`. Do not call `/ssot/data-model-objects` broadly unless full definitions are required.
+- **Metadata request is too broad.** Prefer `harmonize dmo.list/get`, `prepare dlo.list/get`, or `query metadata.entities/search/get`. Do not call `/ssot/data-model-objects` broadly unless full definitions are required.
 - **Optional surface returns `NOT_FOUND`.** Search index, retrievers, some DataKit manifest paths can be absent in healthy orgs. Treat as feature gating unless core probes also fail.
 - **DLO category filter returns no rows.** `list_dlos` filters on compact metadata categories from `/ssot/metadata-entities`, which can differ from detailed DLO categories. Retry without the category filter and inspect the helper output.
 - **`GET /ssot/data-graphs` returns `400 INTERNAL_ERROR: Empty Data Graph Name`.** The bare `/ssot/data-graphs` is detail-only. Use `GET /ssot/data-graphs/metadata` for the list. The detail-records endpoint stays at `GET /ssot/data-graphs/data/{dataGraphEntityName}`.
@@ -32,11 +32,10 @@ Each entry: symptom → cause → fix. Lifecycle-shape gotchas live in
 
 ## Query plane
 
-- **`/ssot/query` or `/ssot/queryv2` returns `Unrecognized field "query"`.** Both endpoints accept `{ "sql": "..." }`. There is no `query` field on Connect REST query bodies.
 - **`/ssot/profile/{name}` rejects `filter=...`.** The plural `filters` query parameter and bracketed equality syntax are required: `filters=[Field__c=Value]`. Combine with `fields=` to limit columns.
 - **`/ssot/profile/{name}/{id}` returns `orderby is required with offset`.** Always pair `offset` with `orderby`.
 - **`/ssot/calculated-insights/{name}` returns `apiName must end in __cio`.** Provide a CI apiName ending `__cio`.
-- **`POST /ssot/query-sql` returns inline rows but no top-level `queryId`.** Synchronous results live entirely in the first response: rows under `data[]`, metadata under `metadata[]`, and the queryId nested under `status.queryId`. Use the `/{queryId}` and `/{queryId}/rows` lifecycle endpoints only when `status.completionStatus != "ResultsProduced"` or `status.chunkCount > 1`. The legacy `/ssot/queryv2` puts `queryId` at the top level — different shape; do not reuse a `query-sql` extraction path.
+- **`query.sql.run` returns no inline rows.** Query API V3 fell back to asynchronous execution. Read `queryStatus.queryId`, poll `query.sql.status`, inspect `query.sql.metadata`, then page with `query.sql.rows`.
 
 ## Lifecycle quirks
 
@@ -71,4 +70,4 @@ Each entry: symptom → cause → fix. Lifecycle-shape gotchas live in
 
 ## Mutation safety
 
-- **Mutating call blocked.** Re-run with `dry_run: true` and review the safety decision. For v2 family tools, pass `allow_confirmed: true` only after the reviewed dry-run and only when the workflow is intended.
+- **Mutating call blocked.** Re-run the same `sf_data360` action with `dry_run: true`. Pass `allow_mutation: true` only after review and only when execution is intended.

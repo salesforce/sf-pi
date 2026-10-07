@@ -6,8 +6,8 @@ import {
   buildInteractionContextSql,
   buildSessionTimelineSql,
   runAgentObservabilityRunbook,
-} from "../lib/facade/agent-observability.ts";
-import type { QuerySqlResponse } from "../lib/facade/sql.ts";
+} from "../lib/agent-observability.ts";
+import type { QuerySqlResponse } from "../lib/sql.ts";
 
 describe("Agent observability runbooks", () => {
   it("builds bounded STDM session timeline SQL", () => {

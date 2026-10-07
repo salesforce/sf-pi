@@ -329,42 +329,29 @@ function agentScriptProvisionSubject(
   };
 }
 
-const DATA360_TOOL_NAMES = new Set([
-  "data360_discover",
-  "data360_connect",
-  "data360_prepare",
-  "data360_harmonize",
-  "data360_segment",
-  "data360_activate",
-  "data360_query",
-  "data360_semantic",
-  "data360_observe",
-  "data360_orchestrate",
-  "data360_api",
-]);
+const DATA360_TOOL_NAMES = new Set(["sf_data360"]);
 
-const DATA360_READ_PREFIXES = [
-  "actions.",
-  "action.",
-  "examples.",
-  "readiness.",
-  "metadata.",
-] as const;
+const DATA360_READ_PREFIXES = ["discover.", "query.", "observe."] as const;
 
 function classifyData360(
   toolName: string,
   input: Record<string, unknown>,
 ): NativeToolSafetySubject | undefined {
   if (!DATA360_TOOL_NAMES.has(toolName)) return undefined;
-  if (input.dry_run === true || input.allow_confirmed !== true) return undefined;
+  if (input.dry_run === true || input.allow_mutation !== true) return undefined;
   const action = stringValue(input.action);
   if (!action || isData360ReadLikeAction(action)) return undefined;
 
   const targetOrg = stringValue(input.target_org);
-  const params = input.params && typeof input.params === "object" ? input.params : undefined;
+  const params =
+    input.params && typeof input.params === "object"
+      ? (input.params as Record<string, unknown>)
+      : undefined;
+  if (action === "api.request" && stringValue(params?.method)?.toUpperCase() === "GET") {
+    return undefined;
+  }
   const paramsFingerprint = fingerprintText(JSON.stringify({ toolName, action, params }));
-  const family =
-    toolName === "data360_api" ? "data360 raw rest" : `data360 ${actionFamily(action)}`;
+  const family = action === "api.request" ? "data360 exact api" : `data360 ${actionFamily(action)}`;
   const childMutations = declaredData360ChildMutations(action);
   const childDetail = childMutations.length
     ? `; journey_fingerprint=${paramsFingerprint}; declared child mutations may include: ${childMutations.join(", ")}; read/validation/status steps may also run`
@@ -376,12 +363,12 @@ function classifyData360(
     action,
     ruleId: "native-data360-confirmed-execute",
     subject: `${toolName} ${action}`,
-    reason: `Data 360 confirmed execution requested for ${toolName} ${action}.`,
+    reason: `Data 360 mutation requested for ${action}.`,
     promptTitle: "⚠ Data 360 execution",
     operationFamily: family,
     riskTier: "data360_confirmed_execution_exact",
     fingerprint: `data360|${toolName}|${action}|${paramsFingerprint}`,
-    approvalLabel: `Data 360 ${toolName} ${action}`,
+    approvalLabel: `Data 360 ${action}`,
     approvalDetail: `tool=${toolName}; action=${action}; params=${paramsFingerprint}${childDetail}`,
     usesSalesforceOrg: true,
     targetOrg,
@@ -688,23 +675,27 @@ function normalizeApexBody(body: string): string {
 
 function declaredData360ChildMutations(action: string): string[] {
   switch (action) {
-    case "manifest.run":
-    case "ingest_csv.run":
-    case "make_data_usable.run":
+    case "orchestrate.manifest.run":
+    case "orchestrate.ingest_csv.run":
+    case "orchestrate.make_data_usable.run":
       return [
-        "source_schema.put",
-        "stream.create_ingest_api",
-        "ingest_job.create",
-        "ingest_job.upload_csv",
-        "ingest_job.close",
+        "connect.source_schema.put",
+        "prepare.stream.create_ingest_api",
+        "prepare.ingest_job.create",
+        "prepare.ingest_job.upload_csv",
+        "prepare.ingest_job.close",
       ];
-    case "build_segment.run":
-      return ["ci.create", "ci.run", "segment.create", "segment.publish"];
-    case "activate_segment.run":
-      return ["activation_target.create", "activation.create"];
-    case "semantic_retrieval.run":
-      return ["search_index.create", "retriever.create", "retriever_config.create"];
-    case "cleanup.run":
+    case "orchestrate.build_segment.run":
+      return ["segment.ci.create", "segment.ci.run", "segment.create", "segment.publish"];
+    case "orchestrate.activate_segment.run":
+      return ["activate.activation_target.create", "activate.activation.create"];
+    case "orchestrate.semantic_retrieval.run":
+      return [
+        "semantic.search_index.create",
+        "semantic.retriever.create",
+        "semantic.retriever_config.create",
+      ];
+    case "orchestrate.cleanup.run":
       return ["cleanup resource deletes from cleanup plan"];
     default:
       return [];
@@ -712,6 +703,7 @@ function declaredData360ChildMutations(action: string): string[] {
 }
 
 function isData360ReadLikeAction(action: string): boolean {
+  if (action.endsWith(".cancel")) return false;
   return (
     DATA360_READ_PREFIXES.some((prefix) => action.startsWith(prefix)) ||
     action.endsWith(".plan") ||

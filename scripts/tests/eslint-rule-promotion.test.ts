@@ -11,7 +11,7 @@ describe("ESLint rule promotions", () => {
   it("treats useless assignments as errors", async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const config = await eslint.calculateConfigForFile(
-      path.join(ROOT, "extensions/sf-data360/lib/v2/dispatcher.ts"),
+      path.join(ROOT, "extensions/sf-data360/lib/actions/dispatcher.ts"),
     );
 
     expect(config?.rules?.["no-useless-assignment"]?.[0]).toBe(2);
@@ -20,7 +20,7 @@ describe("ESLint rule promotions", () => {
   it("treats CommonJS require imports as errors", async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const config = await eslint.calculateConfigForFile(
-      path.join(ROOT, "extensions/sf-data360/lib/v2/dispatcher.ts"),
+      path.join(ROOT, "extensions/sf-data360/lib/actions/dispatcher.ts"),
     );
 
     expect(config?.rules?.["@typescript-eslint/no-require-imports"]?.[0]).toBe(2);
@@ -29,7 +29,7 @@ describe("ESLint rule promotions", () => {
   it("treats unsafe TypeScript suppression comments as errors", async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const config = await eslint.calculateConfigForFile(
-      path.join(ROOT, "extensions/sf-data360/lib/v2/dispatcher.ts"),
+      path.join(ROOT, "extensions/sf-data360/lib/actions/dispatcher.ts"),
     );
 
     expect(config?.rules?.["@typescript-eslint/ban-ts-comment"]?.[0]).toBe(2);
@@ -38,7 +38,7 @@ describe("ESLint rule promotions", () => {
   it("treats explicit any in production code as an error", async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const config = await eslint.calculateConfigForFile(
-      path.join(ROOT, "extensions/sf-data360/lib/v2/dispatcher.ts"),
+      path.join(ROOT, "extensions/sf-data360/lib/actions/dispatcher.ts"),
     );
 
     expect(config?.rules?.["@typescript-eslint/no-explicit-any"]?.[0]).toBe(2);
@@ -47,7 +47,7 @@ describe("ESLint rule promotions", () => {
   it("treats non-null assertions in production code as errors", async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const config = await eslint.calculateConfigForFile(
-      path.join(ROOT, "extensions/sf-data360/lib/v2/dispatcher.ts"),
+      path.join(ROOT, "extensions/sf-data360/lib/actions/dispatcher.ts"),
     );
 
     expect(config?.rules?.["@typescript-eslint/no-non-null-assertion"]?.[0]).toBe(2);
@@ -56,7 +56,7 @@ describe("ESLint rule promotions", () => {
   it("treats unexpected console output as an error outside CLI scripts", async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const productionConfig = await eslint.calculateConfigForFile(
-      path.join(ROOT, "extensions/sf-data360/lib/v2/dispatcher.ts"),
+      path.join(ROOT, "extensions/sf-data360/lib/actions/dispatcher.ts"),
     );
     const scriptConfig = await eslint.calculateConfigForFile(
       path.join(ROOT, "scripts/generate-catalog.mjs"),
@@ -69,7 +69,7 @@ describe("ESLint rule promotions", () => {
   it("has no warning-severity rules in the effective production config", async () => {
     const eslint = new ESLint({ cwd: ROOT });
     const config = await eslint.calculateConfigForFile(
-      path.join(ROOT, "extensions/sf-data360/lib/v2/dispatcher.ts"),
+      path.join(ROOT, "extensions/sf-data360/lib/actions/dispatcher.ts"),
     );
     const warningRules = Object.entries(config?.rules ?? {})
       .filter(([, setting]) => setting[0] === 1)

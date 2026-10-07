@@ -178,10 +178,8 @@ function buildTruncationNote(truncation: TruncationResult, fullOutputPath: strin
 /**
  * Build the shared `details.sfPi` envelope (see
  * `lib/common/display/types.ts > SfPiToolResultEnvelope`) for a Data 360
- * tool result. Centralizing this here keeps the three d360 tools
- * (api/metadata/probe) shipping the same shape so renderers and
- * downstream tooling can read `details.sfPi.summary`, `truncation`, and
- * `data` without per-tool branches.
+ * tool result. Centralizing this keeps the single sf_data360 SDK surface
+ * compatible with shared renderers and downstream tooling.
  */
 export function buildD360Envelope(
   action: string,

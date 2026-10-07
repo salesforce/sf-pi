@@ -1,16 +1,16 @@
 ---
 title: "SF Data 360"
-description: "Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch"
+description: "One Pi-native Data 360 SDK tool with discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and API actions"
 editLink: false
 ---
 
 # SF Data 360
 
-<p class="sfpi-page-lead">Data Cloud/Data 360 v2 family tools — discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and raw API escape hatch</p>
+<p class="sfpi-page-lead">One Pi-native Data 360 SDK tool with discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, and API actions</p>
 
 ## What it does
 
-Data 360 v2 family tool surface over the generated operation registry: compact action discovery, dry-run planning, shared target/version resolution, safety confirmation, bounded output, journey orchestration, and a raw REST escape hatch through the Salesforce Connection Module.
+One Pi-native sf_data360 SDK surface over a generated business action and endpoint registry, with direct Connect/Query/Ingestion transports, rich Data 360 Run Cards, dry-run safety, structured output, and orchestrated journeys.
 
 ## Start
 
@@ -31,8 +31,8 @@ Open its Manager detail or change its package state with:
 ## Safety notes
 
 - No MCP runtime or Java subprocess is used.
-- The v2 data360_* tools route through the shared Salesforce Connection Module, action registry, and existing safety gates.
-- Mutating calls are classified by method/path and confirmed when required.
+- The sf_data360 tool routes business-namespaced actions through the shared Salesforce Connection Module and direct Data 360 tenant transports.
+- Mutating calls require dry-run review, allow_mutation=true, and Guardrail mediation.
 - The extension uses plain reference docs instead of contributing Agent Skills.
 
 ## Exact reference
@@ -46,7 +46,7 @@ Open its Manager detail or change its package state with:
 - **Maturity:** stable
 - **Default state:** on
 - **Commands:** `/sf-data360`
-- **LLM tools:** `data360_discover`, `data360_connect`, `data360_prepare`, `data360_harmonize`, `data360_segment`, `data360_activate`, `data360_query`, `data360_semantic`, `data360_observe`, `data360_orchestrate`, `data360_api`
+- **LLM tools:** `sf_data360`
 - **Providers:** _none_
 - **Events/hooks:** `session_start`, `session_shutdown`, `resources_discover`
 
@@ -59,8 +59,3 @@ Open its Manager detail or change its package state with:
 - [Agent editing rules](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/AGENTS.md)
 - [Agent operating guide](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/AGENT_GUIDE.md)
 - [Reference index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/references/README.md)
-- [Compatibility evidence index](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/references/compatibility/README.md)
-
-## Troubleshooting
-
-See the [Troubleshooting section in the full README](https://github.com/salesforce/sf-pi/blob/main/extensions/sf-data360/README.md#troubleshooting) for extension-specific recovery steps.

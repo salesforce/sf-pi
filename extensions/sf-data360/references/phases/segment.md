@@ -11,13 +11,13 @@ Data 360 Segment phase. Use when managing audience segments, segment publish flo
 
 ## Tool discipline
 
-1. Use the matching `data360_*` family tool for this phase.
-2. Use `actions.search` when the exact action is unclear.
-3. Use `action.describe` and `examples.get` before complex or mutating calls.
-4. Use `dry_run: true` before confirmed/destructive actions and review the resolved request.
-5. Use `data360_api` only as the raw REST escape hatch when no family action fits.
+1. Use `sf_data360` with an action in this business namespace.
+2. Use `discover.action.search` when the exact action is unclear.
+3. Use `discover.action.describe` and `discover.action.example` before complex mutations.
+4. Use `dry_run: true` before mutations and review the resolved request.
+5. Use `api.request` only as the exact REST escape hatch when no named action fits.
 6. Keep broad results bounded with `output_mode: "summary"` or `"file_only"`.
-7. Promote repeated fallback paths into tested Data 360 family actions or journeys.
+7. Promote repeated fallback paths into tested business actions or orchestrated journeys.
 
 ## Phase coverage
 
@@ -29,14 +29,14 @@ Data 360 Segment phase. Use when managing audience segments, segment publish flo
 
 ## Data 360 family actions
 
-- `data360_segment` `ci.get` (rest_operation, read) — Get CI details.
-- `data360_segment` `ci.list` (rest_operation, read) — List calculated insights.
-- `data360_segment` `ci.list.compat` (rest_operation, read) — List all CIs. Check status for ACTIVE.
-- `data360_segment` `segment.get` (rest_operation, read) — Get segment by record ID or API name. Check segmentStatus for ACTIVE.
-- `data360_segment` `segment.list` (rest_operation, read) — List segments with optional pagination.
-- `data360_segment` `segment.list.compat` (rest_operation, read) — List all segments.
-- `data360_segment` `ci.run.status` (rest_operation, safe_post) — Get CI run status.
-- `data360_segment` `ci.validate` (rest_operation, safe_post) — Validate CI before creation.
+- `sf_data360` `segment.ci.get` (segment, rest_operation, read) — Get CI details.
+- `sf_data360` `segment.ci.list` (segment, rest_operation, read) — List all CIs. Check status for ACTIVE.
+- `sf_data360` `segment.get` (segment, rest_operation, read) — Get segment by record ID or API name. Check segmentStatus for ACTIVE.
+- `sf_data360` `segment.list` (segment, rest_operation, read) — List all segments.
+- `sf_data360` `segment.ci.run.status` (segment, rest_operation, safe_post) — Get CI run status.
+- `sf_data360` `segment.ci.validate` (segment, rest_operation, safe_post) — Validate CI before creation.
+- `sf_data360` `segment.ci.create` (segment, rest_operation, confirmed) — Create CI. apiName must end with __cio. No COUNT(DISTINCT).
+- `sf_data360` `segment.ci.delete` (segment, rest_operation, destructive) — Delete CI. Breaks dependent segments.
 
 ## Cross-phase routing
 
@@ -54,4 +54,4 @@ Data 360 Segment phase. Use when managing audience segments, segment publish flo
 
 ## Upstream reference fallback
 
-If this generated reference and the local sf-data360 references are insufficient, inspect the public upstream Data 360 reference repository for operation and payload-shape metadata, then curate findings into Pi-native `data360_*` family actions.
+If this generated reference and the local sf-data360 references are insufficient, inspect the official Data 360 API and hosted MCP contracts, then curate findings into the generated `sf_data360` action catalog.

@@ -35,16 +35,6 @@ const ALLOW = [
     line: /apiVersion = conn\.getApiVersion\?\.\(\) \?\? apiVersion;/,
   },
   {
-    file: "extensions/sf-data360/lib/api-tool.ts",
-    id: "versioned-path",
-    line: /Versionless path relative to \/services\/data\/vXX\.X/,
-  },
-  {
-    file: "extensions/sf-data360/lib/display/facade-card.ts",
-    id: "versioned-path",
-    line: /path: "\/services\/data\/v\*\/ssot\/query-sql"/,
-  },
-  {
     file: "extensions/sf-guardrail/lib/preferences.ts",
     id: "versioned-path",
     line: /return "sf org api \/services\/data\/v67\.0\/sobjects\/Account\/001\.\.\. --method DELETE -o Prod"/,
