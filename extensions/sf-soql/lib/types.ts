@@ -99,6 +99,56 @@ export interface SoqlFinding {
   message: string;
 }
 
+export interface SoqlTypeOfClause {
+  relationship: string;
+  when: Array<{ object: string; fields: string[] }>;
+  else_fields?: string[];
+}
+
+export interface SoqlFunctionField {
+  function: string;
+  field: string;
+  context: "select" | "where" | "group_by" | "having" | "order_by";
+}
+
+export interface SoqlSemiJoinShape {
+  outer_field: string;
+  object: string;
+  fields: string[];
+  semi_joins?: SoqlSemiJoinShape[];
+  function_fields?: SoqlFunctionField[];
+  where_fields?: string[];
+  order_by_fields?: string[];
+  group_by_fields?: string[];
+  having_fields?: string[];
+  aliases?: string[];
+  bind_variables?: string[];
+  type_of_fields?: string[];
+  type_of_clauses?: SoqlTypeOfClause[];
+  aggregate_fields?: Array<{ fn: string; field?: string }>;
+  literal_filters?: Array<{ field: string; operator: string; value: string }>;
+  limit?: number;
+}
+
+export interface SoqlSubqueryShape {
+  relationship: string;
+  fields: string[];
+  subqueries?: SoqlSubqueryShape[];
+  semi_joins?: SoqlSemiJoinShape[];
+  function_fields?: SoqlFunctionField[];
+  where_fields?: string[];
+  order_by_fields?: string[];
+  group_by_fields?: string[];
+  having_fields?: string[];
+  aliases?: string[];
+  bind_variables?: string[];
+  type_of_fields?: string[];
+  type_of_clauses?: SoqlTypeOfClause[];
+  aggregate_fields?: Array<{ fn: string; field?: string }>;
+  literal_filters?: Array<{ field: string; operator: string; value: string }>;
+  limit?: number;
+}
+
 export interface SoqlQueryShape {
   raw?: string;
   normalized?: string;
@@ -107,7 +157,9 @@ export interface SoqlQueryShape {
   primary_object?: string;
   fields?: string[];
   relationships?: string[];
-  subqueries?: Array<{ relationship: string; fields: string[] }>;
+  subqueries?: SoqlSubqueryShape[];
+  semi_joins?: SoqlSemiJoinShape[];
+  function_fields?: SoqlFunctionField[];
   where_fields?: string[];
   order_by_fields?: string[];
   group_by_fields?: string[];
@@ -115,6 +167,7 @@ export interface SoqlQueryShape {
   aliases?: string[];
   bind_variables?: string[];
   type_of_fields?: string[];
+  type_of_clauses?: SoqlTypeOfClause[];
   aggregate_fields?: Array<{ fn: string; field?: string }>;
   literal_filters?: Array<{ field: string; operator: string; value: string }>;
   limit?: number;
@@ -203,6 +256,8 @@ export interface SObjectFieldDescribe {
   type?: string;
   relationshipName?: string | null;
   referenceTo?: string[];
+  namePointing?: boolean;
+  polymorphicForeignKey?: boolean;
   filterable?: boolean;
   groupable?: boolean;
   sortable?: boolean;

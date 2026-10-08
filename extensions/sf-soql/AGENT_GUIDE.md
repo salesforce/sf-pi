@@ -25,7 +25,7 @@ Use this guide for schema-aware CRM SOQL/SOSL work. `sf_soql` owns discovery, va
 
 ## Evidence
 
-Validation, API-resolution evidence, query-plan signals, samples, counts, and artifact paths are the Behavior Proof. Predictable object, field, relationship, capability, and API-mode failures must be blocked during preflight; the query endpoint is not called. Transient session, permission, and platform failures remain possible and must retain their Salesforce error code.
+Validation, API-resolution evidence, query-plan signals, samples, counts, and artifact paths are the Behavior Proof. Preflight recursively validates multi-level parent paths, child-subquery fields/filters/sorts, semi-join inner queries, direct polymorphic traversal and `TYPEOF ELSE` against Salesforce's `Name` pseudo-object contract, `TYPEOF WHEN` fields against their concrete objects, and fields nested in supported date/geolocation functions. Predictable object, field, relationship, capability, and API-mode failures must be blocked during preflight; the query endpoint is not called. Transient session, permission, and platform failures remain possible and must retain their Salesforce error code.
 
 ## Related domain skills
 

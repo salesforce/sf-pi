@@ -35,8 +35,11 @@ row and field previews.
 ## Safety and Data Boundaries
 
 - Startup performs no org probe; connections resolve only for explicit actions.
-- Every query execution performs mode-aware schema validation first. Predictable
-  object, field, relationship, capability, and API-mode failures are blocked
+- Every query execution performs recursive, mode-aware schema validation first.
+  Multi-level parent paths, child-subquery fields/filters/sorts, semi-joins,
+  polymorphic `Name`/`TYPEOF` contracts, and fields nested in date/geolocation
+  functions are checked against their owning schema. Predictable object, field,
+  relationship, capability, and API-mode failures are blocked
   before the query endpoint.
 - Session-scoped schema caches are keyed by org, API version, API mode, and object.
 - `query.sample` defaults to a small limit. A top-level query without `LIMIT`

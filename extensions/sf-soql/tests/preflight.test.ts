@@ -38,6 +38,108 @@ const accountDescribe: SObjectDescribe = {
   fields: [
     { name: "Id", type: "id", filterable: true, sortable: true },
     { name: "Name", type: "string", filterable: true, sortable: true },
+    {
+      name: "OwnerId",
+      type: "reference",
+      filterable: true,
+      sortable: true,
+      relationshipName: "Owner",
+      referenceTo: ["User"],
+    },
+    { name: "Description", type: "textarea", filterable: false, sortable: false },
+    {
+      name: "CreatedDate",
+      type: "datetime",
+      filterable: true,
+      sortable: true,
+      groupable: false,
+    },
+    { name: "Industry", type: "picklist", filterable: true, sortable: true },
+    { name: "Location__c", type: "location", filterable: false, sortable: false },
+  ],
+  childRelationships: [
+    { relationshipName: "Contacts", childSObject: "Contact", field: "AccountId" },
+  ],
+};
+
+const contactDescribe: SObjectDescribe = {
+  name: "Contact",
+  label: "Contact",
+  queryable: true,
+  fields: [
+    { name: "Id", type: "id", filterable: true, sortable: true },
+    {
+      name: "AccountId",
+      type: "reference",
+      filterable: true,
+      sortable: true,
+      relationshipName: "Account",
+      referenceTo: ["Account"],
+    },
+    {
+      name: "OwnerId",
+      type: "reference",
+      filterable: true,
+      sortable: true,
+      relationshipName: "Owner",
+      referenceTo: ["User"],
+    },
+    { name: "Email", type: "email", filterable: true, sortable: true },
+    { name: "BuyerAttributes", type: "multipicklist", filterable: true, sortable: false },
+  ],
+  childRelationships: [],
+};
+
+const taskDescribe: SObjectDescribe = {
+  name: "Task",
+  label: "Task",
+  queryable: true,
+  fields: [
+    { name: "Id", type: "id", filterable: true, sortable: true },
+    {
+      name: "WhatId",
+      type: "reference",
+      filterable: true,
+      sortable: true,
+      relationshipName: "What",
+      referenceTo: ["Account", "Opportunity"],
+    },
+  ],
+  childRelationships: [],
+};
+
+const nameDescribe: SObjectDescribe = {
+  name: "Name",
+  label: "Name",
+  queryable: false,
+  fields: [
+    { name: "Id", type: "id", filterable: true, sortable: true },
+    { name: "Name", type: "string", filterable: true, sortable: true },
+    { name: "Email", type: "email", filterable: true, sortable: true },
+    { name: "Type", type: "picklist", filterable: true, sortable: true },
+  ],
+  childRelationships: [],
+};
+
+const opportunityDescribe: SObjectDescribe = {
+  name: "Opportunity",
+  label: "Opportunity",
+  queryable: true,
+  fields: [
+    { name: "Id", type: "id", filterable: true, sortable: true },
+    { name: "Name", type: "string", filterable: true, sortable: true },
+    { name: "StageName", type: "picklist", filterable: true, sortable: true },
+  ],
+  childRelationships: [],
+};
+
+const userDescribe: SObjectDescribe = {
+  name: "User",
+  label: "User",
+  queryable: true,
+  fields: [
+    { name: "Id", type: "id", filterable: true, sortable: true },
+    { name: "Name", type: "string", filterable: true, sortable: true },
   ],
   childRelationships: [],
 };
@@ -87,6 +189,11 @@ function fakeSession(): SalesforceSession {
   });
   const describes = new Map<string, SObjectDescribe>([
     ["/sobjects/Account/describe", accountDescribe],
+    ["/sobjects/Contact/describe", contactDescribe],
+    ["/sobjects/Task/describe", taskDescribe],
+    ["/sobjects/Name/describe", nameDescribe],
+    ["/sobjects/Opportunity/describe", opportunityDescribe],
+    ["/sobjects/User/describe", userDescribe],
     ["/sobjects/BothObject/describe", restOverlapDescribe],
     ["/tooling/sobjects/ToolOnly/describe", toolingDescribe],
     ["/tooling/sobjects/BothObject/describe", toolingOverlapDescribe],
@@ -107,6 +214,10 @@ function fakeSession(): SalesforceSession {
         body = {
           sobjects: [
             { name: "Account", label: "Account", queryable: true },
+            { name: "Contact", label: "Contact", queryable: true },
+            { name: "Task", label: "Task", queryable: true },
+            { name: "Opportunity", label: "Opportunity", queryable: true },
+            { name: "User", label: "User", queryable: true },
             { name: "BothObject", label: "Both Object", queryable: true },
           ],
         };
@@ -207,6 +318,297 @@ describe("SF SOQL API-aware preflight", () => {
     expect(result.details.digest.query.api).toBe("tooling");
     expect(result.details.digest.api_resolution.reason).toContain("fields validate only");
     expect(session.query).toHaveBeenCalledWith(expect.objectContaining({ api: "tooling" }));
+  });
+
+  it("validates multi-level parent relationship paths recursively", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, Account.Owner.Name FROM Contact LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("validates relationship paths selected inside child subqueries", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, (SELECT Id, Owner.Name FROM Contacts LIMIT 2) FROM Account LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks invalid child-subquery filters before execution", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id, (SELECT Id FROM Contacts WHERE MissingField = true LIMIT 2) FROM Account LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("MissingField does not exist on Contact");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("blocks unsortable child-subquery fields before execution", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id, (SELECT Id, BuyerAttributes FROM Contacts ORDER BY BuyerAttributes LIMIT 2) FROM Account LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("BuyerAttributes is not sortable on Contact");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("validates semi-join clauses against the inner object", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE Email != null) LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks invalid semi-join fields on the inner object", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE MissingField = true) LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("MissingField does not exist on Contact");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("validates TYPEOF branch fields against the branch object", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, TYPEOF What WHEN Account THEN Name END FROM Task LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks invalid TYPEOF branch fields before execution", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, TYPEOF What WHEN Account THEN MissingField END FROM Task LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("MissingField does not exist on Account");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("validates TYPEOF ELSE fields against the Name contract", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id, TYPEOF What WHEN Account THEN Industry ELSE Name, Email END FROM Task LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks functions combined with TYPEOF in SELECT", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, TYPEOF What WHEN Account THEN FORMAT(CreatedDate) END FROM Task LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain(
+      "TYPEOF cannot be combined with functions in the SELECT clause",
+    );
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("blocks invalid TYPEOF ELSE fields before execution", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id, TYPEOF What WHEN Account THEN Industry ELSE MissingField END FROM Task LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("MissingField does not exist on Name");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("validates direct polymorphic traversal against the Name contract", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, What.Name FROM Task LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks direct polymorphic fields outside the Name contract", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, What.Industry FROM Task LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("What.Industry does not resolve on Name");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("validates fields nested inside date functions", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT CALENDAR_YEAR(CreatedDate) yearValue, COUNT(Id) total FROM Account WHERE CALENDAR_YEAR(CreatedDate) = 2026 GROUP BY CALENDAR_YEAR(CreatedDate) LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks missing fields nested inside date functions", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id FROM Account WHERE CALENDAR_YEAR(MissingDate__c) = 2026 LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("MissingDate__c does not exist on Account");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("blocks date functions applied to non-date fields", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id FROM Account WHERE CALENDAR_YEAR(Name) = 2026 LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("CALENDAR_YEAR requires a date or datetime field");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("validates DISTANCE against geolocation fields", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id FROM Account WHERE DISTANCE(Location__c, GEOLOCATION(37.0, -122.0), 'mi') < 10 LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks DISTANCE on non-geolocation fields", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id FROM Account WHERE DISTANCE(Name, GEOLOCATION(37.0, -122.0), 'mi') < 10 LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("DISTANCE requires a geolocation field");
+    expect(session.query).not.toHaveBeenCalled();
   });
 
   it("blocks invalid fields before calling the query endpoint", async () => {

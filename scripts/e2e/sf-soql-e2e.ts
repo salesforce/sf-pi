@@ -208,6 +208,148 @@ async function main(): Promise<void> {
       query: "SELECT Id, Name, Owner.Name FROM Account LIMIT 1",
     }),
   );
+  await run("query.validate nested parent relationship", () =>
+    validateQuery(
+      conn,
+      {
+        action: "query.validate",
+        target_org: targetOrg,
+        query: "SELECT Id, Account.Owner.Name FROM Contact LIMIT 1",
+      },
+      state,
+    ),
+  );
+  await run("query.validate child relationship field", () =>
+    validateQuery(
+      conn,
+      {
+        action: "query.validate",
+        target_org: targetOrg,
+        query: "SELECT Id, (SELECT Id, Owner.Name FROM Contacts LIMIT 2) FROM Account LIMIT 1",
+      },
+      state,
+    ),
+  );
+  await run("query.validate semi-join", () =>
+    validateQuery(
+      conn,
+      {
+        action: "query.validate",
+        target_org: targetOrg,
+        query:
+          "SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE Email != null) LIMIT 1",
+      },
+      state,
+    ),
+  );
+  await run(
+    "query.validate invalid child field",
+    () =>
+      validateQuery(
+        conn,
+        {
+          action: "query.validate",
+          target_org: targetOrg,
+          query:
+            "SELECT Id, (SELECT Id FROM Contacts WHERE Definitely_Not_A_Field__c = true LIMIT 2) FROM Account LIMIT 1",
+        },
+        state,
+      ),
+    "fail",
+  );
+  await run(
+    "query.validate invalid TYPEOF branch field",
+    () =>
+      validateQuery(
+        conn,
+        {
+          action: "query.validate",
+          target_org: targetOrg,
+          query:
+            "SELECT Id, TYPEOF What WHEN Account THEN Definitely_Not_A_Field__c ELSE Name END FROM Task LIMIT 1",
+        },
+        state,
+      ),
+    "fail",
+  );
+  await run("query.validate TYPEOF ELSE Name contract", () =>
+    validateQuery(
+      conn,
+      {
+        action: "query.validate",
+        target_org: targetOrg,
+        query:
+          "SELECT Id, TYPEOF What WHEN Account THEN Industry ELSE Name, Email END FROM Task LIMIT 1",
+      },
+      state,
+    ),
+  );
+  await run(
+    "query.validate invalid TYPEOF ELSE field",
+    () =>
+      validateQuery(
+        conn,
+        {
+          action: "query.validate",
+          target_org: targetOrg,
+          query:
+            "SELECT Id, TYPEOF What WHEN Account THEN Industry ELSE Definitely_Not_A_Field__c END FROM Task LIMIT 1",
+        },
+        state,
+      ),
+    "fail",
+  );
+  await run("query.validate polymorphic Name traversal", () =>
+    validateQuery(
+      conn,
+      {
+        action: "query.validate",
+        target_org: targetOrg,
+        query: "SELECT Id, What.Name FROM Task LIMIT 1",
+      },
+      state,
+    ),
+  );
+  await run(
+    "query.validate invalid direct polymorphic field",
+    () =>
+      validateQuery(
+        conn,
+        {
+          action: "query.validate",
+          target_org: targetOrg,
+          query: "SELECT Id, What.Industry FROM Task LIMIT 1",
+        },
+        state,
+      ),
+    "fail",
+  );
+  await run("query.validate date function field", () =>
+    validateQuery(
+      conn,
+      {
+        action: "query.validate",
+        target_org: targetOrg,
+        query:
+          "SELECT CALENDAR_YEAR(CreatedDate) yearValue, COUNT(Id) total FROM Account GROUP BY CALENDAR_YEAR(CreatedDate) LIMIT 5",
+      },
+      state,
+    ),
+  );
+  await run(
+    "query.validate invalid date function type",
+    () =>
+      validateQuery(
+        conn,
+        {
+          action: "query.validate",
+          target_org: targetOrg,
+          query: "SELECT Id FROM Account WHERE CALENDAR_YEAR(Name) = 2026 LIMIT 1",
+        },
+        state,
+      ),
+    "fail",
+  );
   await run(
     "query.validate invalid field",
     () =>

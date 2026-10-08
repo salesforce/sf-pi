@@ -17,6 +17,7 @@
       "lib/sf-soql-tool.ts",
       "lib/operations.ts",
       "lib/resolver.ts",
+      "lib/schema-validator.ts",
       "lib/schema.ts",
       "lib/runner.ts",
       "lib/export.ts"
@@ -30,7 +31,7 @@
       "No startup org probes; Salesforce connections are resolved only during explicit sf_soql tool actions.",
       "Lifecycle actions use @salesforce/core / REST and Tooling APIs as the fast native path; missing recurring capabilities should become small native actions instead of subprocess fallbacks.",
       "Omitted api mode resolves automatically from current-org REST and Tooling schema evidence; explicit rest/tooling selections remain strict.",
-      "Every query execution performs mode-aware schema validation first and blocks predictable object, field, relationship, or API-mode failures before the query endpoint.",
+      "Every query execution performs recursive mode-aware schema validation first, including multi-level parent paths, child-subquery clauses, semi-joins, polymorphic Name/TYPEOF contracts, and fields nested in supported functions, and blocks predictable failures before the query endpoint.",
       "query.sample defaults to a small safe limit. query.run without LIMIT returns a review card unless max_rows or allow_unbounded is explicit.",
       "query.queryAll and ALL ROWS are explicit and rendered as deleted/archived-row scope warnings.",
       "query.export is confined to .sf-pi/exports/soql/ under the workspace.",

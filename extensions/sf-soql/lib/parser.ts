@@ -6,7 +6,13 @@ import type {
   parseHeaderComments as parseHeaderCommentsType,
   SOQLParser as SOQLParserType,
 } from "@salesforce/soql-common";
-import type { SoqlQueryShape } from "./types.ts";
+import type {
+  SoqlFunctionField,
+  SoqlQueryShape,
+  SoqlSemiJoinShape,
+  SoqlSubqueryShape,
+  SoqlTypeOfClause,
+} from "./types.ts";
 
 const require = createRequire(import.meta.url);
 const { parseHeaderComments, SOQLParser } = require("@salesforce/soql-common") as {
@@ -51,8 +57,14 @@ export function readTopLevelLimit(query: string): number | undefined {
 
 export function withLimit(query: string, limit: number): string {
   const current = readTopLevelLimit(query);
-  if (current !== undefined)
-    return query.replace(/\bLIMIT\s+\d+\b/i, `LIMIT ${Math.min(current, limit)}`);
+  if (current !== undefined) {
+    const limitIndex = findTopLevelKeyword(query, "LIMIT");
+    const prefix = query.slice(0, limitIndex);
+    const suffix = query
+      .slice(limitIndex)
+      .replace(/^LIMIT\s+\d+\b/i, `LIMIT ${Math.min(current, limit)}`);
+    return `${prefix}${suffix}`;
+  }
   return `${query.trim()} LIMIT ${limit}`;
 }
 
@@ -100,7 +112,7 @@ function parseShape(query: string): Partial<SoqlQueryShape> {
   const subqueries = fields
     .filter((field) => /^\(\s*SELECT\b/i.test(field))
     .map(parseSubquery)
-    .filter((value): value is { relationship: string; fields: string[] } => Boolean(value));
+    .filter((value): value is SoqlSubqueryShape => Boolean(value));
   const normalFields = fields.filter((field) => !/^\(\s*SELECT\b/i.test(field));
   const whereClause = topLevelClause(query, "WHERE", [
     "GROUP BY",
@@ -128,6 +140,15 @@ function parseShape(query: string): Partial<SoqlQueryShape> {
     "UPDATE",
   ]);
   const aliases = extractAliases(normalFields);
+  const typeOfFields = normalFields.filter((field) => /^TYPEOF\b/i.test(field));
+  const outerWhereClause = whereClause ? stripNestedSelectQueries(whereClause) : undefined;
+  const functionFields = [
+    ...extractFunctionFields(normalFields.join(", "), "select"),
+    ...extractFunctionFields(outerWhereClause, "where"),
+    ...extractFunctionFields(groupByClause, "group_by"),
+    ...extractFunctionFields(havingClause, "having"),
+    ...extractFunctionFields(orderByClause, "order_by"),
+  ];
   return {
     primary_object: primaryObject,
     fields: normalFields,
@@ -135,31 +156,44 @@ function parseShape(query: string): Partial<SoqlQueryShape> {
       .filter((field) => field.includes("."))
       .map((field) => field.split(".")[0]),
     subqueries,
-    where_fields: whereClause ? extractWhereFields(whereClause) : [],
+    semi_joins: whereClause ? extractSemiJoins(whereClause) : [],
+    function_fields: functionFields,
+    where_fields: outerWhereClause ? extractWhereFields(outerWhereClause) : [],
     order_by_fields: orderByClause ? extractOrderByFields(orderByClause) : [],
     group_by_fields: groupByClause ? extractGroupByFields(groupByClause) : [],
     having_fields: havingClause ? extractHavingFields(havingClause) : [],
     aliases,
     bind_variables: extractBindVariables(query),
-    type_of_fields: normalFields.filter((field) => /^TYPEOF\b/i.test(field)),
+    type_of_fields: typeOfFields,
+    type_of_clauses: extractTypeOfClauses(typeOfFields),
     aggregate_fields: extractAggregateFields(normalFields),
-    literal_filters: whereClause ? extractLiteralFilters(whereClause) : [],
+    literal_filters: outerWhereClause ? extractLiteralFilters(outerWhereClause) : [],
     limit: readTopLevelLimit(query),
   };
 }
 
-function parseSubquery(field: string): { relationship: string; fields: string[] } | undefined {
+function parseSubquery(field: string): SoqlSubqueryShape | undefined {
   const inner = field.trim().replace(/^\(/, "").replace(/\)$/, "");
-  const select = topLevelSelectClause(inner);
-  const fromIndex = findTopLevelKeyword(inner, "FROM");
-  const relationship =
-    fromIndex >= 0 ? readIdentifier(inner.slice(fromIndex + 4).trim()) : undefined;
+  const nested = parseShape(inner);
+  const relationship = nested.primary_object;
   if (!relationship) return undefined;
   return {
     relationship,
-    fields: splitTopLevel(select)
-      .map((value) => value.trim())
-      .filter(Boolean),
+    fields: nested.fields ?? [],
+    subqueries: nested.subqueries,
+    semi_joins: nested.semi_joins,
+    function_fields: nested.function_fields,
+    where_fields: nested.where_fields,
+    order_by_fields: nested.order_by_fields,
+    group_by_fields: nested.group_by_fields,
+    having_fields: nested.having_fields,
+    aliases: nested.aliases,
+    bind_variables: nested.bind_variables,
+    type_of_fields: nested.type_of_fields,
+    type_of_clauses: nested.type_of_clauses,
+    aggregate_fields: nested.aggregate_fields,
+    literal_filters: nested.literal_filters,
+    limit: nested.limit,
   };
 }
 
@@ -191,6 +225,80 @@ function topLevelClause(
     if (stop >= 0 && stop < end - start) end = start + stop;
   }
   return query.slice(start, end).trim() || undefined;
+}
+
+function extractSemiJoins(whereClause: string): SoqlSemiJoinShape[] {
+  const joins: SoqlSemiJoinShape[] = [];
+  const re = /\b([a-zA-Z_][\w.]*)\s+(?:NOT\s+IN|IN)\s*\(/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(whereClause))) {
+    const open = match.index + match[0].lastIndexOf("(");
+    const close = findClosingParenthesis(whereClause, open);
+    if (close < 0) continue;
+    const inner = whereClause.slice(open + 1, close).trim();
+    if (!/^SELECT\b/i.test(inner)) continue;
+    const nested = parseShape(inner);
+    if (!nested.primary_object) continue;
+    joins.push({
+      outer_field: match[1],
+      object: nested.primary_object,
+      fields: nested.fields ?? [],
+      semi_joins: nested.semi_joins,
+      function_fields: nested.function_fields,
+      where_fields: nested.where_fields,
+      order_by_fields: nested.order_by_fields,
+      group_by_fields: nested.group_by_fields,
+      having_fields: nested.having_fields,
+      aliases: nested.aliases,
+      bind_variables: nested.bind_variables,
+      type_of_fields: nested.type_of_fields,
+      type_of_clauses: nested.type_of_clauses,
+      aggregate_fields: nested.aggregate_fields,
+      literal_filters: nested.literal_filters,
+      limit: nested.limit,
+    });
+    re.lastIndex = close + 1;
+  }
+  return joins;
+}
+
+function stripNestedSelectQueries(value: string): string {
+  let result = "";
+  let cursor = 0;
+  for (let index = 0; index < value.length; index++) {
+    if (value[index] !== "(" || !/^\s*SELECT\b/i.test(value.slice(index + 1))) continue;
+    const close = findClosingParenthesis(value, index);
+    if (close < 0) continue;
+    result += value.slice(cursor, index + 1);
+    result += " ".repeat(Math.max(0, close - index - 1));
+    result += ")";
+    cursor = close + 1;
+    index = close;
+  }
+  return result + value.slice(cursor);
+}
+
+function findClosingParenthesis(value: string, open: number): number {
+  let depth = 0;
+  let quote: "'" | '"' | undefined;
+  for (let index = open; index < value.length; index++) {
+    const char = value[index];
+    const previous = value[index - 1];
+    if (quote) {
+      if (char === quote && previous !== "\\") quote = undefined;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (char === "(") depth++;
+    if (char === ")") {
+      depth--;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
 }
 
 function extractWhereFields(whereClause: string): string[] {
@@ -258,7 +366,8 @@ function extractLiteralFilters(
 
 function extractOrderByFields(orderByClause: string): string[] {
   return splitTopLevel(orderByClause)
-    .map((part) => readIdentifier(part.trim()))
+    .map((part) => part.trim().replace(/\s+(?:ASC|DESC)(?:\s+NULLS\s+(?:FIRST|LAST))?\s*$/i, ""))
+    .map((part) => (part.includes("(") ? undefined : readIdentifier(part)))
     .filter((value): value is string => Boolean(value));
 }
 
@@ -267,8 +376,71 @@ function extractGroupByFields(groupByClause: string): string[] {
     .replace(/^ROLLUP\s*\((.*)\)$/i, "$1")
     .replace(/^CUBE\s*\((.*)\)$/i, "$1");
   return splitTopLevel(normalized)
-    .map((part) => readIdentifier(part.trim()))
+    .map((part) => part.trim())
+    .map((part) => (part.includes("(") ? undefined : readIdentifier(part)))
     .filter((value): value is string => Boolean(value));
+}
+
+const NON_FIELD_FUNCTIONS = new Set([
+  "AVG",
+  "COUNT",
+  "COUNT_DISTINCT",
+  "FIELDS",
+  "GEOLOCATION",
+  "MAX",
+  "MIN",
+  "SUM",
+]);
+
+function extractFunctionFields(
+  value: string | undefined,
+  context: SoqlFunctionField["context"],
+): SoqlFunctionField[] {
+  if (!value) return [];
+  const matches: SoqlFunctionField[] = [];
+  const seen = new Set<string>();
+  const re = /(?=\b([a-zA-Z_][\w]*)\s*\(\s*([a-zA-Z_][\w.]*))/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(value))) {
+    re.lastIndex = match.index + 1;
+    const functionName = match[1].toUpperCase();
+    const fieldName = match[2];
+    if (NON_FIELD_FUNCTIONS.has(functionName)) continue;
+    const fieldOffset = value.indexOf(fieldName, match.index + match[1].length);
+    const next = value.slice(fieldOffset + fieldName.length).trimStart()[0];
+    if (next === "(") continue;
+    const key = `${context}:${functionName}:${fieldName.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    matches.push({ function: functionName, field: fieldName, context });
+  }
+  return matches;
+}
+
+function extractTypeOfClauses(fields: string[]): SoqlTypeOfClause[] {
+  return fields.flatMap((field) => {
+    const match = /^TYPEOF\s+([a-zA-Z_][\w.]*)\s+([\s\S]*?)\s+END\s*$/i.exec(field.trim());
+    if (!match) return [];
+    const body = match[2];
+    const when: SoqlTypeOfClause["when"] = [];
+    const branchRe = /\bWHEN\s+([a-zA-Z_][\w]*)\s+THEN\s+([\s\S]*?)(?=\s+WHEN\s+|\s+ELSE\s+|$)/gi;
+    let branch: RegExpExecArray | null;
+    while ((branch = branchRe.exec(body))) {
+      when.push({
+        object: branch[1],
+        fields: splitTopLevel(branch[2])
+          .map((value) => value.trim())
+          .filter(Boolean),
+      });
+    }
+    const elseMatch = /\bELSE\s+([\s\S]*)$/i.exec(body);
+    const elseFields = elseMatch
+      ? splitTopLevel(elseMatch[1])
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : undefined;
+    return [{ relationship: match[1], when, else_fields: elseFields }];
+  });
 }
 
 function extractAggregateFields(fields: string[]): Array<{ fn: string; field?: string }> {

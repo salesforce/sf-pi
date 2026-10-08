@@ -7,17 +7,11 @@ import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { validateWithSoqlLsp } from "./lsp.ts";
 import { isAggregateOrCount, parseSoql } from "./parser.ts";
-import {
-  describeResolutionError,
-  loadSchemaDescription,
-  resolutionReason,
-  resolveSchemaCandidates,
-} from "./resolver.ts";
+import { describeResolutionError, resolutionReason, resolveSchemaCandidates } from "./resolver.ts";
+import { validateSchemaShape } from "./schema-validator.ts";
 import type {
   SfSoqlParams,
   SfSoqlSessionState,
-  SObjectDescribe,
-  SObjectFieldDescribe,
   SoqlApiCallRailItem,
   SoqlApiMode,
   SoqlFinding,
@@ -66,6 +60,7 @@ export async function inspectQuery(
       ),
     );
   }
+  findings.push(...validateTypeOfCompatibility(shape));
 
   let resolvedApi: SoqlApiMode | undefined;
   let selectedReason: string | undefined;
@@ -77,16 +72,13 @@ export async function inspectQuery(
         try {
           return {
             ...candidate,
-            findings: [
-              ...(await validateFields(conn, candidate.describe, shape, candidate.api, state)),
-              ...(await validateFieldCapabilities(
-                conn,
-                candidate.describe,
-                shape,
-                candidate.api,
-                state,
-              )),
-            ],
+            findings: await validateSchemaShape(
+              conn,
+              candidate.describe,
+              shape,
+              candidate.api,
+              state,
+            ),
           };
         } catch (error) {
           return {
@@ -187,7 +179,7 @@ export async function inspectQuery(
         "info",
         "🧬",
         "TYPEOF",
-        "TYPEOF clauses are parser-recognized but only lightly validated in V1.",
+        "TYPEOF WHEN branches and the ELSE Name contract are schema-validated.",
       ),
     );
   }
@@ -356,254 +348,6 @@ function selectEvaluation<T extends { api: SoqlApiMode }>(
   return evaluations.find((candidate) => candidate.api === "rest") ?? evaluations[0];
 }
 
-async function validateFields(
-  conn: Connection,
-  describe: SObjectDescribe,
-  shape: SoqlQueryShape,
-  api: SoqlApiMode,
-  state?: SfSoqlSessionState,
-): Promise<SoqlFinding[]> {
-  const findings: SoqlFinding[] = [];
-  const fieldMap = new Map(describe.fields.map((field) => [field.name.toLowerCase(), field]));
-  for (const field of shape.fields ?? []) {
-    if (isExpression(field)) continue;
-    if (!field.includes(".")) {
-      const direct = fieldMap.get(field.toLowerCase());
-      if (!direct)
-        findings.push(
-          finding("error", "❌", "Field", `${field} does not exist on ${describe.name}.`),
-        );
-      continue;
-    }
-    const [relationship, ...tail] = field.split(".");
-    const refField = describe.fields.find(
-      (candidate) => candidate.relationshipName?.toLowerCase() === relationship.toLowerCase(),
-    );
-    if (!refField) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Relationship",
-          `${relationship} is not a parent relationship on ${describe.name}.`,
-        ),
-      );
-      continue;
-    }
-    const parentObjects = refField.referenceTo ?? [];
-    if (!parentObjects.length || !tail.length) continue;
-    const resolvedTargets = await Promise.all(
-      parentObjects.map(async (parentObject) => ({
-        parentObject,
-        describe: (await loadSchemaDescription(conn, parentObject, api, state)).describe,
-      })),
-    );
-    const matchingTargets = resolvedTargets.filter(({ describe: parentDescribe }) =>
-      parentDescribe.fields.some(
-        (candidate) => candidate.name.toLowerCase() === tail[0].toLowerCase(),
-      ),
-    );
-    if (matchingTargets.length === 0) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Field",
-          `${field} does not resolve on ${parentObjects.join(" or ")}.`,
-        ),
-      );
-    } else if (parentObjects.length > 1) {
-      findings.push(
-        finding(
-          "info",
-          "🧬",
-          "Polymorphic",
-          `${relationship} is polymorphic; ${field} was found on ${summarizeList(
-            matchingTargets.map((target) => target.parentObject),
-            6,
-          )}.`,
-        ),
-      );
-    }
-  }
-
-  for (const subquery of shape.subqueries ?? []) {
-    const rel = (describe.childRelationships ?? []).find(
-      (candidate) =>
-        candidate.relationshipName?.toLowerCase() === subquery.relationship.toLowerCase(),
-    );
-    if (!rel?.childSObject) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Subquery",
-          `${subquery.relationship} is not a child relationship on ${describe.name}.`,
-        ),
-      );
-      continue;
-    }
-    const childDescribe = (await loadSchemaDescription(conn, rel.childSObject, api, state))
-      .describe;
-    const childFields = new Set(childDescribe.fields.map((field) => field.name.toLowerCase()));
-    for (const field of subquery.fields) {
-      if (!isExpression(field) && !childFields.has(field.toLowerCase())) {
-        findings.push(
-          finding(
-            "error",
-            "❌",
-            "Subquery Field",
-            `${field} does not exist on ${rel.childSObject}.`,
-          ),
-        );
-      }
-    }
-  }
-  return findings.length
-    ? findings
-    : [finding("info", "✅", "Fields", "Objects, fields, and relationships verified.")];
-}
-
-async function validateFieldCapabilities(
-  conn: Connection,
-  describe: SObjectDescribe,
-  shape: SoqlQueryShape,
-  api: SoqlApiMode,
-  state?: SfSoqlSessionState,
-): Promise<SoqlFinding[]> {
-  const findings: SoqlFinding[] = [];
-  for (const fieldName of shape.where_fields ?? []) {
-    const resolved = await resolveField(conn, describe, fieldName, api, state);
-    if (resolved?.field.filterable === false) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Filterable",
-          `${fieldName} is not filterable on ${resolved.objectName}.`,
-        ),
-      );
-    }
-  }
-  const aliases = new Set((shape.aliases ?? []).map((alias) => alias.toLowerCase()));
-  for (const fieldName of shape.order_by_fields ?? []) {
-    if (aliases.has(fieldName.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, fieldName, api, state);
-    if (resolved?.field.sortable === false) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Sortable",
-          `${fieldName} is not sortable on ${resolved.objectName}.`,
-        ),
-      );
-    }
-  }
-  for (const fieldName of shape.group_by_fields ?? []) {
-    if (aliases.has(fieldName.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, fieldName, api, state);
-    if (resolved?.field.groupable === false) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Groupable",
-          `${fieldName} is not groupable on ${resolved.objectName}.`,
-        ),
-      );
-    }
-  }
-  for (const fieldName of shape.having_fields ?? []) {
-    if (aliases.has(fieldName.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, fieldName, api, state);
-    if (resolved?.field.filterable === false) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Having",
-          `${fieldName} is not filterable in HAVING on ${resolved.objectName}.`,
-        ),
-      );
-    }
-  }
-  for (const aggregate of shape.aggregate_fields ?? []) {
-    if (!aggregate.field || aliases.has(aggregate.field.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, aggregate.field, api, state);
-    if (resolved?.field.aggregatable === false) {
-      findings.push(
-        finding(
-          "error",
-          "❌",
-          "Aggregatable",
-          `${aggregate.fn}(${aggregate.field}) is not supported because ${aggregate.field} is not aggregatable.`,
-        ),
-      );
-    }
-  }
-  for (const filter of shape.literal_filters ?? []) {
-    const resolved = await resolveField(conn, describe, filter.field, api, state);
-    if (!resolved?.field.type || !["picklist", "multipicklist"].includes(resolved.field.type))
-      continue;
-    const activeValues = (resolved.field.picklistValues ?? [])
-      .filter((value) => value.active !== false && value.value)
-      .map((value) => value.value as string);
-    if (activeValues.length > 0 && !activeValues.includes(filter.value)) {
-      findings.push(
-        finding(
-          "warning",
-          "⚠️",
-          "Picklist",
-          `${filter.field} ${filter.operator} '${filter.value}' is not an active picklist value.`,
-        ),
-      );
-    }
-  }
-  return findings;
-}
-
-async function resolveField(
-  conn: Connection,
-  describe: SObjectDescribe,
-  path: string,
-  api: SoqlApiMode,
-  state?: SfSoqlSessionState,
-): Promise<
-  { objectName: string; field: SObjectFieldDescribe; polymorphic?: string[] } | undefined
-> {
-  if (isExpression(path)) return undefined;
-  const current = describe;
-  const parts = path.split(".");
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
-    if (i === parts.length - 1) {
-      const field = current.fields.find(
-        (candidate) => candidate.name.toLowerCase() === part.toLowerCase(),
-      );
-      return field ? { objectName: current.name, field } : undefined;
-    }
-    const relationshipField = current.fields.find(
-      (candidate) => candidate.relationshipName?.toLowerCase() === part.toLowerCase(),
-    );
-    const parentObjects = relationshipField?.referenceTo ?? [];
-    if (!parentObjects.length) return undefined;
-    for (const parentObject of parentObjects) {
-      const parentDescribe = (await loadSchemaDescription(conn, parentObject, api, state)).describe;
-      const remaining = parts.slice(i + 1).join(".");
-      const resolved = await resolveField(conn, parentDescribe, remaining, api, state);
-      if (resolved) {
-        return {
-          ...resolved,
-          polymorphic: parentObjects.length > 1 ? parentObjects : resolved.polymorphic,
-        };
-      }
-    }
-    return undefined;
-  }
-  return undefined;
-}
-
 function formatDiagnosticLocation(diagnostic: {
   range?: { start?: { line?: number; character?: number } };
 }): string {
@@ -613,13 +357,46 @@ function formatDiagnosticLocation(diagnostic: {
   return `${line + 1}:${character + 1}`;
 }
 
-function summarizeList(values: string[], max: number): string {
-  if (values.length <= max) return values.join(", ") || "—";
-  return `${values.slice(0, max).join(", ")} … +${values.length - max} more`;
-}
-
-function isExpression(field: string): boolean {
-  return /\(|\)|\s/.test(field) || /^TYPEOF\b/i.test(field);
+function validateTypeOfCompatibility(shape: SoqlQueryShape): SoqlFinding[] {
+  if (!shape.type_of_clauses?.length) return [];
+  const findings: SoqlFinding[] = [];
+  if (shape.function_fields?.some((reference) => reference.context === "select")) {
+    findings.push(
+      finding(
+        "error",
+        "❌",
+        "TYPEOF Functions",
+        "TYPEOF cannot be combined with functions in the SELECT clause.",
+      ),
+    );
+  }
+  if (
+    shape.group_by_fields?.length ||
+    shape.having_fields?.length ||
+    shape.function_fields?.some(
+      (reference) => reference.context === "group_by" || reference.context === "having",
+    )
+  ) {
+    findings.push(
+      finding(
+        "error",
+        "❌",
+        "TYPEOF Grouping",
+        "TYPEOF cannot be combined with GROUP BY or HAVING.",
+      ),
+    );
+  }
+  if (shape.aggregate_fields?.length) {
+    findings.push(
+      finding(
+        "error",
+        "❌",
+        "TYPEOF Aggregate",
+        "TYPEOF cannot be used in aggregate-only queries.",
+      ),
+    );
+  }
+  return findings;
 }
 
 function verdictFor(findings: SoqlFinding[]): "safe" | "review" | "risky" | "invalid" {
