@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.333.0-2026-10-07",
-  "latestVersion": "0.333.0",
+  "revision": "release-0.334.0-2026-10-08",
+  "latestVersion": "0.334.0",
   "announcements": [
     {
-      "id": "release-0.333.0",
+      "id": "release-0.334.0",
       "kind": "update",
-      "title": "sf-pi v0.333.0 — sf-data360: surface paged runs and orchestration traces",
-      "publishedAt": "2026-10-07T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.333.0",
+      "title": "sf-pi v0.334.0 — sf-data360: make run cards payload aware",
+      "publishedAt": "2026-10-08T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.334.0",
       "severity": "info",
-      "body": "sf-data360: surface paged runs and orchestration traces — sf-data360: reconcile live Connect response contracts"
+      "body": "sf-data360: make run cards payload aware"
     }
   ]
 }
