@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.335.0-2026-10-08",
-  "latestVersion": "0.335.0",
+  "revision": "release-0.336.0-2026-10-08",
+  "latestVersion": "0.336.0",
   "announcements": [
     {
-      "id": "release-0.335.0",
+      "id": "release-0.336.0",
       "kind": "update",
-      "title": "sf-pi v0.335.0 — runtime: audit Pi 1.1.0 and adopt runtime signals",
+      "title": "sf-pi v0.336.0 — integrations: add org-bound hosted MCP setup",
       "publishedAt": "2026-10-08T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.335.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.336.0",
       "severity": "info",
-      "body": "runtime: audit Pi 1.1.0 and adopt runtime signals"
+      "body": "integrations: add org-bound hosted MCP setup"
     }
   ]
 }
