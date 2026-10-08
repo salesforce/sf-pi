@@ -108,6 +108,25 @@ describe("Agent-Settled Update Coordinator", () => {
     );
   });
 
+  it("defers pending automatic work after an aborted settlement", async () => {
+    writeAutoUpdateEnabled(true);
+    const pi = {
+      exec: vi.fn(async () => ({ stdout: "ok", stderr: "", code: 0, killed: false })),
+      appendEntry: vi.fn(),
+    } as unknown as ExtensionAPI;
+    const coordinator = makeCoordinator(pi);
+    const ctx = context();
+
+    coordinator.onSessionStart("startup", ctx);
+    await coordinator.onAgentSettled(ctx, true);
+
+    expect(pi.exec).not.toHaveBeenCalled();
+    expect(readAutoUpdateStatus()).toMatchObject({ pending: true, running: false });
+
+    await coordinator.onAgentSettled(ctx, false);
+    expect(pi.exec).toHaveBeenCalledTimes(2);
+  });
+
   it("prevents overlapping runs across coordinator instances", async () => {
     writeAutoUpdateEnabled(true);
     let finishFirst: (() => void) | undefined;

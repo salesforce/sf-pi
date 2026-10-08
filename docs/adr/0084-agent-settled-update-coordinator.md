@@ -6,9 +6,9 @@ date: 2026-07-22
 
 # ADR 0084: Agent-Settled Update Coordinator
 
-SF Pi retains opt-in Auto Update but replaces the one-shot startup timer with an **Agent-Settled Update Coordinator**. When the daily cadence is due, startup records pending work without mutation. The next `agent_settled` boundary rechecks opt-in and idle state, emits a sanitized Human-Only plan before the first mutation, runs eligible targets independently, persists bounded results, and renders final success, failure, skip, and restart evidence.
+SF Pi retains opt-in Auto Update but replaces the one-shot startup timer with an **Agent-Settled Update Coordinator**. When the daily cadence is due, startup records pending work without mutation. The next non-aborted `agent_settled` boundary rechecks opt-in and idle state, emits a sanitized Human-Only plan before the first mutation, runs eligible targets independently, persists bounded results, and renders final success, failure, skip, and restart evidence. An aborted settlement leaves the work pending for a later normal boundary.
 
-Pi runtime updates remain user-managed. The coordinator skips the runtime instead of invoking `pi update --all` or clearing version-check environment policy. Stable future Pi 0.x releases remain loadable through ADR 0079's forward-compatibility policy, while package updates never enter Pi's self-update path or inherit its `PI_SKIP_VERSION_CHECK` failure mode.
+Pi runtime updates remain user-managed. The coordinator skips the runtime instead of invoking `pi update --all` or clearing version-check environment policy. Stable future Pi 1.x releases remain loadable through ADR 0079's forward-compatibility policy, while package updates never enter Pi's self-update path or inherit its `PI_SKIP_VERSION_CHECK` failure mode.
 
 Global npm Pi packages receive a bounded read-only metadata preflight. Only an outdated unpinned package whose latest release declares compatibility with the active Pi and Node versions is eligible; SF Pi then delegates the mutation to `pi update --extension <source> --no-approve`. Outdated unpinned Herdr is covered by this generic policy. Pinned, local, git, project-scoped, incompatible, malformed, custom-npm-command, and unverifiable packages remain untouched. Salesforce CLI remains an independent `sf update stable` target, so a package failure does not hide it.
 

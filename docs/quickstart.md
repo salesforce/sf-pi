@@ -53,7 +53,7 @@ Choose the surface that matches your task:
 
 ## 5. Start a focused non-MCP session
 
-Pi 1.0.4 accepts `*` patterns in `--tools`, so a session can expose only the
+Pi 1.1.0 accepts `*` patterns in `--tools`, so a session can expose only the
 Salesforce family needed for the current task. These profiles use Pi's native
 tool selection and do not create SF Pi settings or a second exposure model.
 Quote each pattern so the shell does not expand it.
@@ -70,8 +70,12 @@ pi --no-mcp --tools read,bash,edit,write,sf_data360
 ```
 
 `--no-mcp` makes these examples fully independent of configured MCP servers.
-Remove it when the task requires MCP. On Pi 1.0.4, `--tools` by itself keeps MCP
-tools available unless the selection explicitly filters MCP names.
+Remove it when the task requires MCP. `--tools` by itself keeps MCP tools
+available unless the selection explicitly filters MCP names.
+
+Pi 1.1.0 also accepts exact-name modifiers such as `pi --tools +codemode,-write`
+for one-run adjustments to the default tool set. Modifiers do not accept `*`
+patterns, so the focused family profiles above remain explicit allowlists.
 
 ## 6. Use generated references
 

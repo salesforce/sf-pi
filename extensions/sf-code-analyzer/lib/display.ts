@@ -108,8 +108,9 @@ export function renderCodeAnalyzerReportPanel(
   summary: CodeAnalyzerReportSummary,
   opts: { expanded?: boolean } = {},
   theme: Theme,
+  outputPad = 1,
 ): Component {
-  return renderSfPiResultCardPanel(codeAnalyzerReportCard(summary), opts, theme);
+  return renderSfPiResultCardPanel(codeAnalyzerReportCard(summary), opts, theme, outputPad);
 }
 
 export interface CodeAnalyzerRecipeCardItem {
@@ -131,8 +132,9 @@ export function renderCodeAnalyzerDoctorCard(
 export function renderCodeAnalyzerDoctorPanel(
   report: CodeAnalyzerDoctorReport,
   theme: Theme,
+  outputPad = 1,
 ): Component {
-  return renderSfPiResultCardPanel(codeAnalyzerDoctorCard(report), {}, theme);
+  return renderSfPiResultCardPanel(codeAnalyzerDoctorCard(report), {}, theme, outputPad);
 }
 
 export function renderCodeAnalyzerRecipesCard(
@@ -153,16 +155,27 @@ export function renderCodeAnalyzerRecipesPanel(
   },
   opts: { expanded?: boolean } = {},
   theme: Theme,
+  outputPad = 1,
 ): Component {
-  return renderSfPiResultCardPanel(codeAnalyzerRecipesCard(input), opts, theme);
+  return renderSfPiResultCardPanel(codeAnalyzerRecipesCard(input), opts, theme, outputPad);
 }
 
 export function renderCodeAnalyzerPlainCard(title: string, body: string, theme: Theme): string {
   return renderSfPiResultCardText(codeAnalyzerPlainCard(title, body), { expanded: true }, theme);
 }
 
-export function renderCodeAnalyzerPlainPanel(title: string, body: string, theme: Theme): Component {
-  return renderSfPiResultCardPanel(codeAnalyzerPlainCard(title, body), { expanded: true }, theme);
+export function renderCodeAnalyzerPlainPanel(
+  title: string,
+  body: string,
+  theme: Theme,
+  outputPad = 1,
+): Component {
+  return renderSfPiResultCardPanel(
+    codeAnalyzerPlainCard(title, body),
+    { expanded: true },
+    theme,
+    outputPad,
+  );
 }
 
 function codeAnalyzerPlainCard(title: string, body: string): SfPiResultCard {

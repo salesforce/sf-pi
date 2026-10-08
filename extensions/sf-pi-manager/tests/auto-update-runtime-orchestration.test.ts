@@ -5,7 +5,10 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import sfPiManagerExtension from "../index.ts";
-import { writeAutoUpdateEnabled } from "../../../lib/common/auto-update/store.ts";
+import {
+  readAutoUpdateStatus,
+  writeAutoUpdateEnabled,
+} from "../../../lib/common/auto-update/store.ts";
 
 const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
 type Handler = (event: Record<string, unknown>, ctx: ExtensionContext) => Promise<void> | void;
@@ -110,5 +113,48 @@ describe("Auto Update through the real SF Pi Manager factory", () => {
     );
 
     await handlers.get("session_shutdown")?.({ reason: "quit" }, ctx);
+  });
+
+  it("defers pending updates when agent_settled reports an aborted run", async () => {
+    const handlers = new Map<string, Handler>();
+    const calls: string[] = [];
+    const exec = vi.fn(async (command: string, args: string[]) => {
+      calls.push([command, ...args].join(" "));
+      if (command === "npm") {
+        return {
+          stdout: JSON.stringify({
+            version: "0.4.0",
+            peerDependencies: { "@earendil-works/pi-coding-agent": "*" },
+          }),
+          stderr: "",
+          code: 0,
+          killed: false,
+        };
+      }
+      return { stdout: "ok", stderr: "", code: 0, killed: false };
+    });
+    const pi = {
+      events: { on: vi.fn(), emit: vi.fn() },
+      on: vi.fn((event: string, handler: Handler) => handlers.set(event, handler)),
+      registerCommand: vi.fn(),
+      registerEntryRenderer: vi.fn(),
+      appendEntry: vi.fn(),
+      exec,
+    };
+    sfPiManagerExtension(pi as never);
+    const ctx = context();
+
+    await handlers.get("session_start")?.({ reason: "startup" }, ctx);
+    await handlers.get("agent_settled")?.({ type: "agent_settled", aborted: true }, ctx);
+
+    expect(calls).toEqual([]);
+    expect(readAutoUpdateStatus()).toMatchObject({ pending: true, running: false });
+
+    await handlers.get("agent_settled")?.({ type: "agent_settled", aborted: false }, ctx);
+    expect(calls).toEqual([
+      "npm view @ogulcancelik/pi-herdr@latest version peerDependencies engines --json",
+      "pi update --extension npm:@ogulcancelik/pi-herdr --no-approve",
+      "sf update stable",
+    ]);
   });
 });

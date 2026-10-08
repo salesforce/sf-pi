@@ -23,7 +23,7 @@ import { appendAutoUpdateTranscript } from "./auto-update-transcript.ts";
 export interface AgentSettledUpdateCoordinator extends ManualAutoUpdateRunner {
   onSessionStart(reason: string, ctx: ExtensionContext): void;
   onAgentStart(): void;
-  onAgentSettled(ctx: ExtensionContext): Promise<void>;
+  onAgentSettled(ctx: ExtensionContext, aborted?: boolean): Promise<void>;
   onSessionShutdown(): void;
 }
 
@@ -128,9 +128,9 @@ export function createAgentSettledUpdateCoordinator(
       agentActive = true;
       if (running) abortController?.abort();
     },
-    async onAgentSettled(ctx) {
+    async onAgentSettled(ctx, aborted = false) {
       agentActive = false;
-      if (!pending || running || disposed) return;
+      if (aborted || !pending || running || disposed) return;
       if (!readAutoUpdateEnabled()) {
         pending = false;
         clearAutoUpdatePending("Auto Update disabled before execution.");

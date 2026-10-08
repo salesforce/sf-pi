@@ -161,7 +161,8 @@ export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
     renderShell: "self",
     renderCall: (args, theme) =>
       new Text(renderCodeAnalyzerCallLine(args as CodeAnalyzerToolInput, theme), 0, 0),
-    renderResult: (result, opts, theme) => renderResult(result, opts, theme),
+    renderResult: (result, opts, theme, context) =>
+      renderResult(result, opts, theme, outputPadFrom(context)),
     async execute(_toolCallId, params, _signal, onUpdate, ctx) {
       const input = params as CodeAnalyzerToolInput;
       onUpdate?.({
@@ -257,6 +258,7 @@ function renderResult(
   result: { content?: unknown; details?: unknown },
   opts: { isPartial?: boolean; expanded?: boolean },
   theme: Theme,
+  outputPad: number,
 ): Component {
   if (opts.isPartial) {
     return new Text(
@@ -264,7 +266,7 @@ function renderResult(
         { phase: "Code Analyzer running", current: firstText(result) || undefined },
         theme,
       ),
-      0,
+      outputPad,
       0,
     );
   }
@@ -280,10 +282,10 @@ function renderResult(
       }
     | undefined;
   if (envelope?.report) {
-    return renderCodeAnalyzerReportPanel(envelope.report, opts, theme);
+    return renderCodeAnalyzerReportPanel(envelope.report, opts, theme, outputPad);
   }
   if (envelope?.doctor) {
-    return renderCodeAnalyzerDoctorPanel(envelope.doctor, theme);
+    return renderCodeAnalyzerDoctorPanel(envelope.doctor, theme, outputPad);
   }
   if (envelope?.action === "recipes") {
     return renderCodeAnalyzerRecipesPanel(
@@ -293,13 +295,23 @@ function renderResult(
       },
       opts,
       theme,
+      outputPad,
     );
   }
   return renderCodeAnalyzerPlainPanel(
     "Code Analyzer",
     firstText(result) || "Code Analyzer completed.",
     theme,
+    outputPad,
   );
+}
+
+function outputPadFrom(context: unknown): number {
+  // Pi 1.1 adds `outputPad`; the structural fallback keeps Pi 1.0 rendering unchanged.
+  const outputPad = (context as { outputPad?: unknown } | undefined)?.outputPad;
+  return typeof outputPad === "number" && Number.isFinite(outputPad)
+    ? Math.max(0, Math.floor(outputPad))
+    : 1;
 }
 
 function asRecipeItems(value: unknown): Array<{

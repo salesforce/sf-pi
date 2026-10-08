@@ -117,9 +117,9 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0135: SF Browser uses bounded semantic navigation for Salesforce Setup chrome](./0135-sf-browser-bounded-semantic-setup-navigation.md) — 2026-10-04
 - [0137: SF MCP Separates Connection and Tool Access](./0137-sf-mcp-separated-configuration-and-product-families.md) — 2026-10-04
 - [0139: SF Docs Restores Pi-Owned Bearer Authentication](./0139-sf-docs-restores-pi-owned-bearer-authentication.md) — 2026-10-05
-- [0140: Pi 1.0.4 audit edge and focused tool profiles](./0140-pi-104-audit-edge-and-focused-tool-profiles.md) — 2026-10-05
 - [0141: Data 360 is one Pi-native SDK tool with a hard cutover](./0141-data-360-single-sdk-tool-hard-cutover.md) — 2026-10-06
 - [0143: Data 360 cards are payload- and provenance-aware](./0143-data-360-cards-are-payload-and-provenance-aware.md) — 2026-10-08
+- [0144: Pi 1.1.0 audit edge and runtime signals](./0144-pi-110-audit-edge-and-runtime-signals.md) — 2026-10-08
 
 ## Proposed
 
@@ -155,6 +155,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0134: Pi 1.0 Runtime Floor and Native Ownership](./0134-pi-100-runtime-floor-and-native-ownership.md) — 2026-10-02 — superseded by [ADR 0136](./0136-pi-102-audit-edge-and-runtime-delegation.md)
 - [0136: Pi 1.0.2 audit edge and runtime delegation](./0136-pi-102-audit-edge-and-runtime-delegation.md) — 2026-10-04 — superseded by [ADR 0138](./0138-pi-103-audit-edge.md)
 - [0138: Pi 1.0.3 audit edge](./0138-pi-103-audit-edge.md) — 2026-10-05 — superseded by [ADR 0140](./0140-pi-104-audit-edge-and-focused-tool-profiles.md)
+- [0140: Pi 1.0.4 audit edge and focused tool profiles](./0140-pi-104-audit-edge-and-focused-tool-profiles.md) — 2026-10-05 — superseded by [ADR 0144](./0144-pi-110-audit-edge-and-runtime-signals.md)
 - [0142: Data 360 cards prioritize observed API work](./0142-data-360-cards-prioritize-observed-api-work.md) — 2026-10-07 — superseded by [ADR 0143](./0143-data-360-cards-are-payload-and-provenance-aware.md)
 
 ### Rejected

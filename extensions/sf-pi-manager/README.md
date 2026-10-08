@@ -43,10 +43,10 @@ when the user has never chosen a value. Explicit `true` or `false` choices are
 preserved and `/sf-pi telemetry` reports whether the value is an SF Pi default or
 user override.
 
-Native Auto Update is off by default. When enabled, due work waits for an
-interactive `agent_settled` boundary, uses an atomic machine lock, and handles
-eligible package and Salesforce CLI targets independently. It never updates the
-Pi Runtime itself. Package automation is limited to outdated, unpinned global
+Native Auto Update is off by default. When enabled, due work waits for a
+non-aborted interactive `agent_settled` boundary, uses an atomic machine lock,
+and handles eligible package and Salesforce CLI targets independently. It never
+updates the Pi Runtime itself. Package automation is limited to outdated, unpinned global
 npm packages whose metadata declares compatibility with the active Pi and Node
 versions.
 
@@ -79,8 +79,9 @@ mode; do not downgrade without a concrete failure.
 project, local, Git, current, incompatible, and unverifiable installations are
 intentionally outside the automatic path.
 
-**Auto Update waits for `agent_settled`:** This is expected. A new turn, reload,
-shutdown, or settings change cancels or defers the pending automatic work.
+**Auto Update waits for `agent_settled`:** This is expected. An aborted turn,
+new turn, reload, shutdown, or settings change cancels or defers pending
+automatic work.
 
 **Project changes do not stick:** Project settings live under
 `<cwd>/.pi/settings.json` and win over global settings. Pass the intended scope

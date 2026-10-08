@@ -6,12 +6,12 @@ import { buildRuntimeUpdateAdvice } from "../doctor/diagnostics.ts";
 describe("buildRuntimeUpdateAdvice", () => {
   it("reports the exact audited runtime without blocking future stable updates", () => {
     const advice = buildRuntimeUpdateAdvice({
-      piVersion: "1.0.4",
-      installedPiPackageVersion: "1.0.4",
+      piVersion: "1.1.0",
+      installedPiPackageVersion: "1.1.0",
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice.join("\n")).toContain("inside the audited >=1.0.0 <1.0.5 window");
+    expect(advice.join("\n")).toContain("inside the audited >=1.0.0 <1.1.1 window");
     expect(advice.join("\n")).toContain("newer stable pre-2.0 releases");
     expect(advice.join("\n")).not.toContain("No unbounded Pi update is recommended");
     expect(advice.join("\n")).not.toContain("npm install -g");
@@ -19,8 +19,8 @@ describe("buildRuntimeUpdateAdvice", () => {
 
   it("loads a newer stable Pi without recommending a downgrade", () => {
     const advice = buildRuntimeUpdateAdvice({
-      piVersion: "1.1.0",
-      installedPiPackageVersion: "1.1.0",
+      piVersion: "1.2.0",
+      installedPiPackageVersion: "1.2.0",
       allPiPaths: ["/tmp/bin/pi"],
     });
 
@@ -38,7 +38,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice[0]).toContain("loads stable Pi >=1.0.0 <2.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0 --force",
     );
   });
 
@@ -51,7 +51,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice[0]).toContain("loads stable Pi >=1.0.0 <2.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0 --force",
     );
   });
 
@@ -64,7 +64,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice[0]).toContain("loads stable Pi >=1.0.0 <2.0.0");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4 --force",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0 --force",
     );
   });
 
@@ -79,7 +79,7 @@ describe("buildRuntimeUpdateAdvice", () => {
     expect(advice.join("\n")).toContain("npm release-age policy detected");
     expect(advice.join("\n")).toContain("min-release-age=1440");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4 --force --min-release-age=0",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0 --force --min-release-age=0",
     );
   });
 
@@ -93,7 +93,7 @@ describe("buildRuntimeUpdateAdvice", () => {
 
     expect(advice.join("\n")).toContain("before=2026-05-18T00:00:00.000Z");
     expect(advice).toContain(
-      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4 --force --before=null --min-release-age=0",
+      "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.1.0 --force --before=null --min-release-age=0",
     );
   });
 });

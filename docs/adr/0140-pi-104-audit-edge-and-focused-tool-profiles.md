@@ -1,8 +1,9 @@
 ---
 id: "0140"
-status: accepted
+status: superseded
 date: 2026-10-05
 supersedes: ["0138"]
+supersededBy: ["0144"]
 ---
 
 # ADR 0140: Pi 1.0.4 audit edge and focused tool profiles

@@ -165,8 +165,9 @@ export function renderSfPiResultCardPanel(
   card: SfPiResultCard,
   opts: { expanded?: boolean } = {},
   theme: Theme,
+  outputPad = 1,
 ): Component {
-  const box = new Box(1, 0, (text) => theme.bg("customMessageBg", text));
+  const box = new Box(outputPad, 0, (text) => theme.bg("customMessageBg", text));
   box.addChild(
     new Text(buildResultPanelLines(card, opts.expanded === true, theme).join("\n"), 0, 0),
   );

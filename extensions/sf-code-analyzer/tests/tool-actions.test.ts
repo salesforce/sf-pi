@@ -49,6 +49,29 @@ describe("code_analyzer tool actions", () => {
     expect(tool.renderResult).toBeTypeOf("function");
   });
 
+  it("applies Pi's output padding to its self-rendered result", () => {
+    const tool = captureTool();
+    const theme = {
+      fg: (_color: string, text: string) => text,
+      bg: (_color: string, text: string) => text,
+      bold: (text: string) => text,
+    } as never;
+
+    const renderWithPad = (outputPad: number): string =>
+      tool
+        .renderResult?.(
+          { content: [{ type: "text", text: "Completed." }], details: {} } as never,
+          { isPartial: false, expanded: false },
+          theme,
+          { outputPad } as never,
+        )
+        ?.render(80)[0] ?? "";
+
+    const unpadded = renderWithPad(0).match(/^ */u)?.[0].length ?? -1;
+    const padded = renderWithPad(4).match(/^ */u)?.[0].length ?? -1;
+    expect(padded - unpadded).toBe(4);
+  });
+
   it("returns scan recipes with structured suggestions and Herdr handoff details", async () => {
     const tool = captureTool();
     const result = await tool.execute(

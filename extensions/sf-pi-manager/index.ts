@@ -52,7 +52,7 @@
  *   TUI overlay → Esc            | detail view                 | Return to extension list
  *   session_start                | cadence due + interactive   | Record Auto Update as pending
  *   agent_start                  | update running              | Abort and defer remaining work
- *   agent_settled                | pending + consented + idle   | Run one bounded update plan
+ *   agent_settled                | pending + idle + not aborted | Run one bounded update plan
  *   session_shutdown             | —                           | Cancel stale work; clear footer status
  */
 
@@ -362,8 +362,10 @@ export default function sfPiManagerExtension(pi: ExtensionAPI) {
     autoUpdateCoordinator.onAgentStart();
   });
 
-  pi.on("agent_settled", async (_event, ctx) => {
-    await autoUpdateCoordinator.onAgentSettled(ctx);
+  pi.on("agent_settled", async (event, ctx) => {
+    // Pi 1.1 adds `aborted`; read it structurally to preserve the Pi 1.0 floor.
+    const aborted = (event as { aborted?: boolean }).aborted === true;
+    await autoUpdateCoordinator.onAgentSettled(ctx, aborted);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
