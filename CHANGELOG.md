@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.335.0](https://github.com/salesforce/sf-pi/compare/v0.334.0...v0.335.0) (2026-10-08)
+
+
+### Features
+
+* **runtime:** audit Pi 1.1.0 and adopt runtime signals ([09b27d2](https://github.com/salesforce/sf-pi/commit/09b27d223ad8a276d0ab900f88db787ea18bcdda))
+
 ## [0.334.0](https://github.com/salesforce/sf-pi/compare/v0.333.0...v0.334.0) (2026-10-08)
 
 
