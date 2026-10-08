@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.337.1](https://github.com/salesforce/sf-pi/compare/v0.337.0...v0.337.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **sf-soql:** validate recursive query shapes ([4e2d7db](https://github.com/salesforce/sf-pi/commit/4e2d7db1779ebd30432d4f1ebc4b5a06baa89e0b))
+
 ## [0.337.0](https://github.com/salesforce/sf-pi/compare/v0.336.1...v0.337.0) (2026-10-08)
 
 
