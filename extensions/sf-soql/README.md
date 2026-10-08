@@ -5,7 +5,7 @@
 SF SOQL provides an API-native query lifecycle:
 
 ```text
-describe schema → validate → explain → count/sample/run → inspect artifacts → iterate
+resolve API + schema → validate → explain/count/sample/run → inspect artifacts → iterate
 ```
 
 It is not a record editor, report builder, data mutation tool, or broad bulk
@@ -24,8 +24,9 @@ tools own `.soql` and Apex edits.
 
 `sf_soql` supports readiness, schema search/describe/relationships, bounded query
 drafting/validation/explain/sample/run/count/queryAll, SOSL, artifact export,
-file diagnostics, LSP status, and session history/rerun. Pass `api: "tooling"`
-for Tooling objects such as `ApexClass` or `ApexLog`.
+file diagnostics, LSP status, and session history/rerun. Omit `api` to resolve
+regular REST versus Tooling from current-org metadata and full query-field
+validation. Explicit `api: "rest"` or `api: "tooling"` remains strict.
 
 Result cards show the full normalized query plus the native API rail. Large
 result sets remain in raw and flattened SOQL Artifacts while cards show bounded
@@ -34,6 +35,10 @@ row and field previews.
 ## Safety and Data Boundaries
 
 - Startup performs no org probe; connections resolve only for explicit actions.
+- Every query execution performs mode-aware schema validation first. Predictable
+  object, field, relationship, capability, and API-mode failures are blocked
+  before the query endpoint.
+- Session-scoped schema caches are keyed by org, API version, API mode, and object.
 - `query.sample` defaults to a small limit. A top-level query without `LIMIT`
   requires an explicit row cap or `allow_unbounded` review.
 - `query.queryAll`, `ALL ROWS`, and deleted/archived scope are explicit and
@@ -48,11 +53,15 @@ row and field previews.
 **A run returns a safety review:** Add a top-level `LIMIT`, use `query.sample` or
 `query.count`, or pass an intentional `max_rows`.
 
-**Salesforce reports `INVALID_TYPE`:** Describe the object and select the
-Tooling API when appropriate.
+**Preflight reports an API-mode mismatch:** Omit `api` to use automatic
+resolution, or keep the explicit mode and correct the object selection.
 
-**Salesforce reports `INVALID_FIELD`:** Use schema describe/relationships before
-retrying.
+**Preflight reports an invalid field or relationship:** Correct the query using
+the reported current-org schema finding. No query request was sent.
+
+**Salesforce still reports a runtime error:** Inspect the retained error code.
+Transient sessions, permissions, and platform failures can still occur after
+schema preflight.
 
 **No query plan is available:** Continue with validation, count, or a bounded
 sample; Salesforce does not return a plan for every shape.

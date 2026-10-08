@@ -22,6 +22,7 @@ export type SfSoqlAction =
   | "history.rerun";
 
 export type SoqlApiMode = "rest" | "tooling";
+export type SoqlApiPreference = SoqlApiMode | "auto";
 export type SoqlOperation = "query" | "queryAll" | "count" | "explain";
 
 export interface SfSoqlParams {
@@ -29,7 +30,7 @@ export interface SfSoqlParams {
   target_org?: string;
   query?: string;
   object?: string;
-  api?: SoqlApiMode;
+  api?: SoqlApiPreference;
   fields?: string[];
   filters?: string[];
   order_by?: string;
@@ -48,6 +49,8 @@ export interface SfSoqlParams {
 export interface SfSoqlSessionState {
   lastRunnable?: SfSoqlParams;
   lastDigest?: SoqlRunDigest;
+  schemaCache?: Map<string, SObjectDescribe>;
+  objectCatalogCache?: Map<string, SObjectCatalogEntry[]>;
 }
 
 export interface ToolResult {
@@ -161,6 +164,11 @@ export interface SoqlRunDigest {
   };
   plan?: SoqlPlanDigest;
   result?: SoqlResultDigest;
+  api_resolution?: {
+    requested: SoqlApiPreference;
+    resolved?: SoqlApiMode;
+    reason?: string;
+  };
   api_calls?: SoqlApiCallRailItem[];
   sections: SoqlRunSection[];
   artifacts?: SoqlArtifact[];
@@ -170,6 +178,14 @@ export interface SoqlRunDigest {
     total_fields: number;
     fields: SoqlFieldPreview[];
   };
+}
+
+export interface SObjectCatalogEntry {
+  name: string;
+  label?: string;
+  labelPlural?: string;
+  queryable?: boolean;
+  searchable?: boolean;
 }
 
 export interface SObjectDescribe {

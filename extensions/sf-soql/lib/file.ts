@@ -7,13 +7,14 @@ import type { SoqlConnection as Connection } from "./api.ts";
 import { apiVersion } from "./api.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { parseSoql } from "./parser.ts";
-import type { SfSoqlParams, SoqlFinding, ToolResult } from "./types.ts";
+import type { SfSoqlParams, SfSoqlSessionState, SoqlFinding, ToolResult } from "./types.ts";
 import { validateQuery } from "./validator.ts";
 
 export async function diagnoseFile(
   conn: Connection,
   params: SfSoqlParams,
   cwd: string,
+  state?: SfSoqlSessionState,
 ): Promise<ToolResult> {
   const file = params.file?.trim();
   if (!file) throw new Error("file is required for file.diagnose.");
@@ -23,12 +24,17 @@ export async function diagnoseFile(
   const findings: SoqlFinding[] = [];
   const rows = [];
   for (const [index, query] of queries.entries()) {
-    const validation = await validateQuery(conn, {
-      action: "query.validate",
-      target_org: params.target_org,
-      query,
-      include_plan: params.include_plan,
-    });
+    const validation = await validateQuery(
+      conn,
+      {
+        action: "query.validate",
+        target_org: params.target_org,
+        query,
+        api: params.api,
+        include_plan: params.include_plan,
+      },
+      state,
+    );
     const digest = validation.details.digest as
       { status?: string; validation?: { findings?: SoqlFinding[] } } | undefined;
     const queryFindings =

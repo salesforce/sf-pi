@@ -74,7 +74,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-soql">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF SOQL</strong>
-  <span>API-native SOQL lifecycle workflows for pi: schema search/describe, relationship discovery, query drafting, validation, query plans, bounded query/SOSL execution, exports, file diagnostics, and artifacts.</span>
+  <span>API-native, schema-grounded SOQL lifecycle workflows for pi with automatic REST/Tooling resolution, guarded execution, query plans, bounded results, and artifacts.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-soql</code></span>
 </a>
 </div>

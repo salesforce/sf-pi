@@ -1,14 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** SF SOQL domain helpers over the shared Salesforce Connection Module. */
 
-import type {
-  HttpMethod,
-  SalesforceSession,
-  SalesforceQueryResult as SharedQueryResult,
+import {
+  SalesforceRequestError,
+  type HttpMethod,
+  type SalesforceSession,
+  type SalesforceQueryResult as SharedQueryResult,
 } from "../../../lib/common/sf-conn/index.ts";
 import type {
   SalesforceQueryResult,
   SalesforceSearchResult,
+  SObjectCatalogEntry,
   SObjectDescribe,
   SoqlApiMode,
   SoqlApiCallRailItem,
@@ -50,8 +52,11 @@ export async function requestJson<T>(
     timeoutMs: SOQL_REQUEST_TIMEOUT_MS,
   });
   if (response.status >= 400) {
-    throw new Error(
-      `Salesforce API ${method} ${response.path.split("?", 1)[0]} failed (${response.status}).`,
+    throw new SalesforceRequestError(
+      response.status,
+      response.path,
+      response.body,
+      response.target,
     );
   }
   return response.body;
@@ -114,11 +119,12 @@ export async function explainQuery(sf: SoqlConnection, query: string): Promise<Q
 export async function describeSObject(
   sf: SoqlConnection,
   objectName: string,
+  mode: SoqlApiMode = "rest",
 ): Promise<SObjectDescribe> {
   return requestJson<SObjectDescribe>(
     sf,
     "GET",
-    `/sobjects/${encodeURIComponent(objectName)}/describe`,
+    `${sobjectsPath(mode)}/${encodeURIComponent(objectName)}/describe`,
   );
 }
 
@@ -133,24 +139,15 @@ export async function orgLimits(sf: SoqlConnection): Promise<Record<string, unkn
   return requestJson<Record<string, unknown>>(sf, "GET", "/limits");
 }
 
-export async function listSObjects(sf: SoqlConnection): Promise<{
-  sobjects?: Array<{
-    name: string;
-    label?: string;
-    labelPlural?: string;
-    queryable?: boolean;
-    searchable?: boolean;
-  }>;
-}> {
-  return requestJson<{
-    sobjects?: Array<{
-      name: string;
-      label?: string;
-      labelPlural?: string;
-      queryable?: boolean;
-      searchable?: boolean;
-    }>;
-  }>(sf, "GET", "/sobjects");
+export async function listSObjects(
+  sf: SoqlConnection,
+  mode: SoqlApiMode = "rest",
+): Promise<{ sobjects?: SObjectCatalogEntry[] }> {
+  return requestJson<{ sobjects?: SObjectCatalogEntry[] }>(sf, "GET", sobjectsPath(mode));
+}
+
+export function sobjectsPath(mode: SoqlApiMode): string {
+  return mode === "tooling" ? "/tooling/sobjects" : "/sobjects";
 }
 
 export function apiCall(method: string, path: string, detail?: string): SoqlApiCallRailItem {

@@ -81,7 +81,9 @@ const Params = Type.Object({
     }),
   ),
   api: Type.Optional(
-    StringEnum(["rest", "tooling"] as const, { description: "Query API mode. Default rest." }),
+    StringEnum(["auto", "rest", "tooling"] as const, {
+      description: "Query API mode. Default auto resolves from current-org schema evidence.",
+    }),
   ),
   max_rows: Type.Optional(
     Type.Number({ description: "Maximum rows to fetch. Hard-capped by sf-soql." }),
@@ -115,8 +117,9 @@ export function registerSfSoqlTool(pi: ExtensionAPI): void {
     promptSnippet:
       "Run API-native SOQL lifecycle workflows: describe schema, validate/explain queries, run bounded samples/counts, and inspect artifacts.",
     promptGuidelines: [
-      "Use sf_soql before raw CLI and establish current schema/relationship evidence before relying on custom names.",
-      "Prefer validation, count, or sample before broad execution; queryAll/deleted-row scope must be explicit and disclosed.",
+      "Use sf_soql before raw CLI; query actions perform API-aware schema preflight before execution.",
+      "Omit api for automatic REST/Tooling resolution; explicit api selections stay strict.",
+      "Prefer count or sample before broad execution; queryAll/deleted-row scope must be explicit and disclosed.",
       "Use the installed SOQL guide path declared in <sf_engineering_constitution> for Tooling API, query-plan, artifact, and export guidance.",
     ],
     parameters: Params,
@@ -137,19 +140,19 @@ export function registerSfSoqlTool(pi: ExtensionAPI): void {
           case "org.preflight":
             return orgPreflight(conn, params);
           case "schema.describe":
-            return schemaDescribe(conn, params);
+            return schemaDescribe(conn, params, state);
           case "schema.relationships":
-            return schemaRelationships(conn, params);
+            return schemaRelationships(conn, params, state);
           case "schema.search":
             return schemaSearch(conn, params);
           case "query.draft":
-            return queryDraft(conn, params);
+            return queryDraft(conn, params, state);
           case "file.diagnose":
-            return diagnoseFile(conn, params, ctx.cwd);
+            return diagnoseFile(conn, params, ctx.cwd, state);
           case "lsp.status":
             return lspStatus(params);
           case "query.validate":
-            return validateQuery(conn, params);
+            return validateQuery(conn, params, state);
           case "query.explain":
             return explain(conn, params, state);
           case "query.sample":

@@ -9,6 +9,7 @@ interface ParsedSalesforceError {
   errorCode?: string;
   message: string;
   status?: number;
+  path?: string;
 }
 
 export function errorResult(params: SfSoqlParams, err: unknown): ToolResult {
@@ -57,6 +58,21 @@ function safeParse(query: string) {
 
 function parseSalesforceError(err: unknown): ParsedSalesforceError {
   const raw = err instanceof Error ? err.message : String(err);
+  if (err && typeof err === "object") {
+    const typed = err as { errorCode?: unknown; status?: unknown; path?: unknown };
+    if (
+      typeof typed.errorCode === "string" ||
+      typeof typed.status === "number" ||
+      typeof typed.path === "string"
+    ) {
+      return {
+        errorCode: typeof typed.errorCode === "string" ? typed.errorCode : undefined,
+        message: raw,
+        status: typeof typed.status === "number" ? typed.status : undefined,
+        path: typeof typed.path === "string" ? typed.path : undefined,
+      };
+    }
+  }
   const status = /failed \((\d+)\)/.exec(raw)?.[1];
   const bodyText = raw.slice(raw.indexOf(":") + 1).trim();
   const body = safeJson(bodyText);

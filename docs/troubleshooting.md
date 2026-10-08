@@ -198,8 +198,9 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 **[SF SOQL](./extensions/sf-soql.md#troubleshooting)**
 
 - A run returns a safety review
-- Salesforce reports `INVALID_TYPE`
-- Salesforce reports `INVALID_FIELD`
+- Preflight reports an API-mode mismatch
+- Preflight reports an invalid field or relationship
+- Salesforce still reports a runtime error
 - No query plan is available
 - The full result is absent from chat
 - Export rejects a path

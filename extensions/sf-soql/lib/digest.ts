@@ -26,6 +26,7 @@ export function buildDigest(params: {
   validation?: SoqlRunDigest["validation"];
   plan?: SoqlPlanDigest;
   result?: SoqlResultDigest;
+  api_resolution?: SoqlRunDigest["api_resolution"];
   api_calls?: SoqlApiCallRailItem[];
   sections: SoqlRunSection[];
   artifacts?: SoqlArtifact[];
@@ -55,12 +56,18 @@ export function textForDigest(digest: SoqlRunDigest): string {
   const lines = [
     `${digest.status.toUpperCase()}: ${bits}`,
     digest.query?.normalized ? `Query: ${digest.query.normalized}` : undefined,
+    digest.api_resolution
+      ? `API: ${digest.api_resolution.requested.toUpperCase()}${
+          digest.api_resolution.resolved ? ` → ${digest.api_resolution.resolved.toUpperCase()}` : ""
+        }${digest.api_resolution.reason ? ` · ${digest.api_resolution.reason}` : ""}`
+      : undefined,
     rows !== undefined ? `Rows returned: ${rows}` : undefined,
     findings ? `Findings: ${findings}` : undefined,
   ].filter((line): line is string => Boolean(line));
 
   appendSchemaPreview(lines, digest);
   appendValidationFindings(lines, digest);
+  appendFailureSummary(lines, digest);
   appendRowPreview(lines, digest);
   appendArtifacts(lines, digest);
 
@@ -121,6 +128,17 @@ function appendValidationFindings(lines: string[], digest: SoqlRunDigest): void 
   }
   const hidden = findings.length - visible.length;
   if (hidden > 0) lines.push(`+${hidden} more findings in details.`);
+}
+
+function appendFailureSummary(lines: string[], digest: SoqlRunDigest): void {
+  if (digest.status !== "fail" || digest.validation?.findings?.length) return;
+  const root = digest.sections.find((candidate) => candidate.title === "Root Cause");
+  if (!root) return;
+  const code = root.rows.find((item) => item.label === "Error Code")?.value;
+  const message = root.rows.find((item) => item.label === "Message")?.value;
+  lines.push("", "Failure:");
+  if (code && code !== "—") lines.push(`- Code: ${code}`);
+  if (message && message !== "—") lines.push(`- Message: ${message}`);
 }
 
 function appendRowPreview(lines: string[], digest: SoqlRunDigest): void {

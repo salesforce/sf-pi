@@ -140,7 +140,7 @@ _Slack integration — search messages, read threads, browse channel history_
 
 ### [SF SOQL](./extensions/sf-soql)
 
-_API-native SOQL lifecycle workflows for pi: schema search/describe, relationship discovery, query drafting, validation, query plans, bounded query/SOSL execution, exports, file diagnostics, and artifacts._
+_API-native, schema-grounded SOQL lifecycle workflows for pi with automatic REST/Tooling resolution, guarded execution, query plans, bounded results, and artifacts._
 
 - Default: **on**
 - Commands: `/sf-soql`

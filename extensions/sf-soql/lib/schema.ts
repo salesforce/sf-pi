@@ -2,14 +2,26 @@
 /** Schema describe and relationship helpers for sf-soql. */
 
 import type { SoqlConnection as Connection } from "./api.ts";
-import { apiCall, apiVersion, describeSObject } from "./api.ts";
+import { apiVersion } from "./api.ts";
 import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
-import type { SfSoqlParams, SObjectDescribe, SObjectFieldDescribe, ToolResult } from "./types.ts";
+import { resolveObjectSchema } from "./resolver.ts";
+import type {
+  SfSoqlParams,
+  SfSoqlSessionState,
+  SObjectDescribe,
+  SObjectFieldDescribe,
+  ToolResult,
+} from "./types.ts";
 
-export async function schemaDescribe(conn: Connection, params: SfSoqlParams): Promise<ToolResult> {
+export async function schemaDescribe(
+  conn: Connection,
+  params: SfSoqlParams,
+  state?: SfSoqlSessionState,
+): Promise<ToolResult> {
   const objectName = requireObject(params);
-  const describe = await describeSObject(conn, objectName);
+  const resolution = await resolveObjectSchema(conn, params, objectName, state);
+  const describe = resolution.describe;
   const commonFields = describe.fields
     .map((field) => field.name)
     .filter((name) => ["Id", "Name", "OwnerId", "CreatedDate", "LastModifiedDate"].includes(name))
@@ -28,16 +40,16 @@ export async function schemaDescribe(conn: Connection, params: SfSoqlParams): Pr
     title: `SOQL Schema · ${describe.name}`,
     org: { alias: params.target_org, api_version: apiVersion(conn) },
     meta: [
+      resolution.resolvedApi.toUpperCase(),
       `fields=${describe.fields.length}`,
       `relationships=${describe.childRelationships?.length ?? 0}`,
     ],
-    api_calls: [
-      apiCall(
-        "GET",
-        conn.path(`/sobjects/${describe.name}/describe`),
-        `fields=${describe.fields.length}`,
-      ),
-    ],
+    api_resolution: {
+      requested: resolution.requestedApi,
+      resolved: resolution.resolvedApi,
+      reason: resolution.reason,
+    },
+    api_calls: resolution.apiCalls,
     output_mode: params.output_mode,
     schema_preview: {
       total_fields: describe.fields.length,
@@ -77,9 +89,11 @@ export async function schemaDescribe(conn: Connection, params: SfSoqlParams): Pr
 export async function schemaRelationships(
   conn: Connection,
   params: SfSoqlParams,
+  state?: SfSoqlSessionState,
 ): Promise<ToolResult> {
   const objectName = requireObject(params);
-  const describe = await describeSObject(conn, objectName);
+  const resolution = await resolveObjectSchema(conn, params, objectName, state);
+  const describe = resolution.describe;
   const parentRefs = parentReferenceFields(describe);
   const childRels = (describe.childRelationships ?? []).filter((rel) => rel.relationshipName);
   const digest = buildDigest({
@@ -88,10 +102,17 @@ export async function schemaRelationships(
     icon: "🔗",
     title: `SOQL Relationships · ${describe.name}`,
     org: { alias: params.target_org, api_version: apiVersion(conn) },
-    meta: [`parents=${parentRefs.length}`, `children=${childRels.length}`],
-    api_calls: [
-      apiCall("GET", conn.path(`/sobjects/${describe.name}/describe`), "relationships=true"),
+    meta: [
+      resolution.resolvedApi.toUpperCase(),
+      `parents=${parentRefs.length}`,
+      `children=${childRels.length}`,
     ],
+    api_resolution: {
+      requested: resolution.requestedApi,
+      resolved: resolution.resolvedApi,
+      reason: resolution.reason,
+    },
+    api_calls: resolution.apiCalls,
     sections: [
       section(
         "⬆️",

@@ -162,6 +162,18 @@ async function main(): Promise<void> {
       object: "Account",
     }),
   );
+  await run("schema.describe ApexCodeCoverage tooling", () =>
+    schemaDescribe(
+      conn,
+      {
+        action: "schema.describe",
+        target_org: targetOrg,
+        object: "ApexCodeCoverage",
+        api: "tooling",
+      },
+      state,
+    ),
+  );
   await run("schema.search harness", () =>
     schemaSearch(conn, {
       action: "schema.search",
@@ -244,6 +256,23 @@ async function main(): Promise<void> {
       state,
     ),
   );
+  const autoTooling = await run("query.sample auto tooling", () =>
+    sampleQuery(
+      conn,
+      {
+        action: "query.sample",
+        target_org: targetOrg,
+        query:
+          "SELECT Id, ApexClassOrTriggerId, NumLinesCovered, NumLinesUncovered FROM ApexCodeCoverage",
+        max_rows: 1,
+      },
+      state,
+    ),
+  );
+  assert(
+    autoTooling.query?.api === "tooling",
+    "auto mode should resolve ApexCodeCoverage to Tooling",
+  );
   assert(
     sample.artifacts?.some(
       (artifact) => artifact.kind === "flattened-csv" && existsSync(artifact.path),
@@ -279,11 +308,11 @@ async function main(): Promise<void> {
       {
         action: "query.export",
         target_org: targetOrg,
-        output_file: path.join(tempDir, "latest.csv"),
+        output_file: "latest.csv",
         format: "csv",
       },
       state,
-      process.cwd(),
+      tempDir,
     ),
   );
   assert(

@@ -1,29 +1,53 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Parse + describe-backed SOQL validation. */
+/** Parse + API-aware describe-backed SOQL validation. */
 
 import type { SoqlConnection as Connection } from "./api.ts";
-import { apiCall, apiVersion, describeSObject } from "./api.ts";
+import { apiCall, apiVersion } from "./api.ts";
 import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { validateWithSoqlLsp } from "./lsp.ts";
 import { isAggregateOrCount, parseSoql } from "./parser.ts";
+import {
+  describeResolutionError,
+  loadSchemaDescription,
+  resolutionReason,
+  resolveSchemaCandidates,
+} from "./resolver.ts";
 import type {
   SfSoqlParams,
+  SfSoqlSessionState,
   SObjectDescribe,
   SObjectFieldDescribe,
+  SoqlApiCallRailItem,
+  SoqlApiMode,
   SoqlFinding,
   SoqlQueryShape,
+  SoqlRunDigest,
   ToolResult,
 } from "./types.ts";
 import { explainPlanDigest } from "./runner.ts";
 
-export async function validateQuery(conn: Connection, params: SfSoqlParams): Promise<ToolResult> {
+export interface QueryInspection {
+  shape: SoqlQueryShape;
+  requestedApi: NonNullable<SfSoqlParams["api"]>;
+  resolvedApi?: SoqlApiMode;
+  resolutionReason?: string;
+  findings: SoqlFinding[];
+  apiCalls: SoqlApiCallRailItem[];
+}
+
+export async function inspectQuery(
+  conn: Connection,
+  params: SfSoqlParams,
+  state?: SfSoqlSessionState,
+): Promise<QueryInspection> {
   const rawQuery = requireQuery(params);
   const shape = parseSoql(rawQuery);
   const apiCalls = [
     apiCall("PARSE", "SOQL", shape.syntax_errors?.length ? "syntax=errors" : "syntax=ok"),
   ];
   const findings: SoqlFinding[] = [];
+  const requestedApi = params.api ?? "auto";
   const lspDiagnostics = shape.normalized ? validateWithSoqlLsp(shape.normalized) : [];
   for (const diagnostic of lspDiagnostics) {
     findings.push(
@@ -43,18 +67,90 @@ export async function validateQuery(conn: Connection, params: SfSoqlParams): Pro
     );
   }
 
-  let describe: SObjectDescribe | undefined;
+  let resolvedApi: SoqlApiMode | undefined;
+  let selectedReason: string | undefined;
   if (shape.primary_object) {
-    describe = await describeSObject(conn, shape.primary_object);
-    apiCalls.push(
-      apiCall(
-        "GET",
-        conn.path(`/sobjects/${shape.primary_object}/describe`),
-        `fields=${describe.fields.length}`,
-      ),
+    const resolution = await resolveSchemaCandidates(conn, params, shape.primary_object, state);
+    apiCalls.push(...resolution.apiCalls);
+    const evaluations = await Promise.all(
+      resolution.candidates.map(async (candidate) => {
+        try {
+          return {
+            ...candidate,
+            findings: [
+              ...(await validateFields(conn, candidate.describe, shape, candidate.api, state)),
+              ...(await validateFieldCapabilities(
+                conn,
+                candidate.describe,
+                shape,
+                candidate.api,
+                state,
+              )),
+            ],
+          };
+        } catch (error) {
+          return {
+            ...candidate,
+            findings: [
+              finding(
+                "error",
+                "❌",
+                "Relationship Metadata",
+                describeResolutionError(candidate.api, shape.primary_object ?? "query", error),
+              ),
+            ],
+          };
+        }
+      }),
     );
-    findings.push(...(await validateFields(conn, describe, shape)));
-    findings.push(...(await validateFieldCapabilities(conn, describe, shape)));
+    const valid = evaluations.filter(
+      (candidate) => !candidate.findings.some((item) => item.severity === "error"),
+    );
+    const selected = selectEvaluation(evaluations, valid, requestedApi);
+    if (selected) {
+      resolvedApi = selected.api;
+      shape.api = selected.api;
+      const fieldMatchedApi =
+        requestedApi === "auto" && resolution.candidates.length > 1 && valid.length === 1
+          ? selected.api
+          : undefined;
+      selectedReason = resolutionReason(
+        requestedApi,
+        resolution.candidates,
+        selected.api,
+        fieldMatchedApi,
+      );
+      findings.push(
+        finding(
+          "info",
+          "🧭",
+          "API",
+          `${requestedApi.toUpperCase()} resolved to ${selected.api.toUpperCase()}: ${selectedReason}.`,
+        ),
+      );
+      findings.push(...selected.findings);
+    } else {
+      for (const failure of resolution.errors) {
+        findings.push(
+          finding(
+            "error",
+            "❌",
+            "API Mode",
+            describeResolutionError(failure.api, shape.primary_object, failure.error),
+          ),
+        );
+      }
+      if (!resolution.errors.length) {
+        findings.push(
+          finding(
+            "error",
+            "❌",
+            "Object",
+            `${shape.primary_object} is not queryable through REST or Tooling API.`,
+          ),
+        );
+      }
+    }
   } else {
     findings.push(finding("error", "❌", "Object", "Could not determine top-level FROM object."));
   }
@@ -96,79 +192,176 @@ export async function validateQuery(conn: Connection, params: SfSoqlParams): Pro
     );
   }
 
-  const shouldExplain = params.include_plan || findings.some((item) => item.severity === "warning");
+  return {
+    shape,
+    requestedApi,
+    resolvedApi,
+    resolutionReason: selectedReason,
+    findings,
+    apiCalls,
+  };
+}
+
+export async function validateQuery(
+  conn: Connection,
+  params: SfSoqlParams,
+  state?: SfSoqlSessionState,
+): Promise<ToolResult> {
+  const inspection = await inspectQuery(conn, params, state);
+  const rawQuery = requireQuery(params);
+  const shouldExplain =
+    inspection.resolvedApi === "rest" &&
+    (params.include_plan || inspection.findings.some((item) => item.severity === "warning"));
   const plan =
-    shouldExplain && shape.normalized
-      ? await explainPlanDigest(conn, shape.normalized).catch(() => undefined)
+    shouldExplain && inspection.shape.normalized
+      ? await explainPlanDigest(conn, inspection.shape.normalized).catch(() => undefined)
       : undefined;
-  if (plan)
-    apiCalls.push(
+  if (plan) {
+    inspection.apiCalls.push(
       apiCall(
         "GET",
         conn.path("/query", { explain: "SELECT..." }),
         plan.relative_cost !== undefined ? `cost=${plan.relative_cost}` : undefined,
       ),
     );
+  } else if (params.include_plan && inspection.resolvedApi === "tooling") {
+    inspection.findings.push(
+      finding(
+        "info",
+        "ℹ️",
+        "Query Plan",
+        "Query-plan retrieval is not run for Tooling API queries.",
+      ),
+    );
+  }
 
-  const verdict = verdictFor(findings);
+  const verdict = verdictFor(inspection.findings);
   const artifact = await writeSoqlArtifact(
     "validation",
-    `${shape.primary_object ?? "query"}-${Date.now()}.json`,
-    { query: shape.normalized ?? rawQuery, findings, plan },
+    `${inspection.shape.primary_object ?? "query"}-${Date.now()}.json`,
+    { query: inspection.shape.normalized ?? rawQuery, findings: inspection.findings, plan },
   );
   const digest = buildDigest({
     action: "query.validate",
     status: verdict === "invalid" ? "fail" : verdict === "safe" ? "pass" : "warning",
     icon: "🛡️",
-    title: `SOQL Validation${shape.primary_object ? ` · ${shape.primary_object}` : ""}`,
+    title: `SOQL Validation${inspection.shape.primary_object ? ` · ${inspection.shape.primary_object}` : ""}`,
     org: { alias: params.target_org, api_version: apiVersion(conn) },
-    query: shape,
-    validation: { verdict, findings },
+    meta: inspection.resolvedApi ? [inspection.resolvedApi.toUpperCase()] : undefined,
+    query: inspection.shape,
+    validation: { verdict, findings: inspection.findings },
     plan,
-    api_calls: apiCalls,
+    api_resolution: {
+      requested: inspection.requestedApi,
+      resolved: inspection.resolvedApi,
+      reason: inspection.resolutionReason,
+    },
+    api_calls: inspection.apiCalls,
     output_mode: params.output_mode,
-    sections: [
-      section("🧾", "Query Shape", [
-        row("🧾", "Object", shape.primary_object),
-        row("🧩", "Fields", shape.fields?.slice(0, 8).join(", ")),
-        row(
-          "🔗",
-          "Subqueries",
-          shape.subqueries?.map((subquery) => subquery.relationship).join(", "),
-        ),
-        row("🔎", "WHERE fields", shape.where_fields?.join(", ")),
-        row("↕️", "ORDER BY", shape.order_by_fields?.join(", ")),
-        row("📚", "GROUP BY", shape.group_by_fields?.join(", ")),
-        row("🧮", "HAVING", shape.having_fields?.join(", ")),
-        row("🏷️", "Aliases", shape.aliases?.join(", ")),
-        row("📦", "Limit", shape.limit),
-      ]),
-      section(
-        "🛡️",
-        "Findings",
-        findings.map((item) => row(item.icon, item.label, item.message)),
-      ),
-      ...(plan
-        ? [
-            section("📈", "Query Plan", [
-              row("🧠", "Leading Op", plan.leading_operation_type),
-              row("💰", "Cost", plan.relative_cost),
-              row("📊", "Cardinality", plan.cardinality),
-              row("✅", "Verdict", plan.verdict),
-              ...(plan.notes ?? []).slice(0, 3).map((note) => row("💡", "Note", note)),
-            ]),
-          ]
-        : []),
-    ],
+    sections: validationSections(inspection, plan),
     artifacts: [artifact],
   });
   return toolResultFromDigest(digest);
+}
+
+export function blockedQueryResult(
+  conn: Connection,
+  params: SfSoqlParams,
+  inspection: QueryInspection,
+  action: SoqlRunDigest["action"],
+): ToolResult {
+  const title = action
+    .replace("query.", "SOQL ")
+    .replace(/^SOQL (\w)/, (_match, letter: string) => `SOQL ${letter.toUpperCase()}`);
+  const digest = buildDigest({
+    action,
+    status: "fail",
+    icon: "🛡️",
+    title: `${title} · blocked${inspection.shape.primary_object ? ` · ${inspection.shape.primary_object}` : ""}`,
+    org: { alias: params.target_org, api_version: apiVersion(conn) },
+    query: inspection.shape,
+    validation: { verdict: "invalid", findings: inspection.findings },
+    api_resolution: {
+      requested: inspection.requestedApi,
+      resolved: inspection.resolvedApi,
+      reason: inspection.resolutionReason,
+    },
+    api_calls: inspection.apiCalls,
+    output_mode: params.output_mode,
+    sections: [
+      section(
+        "🛡️",
+        "Preflight Block",
+        inspection.findings.map((item) => row(item.icon, item.label, item.message)),
+      ),
+    ],
+  });
+  return toolResultFromDigest(digest);
+}
+
+export function inspectionHasErrors(inspection: QueryInspection): boolean {
+  return inspection.findings.some((item) => item.severity === "error");
+}
+
+function validationSections(
+  inspection: QueryInspection,
+  plan?: Awaited<ReturnType<typeof explainPlanDigest>>,
+) {
+  const shape = inspection.shape;
+  return [
+    section("🧾", "Query Shape", [
+      row("🧾", "Object", shape.primary_object),
+      row("🧭", "API", inspection.resolvedApi?.toUpperCase()),
+      row("🧩", "Fields", shape.fields?.slice(0, 8).join(", ")),
+      row(
+        "🔗",
+        "Subqueries",
+        shape.subqueries?.map((subquery) => subquery.relationship).join(", "),
+      ),
+      row("🔎", "WHERE fields", shape.where_fields?.join(", ")),
+      row("↕️", "ORDER BY", shape.order_by_fields?.join(", ")),
+      row("📚", "GROUP BY", shape.group_by_fields?.join(", ")),
+      row("🧮", "HAVING", shape.having_fields?.join(", ")),
+      row("🏷️", "Aliases", shape.aliases?.join(", ")),
+      row("📦", "Limit", shape.limit),
+    ]),
+    section(
+      "🛡️",
+      "Findings",
+      inspection.findings.map((item) => row(item.icon, item.label, item.message)),
+    ),
+    ...(plan
+      ? [
+          section("📈", "Query Plan", [
+            row("🧠", "Leading Op", plan.leading_operation_type),
+            row("💰", "Cost", plan.relative_cost),
+            row("📊", "Cardinality", plan.cardinality),
+            row("✅", "Verdict", plan.verdict),
+            ...(plan.notes ?? []).slice(0, 3).map((note) => row("💡", "Note", note)),
+          ]),
+        ]
+      : []),
+  ];
+}
+
+function selectEvaluation<T extends { api: SoqlApiMode }>(
+  evaluations: T[],
+  valid: T[],
+  requestedApi: NonNullable<SfSoqlParams["api"]>,
+): T | undefined {
+  if (requestedApi !== "auto")
+    return evaluations.find((candidate) => candidate.api === requestedApi);
+  if (valid.length === 1) return valid[0];
+  if (valid.length > 1) return valid.find((candidate) => candidate.api === "rest") ?? valid[0];
+  return evaluations.find((candidate) => candidate.api === "rest") ?? evaluations[0];
 }
 
 async function validateFields(
   conn: Connection,
   describe: SObjectDescribe,
   shape: SoqlQueryShape,
+  api: SoqlApiMode,
+  state?: SfSoqlSessionState,
 ): Promise<SoqlFinding[]> {
   const findings: SoqlFinding[] = [];
   const fieldMap = new Map(describe.fields.map((field) => [field.name.toLowerCase(), field]));
@@ -202,7 +395,7 @@ async function validateFields(
     const resolvedTargets = await Promise.all(
       parentObjects.map(async (parentObject) => ({
         parentObject,
-        describe: await describeSObject(conn, parentObject),
+        describe: (await loadSchemaDescription(conn, parentObject, api, state)).describe,
       })),
     );
     const matchingTargets = resolvedTargets.filter(({ describe: parentDescribe }) =>
@@ -250,7 +443,8 @@ async function validateFields(
       );
       continue;
     }
-    const childDescribe = await describeSObject(conn, rel.childSObject);
+    const childDescribe = (await loadSchemaDescription(conn, rel.childSObject, api, state))
+      .describe;
     const childFields = new Set(childDescribe.fields.map((field) => field.name.toLowerCase()));
     for (const field of subquery.fields) {
       if (!isExpression(field) && !childFields.has(field.toLowerCase())) {
@@ -274,10 +468,12 @@ async function validateFieldCapabilities(
   conn: Connection,
   describe: SObjectDescribe,
   shape: SoqlQueryShape,
+  api: SoqlApiMode,
+  state?: SfSoqlSessionState,
 ): Promise<SoqlFinding[]> {
   const findings: SoqlFinding[] = [];
   for (const fieldName of shape.where_fields ?? []) {
-    const resolved = await resolveField(conn, describe, fieldName);
+    const resolved = await resolveField(conn, describe, fieldName, api, state);
     if (resolved?.field.filterable === false) {
       findings.push(
         finding(
@@ -292,7 +488,7 @@ async function validateFieldCapabilities(
   const aliases = new Set((shape.aliases ?? []).map((alias) => alias.toLowerCase()));
   for (const fieldName of shape.order_by_fields ?? []) {
     if (aliases.has(fieldName.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, fieldName);
+    const resolved = await resolveField(conn, describe, fieldName, api, state);
     if (resolved?.field.sortable === false) {
       findings.push(
         finding(
@@ -306,7 +502,7 @@ async function validateFieldCapabilities(
   }
   for (const fieldName of shape.group_by_fields ?? []) {
     if (aliases.has(fieldName.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, fieldName);
+    const resolved = await resolveField(conn, describe, fieldName, api, state);
     if (resolved?.field.groupable === false) {
       findings.push(
         finding(
@@ -320,7 +516,7 @@ async function validateFieldCapabilities(
   }
   for (const fieldName of shape.having_fields ?? []) {
     if (aliases.has(fieldName.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, fieldName);
+    const resolved = await resolveField(conn, describe, fieldName, api, state);
     if (resolved?.field.filterable === false) {
       findings.push(
         finding(
@@ -334,7 +530,7 @@ async function validateFieldCapabilities(
   }
   for (const aggregate of shape.aggregate_fields ?? []) {
     if (!aggregate.field || aliases.has(aggregate.field.toLowerCase())) continue;
-    const resolved = await resolveField(conn, describe, aggregate.field);
+    const resolved = await resolveField(conn, describe, aggregate.field, api, state);
     if (resolved?.field.aggregatable === false) {
       findings.push(
         finding(
@@ -347,7 +543,7 @@ async function validateFieldCapabilities(
     }
   }
   for (const filter of shape.literal_filters ?? []) {
-    const resolved = await resolveField(conn, describe, filter.field);
+    const resolved = await resolveField(conn, describe, filter.field, api, state);
     if (!resolved?.field.type || !["picklist", "multipicklist"].includes(resolved.field.type))
       continue;
     const activeValues = (resolved.field.picklistValues ?? [])
@@ -371,6 +567,8 @@ async function resolveField(
   conn: Connection,
   describe: SObjectDescribe,
   path: string,
+  api: SoqlApiMode,
+  state?: SfSoqlSessionState,
 ): Promise<
   { objectName: string; field: SObjectFieldDescribe; polymorphic?: string[] } | undefined
 > {
@@ -391,9 +589,9 @@ async function resolveField(
     const parentObjects = relationshipField?.referenceTo ?? [];
     if (!parentObjects.length) return undefined;
     for (const parentObject of parentObjects) {
-      const parentDescribe = await describeSObject(conn, parentObject);
+      const parentDescribe = (await loadSchemaDescription(conn, parentObject, api, state)).describe;
       const remaining = parts.slice(i + 1).join(".");
-      const resolved = await resolveField(conn, parentDescribe, remaining);
+      const resolved = await resolveField(conn, parentDescribe, remaining, api, state);
       if (resolved) {
         return {
           ...resolved,

@@ -361,7 +361,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-soql",
     name: "SF SOQL",
-    description: "API-native SOQL lifecycle workflows for pi: schema search/describe, relationship discovery, query drafting, validation, query plans, bounded query/SOSL execution, exports, file diagnostics, and artifacts.",
+    description: "API-native, schema-grounded SOQL lifecycle workflows for pi with automatic REST/Tooling resolution, guarded execution, query plans, bounded results, and artifacts.",
     file: "extensions/sf-soql/index.ts",
     category: "agent-tool",
     maturity: "experimental",

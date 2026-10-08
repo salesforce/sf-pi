@@ -4,7 +4,7 @@
 import type { SoqlConnection as Connection } from "./api.ts";
 import { apiCall, apiVersion, explainQuery, queryAll, restQuery } from "./api.ts";
 import { writeRunBundle, writeSoqlArtifact } from "./artifacts.ts";
-import { buildDigest, row, section, toolResultFromDigest } from "./digest.ts";
+import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { errorResult } from "./errors.ts";
 import { flattenRecords } from "./flattener.ts";
 import {
@@ -24,7 +24,12 @@ import type {
   SoqlRunDigest,
   ToolResult,
 } from "./types.ts";
-import { requireQuery } from "./validator.ts";
+import {
+  blockedQueryResult,
+  inspectQuery,
+  inspectionHasErrors,
+  requireQuery,
+} from "./validator.ts";
 
 const DEFAULT_SAMPLE_ROWS = 25;
 const DEFAULT_MAX_ROWS = 200;
@@ -36,9 +41,21 @@ export async function explain(
   state?: SfSoqlSessionState,
 ): Promise<ToolResult> {
   try {
-    const rawQuery = requireQuery(params);
-    const shape = parseSoql(rawQuery);
-    const query = shape.normalized ?? rawQuery;
+    const inspection = await inspectQuery(conn, params, state);
+    if (inspection.resolvedApi === "tooling") {
+      inspection.findings.push(
+        finding(
+          "error",
+          "❌",
+          "Query Plan",
+          "Query-plan retrieval is available only for regular REST queries.",
+        ),
+      );
+    }
+    if (inspectionHasErrors(inspection))
+      return blockedQueryResult(conn, params, inspection, "query.explain");
+    const shape = inspection.shape;
+    const query = shape.normalized ?? requireQuery(params);
     const plan = await explainPlanDigest(conn, query);
     const artifact = await writeSoqlArtifact(
       "plans",
@@ -57,7 +74,13 @@ export async function explain(
       ],
       query: { ...shape, operation: "explain" },
       plan,
+      api_resolution: {
+        requested: inspection.requestedApi,
+        resolved: inspection.resolvedApi,
+        reason: inspection.resolutionReason,
+      },
       api_calls: [
+        ...inspection.apiCalls,
         apiCall(
           "GET",
           conn.path("/query", { explain: "SELECT..." }),
@@ -81,7 +104,7 @@ export async function explain(
       artifacts: [artifact],
     });
     if (state) {
-      state.lastRunnable = params;
+      state.lastRunnable = { ...params, api: inspection.resolvedApi };
       state.lastDigest = digest;
     }
     return toolResultFromDigest(digest);
@@ -293,12 +316,28 @@ async function executeQuery(
   operation: SoqlOperation,
 ): Promise<ToolResult> {
   try {
+    const inspection = await inspectQuery(conn, params, state);
+    if (operation === "queryAll" && inspection.resolvedApi === "tooling") {
+      inspection.findings.push(
+        finding(
+          "error",
+          "❌",
+          "QueryAll",
+          "queryAll and ALL ROWS are available only through regular REST.",
+        ),
+      );
+    }
+    if (inspectionHasErrors(inspection)) {
+      const blocked = blockedQueryResult(conn, params, inspection, action);
+      state.lastDigest = blocked.details.digest as SoqlRunDigest;
+      return blocked;
+    }
     const rawQuery = requireQuery(params);
-    const shape = { ...parseSoql(rawQuery), operation, api: params.api ?? "rest" };
+    const apiMode: SoqlApiMode = inspection.resolvedApi ?? "rest";
+    const shape = { ...inspection.shape, operation, api: apiMode };
     const query = shape.normalized ?? rawQuery;
     const maxRows = clamp(params.max_rows ?? DEFAULT_MAX_ROWS, 1, HARD_MAX_ROWS);
     const started = Date.now();
-    const apiMode: SoqlApiMode = params.api ?? "rest";
     const result =
       operation === "queryAll"
         ? await queryAll(conn, query, maxRows)
@@ -339,7 +378,21 @@ async function executeQuery(
         sample_rows: sampleRows,
         duration_ms: durationMs,
       },
-      api_calls: [apiCall("GET", apiPathFor(conn, operation, apiMode), `maxRows=${maxRows}`)],
+      validation: {
+        verdict: inspection.findings.some((item) => item.severity === "warning")
+          ? "review"
+          : "safe",
+        findings: inspection.findings,
+      },
+      api_resolution: {
+        requested: inspection.requestedApi,
+        resolved: apiMode,
+        reason: inspection.resolutionReason,
+      },
+      api_calls: [
+        ...inspection.apiCalls,
+        apiCall("GET", apiPathFor(conn, operation, apiMode), `maxRows=${maxRows}`),
+      ],
       sections: [
         ...(operation === "queryAll"
           ? [
@@ -365,7 +418,7 @@ async function executeQuery(
       artifacts,
       output_mode: params.output_mode,
     });
-    state.lastRunnable = params;
+    state.lastRunnable = { ...params, api: apiMode };
     state.lastDigest = digest;
     return toolResultFromDigest(digest);
   } catch (err) {
