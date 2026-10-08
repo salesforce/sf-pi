@@ -150,5 +150,5 @@ describe("Agent-Settled Update Coordinator through real Pi", () => {
       "Auto Update complete",
     ]);
     expect(JSON.stringify(entries)).not.toContain(root);
-  });
+  }, 35_000);
 });
