@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.334.0](https://github.com/salesforce/sf-pi/compare/v0.333.0...v0.334.0) (2026-10-08)
+
+
+### Features
+
+* **sf-data360:** make run cards payload aware ([2bc0274](https://github.com/salesforce/sf-pi/commit/2bc0274ce2f53468a0839ca58ceea492a9653eea))
+
 ## [0.333.0](https://github.com/salesforce/sf-pi/compare/v0.332.0...v0.333.0) (2026-10-07)
 
 
