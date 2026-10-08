@@ -40,7 +40,7 @@ mcp.handoff
 
 ### Hosted MCP
 
-`direction=mcp` creates and verifies the Salesforce side of Headless 360 OAuth:
+`direction=mcp` creates or adopts the exact Salesforce side of Headless 360 OAuth, activates the hosted server, and emits an org-bound SF MCP handoff:
 
 - Callback: `http://localhost:8765/callback`
 - Metadata scopes: `MCP, RefreshToken`
@@ -50,7 +50,7 @@ mcp.handoff
 - Named-user JWT access tokens enabled
 - Refresh-token rotation enabled
 
-Salesforce generates the consumer key. Successful apply, verify, and handoff results include a non-session-bearing Salesforce Setup URL plus an `external-client-app` SF Browser route for direct inspection. `mcp.handoff` presents the public client identifier for the human-reviewed `/sf-mcp` configuration flow. SF Integrate doesn't edit `mcp.json` or own OAuth tokens.
+Salesforce generates the consumer key. An existing exact ECA is adopted without redeployment; mismatched state is refused. Hosted-server activation uses the runtime-described Tooling `McpServerAccess` object when available and routes to the curated SF Browser MCP Servers destination otherwise. Successful apply, verify, and handoff results include the exact org identity, activation state, deterministic per-org server name, a non-session-bearing Salesforce Setup URL, and an `external-client-app` SF Browser route. `mcp.handoff` presents the public client identifier for the reviewed `/sf-mcp` configuration flow. SF Integrate doesn't edit `mcp.json` or own OAuth tokens.
 
 ### Generic External Client Apps
 
@@ -113,19 +113,19 @@ External Auth Identity Provider → External Credential → Named Credential
 - Every org-backed action requires an explicit target org.
 - `setup.apply`, `secret.populate`, and `oauth.authorize` require a source-bound plan, `allow_mutation=true`, and separate Guardrail approval.
 - Production and unknown org mutations are refused.
-- Plans are session-bound, org-bound, API-version-bound, content-rehashed at apply time, and create-only.
+- Plans are session-bound, org-bound, API-version-bound, and content-rehashed at apply time. Generic inbound and outbound resources remain create-only; hosted MCP can adopt only an exact existing ECA.
 - Raw secret values aren't accepted by the tool schema. Secrets come from a masked prompt or named environment variable and are sent directly to Salesforce.
 - Custom API-key External Credential metadata receives check-only validation before deployment.
 - Exact plans, responses, and verification records are mode-`0o600` artifacts under `<globalAgentDir>/sf-pi/sf-integrate/`.
 - ECA navigation links contain only the org instance URL and Setup record path; they never contain frontdoor session credentials.
 - OAuth consent and the GET-only connection probe are explicit actions.
-- Existing-resource update, rotation, migration, rollback, and destructive cleanup aren't model-callable in this phase.
+- Hosted MCP activation is planned as no-op, exact Tooling create/update, or SF Browser fallback and receives resulting-state readback. Other existing-resource update, rotation, migration, rollback, and destructive cleanup aren't model-callable in this phase.
 
 ## Troubleshooting
 
 **Preflight is blocked:** Use an explicit sandbox, scratch, developer, or trial org with the required metadata support.
 
-**Planning reports existing resources:** The current lifecycle is create-only. Choose new names or inspect the existing stack manually.
+**Planning reports existing resources:** Hosted MCP adopts an exact existing ECA and reports mismatched state as drift. Generic inbound and outbound lifecycles remain create-only; choose new names or inspect those existing stacks manually.
 
 **Secret entry is unavailable:** Use interactive TUI prompt mode or set an uppercase environment variable and pass only its name through `secret_env`.
 

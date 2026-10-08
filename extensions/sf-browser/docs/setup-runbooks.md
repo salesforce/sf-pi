@@ -27,7 +27,7 @@ Each runbook should answer:
 Inspect Salesforce Hosted MCP server availability, activation status, and tool counts without guessing endpoint readiness.
 
 **Primary path**
-Use the hosted MCP endpoint and Pi native `/mcp` status for connection evidence. Use Setup only for server activation/status evidence that the endpoint cannot provide.
+Use SF Integrate for Headless 360 activation. It runtime-describes the Tooling `McpServerAccess` object, plans an exact no-op/create/update, applies only after Guardrail approval, and verifies `Active=true` by readback. Use the hosted MCP endpoint and Pi native `/mcp` status for connection evidence. Use this Setup runbook when the Tooling contract is unavailable, permissions refuse it, or a human needs visual confirmation.
 
 **Evidence path**
 
@@ -37,7 +37,7 @@ Use the hosted MCP endpoint and Pi native `/mcp` status for connection evidence.
 4. Treat `Active` in Setup as activation evidence only; independently verify the hosted endpoint and authenticated MCP connection.
 
 **UI Fallback Path**
-Activation is a durable org change. Click Activate only after explicit user intent and Guardrail approval, then wait up to the documented propagation window before checking the hosted endpoint again.
+Activation is a durable org change. Open the route returned as `activation_navigation.route`, set the exact server to Active only after explicit user intent and Guardrail approval, then wait up to the documented propagation window before checking the hosted endpoint again.
 
 **Known edge cases**
 

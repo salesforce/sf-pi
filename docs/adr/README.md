@@ -120,6 +120,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0141: Data 360 is one Pi-native SDK tool with a hard cutover](./0141-data-360-single-sdk-tool-hard-cutover.md) — 2026-10-06
 - [0143: Data 360 cards are payload- and provenance-aware](./0143-data-360-cards-are-payload-and-provenance-aware.md) — 2026-10-08
 - [0144: Pi 1.1.0 audit edge and runtime signals](./0144-pi-110-audit-edge-and-runtime-signals.md) — 2026-10-08
+- [0145: SF MCP supports org-bound connection instances](./0145-sf-mcp-org-bound-connection-instances.md) — 2026-10-08
 
 ## Proposed
 

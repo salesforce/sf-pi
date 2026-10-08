@@ -24,17 +24,22 @@ function workspace(): string {
   return cwd;
 }
 
-function registeredTool() {
+function registeredTool(dependencies?: Parameters<typeof registerSfMcpTool>[1]) {
   const registerTool = vi.fn();
-  registerSfMcpTool({ registerTool } as unknown as ExtensionAPI);
+  registerSfMcpTool({ registerTool } as unknown as ExtensionAPI, dependencies);
   expect(registerTool).toHaveBeenCalledTimes(1);
   return registerTool.mock.calls[0]![0];
 }
 
-function context(cwd: string, trusted = true) {
+function context(
+  cwd: string,
+  trusted = true,
+  executeTool: (name: string, args: Record<string, unknown>) => Promise<unknown> = vi.fn(),
+) {
   return {
     cwd,
     isProjectTrusted: () => trusted,
+    executeTool,
   } as never;
 }
 
@@ -43,11 +48,278 @@ async function execute(
   cwd: string,
   params: Record<string, unknown>,
   trusted = true,
+  executeTool?: (name: string, args: Record<string, unknown>) => Promise<unknown>,
 ) {
-  return tool.execute("call-1", params, undefined, undefined, context(cwd, trusted));
+  return tool.execute("call-1", params, undefined, undefined, context(cwd, trusted, executeTool));
 }
 
 describe("sf_mcp tool", () => {
+  it("configures independent Headless 360 connection instances for two target orgs", async () => {
+    const cwd = workspace();
+    const resolveHostedOrgBinding = vi.fn(async ({ targetOrg }: { targetOrg: string }) => ({
+      targetOrg,
+      alias: targetOrg,
+      orgId: targetOrg === "OrgA" ? "example-org-a" : "example-org-b",
+      orgType: "developer" as const,
+      hostKey: `${targetOrg.toLowerCase()}.develop`,
+      serverUrl: `https://api.salesforce.com/platform/mcp/v1/d/${targetOrg.toLowerCase()}.develop/platform/headless-360`,
+      authorizationIssuer: `https://${targetOrg.toLowerCase()}.develop.my.salesforce.com`,
+    }));
+    const tool = registeredTool({ resolveHostedOrgBinding });
+
+    for (const targetOrg of ["OrgA", "OrgB"]) {
+      const planned = await execute(tool, cwd, {
+        action: "connection.plan",
+        scope: "global",
+        preset_id: "headless-360",
+        target_org: targetOrg,
+        oauth_client_id: `public-client-${targetOrg}`,
+      });
+      expect(planned).toMatchObject({
+        details: {
+          ok: true,
+          action: "connection.plan",
+          connectionName: `salesforce-headless-360-${targetOrg.toLowerCase()}`,
+          targetOrg,
+        },
+      });
+
+      const applied = await execute(tool, cwd, {
+        action: "connection.apply",
+        scope: "global",
+        preset_id: "headless-360",
+        connection_name: planned.details.connectionName,
+        plan_id: planned.details.planId,
+        plan_hash: planned.details.planHash,
+        allow_mutation: true,
+      });
+      expect(applied).toMatchObject({
+        details: {
+          ok: true,
+          action: "connection.apply",
+          connectionName: planned.details.connectionName,
+          verified: true,
+        },
+      });
+    }
+
+    const config = JSON.parse(readFileSync(mcpConfigPath(cwd, "global"), "utf8"));
+    expect(Object.keys(config.mcpServers).sort()).toEqual([
+      "salesforce-headless-360-orga",
+      "salesforce-headless-360-orgb",
+    ]);
+    expect(config.mcpServers["salesforce-headless-360-orga"].url).toContain("/d/orga.develop/");
+    expect(config.mcpServers["salesforce-headless-360-orgb"].url).toContain("/d/orgb.develop/");
+
+    const status = await execute(tool, cwd, {
+      action: "status",
+      scope: "global",
+      preset_id: "headless-360",
+    });
+    expect(status.details.presets[0].connections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          serverName: "salesforce-headless-360-orga",
+          targetOrg: "OrgA",
+        }),
+        expect.objectContaining({
+          serverName: "salesforce-headless-360-orgb",
+          targetOrg: "OrgB",
+        }),
+      ]),
+    );
+
+    const ambiguousLogin = await execute(tool, cwd, {
+      action: "login.handoff",
+      scope: "global",
+      preset_id: "headless-360",
+    });
+    expect(ambiguousLogin).toMatchObject({ isError: true, details: { ok: false } });
+    expect(ambiguousLogin.content[0]?.text).toMatch(/connection_name/i);
+
+    const login = await execute(tool, cwd, {
+      action: "login.handoff",
+      scope: "global",
+      preset_id: "headless-360",
+      connection_name: "salesforce-headless-360-orga",
+    });
+    expect(login).toMatchObject({
+      details: {
+        ok: true,
+        serverName: "salesforce-headless-360-orga",
+        command: "/mcp login salesforce-headless-360-orga",
+      },
+    });
+  });
+
+  it("disambiguates org aliases that collide after Pi normalizes server names", async () => {
+    const cwd = workspace();
+    const resolveHostedOrgBinding = vi.fn(async ({ targetOrg }: { targetOrg: string }) => {
+      const hostKey = `${targetOrg.toLowerCase().replaceAll("_", "-")}.develop`;
+      return {
+        targetOrg,
+        alias: targetOrg,
+        orgId: targetOrg === "Demo-A" ? "example-org-a" : "example-org-b",
+        orgType: "developer" as const,
+        hostKey,
+        serverUrl: `https://api.salesforce.com/platform/mcp/v1/d/${hostKey}/platform/headless-360`,
+        authorizationIssuer: `https://${hostKey}.my.salesforce.com`,
+      };
+    });
+    const tool = registeredTool({ resolveHostedOrgBinding });
+    const names: string[] = [];
+
+    for (const targetOrg of ["Demo-A", "Demo_A"]) {
+      const planned = await execute(tool, cwd, {
+        action: "connection.plan",
+        scope: "global",
+        preset_id: "headless-360",
+        target_org: targetOrg,
+        oauth_client_id: `client-${targetOrg}`,
+      });
+      names.push(String(planned.details.connectionName));
+      const applied = await execute(tool, cwd, {
+        action: "connection.apply",
+        scope: "global",
+        preset_id: "headless-360",
+        connection_name: planned.details.connectionName,
+        plan_id: planned.details.planId,
+        plan_hash: planned.details.planHash,
+        allow_mutation: true,
+      });
+      expect(applied.isError).not.toBe(true);
+    }
+
+    expect(names[0]).toBe("salesforce-headless-360-demo-a");
+    expect(names[1]).toMatch(/^salesforce-headless-360-demo_a-[a-f0-9]{8}$/u);
+    const config = JSON.parse(readFileSync(mcpConfigPath(cwd, "global"), "utf8"));
+    expect(Object.keys(config.mcpServers)).toHaveLength(2);
+  });
+
+  it("verifies a logged-in Headless 360 instance against its planned org identity", async () => {
+    const cwd = workspace();
+    const binding = {
+      targetOrg: "OrgA",
+      alias: "OrgA",
+      orgId: "example-org-a",
+      orgType: "developer" as const,
+      hostKey: "orga.develop",
+      serverUrl: "https://api.salesforce.com/platform/mcp/v1/d/orga.develop/platform/headless-360",
+      authorizationIssuer: "https://orga.develop.my.salesforce.com",
+    };
+    const tool = registeredTool({ resolveHostedOrgBinding: vi.fn(async () => binding) });
+    const connection = await execute(tool, cwd, {
+      action: "connection.plan",
+      scope: "global",
+      preset_id: "headless-360",
+      target_org: "OrgA",
+      oauth_client_id: "public-client",
+    });
+    await execute(tool, cwd, {
+      action: "connection.apply",
+      scope: "global",
+      preset_id: "headless-360",
+      connection_name: connection.details.connectionName,
+      plan_id: connection.details.planId,
+      plan_hash: connection.details.planHash,
+      allow_mutation: true,
+    });
+    const tools = await execute(tool, cwd, {
+      action: "tools.plan",
+      scope: "global",
+      preset_id: "headless-360",
+      connection_name: connection.details.connectionName,
+      tool_profile: "recommended",
+    });
+    await execute(tool, cwd, {
+      action: "tools.apply",
+      scope: "global",
+      preset_id: "headless-360",
+      connection_name: connection.details.connectionName,
+      plan_id: tools.details.planId,
+      plan_hash: tools.details.planHash,
+      allow_mutation: true,
+    });
+    const executeTool = vi.fn(async () => ({
+      content: [{ type: "text", text: JSON.stringify({ organization_id: binding.orgId }) }],
+    }));
+
+    const verified = await execute(
+      tool,
+      cwd,
+      {
+        action: "identity.verify",
+        scope: "global",
+        preset_id: "headless-360",
+        connection_name: connection.details.connectionName,
+      },
+      true,
+      executeTool,
+    );
+
+    expect(verified).toMatchObject({
+      details: {
+        ok: true,
+        action: "identity.verify",
+        connectionName: "salesforce-headless-360-orga",
+        verified: true,
+      },
+    });
+    expect(executeTool).toHaveBeenCalledWith(
+      "mcp__salesforce_headless_360_orga__dispatch_readonly",
+      expect.objectContaining({
+        url: "https://orga.develop.my.salesforce.com/services/oauth2/userinfo",
+        method: "GET",
+      }),
+      { signal: undefined },
+    );
+  });
+
+  it("refuses an org-bound plan when OAuth discovery changes before apply", async () => {
+    const cwd = workspace();
+    let calls = 0;
+    const resolveHostedOrgBinding = vi.fn(async () => {
+      calls += 1;
+      return {
+        targetOrg: "OrgA",
+        alias: "OrgA",
+        orgId: "example-org-a",
+        orgType: "developer" as const,
+        hostKey: "orga.develop",
+        serverUrl:
+          calls === 1
+            ? "https://api.salesforce.com/platform/mcp/v1/d/orga.develop/platform/headless-360"
+            : "https://api.salesforce.com/platform/mcp/v1/d/other.develop/platform/headless-360",
+        authorizationIssuer:
+          calls === 1
+            ? "https://orga.develop.my.salesforce.com"
+            : "https://other.develop.my.salesforce.com",
+      };
+    });
+    const tool = registeredTool({ resolveHostedOrgBinding });
+    const planned = await execute(tool, cwd, {
+      action: "connection.plan",
+      scope: "global",
+      preset_id: "headless-360",
+      target_org: "OrgA",
+      oauth_client_id: "public-client",
+    });
+
+    const applied = await execute(tool, cwd, {
+      action: "connection.apply",
+      scope: "global",
+      preset_id: "headless-360",
+      connection_name: planned.details.connectionName,
+      plan_id: planned.details.planId,
+      plan_hash: planned.details.planHash,
+      allow_mutation: true,
+    });
+
+    expect(applied).toMatchObject({ isError: true, details: { ok: false } });
+    expect(applied.content[0]?.text).toMatch(/changed after planning/i);
+    expect(() => readFileSync(mcpConfigPath(cwd, "global"), "utf8")).toThrow();
+  });
+
   it("plans and applies an exact reviewed preset without exposing the consumer key", async () => {
     const cwd = workspace();
     const tool = registeredTool();

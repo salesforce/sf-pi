@@ -210,7 +210,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-integrate",
     name: "SF Integrate",
-    description: "Plan-bound Salesforce External Client App OAuth and outbound modern credential setup, with check-only validation, guarded apply, secret-safe population, and resulting-state proof.",
+    description: "Plan-bound Salesforce integration setup with hosted MCP activation and org-bound handoff, External Client App OAuth, outbound modern credentials, guarded apply, and resulting-state proof.",
     file: "extensions/sf-integrate/index.ts",
     category: "agent-tool",
     maturity: "experimental",
@@ -267,7 +267,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-mcp",
     name: "SF MCP",
-    description: "Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime",
+    description: "Conflict-aware Salesforce MCP preset catalog and org-bound connection-instance configuration for Pi's native MCP runtime",
     file: "extensions/sf-mcp/index.ts",
     category: "agent-tool",
     maturity: "experimental",

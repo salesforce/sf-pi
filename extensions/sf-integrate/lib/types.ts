@@ -109,7 +109,7 @@ export const ECA_METADATA_TYPES = [
 export type EcaMetadataType = (typeof ECA_METADATA_TYPES)[number];
 
 export interface IntegrationPlan {
-  schema_version: 1;
+  schema_version: 2;
   plan_id: string;
   plan_hash: string;
   created_at: string;
@@ -121,6 +121,8 @@ export interface IntegrationPlan {
   callback_url: string;
   metadata_scopes: string[];
   oauth_scopes: string[];
+  eca_operation: "create" | "adopt";
+  activation: McpServerActivationPlan;
   sources: IntegrationMetadataSource[];
   artifact_path?: string;
 }
@@ -230,6 +232,33 @@ export interface OutboundInspection {
   permission_assignment_id?: string;
 }
 
+export interface McpServerAccessRecord {
+  id?: string;
+  developer_name: string;
+  master_label: string;
+  active: boolean;
+}
+
+export interface McpServerActivationInspection {
+  supported: boolean;
+  createable: boolean;
+  updateable: boolean;
+  record?: McpServerAccessRecord;
+  fallback_reason?: string;
+}
+
+export interface McpServerActivationPlan {
+  developer_name: string;
+  master_label: string;
+  operation: "none" | "create" | "update" | "browser";
+  before?: McpServerAccessRecord;
+  fallback_reason?: string;
+}
+
+export interface McpServerActivationResult extends McpServerAccessRecord {
+  operation: McpServerActivationPlan["operation"];
+}
+
 export interface IntegrationDeploymentResult {
   id?: string;
   success: boolean;
@@ -259,6 +288,14 @@ export interface SfIntegrateSessionState {
 export interface IntegrationAdapter {
   describeMetadataTypes(session: SalesforceSession): Promise<Set<string>>;
   inspectEca(session: SalesforceSession, appName: string): Promise<EcaInspection>;
+  inspectMcpServerActivation(
+    session: SalesforceSession,
+    developerName: string,
+  ): Promise<McpServerActivationInspection>;
+  applyMcpServerActivation(input: {
+    session: SalesforceSession;
+    plan: McpServerActivationPlan;
+  }): Promise<McpServerActivationResult>;
   deploy(input: {
     session: SalesforceSession;
     sources: DeployableMetadataSource[];

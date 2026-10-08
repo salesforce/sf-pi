@@ -21,9 +21,11 @@ import {
   fingerprintConfig,
   forgetManagedServer,
   inspectManagedServer,
+  listManagedServerRecords,
   recordManagedServer,
   type ManagedServerInspection,
 } from "./managed-state.ts";
+import type { HostedMcpOrgBinding } from "./hosted-org-binding.ts";
 import { inspectObservedToolDrift, type ObservedToolDrift } from "./observed-tools.ts";
 import { exposedToolConflictOwners, hasActiveToolConflicts } from "./tool-conflicts.ts";
 import {
@@ -47,6 +49,7 @@ import {
 
 export interface PresetRuntimeState {
   preset: McpPreset;
+  connectionName: string;
   plan: ConflictPlan;
   managed: ManagedServerInspection;
   drift: ObservedToolDrift;
@@ -72,22 +75,46 @@ export function inspectPresetRuntime(
   cwd: string,
   scope: "global" | "project",
   preset: McpPreset,
+  connectionName = preset.serverName,
 ): PresetRuntimeState {
   const file = mcpConfigPath(cwd, scope);
   const store = createManagedStateStore(cwd, scope);
   const managed = inspectManagedServer(file, store, {
-    serverName: preset.serverName,
+    serverName: connectionName,
     presetId: preset.id,
     presetRevision: preset.revision,
     scope,
   });
   return {
     preset,
+    connectionName,
     plan: planPresetConflicts(preset, enabledOverlapOwners(cwd, preset)),
     managed,
-    drift: inspectObservedToolDrift(preset, managed.record?.resolution ?? "enable"),
-    scopeConflict: inspectScopeConflict(cwd, scope, preset),
+    drift: inspectObservedToolDrift(
+      preset,
+      managed.record?.resolution ?? "enable",
+      managed.configuredName ?? connectionName,
+    ),
+    scopeConflict: inspectScopeConflict(cwd, scope, connectionName),
   };
+}
+
+export function inspectPresetInstances(
+  cwd: string,
+  scope: "global" | "project",
+  preset: McpPreset,
+): PresetRuntimeState[] {
+  const store = createManagedStateStore(cwd, scope);
+  const records = listManagedServerRecords(store, preset.id);
+  const names = new Set(records.map(({ serverName }) => serverName));
+  const states = records.map(({ serverName }) =>
+    inspectPresetRuntime(cwd, scope, preset, serverName),
+  );
+  const defaultState = inspectPresetRuntime(cwd, scope, preset);
+  if (defaultState.managed.status !== "missing" && !names.has(preset.serverName)) {
+    states.unshift(defaultState);
+  }
+  return states.length > 0 ? states : [defaultState];
 }
 
 export function installPreset(input: {
@@ -98,6 +125,8 @@ export function installPreset(input: {
   setup?: PresetSetup;
   replaceExisting?: boolean;
   toolPolicy?: ToolExposurePolicy;
+  connectionName?: string;
+  orgBinding?: HostedMcpOrgBinding;
 }): PresetMutationResult {
   const preset = getPreset(input.presetId);
   if (input.resolution === "native-only") {
@@ -122,8 +151,9 @@ export function installPreset(input: {
 
   const file = mcpConfigPath(input.cwd, input.scope);
   const store = createManagedStateStore(input.cwd, input.scope);
+  const connectionName = input.connectionName ?? preset.serverName;
   const managed = inspectManagedServer(file, store, {
-    serverName: preset.serverName,
+    serverName: connectionName,
     presetId: preset.id,
     presetRevision: preset.revision,
     scope: input.scope,
@@ -137,17 +167,17 @@ export function installPreset(input: {
   ) {
     return {
       ok: false,
-      message: `${managed.configuredName ?? preset.serverName} already has configuration requiring review. Adopt it or explicitly reset it to the preset.`,
+      message: `${managed.configuredName ?? connectionName} already has configuration requiring review. Adopt it or explicitly reset it to the preset.`,
     };
   }
   if (managed.status === "invalid-config") {
     return { ok: false, message: managed.message ?? "The native MCP configuration is invalid." };
   }
 
-  const configuredName = managed.configuredName ?? preset.serverName;
+  const configuredName = managed.configuredName ?? connectionName;
   const mutation =
     managed.status === "missing"
-      ? upsertMcpServer(file, preset.serverName, config)
+      ? upsertMcpServer(file, connectionName, config)
       : replaceMcpServer(file, configuredName, config);
   if (mutation.ok === false) return { ok: false, message: mutation.message };
 
@@ -156,6 +186,7 @@ export function installPreset(input: {
     presetRevision: preset.revision,
     resolution: input.resolution,
     config,
+    ...(input.orgBinding ? { orgBinding: input.orgBinding } : {}),
   });
   return {
     ok: true,
@@ -164,7 +195,7 @@ export function installPreset(input: {
     path: file,
     changed: true,
     reloadRequired: true,
-    message: `${input.replaceExisting ? "Reset" : "Enabled"} ${preset.label} in ${file}. Reload Pi, then use /mcp to connect or sign in.`,
+    message: `${input.replaceExisting ? "Reset" : "Enabled"} ${preset.label} as ${configuredName} in ${file}. Reload Pi, then use /mcp to connect or sign in.`,
   };
 }
 
@@ -172,12 +203,13 @@ export function adoptPreset(input: {
   cwd: string;
   scope: "global" | "project";
   presetId: McpPresetId;
+  connectionName?: string;
 }): PresetMutationResult {
   const preset = getPreset(input.presetId);
   const file = mcpConfigPath(input.cwd, input.scope);
   const store = createManagedStateStore(input.cwd, input.scope);
   const managed = inspectManagedServer(file, store, {
-    serverName: preset.serverName,
+    serverName: input.connectionName ?? preset.serverName,
     presetId: preset.id,
     presetRevision: preset.revision,
     scope: input.scope,
@@ -202,6 +234,7 @@ export function adoptPreset(input: {
     presetRevision: preset.revision,
     resolution,
     config: managed.config,
+    ...(managed.record?.orgBinding ? { orgBinding: managed.record.orgBinding } : {}),
   });
   return {
     ok: true,
@@ -263,25 +296,40 @@ export function summarizeConfigDiff(
 export function buildMcpRoutingGuidelines(cwd: string): string[] {
   const lines: string[] = [];
   for (const preset of SALESFORCE_MCP_PRESETS) {
-    const effective = inspectEffectivePresetRuntime(cwd, preset);
-    if (
-      effective.managed.status !== "managed-enabled" ||
-      effective.managed.record?.resolution !== "side-by-side" ||
-      effective.plan.conflicts.length === 0
-    ) {
-      continue;
+    const instanceNames = new Set(
+      [
+        ...inspectPresetInstances(cwd, "global", preset),
+        ...inspectPresetInstances(cwd, "project", preset),
+      ]
+        .filter((state) => state.managed.status !== "missing")
+        .map((state) => state.managed.configuredName ?? state.connectionName),
+    );
+    if (instanceNames.size === 0) instanceNames.add(preset.serverName);
+    const owners = new Set<string>();
+    let enabledInstances = 0;
+    for (const connectionName of instanceNames) {
+      const effective = inspectEffectivePresetRuntime(cwd, preset, connectionName);
+      if (
+        effective.managed.status !== "managed-enabled" ||
+        effective.managed.record?.resolution !== "side-by-side" ||
+        effective.plan.conflicts.length === 0
+      ) {
+        continue;
+      }
+      enabledInstances += 1;
+      const current =
+        hasReviewedToolPolicy(preset) && hasActiveToolConflicts(preset, effective.plan)
+          ? exposedToolConflictOwners(
+              preset,
+              effective.plan,
+              buildToolExposurePolicy(preset, "custom", effective.managed.config).exposures,
+            )
+          : effective.plan.conflicts.map((conflict) => conflict.nativeExtensionId).sort();
+      for (const owner of current) owners.add(owner);
     }
-    const owners =
-      hasReviewedToolPolicy(preset) && hasActiveToolConflicts(preset, effective.plan)
-        ? exposedToolConflictOwners(
-            preset,
-            effective.plan,
-            buildToolExposurePolicy(preset, "custom", effective.managed.config).exposures,
-          )
-        : effective.plan.conflicts.map((conflict) => conflict.nativeExtensionId).sort();
-    if (owners.length === 0) continue;
+    if (owners.size === 0) continue;
     lines.push(
-      `${preset.label} MCP is enabled side-by-side with ${owners.join(", ")}; prefer the specialized SF Pi family tool unless the user explicitly requests MCP behavior or needs an MCP-only capability.`,
+      `${preset.label} MCP${enabledInstances > 1 ? ` has ${enabledInstances} org-bound connections` : ""} is enabled side-by-side with ${[...owners].sort().join(", ")}; prefer the specialized SF Pi family tool unless the user explicitly requests MCP behavior or needs an MCP-only capability.`,
     );
   }
   return lines;
@@ -292,12 +340,14 @@ export function setManagedPresetEnabled(input: {
   scope: "global" | "project";
   presetId: McpPresetId;
   enabled: boolean;
+  connectionName?: string;
 }): PresetMutationResult {
   const preset = getPreset(input.presetId);
   const file = mcpConfigPath(input.cwd, input.scope);
   const store = createManagedStateStore(input.cwd, input.scope);
+  const connectionName = input.connectionName ?? preset.serverName;
   const managed = inspectManagedServer(file, store, {
-    serverName: preset.serverName,
+    serverName: connectionName,
     presetId: preset.id,
     presetRevision: preset.revision,
     scope: input.scope,
@@ -309,7 +359,7 @@ export function setManagedPresetEnabled(input: {
     };
   }
 
-  const configuredName = managed.configuredName ?? preset.serverName;
+  const configuredName = managed.configuredName ?? connectionName;
   const mutation = setMcpServerEnabled(file, configuredName, input.enabled);
   if (mutation.ok === false) return { ok: false, message: mutation.message };
   const inspected = inspectMcpConfig(file);
@@ -321,6 +371,7 @@ export function setManagedPresetEnabled(input: {
     presetRevision: preset.revision,
     resolution: managed.record?.resolution ?? "enable",
     config,
+    ...(managed.record?.orgBinding ? { orgBinding: managed.record.orgBinding } : {}),
   });
   return {
     ok: true,
@@ -329,7 +380,7 @@ export function setManagedPresetEnabled(input: {
     path: file,
     changed: true,
     reloadRequired: true,
-    message: `${input.enabled ? "Enabled" : "Disabled"} ${preset.label} in ${file}.`,
+    message: `${input.enabled ? "Enabled" : "Disabled"} ${preset.label} as ${configuredName} in ${file}.`,
   };
 }
 
@@ -338,12 +389,13 @@ export function updateManagedPresetToolPolicy(input: {
   scope: "global" | "project";
   presetId: McpPresetId;
   policy: ToolExposurePolicy;
+  connectionName?: string;
 }): PresetMutationResult {
   const preset = getPreset(input.presetId);
   const file = mcpConfigPath(input.cwd, input.scope);
   const store = createManagedStateStore(input.cwd, input.scope);
   const managed = inspectManagedServer(file, store, {
-    serverName: preset.serverName,
+    serverName: input.connectionName ?? preset.serverName,
     presetId: preset.id,
     presetRevision: preset.revision,
     scope: input.scope,
@@ -389,6 +441,7 @@ export function updateManagedPresetToolPolicy(input: {
     presetRevision: preset.revision,
     resolution: managed.record?.resolution ?? "enable",
     config,
+    ...(managed.record?.orgBinding ? { orgBinding: managed.record.orgBinding } : {}),
   });
   return {
     ok: true,
@@ -397,7 +450,7 @@ export function updateManagedPresetToolPolicy(input: {
     path: file,
     changed: true,
     reloadRequired: true,
-    message: `Updated ${preset.label} tool exposure in ${file}. Reload Pi to apply it.`,
+    message: `Updated ${preset.label} tool exposure for ${managed.configuredName} in ${file}. Reload Pi to apply it.`,
   };
 }
 
@@ -444,9 +497,13 @@ function redactedUrl(value: string): string {
   }
 }
 
-function inspectEffectivePresetRuntime(cwd: string, preset: McpPreset): PresetRuntimeState {
-  const project = inspectPresetRuntime(cwd, "project", preset);
-  const global = inspectPresetRuntime(cwd, "global", preset);
+function inspectEffectivePresetRuntime(
+  cwd: string,
+  preset: McpPreset,
+  connectionName = preset.serverName,
+): PresetRuntimeState {
+  const project = inspectPresetRuntime(cwd, "project", preset, connectionName);
+  const global = inspectPresetRuntime(cwd, "global", preset, connectionName);
   if (project.managed.status === "missing") return global;
   if (project.managed.status !== "project-override") return project;
   if (!global.managed.config) return project;
@@ -475,13 +532,13 @@ function inspectEffectivePresetRuntime(cwd: string, preset: McpPreset): PresetRu
 function inspectScopeConflict(
   cwd: string,
   scope: "global" | "project",
-  preset: McpPreset,
+  connectionName: string,
 ): PresetRuntimeState["scopeConflict"] {
   const otherScope = scope === "global" ? "project" : "global";
   const other = inspectMcpConfig(mcpConfigPath(cwd, otherScope));
   const otherEntries =
     other.ok === true ? { ...other.servers, ...other.overrides } : ({} as Record<string, unknown>);
-  if (findCanonicalMcpServerNames(otherEntries, preset.serverName).length === 0) {
+  if (findCanonicalMcpServerNames(otherEntries, connectionName).length === 0) {
     return undefined;
   }
   if (scope === "project") {
@@ -490,21 +547,20 @@ function inspectScopeConflict(
       current.ok === true
         ? { ...current.servers, ...current.overrides }
         : ({} as Record<string, unknown>);
-    const hasProjectEntry =
-      findCanonicalMcpServerNames(currentEntries, preset.serverName).length > 0;
+    const hasProjectEntry = findCanonicalMcpServerNames(currentEntries, connectionName).length > 0;
     return hasProjectEntry
       ? {
           kind: "project-overrides-global",
-          message: `A project ${preset.serverName} entry is active and overrides the matching global entry in this trusted project.`,
+          message: `A project ${connectionName} entry is active and overrides the matching global entry in this trusted project.`,
         }
       : {
           kind: "project-would-override-global",
-          message: `A global ${preset.serverName} entry already exists. A project entry with the same name will override it in this trusted project.`,
+          message: `A global ${connectionName} entry already exists. A project entry with the same name will override it in this trusted project.`,
         };
   }
   return {
     kind: "project-overrides-global",
-    message: `A project ${preset.serverName} entry already exists and will continue to override this global entry in the current project.`,
+    message: `A project ${connectionName} entry already exists and will continue to override this global entry in the current project.`,
   };
 }
 

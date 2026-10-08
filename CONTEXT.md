@@ -125,6 +125,13 @@ Salesforce Core connections, selects request API versions, performs bounded
 requests, refreshes definite expired sessions, and caches connection state.
 _Avoid_: per-extension connection helper, implicit API 50, retry on permission 403
 
+**MCP Connection Instance**:
+One Pi-native MCP server entry created from a reviewed SF MCP preset and, for
+Salesforce Hosted MCP, bound to one exact Salesforce org identity, proved
+My Domain authorization issuer, OAuth client identifier, configuration scope,
+and independent Pi credential identity. One preset can have multiple instances.
+_Avoid_: one-preset-one-org assumption, unbound duplicate preset, shared-org login
+
 **Instruction Surface Report**:
 A content-safe advisory measurement of SF Pi instructions, active tool
 definitions/guidance, and the external Salesforce skill surface. It informs

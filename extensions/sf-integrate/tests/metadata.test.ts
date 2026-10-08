@@ -3,7 +3,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { SF_MCP_HEADLESS_360_REQUIREMENT } from "../../../lib/common/sf-mcp-oauth-requirements.ts";
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
-import { buildHeadlessMcpSources, inspectEca } from "../lib/metadata.ts";
+import {
+  applyMcpServerActivation,
+  buildHeadlessMcpSources,
+  inspectEca,
+  inspectMcpServerActivation,
+} from "../lib/metadata.ts";
 
 function source(type: string): string {
   const item = buildHeadlessMcpSources({
@@ -61,6 +66,122 @@ describe("Headless 360 External Client App metadata", () => {
 
     expect(components[0]?.source).toContain("<label>A &amp; B &lt;MCP&gt;</label>");
     expect(components[0]?.source).not.toContain("<label>A & B <MCP></label>");
+  });
+
+  it("creates and verifies Headless 360 activation through the Tooling object", async () => {
+    let active = false;
+    const create = vi.fn(async () => {
+      active = true;
+      return { success: true, id: "example-mcp-access-id" };
+    });
+    const query = vi.fn(async () => ({
+      totalSize: active ? 1 : 0,
+      records: active
+        ? [
+            {
+              Id: "example-mcp-access-id",
+              DeveloperName: "platform_headless_360",
+              MasterLabel: "headless-360",
+              Active: true,
+            },
+          ]
+        : [],
+      done: true,
+      truncated: false,
+    }));
+    const session = {
+      target: { orgType: "developer", apiVersion: "68.0" },
+      connection: {
+        tooling: {
+          sobject: () => ({
+            describe: vi.fn(async () => ({
+              createable: true,
+              updateable: true,
+              fields: [{ name: "DeveloperName" }, { name: "MasterLabel" }, { name: "Active" }],
+            })),
+            create,
+            update: vi.fn(),
+          }),
+        },
+      },
+      query,
+    } as unknown as SalesforceSession;
+
+    const before = await inspectMcpServerActivation(session, "platform_headless_360");
+    expect(before).toMatchObject({ supported: true, createable: true });
+    expect(before.record).toBeUndefined();
+
+    const result = await applyMcpServerActivation({
+      session,
+      plan: {
+        developer_name: "platform_headless_360",
+        master_label: "headless-360",
+        operation: "create",
+      },
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      DeveloperName: "platform_headless_360",
+      MasterLabel: "headless-360",
+      Active: true,
+    });
+    expect(result).toMatchObject({ operation: "create", active: true });
+  });
+
+  it("updates only Active when a hosted MCP activation record already exists", async () => {
+    let active = false;
+    const update = vi.fn(async () => {
+      active = true;
+      return { success: true, id: "example-mcp-access-id" };
+    });
+    const query = vi.fn(async () => ({
+      totalSize: 1,
+      records: [
+        {
+          Id: "example-mcp-access-id",
+          DeveloperName: "platform_headless_360",
+          MasterLabel: "headless-360",
+          Active: active,
+        },
+      ],
+      done: true,
+      truncated: false,
+    }));
+    const session = {
+      target: { orgType: "developer", apiVersion: "68.0" },
+      connection: {
+        tooling: {
+          sobject: () => ({
+            describe: vi.fn(async () => ({
+              createable: true,
+              updateable: true,
+              fields: [{ name: "DeveloperName" }, { name: "MasterLabel" }, { name: "Active" }],
+            })),
+            create: vi.fn(),
+            update,
+          }),
+        },
+      },
+      query,
+    } as unknown as SalesforceSession;
+
+    const result = await applyMcpServerActivation({
+      session,
+      plan: {
+        developer_name: "platform_headless_360",
+        master_label: "headless-360",
+        operation: "update",
+        before: {
+          id: "example-mcp-access-id",
+          developer_name: "platform_headless_360",
+          master_label: "headless-360",
+          active: false,
+        },
+      },
+    });
+
+    expect(update).toHaveBeenCalledWith({ Id: "example-mcp-access-id", Active: true });
+    expect(result).toMatchObject({ operation: "update", active: true });
   });
 
   it("resolves the Tooling API record id used by the exact Setup detail link", async () => {

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Colorful, whitespace-first Salesforce MCP catalog for the SF Pi Manager. */
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Focusable, matchesKey } from "@earendil-works/pi-tui";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
+import { formatInstances, inspectInstanceSummary } from "./connection-instances.ts";
 import type { ConflictPlan } from "./conflict-planner.ts";
 import { mcpConfigPath, type McpServerConfig } from "./mcp-config.ts";
 import {
@@ -140,7 +140,13 @@ type PanelView =
       selected: number;
       toolPolicy?: ToolExposurePolicy;
     }
-  | { kind: "toggle"; presetId: McpPresetId; enable: boolean; selected: number }
+  | {
+      kind: "toggle";
+      presetId: McpPresetId;
+      connectionName: string;
+      enable: boolean;
+      selected: number;
+    }
   | {
       kind: "result";
       title: string;
@@ -244,16 +250,22 @@ class SfMcpConfigPanel implements Focusable {
             messageTone: this.messageTone,
           });
         case "overview": {
-          const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(view.presetId));
+          const preset = getPreset(view.presetId);
+          const {
+            instances,
+            configured,
+            primary: state,
+          } = inspectInstanceSummary(this.cwd, this.scope, preset);
           const catalog = getPresetToolCatalog(state.preset);
           return renderPresetOverviewPage({
             theme: this.theme,
             width,
             state,
+            instances,
             capabilities: catalog.capabilities,
             catalogNote: catalog.note,
             tools: inspectPresetTools(state.preset),
-            options: overviewOptions(state),
+            options: overviewOptions(state, configured.length),
             selected: view.selected,
           });
         }
@@ -511,8 +523,9 @@ class SfMcpConfigPanel implements Focusable {
       this.view = { kind: "catalog" };
       return;
     }
-    const state = inspectPresetRuntime(this.cwd, this.scope, getPreset(view.presetId));
-    const options = overviewOptions(state);
+    const preset = getPreset(view.presetId);
+    const { configured, primary: state } = inspectInstanceSummary(this.cwd, this.scope, preset);
+    const options = overviewOptions(state, configured.length);
     if (matchesKey(data, "up")) {
       view.selected = cycle(view.selected, options.length, -1);
       return;
@@ -531,6 +544,16 @@ class SfMcpConfigPanel implements Focusable {
     }
     if (choice.action === "connection") {
       this.view = { kind: "connection", presetId: view.presetId, selected: 0 };
+      return;
+    }
+    if (choice.action === "connections") {
+      this.view = {
+        kind: "result",
+        title: `${preset.label} connections`,
+        message: formatInstances(configured),
+        tone: "success",
+        needsReload: false,
+      };
       return;
     }
     if (choice.action === "policy") {
@@ -1087,6 +1110,7 @@ class SfMcpConfigPanel implements Focusable {
       cwd: this.cwd,
       scope: this.scope,
       presetId: view.presetId,
+      connectionName: view.connectionName,
       enabled: view.enable,
     });
     this.finishMutation(result);
@@ -1110,8 +1134,8 @@ class SfMcpConfigPanel implements Focusable {
   }
 
   private refresh(): void {
-    this.states = SALESFORCE_MCP_PRESETS.map((preset) =>
-      inspectPresetRuntime(this.cwd, this.scope, preset),
+    this.states = SALESFORCE_MCP_PRESETS.map(
+      (preset) => inspectInstanceSummary(this.cwd, this.scope, preset).primary,
     );
     this.cursor = Math.max(0, Math.min(this.cursor, this.states.length - 1));
   }
@@ -1412,7 +1436,13 @@ class SfMcpConfigPanel implements Focusable {
       );
       return;
     }
-    this.view = { kind: "toggle", presetId: state.preset.id, enable, selected: 0 };
+    this.view = {
+      kind: "toggle",
+      presetId: state.preset.id,
+      connectionName: state.managed.configuredName ?? state.connectionName,
+      enable,
+      selected: 0,
+    };
   }
 
   private finishMutation(result: ReturnType<typeof installPreset>): void {

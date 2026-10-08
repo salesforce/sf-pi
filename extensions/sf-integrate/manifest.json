@@ -1,7 +1,7 @@
 {
   "id": "sf-integrate",
   "name": "SF Integrate",
-  "description": "Plan-bound Salesforce External Client App OAuth and outbound modern credential setup, with check-only validation, guarded apply, secret-safe population, and resulting-state proof.",
+  "description": "Plan-bound Salesforce integration setup with hosted MCP activation and org-bound handoff, External Client App OAuth, outbound modern credentials, guarded apply, and resulting-state proof.",
   "category": "agent-tool",
   "maturity": "experimental",
   "defaultEnabled": true,
@@ -11,7 +11,7 @@
   "docs": {
     "intentGroup": "Work with Salesforce orgs",
     "agentGuide": "AGENT_GUIDE.md",
-    "summary": "Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The ECA slice supports Headless 360 plus grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, direct Salesforce Setup navigation, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.",
+    "summary": "Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The hosted MCP slice creates or adopts an exact Headless 360 External Client App, activates the hosted server through runtime-proved Tooling capabilities with an SF Browser fallback, and emits an org-bound SF MCP handoff. The generic ECA slice supports grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, direct Salesforce Setup navigation, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.",
     "primaryFiles": [
       "index.ts",
       "lib/sf-integrate-tool.ts",
@@ -31,12 +31,13 @@
     "safety": [
       "No startup org probes, metadata describes, subprocesses, or network calls; the family tool registers on session_start and contacts Salesforce only for explicit actions.",
       "Every org-backed action requires an explicit target_org. setup.apply, secret.populate, and oauth.authorize require a current session-bound plan ID/hash/exact target plus allow_mutation=true, remain Guardrail-mediated, and refuse production or unknown orgs.",
-      "Inbound setup is create-only, runs Metadata API check-only validation before deployment, refuses current-state or plan-content drift, and verifies the app, global OAuth settings, OAuth scopes, and org-local OAuth policy components after deployment.",
-      "Headless 360 is a public PKCE specialization. Generic ECA profiles support the core OAuth flow matrix; PEM public certificates and sensitive global OAuth settings stay in mode-0600 artifacts and ephemeral deploy staging, and private keys are rejected.",
+      "Hosted MCP setup adopts an exact existing app or creates one after Metadata API check-only validation; generic inbound setup remains create-only. Both refuse current-state or plan-content drift and verify the app, global OAuth settings, OAuth scopes, and org-local OAuth policy components.",
+      "Headless 360 is a public PKCE specialization. Its hosted-server activation uses McpServerAccess only after runtime Tooling describe proves the exact fields and write capabilities; unsupported or ambiguous state routes to the SF Browser MCP Servers destination.",
+      "Generic ECA profiles support the core OAuth flow matrix; PEM public certificates and sensitive global OAuth settings stay in mode-0600 artifacts and ephemeral deploy staging, and private keys are rejected.",
       "Outbound secrets are accepted only through a masked TUI prompt or named environment variable, sent directly to Salesforce, and never written to tool arguments, model output, or artifacts.",
       "SF Integrate never edits mcp.json or stores OAuth tokens. The final client-ID copy remains an explicit handoff to SF MCP and Pi's native MCP OAuth runtime.",
       "External Client App navigation returns only a non-session-bearing instance Setup URL and a structured SF Browser route; frontdoor login URLs and session identifiers are never returned.",
-      "Both slices are create-only and refuse existing-resource drift. The outbound connection proof is GET-only, delegates execution to sf_apex, and never returns the external response body.",
+      "Generic inbound and outbound slices are create-only and refuse existing-resource drift. Hosted MCP adopts only exact existing ECA state. The outbound connection proof is GET-only, delegates execution to sf_apex, and never returns the external response body.",
       "Production policies, existing-resource updates, rotations, migration, rollback, and user-selected destructive cleanup remain out of scope."
     ]
   }

@@ -90,6 +90,7 @@ function deployment(checkOnly: boolean): IntegrationDeploymentResult {
 
 function adapter(): IntegrationAdapter {
   let inspections = 0;
+  let activationActive = false;
   return {
     describeMetadataTypes: vi.fn(
       async () =>
@@ -103,6 +104,31 @@ function adapter(): IntegrationAdapter {
     inspectEca: vi.fn(async () => {
       inspections += 1;
       return inspections <= 2 ? emptyInspection() : readyInspection();
+    }),
+    inspectMcpServerActivation: vi.fn(async () => ({
+      supported: true,
+      createable: true,
+      updateable: true,
+      ...(activationActive
+        ? {
+            record: {
+              id: "example-mcp-access-id",
+              developer_name: "platform_headless_360",
+              master_label: "headless-360",
+              active: true,
+            },
+          }
+        : {}),
+    })),
+    applyMcpServerActivation: vi.fn(async ({ plan }) => {
+      activationActive = true;
+      return {
+        id: "example-mcp-access-id",
+        developer_name: plan.developer_name,
+        master_label: plan.master_label,
+        active: true,
+        operation: plan.operation,
+      };
     }),
     deploy: vi.fn(async (input) => deployment(input.checkOnly)),
     resolveContactEmail: vi.fn(async () => "admin@example.invalid"),
@@ -139,6 +165,10 @@ describe("SF Integrate operations", () => {
       state,
       integrationAdapter,
     );
+    expect(planned.details).toMatchObject({
+      eca_operation: "create",
+      activation: { operation: "create", developer_name: "platform_headless_360" },
+    });
     const planId = String(planned.details.plan_id);
     const planHash = String(planned.details.plan_hash);
 
@@ -159,6 +189,7 @@ describe("SF Integrate operations", () => {
     expect(applied.details).toMatchObject({
       ok: true,
       verified: true,
+      activation: { active: true, operation: "create" },
       navigation: {
         path: "/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
         url: "https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
@@ -175,6 +206,104 @@ describe("SF Integrate operations", () => {
       2,
       expect.objectContaining({ checkOnly: false }),
     );
+  });
+
+  it("adopts an exact existing ECA and active hosted server without redeploying", async () => {
+    const integrationAdapter = adapter();
+    integrationAdapter.inspectEca = vi.fn(async () => readyInspection());
+    integrationAdapter.inspectMcpServerActivation = vi.fn(async () => ({
+      supported: true,
+      createable: true,
+      updateable: true,
+      record: {
+        id: "example-mcp-access-id",
+        developer_name: "platform_headless_360",
+        master_label: "headless-360",
+        active: true,
+      },
+    }));
+    integrationAdapter.applyMcpServerActivation = vi.fn(async ({ plan }) => ({
+      ...plan.before!,
+      operation: plan.operation,
+    }));
+
+    const planned = await designPlan(
+      { action: "design.plan", target_org: "IntegrationDev" },
+      session(),
+      state,
+      integrationAdapter,
+    );
+    expect(planned.details).toMatchObject({
+      eca_operation: "adopt",
+      activation: { operation: "none" },
+    });
+
+    const applied = await applySetup(
+      {
+        action: "setup.apply",
+        target_org: "IntegrationDev",
+        app_name: "SfPiHeadless360Mcp",
+        plan_id: String(planned.details.plan_id),
+        plan_hash: String(planned.details.plan_hash),
+        allow_mutation: true,
+      },
+      session(),
+      state,
+      integrationAdapter,
+    );
+
+    expect(applied.details).toMatchObject({
+      verified: true,
+      eca_operation: "adopt",
+      activation: { operation: "none", active: true },
+    });
+    expect(integrationAdapter.deploy).not.toHaveBeenCalled();
+  });
+
+  it("returns an exact SF Browser fallback when Tooling activation is unavailable", async () => {
+    const integrationAdapter = adapter();
+    integrationAdapter.inspectMcpServerActivation = vi.fn(async () => ({
+      supported: false,
+      createable: false,
+      updateable: false,
+      fallback_reason: "McpServerAccess is unavailable.",
+    }));
+
+    const planned = await designPlan(
+      { action: "design.plan", target_org: "IntegrationDev" },
+      session(),
+      state,
+      integrationAdapter,
+    );
+    expect(planned.details).toMatchObject({
+      activation: { operation: "browser", fallback_reason: "McpServerAccess is unavailable." },
+    });
+
+    const applied = await applySetup(
+      {
+        action: "setup.apply",
+        target_org: "IntegrationDev",
+        app_name: "SfPiHeadless360Mcp",
+        plan_id: String(planned.details.plan_id),
+        plan_hash: String(planned.details.plan_hash),
+        allow_mutation: true,
+      },
+      session(),
+      state,
+      integrationAdapter,
+    );
+
+    expect(applied).toMatchObject({
+      isError: true,
+      details: {
+        verified: false,
+        activation: { operation: "browser", active: false },
+        activation_navigation: {
+          route: { type: "setup", destination: "mcp-servers" },
+        },
+      },
+    });
+    expect(integrationAdapter.applyMcpServerActivation).not.toHaveBeenCalled();
   });
 
   it("refuses a stale plan hash before deployment", async () => {
@@ -225,6 +354,17 @@ describe("SF Integrate operations", () => {
   it("returns a secret-free MCP handoff with the public consumer key", async () => {
     const handoffAdapter = adapter();
     handoffAdapter.inspectEca = vi.fn(async () => readyInspection());
+    handoffAdapter.inspectMcpServerActivation = vi.fn(async () => ({
+      supported: true,
+      createable: true,
+      updateable: true,
+      record: {
+        id: "example-mcp-access-id",
+        developer_name: "platform_headless_360",
+        master_label: "headless-360",
+        active: true,
+      },
+    }));
     const handoff = await mcpHandoff(
       {
         action: "mcp.handoff",
@@ -241,6 +381,16 @@ describe("SF Integrate operations", () => {
       "Open in Salesforce: https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
     );
     expect(handoff.details).toMatchObject({
+      handoff: {
+        server_name: "salesforce-headless-360-integrationdev",
+        target: {
+          target_org: "IntegrationDev",
+          org_id: "example-org-id",
+          org_type: "developer",
+          host_key: "example.develop",
+        },
+        activation: { active: true },
+      },
       navigation: {
         route: { type: "external-client-app", appName: "SfPiHeadless360Mcp" },
       },

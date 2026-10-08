@@ -2,7 +2,11 @@
 /** SF Integrate lifecycle operations for the Headless 360 MCP golden path. */
 
 import type { SfPiResultCard } from "../../../lib/common/display/result-card.ts";
-import { SF_MCP_HEADLESS_360_REQUIREMENT } from "../../../lib/common/sf-mcp-oauth-requirements.ts";
+import {
+  SF_MCP_HEADLESS_360_REQUIREMENT,
+  sfMcpHeadlessConnectionName,
+} from "../../../lib/common/sf-mcp-oauth-requirements.ts";
+import { salesforceOrgHostKey } from "../../../lib/common/sf-environment/org-type.ts";
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import { integrationArtifactTimestamp, writeIntegrationArtifact } from "./artifacts.ts";
 import {
@@ -17,6 +21,7 @@ import type {
   IntegrationAdapter,
   IntegrationDeploymentResult,
   IntegrationPlan,
+  McpServerActivationInspection,
   SfIntegrateParams,
   SfIntegrateSessionState,
   ToolResult,
@@ -25,6 +30,8 @@ import type {
 const TOOL = { id: "sf-integrate", label: "SF Integrate", icon: "🔗" } as const;
 const DEFAULT_APP_NAME = "SfPiHeadless360Mcp";
 const DEFAULT_APP_LABEL = "SF Pi Headless 360 MCP";
+const HEADLESS_SERVER_DEVELOPER_NAME = "platform_headless_360";
+const HEADLESS_SERVER_LABEL = "headless-360";
 
 export function status(): ToolResult {
   return result(
@@ -67,6 +74,10 @@ export async function orgPreflight(
 ): Promise<ToolResult> {
   const available = await adapter.describeMetadataTypes(session);
   const missing = missingRequiredMetadataTypes(available);
+  const activation = await adapter.inspectMcpServerActivation(
+    session,
+    HEADLESS_SERVER_DEVELOPER_NAME,
+  );
   const nonProduction = isNonProduction(session);
   const apiReady = Number.parseFloat(session.target.apiVersion) >= 61;
   const ready = missing.length === 0 && apiReady && nonProduction;
@@ -85,6 +96,11 @@ export async function orgPreflight(
       label: "ECA metadata",
       value: missing.length ? `missing ${missing.join(", ")}` : "4/4 required types available",
       tone: missing.length ? ("error" as const) : ("success" as const),
+    },
+    {
+      label: "MCP activation",
+      value: activation.supported ? "Tooling API available" : "SF Browser fallback",
+      tone: activation.supported ? ("success" as const) : ("warning" as const),
     },
   ];
   return result(
@@ -122,6 +138,8 @@ export async function orgPreflight(
       ready,
       missing_metadata_types: missing,
       mutation_allowed: nonProduction,
+      activation_api_available: activation.supported,
+      activation_fallback: activation.supported ? undefined : "sf-browser",
       api_version: session.target.apiVersion,
     },
     !ready,
@@ -152,11 +170,18 @@ export async function designPlan(
   const existingTypes = Object.entries(existing.components)
     .filter(([, present]) => present)
     .map(([type]) => type);
-  if (existingTypes.length) {
+  const existingFindings = existingTypes.length ? verificationFindings(existing) : [];
+  if (existingTypes.length && existingFindings.length) {
     throw new Error(
-      `External Client App ${appName} already has ${existingTypes.join(", ")}. Phase 1 is create-only; use setup.verify or choose another app_name.`,
+      `External Client App ${appName} exists but does not match the Headless 360 contract: ${existingFindings.join("; ")}.`,
     );
   }
+  const ecaOperation = existingTypes.length ? "adopt" : "create";
+  const activationInspection = await adapter.inspectMcpServerActivation(
+    session,
+    HEADLESS_SERVER_DEVELOPER_NAME,
+  );
+  const activation = activationPlan(activationInspection);
 
   const plan = await buildIntegrationPlan({
     preset,
@@ -164,6 +189,8 @@ export async function designPlan(
     appLabel,
     contactEmail,
     session,
+    ecaOperation,
+    activation,
   });
   state.plans.set(plan.plan_id, plan);
   return result(
@@ -179,9 +206,12 @@ export async function designPlan(
       tool: TOOL,
       title: "Integration Plan · Headless 360 MCP",
       status: "warning",
-      summary: `Create one public External Client App named ${appName}.`,
+      summary:
+        ecaOperation === "create"
+          ? `Create one public External Client App named ${appName}.`
+          : `Adopt the existing exact External Client App named ${appName}.`,
       chips: [
-        { label: "create-only", tone: "info" },
+        { label: ecaOperation === "create" ? "ECA create" : "ECA exact-adopt", tone: "info" },
         { label: "4 components", tone: "muted" },
       ],
       scope: [
@@ -192,10 +222,19 @@ export async function designPlan(
       rails: [
         {
           label: "API",
-          items: [
-            { verb: "SOAP", target: "/metadata/deploy", detail: "checkOnly=true first" },
-            { verb: "SOAP", target: "/metadata/deploy", detail: "exact 4-component create" },
-          ],
+          items:
+            ecaOperation === "create"
+              ? [
+                  { verb: "SOAP", target: "/metadata/deploy", detail: "checkOnly=true first" },
+                  { verb: "SOAP", target: "/metadata/deploy", detail: "exact 4-component create" },
+                ]
+              : [
+                  {
+                    verb: "READ",
+                    target: "External Client App metadata",
+                    detail: "exact-adopt proof",
+                  },
+                ],
         },
       ],
       sections: [
@@ -229,6 +268,8 @@ export async function designPlan(
       plan_id: plan.plan_id,
       plan_hash: plan.plan_hash,
       app_name: plan.app_name,
+      eca_operation: plan.eca_operation,
+      activation: plan.activation,
       artifact: plan.artifact_path,
       source_components: plan.sources.map((source) => source.type),
     },
@@ -254,66 +295,113 @@ export async function applySetup(
     appName: params.app_name,
   });
   assertPlanTarget(plan, session);
+
   const before = await adapter.inspectEca(session, plan.app_name);
-  if (Object.values(before.components).some(Boolean)) {
-    throw new Error(
-      `External Client App ${plan.app_name} changed after planning. No deployment was attempted; run design.plan again.`,
-    );
+  let check: IntegrationDeploymentResult | undefined;
+  let deployed: IntegrationDeploymentResult | undefined;
+  if (plan.eca_operation === "create") {
+    if (Object.values(before.components).some(Boolean)) {
+      throw new Error(
+        `External Client App ${plan.app_name} changed after planning. No deployment was attempted; run design.plan again.`,
+      );
+    }
+    check = await adapter.deploy({ session, sources: plan.sources, checkOnly: true, signal });
+    if (!check.success) return deploymentFailure(plan, session, check, false);
+    deployed = await adapter.deploy({
+      session,
+      sources: plan.sources,
+      checkOnly: false,
+      signal,
+    });
+    if (!deployed.success) return deploymentFailure(plan, session, deployed, true, check);
+  } else {
+    const drift = verificationFindings(before);
+    if (drift.length) {
+      throw new Error(
+        `External Client App ${plan.app_name} changed after planning: ${drift.join("; ")}.`,
+      );
+    }
   }
 
-  const check = await adapter.deploy({
-    session,
-    sources: plan.sources,
-    checkOnly: true,
-    signal,
-  });
-  if (!check.success) return deploymentFailure(plan, session, check, false);
-
-  const deployed = await adapter.deploy({
-    session,
-    sources: plan.sources,
-    checkOnly: false,
-    signal,
-  });
-  if (!deployed.success) return deploymentFailure(plan, session, deployed, true, check);
+  const currentActivation = activationPlan(
+    await adapter.inspectMcpServerActivation(session, plan.activation.developer_name),
+  );
+  if (!sameActivationPlan(currentActivation, plan.activation)) {
+    throw new Error(
+      `Hosted MCP activation changed after planning (${plan.activation.operation} → ${currentActivation.operation}). Run design.plan again.`,
+    );
+  }
+  const activation =
+    plan.activation.operation === "browser"
+      ? {
+          developer_name: plan.activation.developer_name,
+          master_label: plan.activation.master_label,
+          active: false,
+          operation: "browser" as const,
+        }
+      : await adapter.applyMcpServerActivation({ session, plan: plan.activation });
 
   const verification = await adapter.inspectEca(session, plan.app_name);
   const findings = verificationFindings(verification);
+  if (!activation.active) findings.push("Headless 360 requires SF Browser activation");
   const artifact = await writeIntegrationArtifact(
     "runs",
     `${integrationArtifactTimestamp()}-${plan.app_name}-apply.json`,
-    { plan, check: check.raw, deploy: deployed.raw, verification },
+    {
+      plan,
+      ...(check ? { check: check.raw } : {}),
+      ...(deployed ? { deploy: deployed.raw } : {}),
+      activation,
+      verification,
+    },
   );
   const verified = findings.length === 0;
   const navigation = buildEcaSetupNavigation(session, verification);
+  const activationNavigation = {
+    route: { type: "setup" as const, destination: "mcp-servers" },
+  };
   return result(
     "setup.apply",
     [
-      `${verified ? "PASS" : "WARNING"}: External Client App ${plan.app_name} deployed.`,
-      `Check-only: ${check.status ?? "Succeeded"}`,
-      `Deployment: ${deployed.status ?? "Succeeded"}`,
+      `${verified ? "PASS" : "WARNING"}: Headless 360 integration setup for ${plan.app_name}.`,
+      `External Client App: ${plan.eca_operation === "create" ? "created" : "adopted"}`,
+      `MCP server activation: ${activation.active ? `active (${activation.operation})` : "browser fallback required"}`,
       `Verification: ${verified ? "matched" : findings.join("; ")}`,
       `Open in Salesforce: ${navigation.url}`,
       `Artifact: ${artifact.path}`,
     ].join("\n"),
     {
       tool: TOOL,
-      title: `Integration Setup · ${verified ? "verified" : "review"}`,
+      title: `Integration Setup · ${verified ? "verified" : "browser fallback"}`,
       status: verified ? "success" : "warning",
       summary: verified
-        ? "The Headless 360 External Client App is deployed and matches the plan."
-        : "Deployment succeeded, but resulting-state verification needs review.",
+        ? "The External Client App and Headless 360 activation match the plan."
+        : "The External Client App is ready; complete hosted MCP activation through SF Browser.",
       chips: [
-        { label: `check ${shortId(check.id)}`, tone: "success" },
-        { label: `deploy ${shortId(deployed.id)}`, tone: verified ? "success" : "warning" },
+        { label: plan.eca_operation === "create" ? "ECA created" : "ECA adopted", tone: "success" },
+        {
+          label: activation.active ? "server active" : "activation fallback",
+          tone: activation.active ? "success" : "warning",
+        },
       ],
       scope: [...orgScope(session), { label: "app", value: plan.app_name, tone: "info" }],
       rails: [
         {
           label: "API",
           items: [
-            { verb: "POST", target: "/metadata/deploy", detail: "checkOnly=true" },
-            { verb: "POST", target: "/metadata/deploy", detail: "checkOnly=false" },
+            ...(check
+              ? [{ verb: "POST", target: "/metadata/deploy", detail: "checkOnly=true" }]
+              : []),
+            ...(deployed
+              ? [{ verb: "POST", target: "/metadata/deploy", detail: "checkOnly=false" }]
+              : []),
+            {
+              verb: activation.active ? "WRITE" : "OPEN",
+              target: "McpServerAccess",
+              detail: activation.active
+                ? `operation=${activation.operation}`
+                : "SF Browser fallback",
+            },
             { verb: "READ", target: "External Client App metadata", detail: "resulting state" },
           ],
         },
@@ -325,33 +413,35 @@ export async function applySetup(
           rows: [
             { label: "Components", value: "4/4 present", tone: "success" },
             {
+              label: "Hosted server",
+              value: activation.active ? "Headless 360 active" : "activation pending",
+              tone: activation.active ? "success" : "warning",
+            },
+            {
               label: "Consumer key",
               value: verification.consumer_key ? "available" : "pending propagation",
               tone: verification.consumer_key ? "success" : "warning",
-            },
-            {
-              label: "Configuration",
-              value: verified ? "callback, scopes, PKCE, and JWT match" : findings.join("; "),
-              tone: verified ? "success" : "warning",
             },
           ],
         },
       ],
       artifacts: [{ label: "run", path: artifact.path, kind: "json" }],
-      next: [
-        `Open the External Client App in Salesforce: ${navigation.url}`,
-        verification.consumer_key
-          ? "Run mcp.handoff to copy the client ID into SF MCP."
-          : "Wait for app propagation, then run setup.verify or mcp.handoff again.",
-      ],
+      next: activation.active
+        ? ["Run mcp.handoff, then configure the org-pinned connection with SF MCP."]
+        : [
+            "Use sf_browser_open_org with activation_navigation.route, activate Headless 360, and verify before mcp.handoff.",
+          ],
     },
     {
       app_name: plan.app_name,
+      eca_operation: plan.eca_operation,
       verified,
       findings,
+      activation,
+      activation_navigation: activationNavigation,
       consumer_key_available: Boolean(verification.consumer_key),
-      check_job_id: check.id,
-      deploy_job_id: deployed.id,
+      check_job_id: check?.id,
+      deploy_job_id: deployed?.id,
       artifact: artifact.path,
       navigation,
     },
@@ -366,11 +456,16 @@ export async function verifySetup(
 ): Promise<ToolResult> {
   const appName = requireAppName(params.app_name ?? DEFAULT_APP_NAME);
   const inspection = await adapter.inspectEca(session, appName);
+  const activation = await adapter.inspectMcpServerActivation(
+    session,
+    HEADLESS_SERVER_DEVELOPER_NAME,
+  );
   const findings = verificationFindings(inspection);
+  if (!activation.record?.active) findings.push("Headless 360 hosted server is not active");
   const artifact = await writeIntegrationArtifact(
     "verification",
     `${integrationArtifactTimestamp()}-${appName}-verify.json`,
-    inspection,
+    { inspection, activation },
   );
   const ready = findings.length === 0 && Boolean(inspection.consumer_key);
   const navigation = buildEcaSetupNavigation(session, inspection);
@@ -386,6 +481,10 @@ export async function verifySetup(
       ready,
       findings,
       consumer_key_available: Boolean(inspection.consumer_key),
+      activation,
+      activation_navigation: activation.record?.active
+        ? undefined
+        : { route: { type: "setup", destination: "mcp-servers" } },
       artifact: artifact.path,
       navigation,
     },
@@ -415,14 +514,43 @@ export async function mcpHandoff(
       `${appName} has no readable consumer key yet. External Client Apps can take time to propagate; run mcp.handoff again later.`,
     );
   }
+  const activation = await adapter.inspectMcpServerActivation(
+    session,
+    HEADLESS_SERVER_DEVELOPER_NAME,
+  );
+  if (!activation.record?.active) {
+    throw new Error(
+      "Headless 360 is not active in the target org. Use the mcp-servers SF Browser destination, then run mcp.handoff again.",
+    );
+  }
+  const orgId = session.target.orgId;
+  const hostKey = salesforceOrgHostKey(session.target.instanceUrl);
+  if (!orgId || !hostKey) {
+    throw new Error(
+      "The target org does not provide the identity and My Domain needed for MCP handoff.",
+    );
+  }
+  const serverName = sfMcpHeadlessConnectionName({
+    targetOrg: session.target.targetOrg,
+    alias: session.target.alias,
+    orgId,
+  });
   const navigation = buildEcaSetupNavigation(session, inspection);
   const handoff = {
     preset,
-    server_name: SF_MCP_HEADLESS_360_REQUIREMENT.serverName,
+    server_name: serverName,
     app_name: appName,
     consumer_key: inspection.consumer_key,
     callback_url: SF_MCP_HEADLESS_360_REQUIREMENT.callbackUrl,
     oauth_scopes: [...SF_MCP_HEADLESS_360_REQUIREMENT.oauthScopes],
+    target: {
+      target_org: session.target.targetOrg,
+      alias: session.target.alias,
+      org_id: orgId,
+      org_type: session.target.orgType,
+      host_key: hostKey,
+    },
+    activation: activation.record,
     salesforce_setup: navigation,
   };
   const artifact = await writeIntegrationArtifact(
@@ -438,8 +566,10 @@ export async function mcpHandoff(
       `Callback URL: ${handoff.callback_url}`,
       `Scopes: ${handoff.oauth_scopes.join(" ")}`,
       `Open in Salesforce: ${navigation.url}`,
-      "Next: Open /sf-mcp → Headless 360 → Configure MCP, select the org environment, and paste the consumer key.",
-      "Then run /mcp login salesforce-headless-360 after reload.",
+      `Target org: ${session.target.alias ?? session.target.targetOrg}`,
+      `Connection name: ${serverName}`,
+      "Next: run sf_mcp connection.plan with this target org and consumer key.",
+      `Then run /mcp login ${serverName} after reload.`,
       `Artifact: ${artifact.path}`,
     ].join("\n"),
     {
@@ -468,7 +598,7 @@ export async function mcpHandoff(
       artifacts: [{ label: "handoff", path: artifact.path, kind: "json" }],
       next: [
         `Open the External Client App in Salesforce: ${navigation.url}`,
-        "Open /sf-mcp and paste the consumer key into the Headless 360 setup.",
+        `Configure ${serverName} with sf_mcp using target_org=${session.target.alias ?? session.target.targetOrg}.`,
       ],
     },
     { handoff, artifact: artifact.path, navigation },
@@ -594,6 +724,53 @@ function deploymentFailure(
   );
 }
 
+function activationPlan(inspection: McpServerActivationInspection): IntegrationPlan["activation"] {
+  const base = {
+    developer_name: HEADLESS_SERVER_DEVELOPER_NAME,
+    master_label: HEADLESS_SERVER_LABEL,
+  };
+  if (!inspection.supported) {
+    return {
+      ...base,
+      operation: "browser",
+      fallback_reason: inspection.fallback_reason ?? "Tooling activation is unavailable.",
+    };
+  }
+  if (inspection.record?.active) {
+    return { ...base, operation: "none", before: inspection.record };
+  }
+  if (inspection.record) {
+    return inspection.updateable && inspection.record.id
+      ? { ...base, operation: "update", before: inspection.record }
+      : {
+          ...base,
+          operation: "browser",
+          before: inspection.record,
+          fallback_reason: "McpServerAccess is not updateable.",
+        };
+  }
+  return inspection.createable
+    ? { ...base, operation: "create" }
+    : {
+        ...base,
+        operation: "browser",
+        fallback_reason: "McpServerAccess is not createable.",
+      };
+}
+
+function sameActivationPlan(
+  current: IntegrationPlan["activation"],
+  planned: IntegrationPlan["activation"],
+): boolean {
+  return (
+    current.operation === planned.operation &&
+    current.developer_name === planned.developer_name &&
+    current.master_label === planned.master_label &&
+    current.before?.id === planned.before?.id &&
+    current.before?.active === planned.before?.active
+  );
+}
+
 function verificationFindings(inspection: EcaInspection): string[] {
   const findings: string[] = [];
   if (!isCompleteEca(inspection)) {
@@ -713,9 +890,4 @@ function maskEmail(value: string): string {
   const [local, domain] = value.split("@", 2);
   if (!local || !domain) return "configured";
   return `${local.slice(0, 1)}***@${domain}`;
-}
-
-function shortId(value: string | undefined): string {
-  if (!value) return "—";
-  return value.length > 10 ? `${value.slice(0, 3)}…${value.slice(-4)}` : value;
 }

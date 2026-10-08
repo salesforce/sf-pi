@@ -1,16 +1,16 @@
 ---
 title: "SF MCP"
-description: "Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime"
+description: "Conflict-aware Salesforce MCP preset catalog and org-bound connection-instance configuration for Pi's native MCP runtime"
 editLink: false
 ---
 
 # SF MCP
 
-<p class="sfpi-page-lead">Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime</p>
+<p class="sfpi-page-lead">Conflict-aware Salesforce MCP preset catalog and org-bound connection-instance configuration for Pi's native MCP runtime</p>
 
 ## What it does
 
-Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. The plan-bound sf_mcp family tool lets agents inspect status and conflicts, configure connection/authentication separately from reviewed tool exposure, apply exact native MCP entries through Guardrail, disable unchanged managed entries, and produce human OAuth login handoffs. Pi-native project overrides are recognized without being mistaken for complete manual servers and remain editable through /mcp unless explicitly reset. Interactive Connection & Authentication, Tool Access, and Tool Conflict Review pages replace the former unified editor. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.
+Provides an opt-in, product-grouped Salesforce MCP preset catalog over Pi's built-in MCP runtime. One reviewed preset can own several independently authenticated MCP Connection Instances. For Headless 360, the plan-bound sf_mcp family tool resolves an explicit Salesforce org, proves an org-pinned My Domain OAuth issuer, derives a deterministic server name, applies the exact native entry through Guardrail, and can compare post-login read-only userinfo with the planned org identity. Connection/authentication remains separate from reviewed tool exposure, unchanged entries can be disabled, and human OAuth remains a Pi-native handoff. The Manager stays preset-first and shows org-bound instances beneath each preset. Conflict, drift, adoption, and apply workflows stay fail-closed and preserve user-owned configuration.
 
 ## Start
 
@@ -39,6 +39,8 @@ Open its Manager detail or change its package state with:
 - Pi-normalized server-name collisions require the user to choose the one entry to keep.
 - Governed presets, including Salesforce DX, Tableau, Tableau Next, Trailhead, Marketing Cloud Engagement, and MuleSoft DX, use hidden server exposure with exact reviewed per-tool policies; newly observed unapproved tools remain unreachable.
 - Connection and authentication are configured separately from Tool Access; risky Direct choices still warn and every save retains explicit diff review before persistence.
+- Headless 360 target_org planning succeeds only when protected-resource and OpenID discovery resolve to the explicit org's trusted My Domain. The org identity, endpoint proof, and per-org server name are source-bound and privately persisted with the managed fingerprint.
+- Multiple instances can share one reviewed preset without sharing Pi OAuth credentials. Ambiguous instance actions require connection_name and legacy singleton entries remain unbound until explicitly verified.
 - Exact tool conflict recommendations change only MCP exposure; SF MCP never disables an SF Pi capability owner automatically.
 - Observed additions remain locked hidden until a reviewed preset revision approves them; removed documented tools are unavailable and can be repaired to Hidden on unchanged managed entries.
 - Agentforce Sales is sandbox-only and experimental in SF Pi; its secret is an environment reference and every operation remains Guardrail-mediated and fail-closed without exact OAuth-org identity.

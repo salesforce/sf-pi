@@ -13,13 +13,13 @@ Use `sf_integrate` for plan-bound integration authentication setup in explicit n
 ## Inbound hosted MCP lifecycle
 
 1. `org.preflight`
-2. `design.plan` with `direction=mcp` and `mcp_preset=headless-360`
-3. `setup.apply` with the exact plan ID/hash/app name and `allow_mutation=true`
-4. `setup.verify`
+2. `design.plan` with `direction=mcp` and `mcp_preset=headless-360`. The plan classifies the ECA as create or exact-adopt and activation as no-op, Tooling create/update, or SF Browser fallback.
+3. `setup.apply` with the exact plan ID/hash/app name and `allow_mutation=true`. Metadata creation remains check-only-first; hosted-server activation is rechecked and read back exactly.
+4. `setup.verify`; when Tooling activation is unavailable, pass `activation_navigation.route` to `sf_browser_open_org`, activate Headless 360, and verify again.
 5. `mcp.handoff`
 6. Open the returned non-session-bearing Salesforce Setup URL, or pass the returned `navigation.route` as the `sf_browser_open_org` target, to inspect the exact External Client App.
-7. Pass the public consumer key to `sf_mcp` with `status`, `configure.plan`, and exact `configure.apply`; use `login.handoff` after resulting-state verification. The interactive `/sf-mcp` Manager remains available for custom tool exposure.
-8. Reload Pi, run the returned `/mcp login salesforce-headless-360` command, and complete human OAuth consent.
+7. Pass the public consumer key and the same explicit `target_org` to `sf_mcp` with `status`, `connection.plan`, and exact `connection.apply`; use `login.handoff` with the returned per-org connection name. The interactive `/sf-mcp` Manager lists every instance beneath the preset and remains available for custom tool exposure.
+8. Reload Pi, run the returned per-org `/mcp login <connection-name>` command, and complete human OAuth consent.
 
 The generated public client uses `http://localhost:8765/callback`, Metadata API scopes `MCP, RefreshToken`, PKCE, named-user JWT access tokens, and refresh-token rotation. It never needs a client secret.
 
@@ -74,8 +74,9 @@ The standard profile source is always check-only validated before deployment. Cu
 
 - Every org-backed action requires `target_org`; default-org fallback is refused.
 - `setup.apply`, `secret.populate`, and `oauth.authorize` require `allow_mutation=true`, remain Guardrail-mediated, and refuse production or unknown orgs.
-- Plans are session-bound, org-bound, API-version-bound, content-rehashed at apply time, and create-only.
-- Existing resources or state that appears after planning is drift. Phase 2 doesn't adopt or overwrite it.
+- Plans are session-bound, org-bound, API-version-bound, and content-rehashed at apply time. Generic inbound and outbound plans are create-only; hosted MCP plans can adopt an exact ECA without modifying it.
+- Existing mismatched resources or state that appears after planning is drift and is never overwritten silently.
+- Headless activation uses `McpServerAccess` only after runtime Tooling describe proves its exact contract. Missing capabilities or permissions route to the SF Browser fallback.
 - Custom API-key External Credentials receive Metadata API check-only validation. Connect REST resources have no check-only API, so the exact plan and current-state recheck are their rehearsal boundary.
 - Partial failures are reported as unverified state. Run verification before manual cleanup or repair.
 

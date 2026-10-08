@@ -9,7 +9,7 @@ import {
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import { writeIntegrationArtifact } from "./artifacts.ts";
 import { buildHeadlessMcpSources } from "./metadata.ts";
-import type { IntegrationPlan } from "./types.ts";
+import type { IntegrationPlan, McpServerActivationPlan } from "./types.ts";
 
 export interface BuildIntegrationPlanInput {
   preset: SfIntegrateMcpPresetId;
@@ -17,6 +17,8 @@ export interface BuildIntegrationPlanInput {
   appLabel: string;
   contactEmail: string;
   session: SalesforceSession;
+  ecaOperation: "create" | "adopt";
+  activation: McpServerActivationPlan;
 }
 
 export async function buildIntegrationPlan(
@@ -35,7 +37,7 @@ export async function buildIntegrationPlan(
     contactEmail: input.contactEmail,
   });
   const material = {
-    schema_version: 1 as const,
+    schema_version: 2 as const,
     preset: input.preset,
     app_name: input.appName,
     app_label: input.appLabel,
@@ -50,6 +52,8 @@ export async function buildIntegrationPlan(
     callback_url: SF_MCP_HEADLESS_360_REQUIREMENT.callbackUrl,
     metadata_scopes: [...SF_MCP_HEADLESS_360_REQUIREMENT.metadataScopes],
     oauth_scopes: [...SF_MCP_HEADLESS_360_REQUIREMENT.oauthScopes],
+    eca_operation: input.ecaOperation,
+    activation: input.activation,
     sources,
   };
   const planHash = `sha256:${createHash("sha256").update(stableJson(material)).digest("hex")}`;

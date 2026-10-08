@@ -103,7 +103,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-integrate">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF Integrate</strong>
-  <span>Plan-bound Salesforce External Client App OAuth and outbound modern credential setup, with check-only validation, guarded apply, secret-safe population, and resulting-state proof.</span>
+  <span>Plan-bound Salesforce integration setup with hosted MCP activation and org-bound handoff, External Client App OAuth, outbound modern credentials, guarded apply, and resulting-state proof.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-integrate</code></span>
 </a>
 </div>
@@ -177,7 +177,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-mcp">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF MCP</strong>
-  <span>Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime</span>
+  <span>Conflict-aware Salesforce MCP preset catalog and org-bound connection-instance configuration for Pi's native MCP runtime</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-mcp</code></span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-ohana-spinner">

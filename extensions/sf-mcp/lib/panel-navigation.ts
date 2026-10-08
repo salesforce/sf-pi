@@ -26,17 +26,24 @@ export type ReconcileChoice = ReconcileOption & { action: ReconcileAction };
 export type ConnectionAction = "configure" | "reconcile" | "back";
 export type ConnectionChoice = ConnectionOption & { action: ConnectionAction };
 export type OverviewAction =
-  "connection" | "tools" | "policy" | "tool-conflicts" | "drift" | "back";
+  "connection" | "connections" | "tools" | "policy" | "tool-conflicts" | "drift" | "back";
 export type OverviewChoice = PresetOverviewOption & { action: OverviewAction };
 
-export function overviewOptions(state: PresetRuntimeState): OverviewChoice[] {
+export function overviewOptions(state: PresetRuntimeState, instanceCount = 1): OverviewChoice[] {
   const options: OverviewChoice[] = [
-    {
-      label: "Connection & authentication",
-      description:
-        "Configure the URL or command, environment, and OAuth details without changing tool access.",
-      action: "connection",
-    },
+    instanceCount > 1
+      ? {
+          label: `Connections · ${instanceCount}`,
+          description:
+            "Review each org-bound connection instance, its native server name, and its identity binding.",
+          action: "connections",
+        }
+      : {
+          label: "Connection & authentication",
+          description:
+            "Configure the URL or command, environment, and OAuth details without changing tool access.",
+          action: "connection",
+        },
     {
       label: "Tool access",
       description:
@@ -74,8 +81,14 @@ export function overviewOptions(state: PresetRuntimeState): OverviewChoice[] {
   return options;
 }
 
-export function overviewActionIndex(state: PresetRuntimeState, action: OverviewAction): number {
-  const index = overviewOptions(state).findIndex((option) => option.action === action);
+export function overviewActionIndex(
+  state: PresetRuntimeState,
+  action: OverviewAction,
+  instanceCount = 1,
+): number {
+  const index = overviewOptions(state, instanceCount).findIndex(
+    (option) => option.action === action,
+  );
   return Math.max(0, index);
 }
 

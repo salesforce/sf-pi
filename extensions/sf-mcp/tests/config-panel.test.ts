@@ -99,6 +99,51 @@ function openToolAccess(panel: TestPanel, presetId: McpPresetId): void {
 }
 
 describe("SF MCP Manager catalog", () => {
+  it("keeps one preset row and shows its org-bound connection instances", () => {
+    const { cwd, panel } = fixture();
+    for (const [alias, orgId] of [
+      ["DemoA", "example-org-a"],
+      ["DemoB", "example-org-b"],
+    ] as const) {
+      expect(
+        installPreset({
+          cwd,
+          scope: "project",
+          presetId: "headless-360",
+          resolution: "side-by-side",
+          connectionName: `salesforce-headless-360-${alias.toLowerCase()}`,
+          setup: {
+            oauthClientId: `client-${alias}`,
+            serverUrl: `https://api.salesforce.com/platform/mcp/v1/d/${alias.toLowerCase()}.develop/platform/headless-360`,
+          },
+          orgBinding: {
+            targetOrg: alias,
+            alias,
+            orgId,
+            orgType: "developer",
+            hostKey: `${alias.toLowerCase()}.develop`,
+            serverUrl: `https://api.salesforce.com/platform/mcp/v1/d/${alias.toLowerCase()}.develop/platform/headless-360`,
+            authorizationIssuer: `https://${alias.toLowerCase()}.develop.my.salesforce.com`,
+          },
+        }).ok,
+      ).toBe(true);
+    }
+
+    moveToPreset(panel, "headless-360");
+    panel.handleInput("\r");
+    let output = panel.renderContent(110).join("\n");
+    expect(output).toContain("CONNECTIONS");
+    expect(output).toContain("DemoA · developer");
+    expect(output).toContain("DemoB · developer");
+    expect(output).toContain("Connections · 2");
+
+    panel.handleInput("\r");
+    output = panel.renderContent(110).join("\n");
+    expect(output).toContain("Headless 360 connections");
+    expect(output).toContain("salesforce-headless-360-demoa");
+    expect(output).toContain("salesforce-headless-360-demob");
+  });
+
   it("renders a colorful category-grouped catalog without internal box borders", () => {
     const { panel } = fixture();
 

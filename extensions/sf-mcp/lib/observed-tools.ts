@@ -56,15 +56,19 @@ export function captureObservedMcpTools(tools: readonly ObservedMcpToolInput[]):
   );
 }
 
-export function getObservedMcpTools(preset: McpPreset): ObservedMcpTool[] {
-  return [...(observedByServer.get(canonicalMcpServerName(preset.serverName)) ?? [])];
+export function getObservedMcpTools(
+  preset: McpPreset,
+  serverName = preset.serverName,
+): ObservedMcpTool[] {
+  return [...(observedByServer.get(canonicalMcpServerName(serverName)) ?? [])];
 }
 
 export function inspectObservedToolDrift(
   preset: McpPreset,
   resolution: McpResolution = "enable",
+  serverName = preset.serverName,
 ): ObservedToolDrift {
-  const observedTools = observedByServer.get(canonicalMcpServerName(preset.serverName));
+  const observedTools = observedByServer.get(canonicalMcpServerName(serverName));
   if (!observedTools) {
     return { status: "not-observed", observed: [], added: [], removed: [] };
   }

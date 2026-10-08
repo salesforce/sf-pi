@@ -2,6 +2,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Check-only by default; optional disposable Headless 360 ECA lifecycle proof. */
 
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { connectSalesforce } from "../../lib/common/sf-conn/index.ts";
 import {
   defaultIntegrationAdapter,
@@ -16,6 +19,9 @@ import {
   orgPreflight,
 } from "../../extensions/sf-integrate/lib/operations.ts";
 import type { SfIntegrateSessionState } from "../../extensions/sf-integrate/lib/types.ts";
+import { resolveHostedOrgBinding } from "../../extensions/sf-mcp/lib/hosted-org-binding.ts";
+import { mcpConfigPath } from "../../extensions/sf-mcp/lib/mcp-config.ts";
+import { installPreset } from "../../extensions/sf-mcp/lib/service.ts";
 
 const args = process.argv.slice(2);
 const targetOrg = flagValue(args, "--org");
@@ -113,11 +119,53 @@ try {
       },
       session,
     );
-    const payload = handoff.details.handoff as { consumer_key?: unknown } | undefined;
+    const payload = handoff.details.handoff as
+      { consumer_key?: unknown; server_name?: unknown; target?: { org_id?: unknown } } | undefined;
     if (typeof payload?.consumer_key !== "string" || !payload.consumer_key) {
       throw new Error("MCP handoff did not include the public consumer key.");
     }
+    if (typeof payload.server_name !== "string" || !payload.server_name) {
+      throw new Error("MCP handoff did not include an org-bound server name.");
+    }
+    if (payload.target?.org_id !== session.target.orgId) {
+      throw new Error("MCP handoff target identity did not match the explicit org.");
+    }
     console.log("✅ SF MCP handoff");
+
+    const binding = await resolveHostedOrgBinding({
+      cwd: process.cwd(),
+      targetOrg,
+      serverPath: "platform/headless-360",
+    });
+    const isolatedAgentDir = await mkdtemp(path.join(tmpdir(), "sf-integrate-mcp-"));
+    const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+    try {
+      process.env.PI_CODING_AGENT_DIR = isolatedAgentDir;
+      const installed = installPreset({
+        cwd: process.cwd(),
+        scope: "global",
+        presetId: "headless-360",
+        resolution: "side-by-side",
+        connectionName: payload.server_name,
+        orgBinding: binding,
+        setup: {
+          oauthClientId: payload.consumer_key,
+          serverUrl: binding.serverUrl,
+        },
+      });
+      if (!installed.ok) throw new Error(installed.message);
+      const config = JSON.parse(await readFile(mcpConfigPath(process.cwd(), "global"), "utf8")) as {
+        mcpServers?: Record<string, { url?: unknown }>;
+      };
+      if (config.mcpServers?.[payload.server_name]?.url !== binding.serverUrl) {
+        throw new Error("SF MCP did not persist the proved org-pinned endpoint.");
+      }
+      console.log("✅ org-bound SF MCP native configuration");
+    } finally {
+      if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+      await rm(isolatedAgentDir, { recursive: true, force: true });
+    }
   }
 } catch (error) {
   runError = error;

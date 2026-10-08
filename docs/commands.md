@@ -107,7 +107,7 @@ _Non-mutating Salesforce workflow plans for the current split Herdr tools._
 
 ### [SF Integrate](./extensions/sf-integrate)
 
-_Plan-bound Salesforce External Client App OAuth and outbound modern credential setup, with check-only validation, guarded apply, secret-safe population, and resulting-state proof._
+_Plan-bound Salesforce integration setup with hosted MCP activation and org-bound handoff, External Client App OAuth, outbound modern credentials, guarded apply, and resulting-state proof._
 
 - Default: **on**
 - Commands: `/sf-integrate`
@@ -123,7 +123,7 @@ _Local-native Lightning Web Component lifecycle workflows for pi: project scan, 
 
 ### [SF MCP](./extensions/sf-mcp)
 
-_Conflict-aware Salesforce MCP preset catalog and plan-bound configuration tool for Pi's native MCP runtime_
+_Conflict-aware Salesforce MCP preset catalog and org-bound connection-instance configuration for Pi's native MCP runtime_
 
 - Default: **on**
 - Commands: `/sf-mcp`

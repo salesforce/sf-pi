@@ -111,6 +111,7 @@ export function renderPresetOverviewPage(input: {
   theme: Theme;
   width: number;
   state: PresetRuntimeState;
+  instances: readonly PresetRuntimeState[];
   capabilities: readonly string[];
   catalogNote?: string;
   tools: readonly McpToolDetail[];
@@ -129,6 +130,9 @@ export function renderPresetOverviewPage(input: {
     ...wrapText(state.preset.description, Math.max(24, width - 3)).map(
       (line) => ` ${t.fg("dim", line)}`,
     ),
+    "",
+    ` ${t.fg("accent", "▰")} ${t.fg("muted", "CONNECTIONS")}`,
+    ...renderInstanceSummary(t, input.instances),
     "",
     ` ${t.fg("accent", "▰")} ${t.fg("muted", "CAPABILITIES")}`,
     ...input.capabilities.flatMap((capability) =>
@@ -809,6 +813,18 @@ function plainStatus(status: ManagedServerStatus): string {
 function riskLabel(risk: McpPreset["risk"] | McpToolDetail["risk"]): string {
   if (risk === "destructive") return "Destructive";
   return `${risk.slice(0, 1).toUpperCase()}${risk.slice(1)}`;
+}
+
+function renderInstanceSummary(theme: Theme, instances: readonly PresetRuntimeState[]): string[] {
+  const configured = instances.filter((state) => state.managed.status !== "missing");
+  if (configured.length === 0) return [`    ${theme.fg("muted", "No configured connections")}`];
+  return configured.slice(0, 4).map((state) => {
+    const binding = state.managed.record?.orgBinding;
+    const label = binding?.alias ?? binding?.targetOrg ?? "Unbound existing connection";
+    const status = state.managed.status === "managed-enabled" ? "●" : "○";
+    const tone = state.managed.status === "managed-enabled" ? "success" : "warning";
+    return `    ${theme.fg(tone, status)} ${theme.fg("text", label)}${binding ? theme.fg("muted", ` · ${binding.orgType}`) : theme.fg("warning", " · identity unbound")}`;
+  });
 }
 
 function renderStatus(theme: Theme, status: ManagedServerStatus, preset: McpPreset): string {

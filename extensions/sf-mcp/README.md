@@ -4,13 +4,15 @@ SF MCP makes Salesforce-published MCP servers easy to discover and configure whi
 
 ## What It Does
 
-- Shows a local, versioned catalog of Salesforce MCP presets grouped by product family.
+- Shows a local, versioned catalog of Salesforce MCP presets grouped by product family, with multiple org-bound connection instances nested beneath one reviewed preset.
 - Opens every preset with a non-mutating overview of capabilities, documented tools, risk, support maturity, conflicts, and official documentation.
 - Merges bounded session-observed tool descriptions, input schemas, annotations, and effective exposure after a server connects; runtime metadata is never persisted.
 - Detects semantic overlap with enabled SF Pi family tools.
 - Maps reviewed MCP tools to exact enabled SF Pi capability owners, including broad dispatcher warnings.
 - Offers a deterministic native-preferred recommendation or an explicit keep-both policy without disabling native extensions.
 - Writes explicit, user-reviewed entries to Pi's native global or project `mcp.json`.
+- Resolves Headless 360 `target_org` connections to a proved org-pinned endpoint whose protected-resource and OpenID metadata match that org's existing My Domain.
+- Gives every org-bound instance an independent native server name, configuration fingerprint, and Pi OAuth credential identity.
 - Lets agents inspect status, produce source-bound redacted plans, apply exact reviewed entries through SF Guardrail, disable unchanged managed entries, and return a human OAuth login handoff.
 - Publishes each preset's short description for Pi's MCP prompt summary, tool-search ranking, and namespace inspection.
 - Preserves unknown top-level configuration and unrelated servers.
@@ -58,18 +60,19 @@ Interactive setup lives in the SF Pi Manager settings panel. `/sf-mcp native` pr
 
 The `sf_mcp` family tool supports this lifecycle:
 
-1. `status` — inspect one preset or the catalog in explicit global or trusted-project scope.
+1. `status` — inspect one preset or the catalog in explicit global or trusted-project scope, including every managed connection instance.
 2. `conflicts` — inspect exact reviewed tool overlaps and the current recommendation.
-3. `connection.plan` then `connection.apply` — configure URL or command, environment, and authentication while preserving existing managed tool access; new connections start Hidden.
-4. `login.handoff` — return the exact `/mcp login <server>` command after resulting-state verification. Pi and the user still own browser consent and tokens.
+3. `connection.plan` then `connection.apply` — configure URL or command, environment, and authentication while preserving existing managed tool access; Headless 360 accepts an explicit `target_org` and derives a per-org instance; new connections start Hidden.
+4. `login.handoff` — return the exact `/mcp login <server>` command after resulting-state verification. Pass `connection_name` when a preset has several instances. Pi and the user still own browser consent and tokens.
 5. `tools.plan` then `tools.apply` — apply a reviewed profile plus optional exact `tool_overrides` without changing connection fields.
-6. `disable.plan` then `disable.apply` — disable only an unchanged SF MCP-managed entry through the same plan-bound checks.
+6. `identity.verify` — after login, invoke bounded Headless 360 read-only userinfo and require the authenticated organization id to match the source-bound instance.
+7. `disable.plan` then `disable.apply` — disable only an unchanged SF MCP-managed entry through the same plan-bound checks.
 
 `configure.plan` and `configure.apply` remain as a combined compatibility path. Public client identifiers can be passed through preset-specific fields; raw client secrets and OAuth tokens are never accepted. Secret-bearing products use environment references.
 
 ## Configuration
 
-Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page is always a read-only overview with four focused routes:
+Open `/sf-mcp`, enter **Settings**, select a preset, and press Enter. The first page remains preset-first and lists every configured org-bound connection beneath that preset; when several exist, **Connections** opens the exact native names and identity-binding status. The overview then offers these focused routes:
 
 - **Connection & authentication** configures URL or command, environment, and OAuth fields. New reviewed connections are saved in Quarantine, with every tool Hidden.
 - **Tool access** changes only `exposure` and `toolExposure`. Use ↑/↓ to select a tool, ←/→ or Space to change its mode, `P` to choose a profile, `?` for mode help, Enter for full details, and `S` for **Review & Save**.

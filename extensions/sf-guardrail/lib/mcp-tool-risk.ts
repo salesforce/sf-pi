@@ -26,6 +26,7 @@ const EXTERNAL_SERVERS = new Set([
   "mulesoft_dx",
   "salesforce_custom",
 ]);
+const HEADLESS_360_SERVER = "salesforce_headless_360";
 const DX_MUTATION_PATTERN =
   /^(deploy|create|delete|update|assign|unassign|publish|activate|deactivate|execute)[_-]/i;
 
@@ -84,7 +85,10 @@ export function classifySfMcpRisk(
     });
   }
 
-  if (serverName === "salesforce_headless_360" && mcpTool === "dispatch") {
+  if (
+    (serverName === HEADLESS_360_SERVER || serverName.startsWith(`${HEADLESS_360_SERVER}_`)) &&
+    mcpTool === "dispatch"
+  ) {
     return hostedOperationSubject({
       toolName,
       serverName,

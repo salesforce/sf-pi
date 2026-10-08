@@ -754,19 +754,12 @@ export function buildServerConfig(
 
   const environment = setup.environment ?? "sandbox";
   const clientId = required(setup.oauthClientId, "External Client App consumer key");
-  const pathByPreset: Partial<Record<McpPresetId, string>> = {
-    data360: "data360",
-    "backup-recover": "platform/backup-and-recover",
-    "content-readonly": "platform/content-readonly",
-    "content-write": "platform/content-write",
-    "headless-360": "platform/headless-360",
-    "tableau-next": "analytics/tableau-next",
-    "crm-analytics": "analytics/crma-beta",
-  };
-  const serverPath = pathByPreset[preset.id];
+  const serverPath = hostedServerPath(preset.id);
   if (!serverPath) throw new Error(`No hosted endpoint is defined for ${preset.id}.`);
   const prefix = hostedEndpointPrefix(preset.id, environment);
-  const url = `https://api.salesforce.com/platform/mcp/v1/${prefix}${serverPath}`;
+  const url = setup.serverUrl
+    ? validatedHostedUrl(setup.serverUrl, preset.id, serverPath)
+    : `https://api.salesforce.com/platform/mcp/v1/${prefix}${serverPath}`;
 
   const base: McpServerConfig = {
     url,
@@ -829,6 +822,56 @@ function validateToolExposure(
 function hostedEndpointPrefix(id: McpPresetId, environment: "production" | "sandbox"): string {
   if (id === "data360") return environment === "sandbox" ? "data/sandbox/" : "data/";
   return environment === "sandbox" ? "sandbox/" : "";
+}
+
+export function hostedServerPath(id: McpPresetId): string | undefined {
+  const pathByPreset: Partial<Record<McpPresetId, string>> = {
+    data360: "data360",
+    "backup-recover": "platform/backup-and-recover",
+    "content-readonly": "platform/content-readonly",
+    "content-write": "platform/content-write",
+    "headless-360": "platform/headless-360",
+    "tableau-next": "analytics/tableau-next",
+    "crm-analytics": "analytics/crma-beta",
+  };
+  return pathByPreset[id];
+}
+
+function validatedHostedUrl(value: string, presetId: McpPresetId, serverPath: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Hosted MCP server URL must be a valid URL.");
+  }
+  if (
+    url.protocol !== "https:" ||
+    url.hostname !== "api.salesforce.com" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error(
+      "Hosted MCP server URL must use the Salesforce HTTPS gateway without query or fragment data.",
+    );
+  }
+  const pathname = url.pathname.replace(/\/$/u, "");
+  const base = "/platform/mcp/v1/";
+  const genericPaths = new Set([
+    `${base}${hostedEndpointPrefix(presetId, "production")}${serverPath}`,
+    `${base}${hostedEndpointPrefix(presetId, "sandbox")}${serverPath}`,
+  ]);
+  const pinnedPattern = new RegExp(
+    `^${escapeRegex(base)}d/[A-Za-z0-9.-]+/${escapeRegex(serverPath)}$`,
+    "u",
+  );
+  if (!genericPaths.has(pathname) && !pinnedPattern.test(pathname)) {
+    throw new Error("The endpoint does not match this hosted MCP preset.");
+  }
+  return url.toString().replace(/\/$/u, "");
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 export function isPresetConfigCompatible(
@@ -986,14 +1029,9 @@ export function isPresetConfigCompatible(
     };
   }
   try {
-    const url = new URL(config.url);
-    const expected = buildServerConfig(preset, "enable", {
-      environment: url.pathname.includes("/sandbox/") ? "sandbox" : "production",
-      oauthClientId: config.oauth?.clientId ?? "compatibility-check",
-    });
-    if (!("url" in expected) || expected.url !== config.url) {
-      return { compatible: false, reason: "The endpoint does not match this preset." };
-    }
+    const serverPath = hostedServerPath(preset.id);
+    if (!serverPath) throw new Error("missing hosted server path");
+    validatedHostedUrl(config.url, preset.id, serverPath);
     if (preset.approvedTools && !hasApprovedToolExposure(preset, config)) {
       return {
         compatible: false,

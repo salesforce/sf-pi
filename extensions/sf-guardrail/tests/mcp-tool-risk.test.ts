@@ -315,7 +315,15 @@ describe("Salesforce MCP tool safety subjects", () => {
       blockProductionOrUnknown: true,
     });
     expect(
-      classifyNativeToolRisk("mcp__salesforce_headless_360__dispatch_readonly", {
+      classifyNativeToolRisk("mcp__salesforce_headless_360_demo_org__dispatch", {
+        method: "POST",
+      }),
+    ).toMatchObject({
+      ruleId: "native-sf-mcp-headless-dispatch",
+      operationFamily: "mcp headless dispatch",
+    });
+    expect(
+      classifyNativeToolRisk("mcp__salesforce_headless_360_demo_org__dispatch_readonly", {
         method: "GET",
       }),
     ).toBeUndefined();

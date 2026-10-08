@@ -4,10 +4,17 @@ import { createHash } from "node:crypto";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import {
+  hostedConnectionName,
+  resolveHostedOrgBinding,
+  type HostedMcpOrgBinding,
+  type HostedOrgBindingResolver,
+} from "./hosted-org-binding.ts";
 import { fingerprintConfig } from "./managed-state.ts";
-import { mcpConfigPath, type McpServerConfig } from "./mcp-config.ts";
+import { canonicalMcpServerName, mcpConfigPath, type McpServerConfig } from "./mcp-config.ts";
 import {
   installPreset,
+  inspectPresetInstances,
   inspectPresetRuntime,
   setManagedPresetEnabled,
   summarizeConfigDiff,
@@ -27,6 +34,7 @@ import {
   approvedToolsForResolution,
   buildServerConfig,
   getPreset,
+  hostedServerPath,
   SALESFORCE_MCP_PRESETS,
   type McpPreset,
   type McpPresetId,
@@ -45,6 +53,7 @@ const SF_MCP_ACTIONS = [
   "disable.plan",
   "disable.apply",
   "login.handoff",
+  "identity.verify",
 ] as const;
 const SCOPES = ["global", "project"] as const;
 const CONFIGURE_RESOLUTIONS = ["enable", "complement-native", "side-by-side"] as const;
@@ -61,6 +70,8 @@ interface SfMcpParams {
   action: SfMcpAction;
   scope?: SfMcpScope;
   preset_id?: string;
+  target_org?: string;
+  connection_name?: string;
   resolution?: ConfigureResolution;
   environment?: PresetSetup["environment"];
   oauth_client_id?: string;
@@ -85,6 +96,8 @@ interface PlanBase {
   scope: SfMcpScope;
   presetId: McpPresetId;
   presetRevision: number;
+  connectionName: string;
+  orgBinding?: HostedMcpOrgBinding;
   sourceVersion: string;
   willChange: boolean;
 }
@@ -132,6 +145,18 @@ const Params = Type.Object({
   preset_id: Type.Optional(
     Type.String({ description: "Salesforce MCP preset id, for example headless-360." }),
   ),
+  target_org: Type.Optional(
+    Type.String({
+      description:
+        "Explicit Salesforce org alias or username used to create an org-pinned hosted MCP connection.",
+    }),
+  ),
+  connection_name: Type.Optional(
+    Type.String({
+      description:
+        "Exact Pi MCP server name. Automatically derived from the target org alias when omitted.",
+    }),
+  ),
   resolution: Type.Optional(
     StringEnum(CONFIGURE_RESOLUTIONS, {
       description: "Conflict resolution for configure.plan.",
@@ -178,8 +203,20 @@ const Params = Type.Object({
   ),
 });
 
-export function registerSfMcpTool(pi: ExtensionAPI): void {
+export interface SfMcpToolDependencies {
+  resolveHostedOrgBinding: HostedOrgBindingResolver;
+}
+
+const DEFAULT_DEPENDENCIES: SfMcpToolDependencies = {
+  resolveHostedOrgBinding,
+};
+
+export function registerSfMcpTool(
+  pi: ExtensionAPI,
+  overrides: Partial<SfMcpToolDependencies> = {},
+): void {
   const plans = new Map<string, SfMcpPlan>();
+  const dependencies = { ...DEFAULT_DEPENDENCIES, ...overrides };
 
   pi.registerTool<typeof Params>({
     name: "sf_mcp",
@@ -190,13 +227,16 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
       "Configure reviewed Salesforce MCP connections and tool access in Pi without directly editing mcp.json.",
     promptGuidelines: [
       "Use status first. Prefer connection.plan/apply for URL and authentication, then tools.plan/apply for reviewed exposure; configure.plan/apply remains the combined compatibility path.",
-      "Use sf_integrate for Salesforce-side External Client App setup. Pass only the public consumer key to sf_mcp as oauth_client_id.",
+      "Use sf_integrate for Salesforce-side External Client App setup. Pass the public consumer key as oauth_client_id and the same explicit target_org so SF MCP can prove an org-pinned endpoint.",
+      "One hosted preset can have multiple org-bound connection instances. Pass connection_name when an action would otherwise be ambiguous.",
+      "If org-pinned discovery reports no trusted My Domain or an issuer mismatch, use sf_browser_open_org with the my-domain Setup destination to inspect readiness; never rename an existing domain automatically.",
       "Mutating applies require an explicit global or trusted-project scope plus allow_mutation=true and remain SF Guardrail-mediated.",
       "Use the recommended tool profile unless the user explicitly requests another reviewed exposure profile.",
       "Use login.handoff after apply. OAuth login and browser consent remain human-controlled through Pi's native /mcp runtime.",
+      "After login and recommended tool exposure, run identity.verify to compare the Headless 360 userinfo organization id with the planned org binding.",
     ],
     parameters: Params,
-    async execute(_id, rawParams, _signal, _onUpdate, ctx) {
+    async execute(_id, rawParams, signal, _onUpdate, ctx) {
       const params = rawParams as SfMcpParams;
       try {
         const scope = resolveScope(params);
@@ -207,7 +247,7 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
           case "conflicts":
             return conflictsResult(ctx.cwd, scope, params);
           case "connection.plan": {
-            const plan = createConnectionPlan(ctx.cwd, scope, params);
+            const plan = await createConnectionPlan(ctx.cwd, scope, params, dependencies, signal);
             plans.set(plan.planId, plan);
             return connectionPlanResult(
               plan,
@@ -217,7 +257,7 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
           case "connection.apply": {
             requireMutationIntent(params);
             const plan = requirePlan(plans, params, "connection", ctx.cwd, scope);
-            return applyConnectionPlan(plans, plan);
+            return await applyConnectionPlan(plans, plan, dependencies, signal);
           }
           case "tools.plan": {
             const plan = createToolsPlan(ctx.cwd, scope, params);
@@ -230,7 +270,7 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
             return applyToolsPlan(plans, plan);
           }
           case "configure.plan": {
-            const plan = createConfigurePlan(ctx.cwd, scope, params);
+            const plan = await createConfigurePlan(ctx.cwd, scope, params, dependencies, signal);
             plans.set(plan.planId, plan);
             return configurePlanResult(
               plan,
@@ -240,7 +280,7 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
           case "configure.apply": {
             requireMutationIntent(params);
             const plan = requirePlan(plans, params, "configure", ctx.cwd, scope);
-            return applyConfigurePlan(plans, plan);
+            return await applyConfigurePlan(plans, plan, dependencies, signal);
           }
           case "disable.plan": {
             const plan = createDisablePlan(ctx.cwd, scope, params);
@@ -254,6 +294,10 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
           }
           case "login.handoff":
             return loginHandoffResult(ctx.cwd, scope, params);
+          case "identity.verify":
+            return await identityVerifyResult(ctx.cwd, scope, params, (name, args) =>
+              ctx.executeTool(name, args, { signal }),
+            );
           default:
             throw new Error(`Unsupported sf_mcp action: ${String(params.action)}`);
         }
@@ -267,12 +311,30 @@ export function registerSfMcpTool(pi: ExtensionAPI): void {
 function statusResult(cwd: string, scope: SfMcpScope, presetId?: string) {
   const presets = presetId ? [getPreset(presetId)] : SALESFORCE_MCP_PRESETS;
   const rows = presets.map((preset) => {
-    const state = inspectPresetRuntime(cwd, scope, preset);
+    const instances = inspectPresetInstances(cwd, scope, preset);
+    const connections = instances
+      .filter((state) => state.managed.status !== "missing")
+      .map((state) => ({
+        serverName: state.managed.configuredName ?? state.connectionName,
+        status: state.managed.status,
+        targetOrg: state.managed.record?.orgBinding?.targetOrg,
+        orgType: state.managed.record?.orgBinding?.orgType,
+        identityBound: Boolean(state.managed.record?.orgBinding?.orgId),
+      }));
+    const primary = connections[0] ?? {
+      serverName: preset.serverName,
+      status: "missing" as const,
+      targetOrg: undefined,
+      orgType: undefined,
+      identityBound: false,
+    };
+    const state = instances[0] ?? inspectPresetRuntime(cwd, scope, preset);
     return {
       presetId: preset.id,
       label: preset.label,
-      serverName: preset.serverName,
-      status: state.managed.status,
+      serverName: primary.serverName,
+      status: primary.status,
+      connections,
       conflictOwners: state.plan.conflicts.map((conflict) => conflict.nativeExtensionId),
       scopeConflict: state.scopeConflict?.kind,
     };
@@ -283,6 +345,7 @@ function statusResult(cwd: string, scope: SfMcpScope, presetId?: string) {
     ...rows.map(
       (row) =>
         `${row.presetId}: ${row.status}` +
+        (row.connections.length > 1 ? ` · ${row.connections.length} connections` : "") +
         (row.conflictOwners.length ? ` · overlaps ${row.conflictOwners.join(", ")}` : "") +
         (row.scopeConflict ? ` · ${row.scopeConflict}` : ""),
     ),
@@ -315,16 +378,26 @@ function conflictsResult(cwd: string, scope: SfMcpScope, params: SfMcpParams) {
   });
 }
 
-function createConnectionPlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): ConnectionPlan {
+async function createConnectionPlan(
+  cwd: string,
+  scope: SfMcpScope,
+  params: SfMcpParams,
+  dependencies: SfMcpToolDependencies,
+  signal?: AbortSignal,
+): Promise<ConnectionPlan> {
   const preset = requiredPreset(params);
-  const state = inspectPresetRuntime(cwd, scope, preset);
+  const target = await resolveConnectionTarget(cwd, scope, params, preset, dependencies, signal);
+  const state = inspectPresetRuntime(cwd, scope, preset, target.connectionName);
   assertPlannableState(
     state.managed.status,
     state.managed.message,
     params.replace_existing === true,
   );
   const resolution = params.resolution ?? connectionResolution(state);
-  const setup = presetSetup(params);
+  const setup = {
+    ...presetSetup(params),
+    ...(target.orgBinding ? { serverUrl: target.orgBinding.serverUrl } : {}),
+  };
   const toolPolicy = hasReviewedToolPolicy(preset)
     ? state.managed.config
       ? buildToolExposurePolicy(preset, "custom", state.managed.config)
@@ -332,7 +405,7 @@ function createConnectionPlan(cwd: string, scope: SfMcpScope, params: SfMcpParam
     : undefined;
   const proposedConfig = buildServerConfig(preset, resolution, setup, toolPolicy?.exposures);
   const diff = summarizeConfigDiff(state.managed.config ?? state.managed.override, proposedConfig);
-  const sourceVersion = sourceVersionFor(cwd, scope, preset);
+  const sourceVersion = sourceVersionFor(cwd, scope, preset, target.connectionName);
   const replaceExisting = params.replace_existing === true;
   const willChange =
     state.managed.status !== "managed-enabled" ||
@@ -344,6 +417,8 @@ function createConnectionPlan(cwd: string, scope: SfMcpScope, params: SfMcpParam
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName: target.connectionName,
+    orgBinding: target.orgBinding,
     resolution,
     setup,
     toolPolicy: toolPolicy?.exposures,
@@ -358,6 +433,8 @@ function createConnectionPlan(cwd: string, scope: SfMcpScope, params: SfMcpParam
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName: target.connectionName,
+    ...(target.orgBinding ? { orgBinding: target.orgBinding } : {}),
     sourceVersion,
     willChange,
     resolution,
@@ -378,8 +455,14 @@ function connectionPlanResult(
   ]);
 }
 
-function applyConnectionPlan(plans: Map<string, SfMcpPlan>, plan: ConnectionPlan) {
+async function applyConnectionPlan(
+  plans: Map<string, SfMcpPlan>,
+  plan: ConnectionPlan,
+  dependencies: SfMcpToolDependencies,
+  signal?: AbortSignal,
+) {
   assertCurrentSource(plan);
+  await assertCurrentOrgBinding(plan, dependencies, signal);
   if (!plan.willChange) {
     plans.delete(plan.planId);
     return successResult(
@@ -389,6 +472,7 @@ function applyConnectionPlan(plans: Map<string, SfMcpPlan>, plan: ConnectionPlan
         action: "connection.apply",
         scope: plan.scope,
         presetId: plan.presetId,
+        connectionName: plan.connectionName,
         changed: false,
         verified: true,
         reloadRequired: false,
@@ -403,13 +487,21 @@ function applyConnectionPlan(plans: Map<string, SfMcpPlan>, plan: ConnectionPlan
     setup: plan.setup,
     replaceExisting: plan.replaceExisting,
     toolPolicy: plan.toolPolicy,
+    connectionName: plan.connectionName,
+    ...(plan.orgBinding ? { orgBinding: plan.orgBinding } : {}),
   });
   if (!result.ok) throw new Error(result.message);
-  const verified = inspectPresetRuntime(plan.cwd, plan.scope, getPreset(plan.presetId));
+  const verified = inspectPresetRuntime(
+    plan.cwd,
+    plan.scope,
+    getPreset(plan.presetId),
+    plan.connectionName,
+  );
   if (
     verified.managed.status !== "managed-enabled" ||
     !verified.managed.config ||
-    fingerprintConfig(verified.managed.config) !== fingerprintConfig(plan.proposedConfig)
+    fingerprintConfig(verified.managed.config) !== fingerprintConfig(plan.proposedConfig) ||
+    verified.managed.record?.orgBinding?.orgId !== plan.orgBinding?.orgId
   ) {
     throw new Error(
       `${getPreset(plan.presetId).label} connection was written but exact resulting-state verification failed.`,
@@ -421,6 +513,8 @@ function applyConnectionPlan(plans: Map<string, SfMcpPlan>, plan: ConnectionPlan
     action: "connection.apply",
     scope: plan.scope,
     presetId: plan.presetId,
+    connectionName: plan.connectionName,
+    targetOrg: plan.orgBinding?.targetOrg,
     changed: result.changed,
     verified: true,
     reloadRequired: result.reloadRequired,
@@ -429,7 +523,8 @@ function applyConnectionPlan(plans: Map<string, SfMcpPlan>, plan: ConnectionPlan
 
 function createToolsPlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): ToolsPlan {
   const preset = requiredPreset(params);
-  const state = inspectPresetRuntime(cwd, scope, preset);
+  const connectionName = resolveExistingConnectionName(cwd, scope, preset, params.connection_name);
+  const state = inspectPresetRuntime(cwd, scope, preset, connectionName);
   if (
     (state.managed.status !== "managed-enabled" && state.managed.status !== "managed-disabled") ||
     !state.managed.config
@@ -454,7 +549,7 @@ function createToolsPlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): T
     approvedToolsForResolution(preset, state.managed.record?.resolution ?? "enable"),
   );
   const diff = summarizeConfigDiff(state.managed.config, proposedConfig);
-  const sourceVersion = sourceVersionFor(cwd, scope, preset);
+  const sourceVersion = sourceVersionFor(cwd, scope, preset, connectionName);
   const willChange = fingerprintConfig(state.managed.config) !== fingerprintConfig(proposedConfig);
   const identity = planIdentity({
     kind: "tools",
@@ -462,6 +557,7 @@ function createToolsPlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): T
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName,
     policy,
     proposedConfig,
     sourceVersion,
@@ -473,6 +569,8 @@ function createToolsPlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): T
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName,
+    ...(state.managed.record?.orgBinding ? { orgBinding: state.managed.record.orgBinding } : {}),
     sourceVersion,
     willChange,
     policy,
@@ -488,6 +586,7 @@ function toolsPlanResult(plan: ToolsPlan) {
       `Plan ID: ${plan.planId}`,
       `Plan hash: ${plan.planHash}`,
       `Scope: ${plan.scope}`,
+      `Connection: ${plan.connectionName}`,
       `Profile: ${plan.policy.profile}`,
       `Change required: ${plan.willChange ? "yes" : "no"}`,
       "Changes:",
@@ -498,6 +597,7 @@ function toolsPlanResult(plan: ToolsPlan) {
       action: "tools.plan",
       scope: plan.scope,
       presetId: plan.presetId,
+      connectionName: plan.connectionName,
       planId: plan.planId,
       planHash: plan.planHash,
       sourceVersion: plan.sourceVersion,
@@ -520,6 +620,7 @@ function applyToolsPlan(plans: Map<string, SfMcpPlan>, plan: ToolsPlan) {
         action: "tools.apply",
         scope: plan.scope,
         presetId: plan.presetId,
+        connectionName: plan.connectionName,
         changed: false,
         verified: true,
         reloadRequired: false,
@@ -531,9 +632,15 @@ function applyToolsPlan(plans: Map<string, SfMcpPlan>, plan: ToolsPlan) {
     scope: plan.scope,
     presetId: plan.presetId,
     policy: plan.policy,
+    connectionName: plan.connectionName,
   });
   if (!result.ok) throw new Error(result.message);
-  const verified = inspectPresetRuntime(plan.cwd, plan.scope, getPreset(plan.presetId));
+  const verified = inspectPresetRuntime(
+    plan.cwd,
+    plan.scope,
+    getPreset(plan.presetId),
+    plan.connectionName,
+  );
   if (
     !verified.managed.config ||
     fingerprintConfig(verified.managed.config) !== fingerprintConfig(plan.proposedConfig)
@@ -548,26 +655,37 @@ function applyToolsPlan(plans: Map<string, SfMcpPlan>, plan: ToolsPlan) {
     action: "tools.apply",
     scope: plan.scope,
     presetId: plan.presetId,
+    connectionName: plan.connectionName,
     changed: result.changed,
     verified: true,
     reloadRequired: result.reloadRequired,
   });
 }
 
-function createConfigurePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): ConfigurePlan {
+async function createConfigurePlan(
+  cwd: string,
+  scope: SfMcpScope,
+  params: SfMcpParams,
+  dependencies: SfMcpToolDependencies,
+  signal?: AbortSignal,
+): Promise<ConfigurePlan> {
   const preset = requiredPreset(params);
   const resolution = requiredResolution(params);
-  const state = inspectPresetRuntime(cwd, scope, preset);
+  const target = await resolveConnectionTarget(cwd, scope, params, preset, dependencies, signal);
+  const state = inspectPresetRuntime(cwd, scope, preset, target.connectionName);
   assertPlannableState(
     state.managed.status,
     state.managed.message,
     params.replace_existing === true,
   );
-  const setup = presetSetup(params);
+  const setup = {
+    ...presetSetup(params),
+    ...(target.orgBinding ? { serverUrl: target.orgBinding.serverUrl } : {}),
+  };
   const toolPolicy = reviewedToolPolicy(preset, state.plan, params.tool_profile ?? "recommended");
   const proposedConfig = buildServerConfig(preset, resolution, setup, toolPolicy?.exposures);
   const diff = summarizeConfigDiff(state.managed.config ?? state.managed.override, proposedConfig);
-  const sourceVersion = sourceVersionFor(cwd, scope, preset);
+  const sourceVersion = sourceVersionFor(cwd, scope, preset, target.connectionName);
   const replaceExisting = params.replace_existing === true;
   const willChange =
     state.managed.status !== "managed-enabled" ||
@@ -579,6 +697,8 @@ function createConfigurePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName: target.connectionName,
+    orgBinding: target.orgBinding,
     resolution,
     setup,
     toolPolicy: toolPolicy?.exposures,
@@ -593,6 +713,8 @@ function createConfigurePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName: target.connectionName,
+    ...(target.orgBinding ? { orgBinding: target.orgBinding } : {}),
     sourceVersion,
     willChange,
     resolution,
@@ -619,6 +741,8 @@ function configurationPlanResult(
     `Plan ID: ${plan.planId}`,
     `Plan hash: ${plan.planHash}`,
     `Scope: ${plan.scope}`,
+    `Connection: ${plan.connectionName}`,
+    ...(plan.orgBinding ? [`Target org: ${plan.orgBinding.targetOrg}`] : []),
     `Resolution: ${plan.resolution}`,
     `Native config: ${mcpConfigPath(plan.cwd, plan.scope)}`,
     `Change required: ${plan.willChange ? "yes" : "no"}`,
@@ -637,6 +761,8 @@ function configurationPlanResult(
     action,
     scope: plan.scope,
     presetId: plan.presetId,
+    connectionName: plan.connectionName,
+    targetOrg: plan.orgBinding?.targetOrg,
     planId: plan.planId,
     planHash: plan.planHash,
     sourceVersion: plan.sourceVersion,
@@ -645,8 +771,14 @@ function configurationPlanResult(
   });
 }
 
-function applyConfigurePlan(plans: Map<string, SfMcpPlan>, plan: ConfigurePlan) {
+async function applyConfigurePlan(
+  plans: Map<string, SfMcpPlan>,
+  plan: ConfigurePlan,
+  dependencies: SfMcpToolDependencies,
+  signal?: AbortSignal,
+) {
   assertCurrentSource(plan);
+  await assertCurrentOrgBinding(plan, dependencies, signal);
   if (!plan.willChange) {
     plans.delete(plan.planId);
     return successResult(`${getPreset(plan.presetId).label} already matches the reviewed plan.`, {
@@ -654,6 +786,7 @@ function applyConfigurePlan(plans: Map<string, SfMcpPlan>, plan: ConfigurePlan) 
       action: "configure.apply",
       scope: plan.scope,
       presetId: plan.presetId,
+      connectionName: plan.connectionName,
       changed: false,
       verified: true,
       reloadRequired: false,
@@ -667,9 +800,16 @@ function applyConfigurePlan(plans: Map<string, SfMcpPlan>, plan: ConfigurePlan) 
     setup: plan.setup,
     replaceExisting: plan.replaceExisting,
     toolPolicy: plan.toolPolicy,
+    connectionName: plan.connectionName,
+    ...(plan.orgBinding ? { orgBinding: plan.orgBinding } : {}),
   });
   if (!result.ok) throw new Error(result.message);
-  const verified = inspectPresetRuntime(plan.cwd, plan.scope, getPreset(plan.presetId));
+  const verified = inspectPresetRuntime(
+    plan.cwd,
+    plan.scope,
+    getPreset(plan.presetId),
+    plan.connectionName,
+  );
   if (
     verified.managed.status !== "managed-enabled" ||
     !verified.managed.config ||
@@ -685,6 +825,8 @@ function applyConfigurePlan(plans: Map<string, SfMcpPlan>, plan: ConfigurePlan) 
     action: "configure.apply",
     scope: plan.scope,
     presetId: plan.presetId,
+    connectionName: plan.connectionName,
+    targetOrg: plan.orgBinding?.targetOrg,
     changed: result.changed,
     verified: true,
     reloadRequired: result.reloadRequired,
@@ -693,19 +835,21 @@ function applyConfigurePlan(plans: Map<string, SfMcpPlan>, plan: ConfigurePlan) 
 
 function createDisablePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams): DisablePlan {
   const preset = requiredPreset(params);
-  const state = inspectPresetRuntime(cwd, scope, preset);
+  const connectionName = resolveExistingConnectionName(cwd, scope, preset, params.connection_name);
+  const state = inspectPresetRuntime(cwd, scope, preset, connectionName);
   if (state.managed.status !== "managed-enabled" && state.managed.status !== "managed-disabled") {
     throw new Error(
-      `${preset.label} is not an unchanged SF MCP-managed entry and cannot be disabled by the agent tool.`,
+      `${preset.label} connection must be an unchanged managed entry before it can be disabled.`,
     );
   }
-  const sourceVersion = sourceVersionFor(cwd, scope, preset);
+  const sourceVersion = sourceVersionFor(cwd, scope, preset, connectionName);
   const identity = planIdentity({
     kind: "disable",
     cwd,
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName,
     sourceVersion,
   });
   return {
@@ -715,6 +859,8 @@ function createDisablePlan(cwd: string, scope: SfMcpScope, params: SfMcpParams):
     scope,
     presetId: preset.id,
     presetRevision: preset.revision,
+    connectionName,
+    ...(state.managed.record?.orgBinding ? { orgBinding: state.managed.record.orgBinding } : {}),
     sourceVersion,
     willChange: state.managed.status === "managed-enabled",
   };
@@ -726,6 +872,7 @@ function disablePlanResult(plan: DisablePlan) {
       `REVIEW: Disable ${getPreset(plan.presetId).label} in ${plan.scope} scope.`,
       `Plan ID: ${plan.planId}`,
       `Plan hash: ${plan.planHash}`,
+      `Connection: ${plan.connectionName}`,
       `Change required: ${plan.willChange ? "yes" : "no"}`,
     ].join("\n"),
     {
@@ -733,6 +880,7 @@ function disablePlanResult(plan: DisablePlan) {
       action: "disable.plan",
       scope: plan.scope,
       presetId: plan.presetId,
+      connectionName: plan.connectionName,
       planId: plan.planId,
       planHash: plan.planHash,
       sourceVersion: plan.sourceVersion,
@@ -750,6 +898,7 @@ function applyDisablePlan(plans: Map<string, SfMcpPlan>, plan: DisablePlan) {
       action: "disable.apply",
       scope: plan.scope,
       presetId: plan.presetId,
+      connectionName: plan.connectionName,
       changed: false,
       verified: true,
       reloadRequired: false,
@@ -759,10 +908,16 @@ function applyDisablePlan(plans: Map<string, SfMcpPlan>, plan: DisablePlan) {
     cwd: plan.cwd,
     scope: plan.scope,
     presetId: plan.presetId,
+    connectionName: plan.connectionName,
     enabled: false,
   });
   if (!result.ok) throw new Error(result.message);
-  const verified = inspectPresetRuntime(plan.cwd, plan.scope, getPreset(plan.presetId));
+  const verified = inspectPresetRuntime(
+    plan.cwd,
+    plan.scope,
+    getPreset(plan.presetId),
+    plan.connectionName,
+  );
   if (verified.managed.status !== "managed-disabled") {
     throw new Error(
       `${getPreset(plan.presetId).label} disable completed but resulting-state verification failed.`,
@@ -774,6 +929,7 @@ function applyDisablePlan(plans: Map<string, SfMcpPlan>, plan: DisablePlan) {
     action: "disable.apply",
     scope: plan.scope,
     presetId: plan.presetId,
+    connectionName: plan.connectionName,
     changed: result.changed,
     verified: true,
     reloadRequired: result.reloadRequired,
@@ -782,7 +938,8 @@ function applyDisablePlan(plans: Map<string, SfMcpPlan>, plan: DisablePlan) {
 
 function loginHandoffResult(cwd: string, scope: SfMcpScope, params: SfMcpParams) {
   const preset = requiredPreset(params);
-  const state = inspectPresetRuntime(cwd, scope, preset);
+  const connectionName = resolveExistingConnectionName(cwd, scope, preset, params.connection_name);
+  const state = inspectPresetRuntime(cwd, scope, preset, connectionName);
   if (state.managed.status !== "managed-enabled" || !state.managed.configuredName) {
     throw new Error(
       `${preset.label} is not an unchanged enabled SF MCP-managed entry. Configure or review it first.`,
@@ -809,6 +966,60 @@ function loginHandoffResult(cwd: string, scope: SfMcpScope, params: SfMcpParams)
   );
 }
 
+async function identityVerifyResult(
+  cwd: string,
+  scope: SfMcpScope,
+  params: SfMcpParams,
+  executeTool: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+) {
+  const preset = requiredPreset(params);
+  if (preset.id !== "headless-360") {
+    throw new Error("identity.verify currently supports only preset_id=headless-360.");
+  }
+  const connectionName = resolveExistingConnectionName(cwd, scope, preset, params.connection_name);
+  const state = inspectPresetRuntime(cwd, scope, preset, connectionName);
+  const binding = state.managed.record?.orgBinding;
+  if (state.managed.status !== "managed-enabled" || !binding) {
+    throw new Error(
+      `${connectionName} must be an enabled org-bound SF MCP connection before identity verification.`,
+    );
+  }
+  if (state.managed.config?.toolExposure?.dispatch_readonly === "hidden") {
+    throw new Error(
+      "Apply the recommended or read-only tool profile before identity.verify so dispatch_readonly is callable.",
+    );
+  }
+  const toolName = `mcp__${canonicalMcpServerName(connectionName)}__dispatch_readonly`;
+  const result = await executeTool(toolName, {
+    url: `${binding.authorizationIssuer}/services/oauth2/userinfo`,
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  const evidence = JSON.stringify(result);
+  if (!evidence.includes(binding.orgId)) {
+    throw new Error(
+      `${connectionName} responded, but its authenticated organization did not match the planned org binding.`,
+    );
+  }
+  return successResult(
+    [
+      `PASS: ${preset.label} identity verified for ${connectionName}.`,
+      `Target org: ${binding.alias ?? binding.targetOrg}`,
+      "The authenticated organization id matched the source-bound connection instance.",
+    ].join("\n"),
+    {
+      ok: true,
+      action: "identity.verify",
+      scope,
+      presetId: preset.id,
+      connectionName,
+      targetOrg: binding.targetOrg,
+      orgType: binding.orgType,
+      verified: true,
+    },
+  );
+}
+
 function requirePlan<T extends SfMcpPlan["kind"]>(
   plans: Map<string, SfMcpPlan>,
   params: SfMcpParams,
@@ -826,11 +1037,48 @@ function requirePlan<T extends SfMcpPlan["kind"]>(
   if (plan.cwd !== cwd || plan.scope !== scope || plan.presetId !== preset.id) {
     throw new Error(`${planId} does not match this workspace, scope, and preset.`);
   }
+  if (plan.orgBinding && !params.connection_name) {
+    throw new Error(`${planId} requires connection_name=${plan.connectionName}.`);
+  }
+  if (params.connection_name && params.connection_name !== plan.connectionName) {
+    throw new Error(`${planId} does not match connection_name=${params.connection_name}.`);
+  }
   return plan as Extract<SfMcpPlan, { kind: T }>;
 }
 
+async function assertCurrentOrgBinding(
+  plan: SfMcpPlan,
+  dependencies: SfMcpToolDependencies,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!plan.orgBinding) return;
+  const serverPath = hostedServerPath(plan.presetId);
+  if (!serverPath)
+    throw new Error(`${getPreset(plan.presetId).label} has no hosted endpoint path.`);
+  const current = await dependencies.resolveHostedOrgBinding({
+    cwd: plan.cwd,
+    targetOrg: plan.orgBinding.targetOrg,
+    serverPath,
+    signal,
+  });
+  if (
+    current.orgId !== plan.orgBinding.orgId ||
+    current.serverUrl !== plan.orgBinding.serverUrl ||
+    current.authorizationIssuer !== plan.orgBinding.authorizationIssuer
+  ) {
+    throw new Error(
+      `${getPreset(plan.presetId).label} org identity or OAuth discovery changed after planning. Create a new plan.`,
+    );
+  }
+}
+
 function assertCurrentSource(plan: SfMcpPlan): void {
-  const current = sourceVersionFor(plan.cwd, plan.scope, getPreset(plan.presetId));
+  const current = sourceVersionFor(
+    plan.cwd,
+    plan.scope,
+    getPreset(plan.presetId),
+    plan.connectionName,
+  );
   if (current !== plan.sourceVersion) {
     throw new Error(
       `${getPreset(plan.presetId).label} configuration changed after planning. Create a new plan.`,
@@ -838,8 +1086,13 @@ function assertCurrentSource(plan: SfMcpPlan): void {
   }
 }
 
-function sourceVersionFor(cwd: string, scope: SfMcpScope, preset: McpPreset): string {
-  const state = inspectPresetRuntime(cwd, scope, preset);
+function sourceVersionFor(
+  cwd: string,
+  scope: SfMcpScope,
+  preset: McpPreset,
+  connectionName = preset.serverName,
+): string {
+  const state = inspectPresetRuntime(cwd, scope, preset, connectionName);
   return `sha256:${hash({
     status: state.managed.status,
     configuredName: state.managed.configuredName,
@@ -864,6 +1117,86 @@ function reviewedToolPolicy(
   return profile === "recommended"
     ? buildConflictAwareToolPolicy(preset, conflictPlan)
     : buildToolExposurePolicy(preset, profile);
+}
+
+async function resolveConnectionTarget(
+  cwd: string,
+  scope: SfMcpScope,
+  params: SfMcpParams,
+  preset: McpPreset,
+  dependencies: SfMcpToolDependencies,
+  signal?: AbortSignal,
+): Promise<{ connectionName: string; orgBinding?: HostedMcpOrgBinding }> {
+  const explicitName = trimmed(params.connection_name);
+  if (!params.target_org?.trim()) {
+    return { connectionName: validatedConnectionName(explicitName ?? preset.serverName) };
+  }
+  if (preset.id !== "headless-360") {
+    throw new Error("Phase 1 org-pinned MCP connections support only preset_id=headless-360.");
+  }
+  const serverPath = hostedServerPath(preset.id);
+  if (!serverPath) throw new Error(`${preset.label} has no hosted endpoint path.`);
+  const orgBinding = await dependencies.resolveHostedOrgBinding({
+    cwd,
+    targetOrg: params.target_org.trim(),
+    serverPath,
+    signal,
+  });
+  const baseName = validatedConnectionName(
+    explicitName ?? hostedConnectionName(preset.serverName, orgBinding),
+  );
+  const existing = inspectPresetRuntime(cwd, scope, preset, baseName);
+  if (
+    existing.managed.record?.orgBinding?.orgId &&
+    existing.managed.record.orgBinding.orgId !== orgBinding.orgId
+  ) {
+    if (explicitName) {
+      throw new Error(
+        `${baseName} is already bound to another Salesforce org. Choose a different connection_name.`,
+      );
+    }
+    const candidate = validatedConnectionName(`${baseName}-${hash(orgBinding.orgId).slice(0, 8)}`);
+    const collision = inspectPresetRuntime(cwd, scope, preset, candidate);
+    if (
+      collision.managed.status !== "missing" &&
+      collision.managed.record?.orgBinding?.orgId !== orgBinding.orgId
+    ) {
+      throw new Error(
+        `Unable to derive a unique MCP connection name for ${orgBinding.targetOrg}. Pass connection_name explicitly.`,
+      );
+    }
+    return { connectionName: candidate, orgBinding };
+  }
+  return { connectionName: baseName, orgBinding };
+}
+
+function resolveExistingConnectionName(
+  cwd: string,
+  scope: SfMcpScope,
+  preset: McpPreset,
+  requested: string | undefined,
+): string {
+  const explicit = trimmed(requested);
+  if (explicit) return validatedConnectionName(explicit);
+  const instances = inspectPresetInstances(cwd, scope, preset).filter(
+    (state) => state.managed.status !== "missing",
+  );
+  if (instances.length === 0) return preset.serverName;
+  if (instances.length === 1) {
+    return (
+      instances[0]?.managed.configuredName ?? instances[0]?.connectionName ?? preset.serverName
+    );
+  }
+  throw new Error(
+    `${preset.label} has multiple managed connections. Pass connection_name to select one.`,
+  );
+}
+
+function validatedConnectionName(value: string): string {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/u.test(value)) {
+    throw new Error("connection_name may contain only letters, digits, hyphens, and underscores.");
+  }
+  return value;
 }
 
 function presetSetup(params: SfMcpParams): PresetSetup {

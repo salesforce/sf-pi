@@ -15,6 +15,9 @@ import {
   type IntegrationDeploymentResult,
   type IntegrationMetadataSource,
   type IntegrationMetadataType,
+  type McpServerActivationInspection,
+  type McpServerActivationPlan,
+  type McpServerActivationResult,
 } from "./types.ts";
 
 const DEPLOY_START_TIMEOUT_MS = 60_000;
@@ -25,6 +28,18 @@ interface MetadataClient {
   describe(version: string): Promise<{ metadataObjects?: Array<{ xmlName?: string }> }>;
   read(type: string, fullNames: string[]): Promise<unknown>;
   delete(type: string, fullNames: string[]): Promise<unknown>;
+}
+
+interface ToolingConnection {
+  sobject(name: "McpServerAccess"): {
+    describe(): Promise<{
+      createable?: boolean;
+      updateable?: boolean;
+      fields?: Array<{ name: string }>;
+    }>;
+    create(record: Record<string, unknown>): Promise<{ success?: boolean; id?: string }>;
+    update(record: Record<string, unknown>): Promise<{ success?: boolean; id?: string }>;
+  };
 }
 
 interface BuildHeadlessMcpSourcesInput {
@@ -49,6 +64,8 @@ export function buildHeadlessMcpSources(
 export const defaultIntegrationAdapter: IntegrationAdapter = {
   describeMetadataTypes,
   inspectEca,
+  inspectMcpServerActivation,
+  applyMcpServerActivation,
   deploy: deployEcaSources,
   resolveContactEmail,
 };
@@ -126,6 +143,106 @@ async function resolveEcaRecordId(
     // unavailable. Callers fall back to the External Client App manager link.
     return undefined;
   }
+}
+
+export async function inspectMcpServerActivation(
+  session: SalesforceSession,
+  developerName: string,
+): Promise<McpServerActivationInspection> {
+  try {
+    const tooling = session.connection.tooling as unknown as ToolingConnection;
+    const description = await tooling.sobject("McpServerAccess").describe();
+    const fields = new Map((description.fields ?? []).map((field) => [field.name, field]));
+    const required = ["DeveloperName", "MasterLabel", "Active"];
+    if (!required.every((name) => fields.has(name))) {
+      return {
+        supported: false,
+        createable: false,
+        updateable: false,
+        fallback_reason: "McpServerAccess is missing required activation fields.",
+      };
+    }
+    const result = await session.query<{
+      Id?: string;
+      DeveloperName: string;
+      MasterLabel: string;
+      Active: boolean;
+    }>({
+      soql: `SELECT Id, DeveloperName, MasterLabel, Active FROM McpServerAccess WHERE DeveloperName = '${escapeSoqlLiteral(developerName)}' LIMIT 2`,
+      api: "tooling",
+      maxRows: 2,
+    });
+    if (result.records.length > 1) {
+      return {
+        supported: false,
+        createable: false,
+        updateable: false,
+        fallback_reason: `McpServerAccess ${developerName} returned duplicate records.`,
+      };
+    }
+    const record = result.records[0];
+    return {
+      supported: true,
+      createable: description.createable === true,
+      updateable: description.updateable === true,
+      ...(record
+        ? {
+            record: {
+              ...(record.Id ? { id: record.Id } : {}),
+              developer_name: record.DeveloperName,
+              master_label: record.MasterLabel,
+              active: record.Active === true,
+            },
+          }
+        : {}),
+    };
+  } catch (error) {
+    return {
+      supported: false,
+      createable: false,
+      updateable: false,
+      fallback_reason: `Tooling activation unavailable: ${errorMessage(error)}`,
+    };
+  }
+}
+
+export async function applyMcpServerActivation(input: {
+  session: SalesforceSession;
+  plan: McpServerActivationPlan;
+}): Promise<McpServerActivationResult> {
+  assertNonProduction(input.session);
+  if (input.plan.operation === "browser") {
+    throw new Error("Browser activation plans must use the SF Browser fallback.");
+  }
+  if (input.plan.operation === "none") {
+    const current = await inspectMcpServerActivation(input.session, input.plan.developer_name);
+    if (!current.record?.active) throw new Error("The planned active MCP server changed state.");
+    return { ...current.record, operation: "none" };
+  }
+
+  const tooling = input.session.connection.tooling as unknown as ToolingConnection;
+  const object = tooling.sobject("McpServerAccess");
+  const result =
+    input.plan.operation === "create"
+      ? await object.create({
+          DeveloperName: input.plan.developer_name,
+          MasterLabel: input.plan.master_label,
+          Active: true,
+        })
+      : await object.update({
+          Id: input.plan.before?.id,
+          Active: true,
+        });
+  if (result.success !== true) {
+    throw new Error(`MCP server activation ${input.plan.operation} failed.`);
+  }
+  const verified = await inspectMcpServerActivation(input.session, input.plan.developer_name);
+  if (!verified.record?.active) {
+    throw new Error(
+      "MCP server activation was written but exact readback did not show Active=true.",
+    );
+  }
+  return { ...verified.record, operation: input.plan.operation };
 }
 
 export async function inspectTokenExchangeHandler(
@@ -374,6 +491,10 @@ function numberValue(value: unknown): number | undefined {
     return Number(value);
   }
   return undefined;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function withTimeout<T>(

@@ -43,6 +43,7 @@ import { SALESFORCE_MCP_PRESETS, getPreset } from "./lib/presets.ts";
 import { registerSfMcpTool } from "./lib/sf-mcp-tool.ts";
 import {
   buildMcpRoutingGuidelines,
+  inspectPresetInstances,
   inspectPresetRuntime,
   setManagedPresetEnabled,
 } from "./lib/service.ts";
@@ -220,6 +221,7 @@ async function handleAction(
         cwd: ctx.cwd,
         scope,
         presetId: getPreset(presetId).id,
+        connectionName: positional[1],
         enabled: false,
       });
       if (!result.ok) return emit(ctx, "SF MCP disable", result.message, fromPanel);
@@ -247,8 +249,13 @@ async function handleAction(
 
 function renderStatus(cwd: string, scope: "global" | "project"): string {
   const rows = SALESFORCE_MCP_PRESETS.map((preset) => {
-    const state = inspectPresetRuntime(cwd, scope, preset);
-    const status = statusLabel(state.managed.status);
+    const instances = inspectPresetInstances(cwd, scope, preset);
+    const configured = instances.filter((instance) => instance.managed.status !== "missing");
+    const state = configured[0] ?? instances[0] ?? inspectPresetRuntime(cwd, scope, preset);
+    const status =
+      configured.length > 1
+        ? `${configured.length} connections`
+        : statusLabel(state.managed.status);
     const overlap = state.plan.conflicts.length
       ? ` · overlaps ${state.plan.conflicts.map((item) => item.nativeExtensionId).join(", ")}`
       : "";
@@ -278,7 +285,7 @@ function renderHelp(): string {
     "  /sf-mcp catalog                 Open the interactive preset catalog",
     "  /sf-mcp status [--scope ...]    Show native configuration state",
     "  /sf-mcp conflicts <preset>      Explain capability overlaps",
-    "  /sf-mcp disable <preset>        Disable an unchanged managed preset",
+    "  /sf-mcp disable <preset> [name] Disable one unchanged managed connection",
     "  /sf-mcp native                  Prepare Pi's native /mcp manager",
     "",
     "Use the catalog to enable presets. Existing entries require explicit adoption or diff-reviewed reset.",

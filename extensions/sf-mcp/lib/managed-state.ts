@@ -8,6 +8,7 @@ import {
   type McpServerConfig,
   type McpServerOverride,
 } from "./mcp-config.ts";
+import type { HostedMcpOrgBinding } from "./hosted-org-binding.ts";
 import type { McpPresetId, McpResolution } from "./presets.ts";
 
 export interface ManagedServerRecord {
@@ -15,6 +16,7 @@ export interface ManagedServerRecord {
   presetRevision: number;
   resolution: McpResolution;
   configFingerprint: string;
+  orgBinding?: HostedMcpOrgBinding;
 }
 
 interface ManagedState {
@@ -52,7 +54,7 @@ export function createManagedStateStore(
   return createStateStore<ManagedState>({
     namespace: "sf-mcp",
     filename: "managed-presets.json",
-    schemaVersion: 2,
+    schemaVersion: 3,
     defaults: DEFAULT_STATE,
     scope,
     cwd,
@@ -70,6 +72,7 @@ export function recordManagedServer(
     presetRevision: number;
     resolution: McpResolution;
     config: McpServerConfig;
+    orgBinding?: HostedMcpOrgBinding;
   },
 ): void {
   store.update((current) => {
@@ -82,10 +85,21 @@ export function recordManagedServer(
           presetRevision: input.presetRevision,
           resolution: input.resolution,
           configFingerprint: fingerprintConfig(input.config),
+          ...(input.orgBinding ? { orgBinding: { ...input.orgBinding } } : {}),
         },
       },
     };
   });
+}
+
+export function listManagedServerRecords(
+  store: StateStore<ManagedState>,
+  presetId?: McpPresetId,
+): Array<{ serverName: string; record: ManagedServerRecord }> {
+  return Object.entries(normalizeState(store.read()).servers)
+    .filter(([, record]) => !presetId || record.presetId === presetId)
+    .map(([serverName, record]) => ({ serverName, record }))
+    .sort((left, right) => left.serverName.localeCompare(right.serverName));
 }
 
 export function forgetManagedServer(store: StateStore<ManagedState>, serverName: string): void {
@@ -202,9 +216,24 @@ function normalizeState(value: unknown): ManagedState {
           : 0,
       resolution: item.resolution as McpResolution,
       configFingerprint: item.configFingerprint,
+      ...(validOrgBinding(item.orgBinding) ? { orgBinding: { ...item.orgBinding } } : {}),
     };
   }
   return { servers: normalized };
+}
+
+function validOrgBinding(value: unknown): value is HostedMcpOrgBinding {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const item = value as Partial<HostedMcpOrgBinding>;
+  return (
+    typeof item.targetOrg === "string" &&
+    typeof item.orgId === "string" &&
+    typeof item.orgType === "string" &&
+    typeof item.hostKey === "string" &&
+    typeof item.serverUrl === "string" &&
+    typeof item.authorizationIssuer === "string" &&
+    (item.alias === undefined || typeof item.alias === "string")
+  );
 }
 
 function stableJson(value: unknown): string {

@@ -20,6 +20,7 @@ export function classifySfMcpConfiguration(
 
   const presetId = stringValue(input.preset_id) ?? "unspecified preset";
   const scope = stringValue(input.scope) ?? "unspecified scope";
+  const connectionName = stringValue(input.connection_name) ?? "preset default";
   const planId = stringValue(input.plan_id) ?? "missing-plan";
   const planHash = stringValue(input.plan_hash) ?? "missing-hash";
   const disabling = action === "disable.apply";
@@ -37,6 +38,7 @@ export function classifySfMcpConfiguration(
     action,
     presetId,
     scope,
+    connectionName,
     planId,
     planHash,
     allowMutation: input.allow_mutation === true,
@@ -47,18 +49,19 @@ export function classifySfMcpConfiguration(
     toolName,
     action,
     ruleId: "native-sf-mcp-config",
-    subject: `sf_mcp ${action} ${presetId} ${scope}`,
-    reason: `SF MCP ${action} requested for ${presetId} in ${scope} scope.`,
+    subject: `sf_mcp ${action} ${presetId} ${connectionName} ${scope}`,
+    reason: `SF MCP ${action} requested for ${presetId} connection ${connectionName} in ${scope} scope.`,
     promptTitle: disabling
       ? "⚠ Disable Salesforce MCP preset"
       : "⚠ Configure Salesforce MCP preset",
     operationFamily,
     riskTier,
     fingerprint: `sf_mcp|${action}|${fingerprint}`,
-    approvalLabel: `${action} ${presetId} in ${scope} scope`,
+    approvalLabel: `${action} ${presetId}/${connectionName} in ${scope} scope`,
     approvalDetail: [
       `preset=${presetId}`,
       `scope=${scope}`,
+      `connection=${connectionName}`,
       `plan_id=${planId}`,
       `plan_hash=${fingerprintText(planHash)}`,
       `allow_mutation=${input.allow_mutation === true}`,
