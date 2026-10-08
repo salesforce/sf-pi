@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.337.0](https://github.com/salesforce/sf-pi/compare/v0.336.1...v0.337.0) (2026-10-08)
+
+
+### Features
+
+* **sf-soql:** add API-aware query preflight ([200b1f5](https://github.com/salesforce/sf-pi/commit/200b1f567c1251aba03a33abf1c6c665654013ec))
+
 ## [0.336.1](https://github.com/salesforce/sf-pi/compare/v0.336.0...v0.336.1) (2026-10-08)
 
 
