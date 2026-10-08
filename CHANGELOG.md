@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.336.0](https://github.com/salesforce/sf-pi/compare/v0.335.0...v0.336.0) (2026-10-08)
+
+
+### Features
+
+* **integrations:** add org-bound hosted MCP setup ([993f11d](https://github.com/salesforce/sf-pi/commit/993f11d927b379eefc645bdbe15b1e2ad48154c8))
+
 ## [0.335.0](https://github.com/salesforce/sf-pi/compare/v0.334.0...v0.335.0) (2026-10-08)
 
 
