@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.336.1](https://github.com/salesforce/sf-pi/compare/v0.336.0...v0.336.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **sf-mcp:** clarify org-bound connections ([1f3c766](https://github.com/salesforce/sf-pi/commit/1f3c766ecd77387c9c80b90c183ba5520ff7518f))
+
 ## [0.336.0](https://github.com/salesforce/sf-pi/compare/v0.335.0...v0.336.0) (2026-10-08)
 
 
