@@ -1011,7 +1011,7 @@
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9847
+    "srcLoc": 9993
   },
   {
     "id": "sf-ohana-spinner",

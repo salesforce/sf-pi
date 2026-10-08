@@ -25,13 +25,3 @@ export function inspectInstanceSummary(
     primary: configured[0] ?? instances[0] ?? inspectPresetRuntime(cwd, scope, preset),
   };
 }
-
-export function formatInstances(instances: readonly PresetRuntimeState[]): string {
-  return instances
-    .map((instance) => {
-      const binding = instance.managed.record?.orgBinding;
-      const label = binding?.alias ?? binding?.targetOrg ?? "Unbound existing connection";
-      return `${label} · ${instance.managed.configuredName ?? instance.connectionName} · ${instance.managed.status}`;
-    })
-    .join("\n");
-}

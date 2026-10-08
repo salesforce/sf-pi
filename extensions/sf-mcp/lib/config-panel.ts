@@ -2,7 +2,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { type Focusable, matchesKey } from "@earendil-works/pi-tui";
 import type { ConfigPanelFactory, ConfigPanelResult } from "../../../catalog/registry.ts";
-import { formatInstances, inspectInstanceSummary } from "./connection-instances.ts";
+import { inspectInstanceSummary } from "./connection-instances.ts";
 import type { ConflictPlan } from "./conflict-planner.ts";
 import { mcpConfigPath, type McpServerConfig } from "./mcp-config.ts";
 import {
@@ -10,6 +10,7 @@ import {
   renderCatalogPage,
   renderConflictPage,
   renderConnectionPage,
+  renderConnectionsPage,
   renderPresetOverviewPage,
   renderReconcilePage,
   renderResultPage,
@@ -77,6 +78,7 @@ type PanelView =
   | { kind: "catalog" }
   | { kind: "overview"; presetId: McpPresetId; selected: number }
   | { kind: "connection"; presetId: McpPresetId; selected: number }
+  | { kind: "connections"; presetId: McpPresetId }
   | { kind: "tool-unavailable"; presetId: McpPresetId; reason: "connection" | "contract" }
   | { kind: "tools"; presetId: McpPresetId; cursor: number }
   | {
@@ -185,6 +187,9 @@ class SfMcpConfigPanel implements Focusable {
       case "connection":
         this.handleConnectionInput(data);
         return;
+      case "connections":
+        this.handleConnectionsInput(data);
+        return;
       case "tool-unavailable":
         this.handleToolUnavailableInput(data);
         return;
@@ -277,6 +282,16 @@ class SfMcpConfigPanel implements Focusable {
             state,
             options: connectionOptions(state),
             selected: view.selected,
+          });
+        }
+        case "connections": {
+          const preset = getPreset(view.presetId);
+          const { configured } = inspectInstanceSummary(this.cwd, this.scope, preset);
+          return renderConnectionsPage({
+            theme: this.theme,
+            width,
+            preset,
+            instances: configured,
           });
         }
         case "tool-unavailable": {
@@ -547,13 +562,7 @@ class SfMcpConfigPanel implements Focusable {
       return;
     }
     if (choice.action === "connections") {
-      this.view = {
-        kind: "result",
-        title: `${preset.label} connections`,
-        message: formatInstances(configured),
-        tone: "success",
-        needsReload: false,
-      };
+      this.view = { kind: "connections", presetId: view.presetId };
       return;
     }
     if (choice.action === "policy") {
@@ -570,6 +579,18 @@ class SfMcpConfigPanel implements Focusable {
     }
     if (choice.action === "drift") {
       this.view = { kind: "tool-drift", presetId: view.presetId };
+    }
+  }
+
+  private handleConnectionsInput(data: string): void {
+    const view = this.viewAs("connections");
+    if (
+      matchesKey(data, "escape") ||
+      matchesKey(data, "enter") ||
+      matchesKey(data, "return") ||
+      data === "q"
+    ) {
+      this.view = { kind: "overview", presetId: view.presetId, selected: 0 };
     }
   }
 

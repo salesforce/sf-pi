@@ -195,6 +195,54 @@ export function renderPresetOverviewPage(input: {
   return lines;
 }
 
+export function renderConnectionsPage(input: {
+  theme: Theme;
+  width: number;
+  preset: McpPreset;
+  instances: readonly PresetRuntimeState[];
+}): string[] {
+  const { theme: t, width } = input;
+  const configured = input.instances.filter((state) => state.managed.status !== "missing");
+  const orgBound = configured.filter((state) => state.managed.record?.orgBinding);
+  const unbound = configured.filter((state) => !state.managed.record?.orgBinding);
+  const lines = [
+    ` ${t.fg("accent", t.bold(`← Esc back   ☁ SF MCP › ${input.preset.label} › Connections`))}`,
+    "",
+    ` ${t.fg("accent", t.bold(`${configured.length} configured connection${configured.length === 1 ? "" : "s"}`))}`,
+    ` ${t.fg("success", "🔗")} ${t.fg("text", `${orgBound.length} org-bound`)}  ${t.fg("warning", "⚠")} ${t.fg("text", `${unbound.length} org not recorded`)}`,
+    ...wrapText(
+      "SF CLI aliases prove org identity during setup. Pi MCP keeps separate OAuth credentials for every native connection name and URL.",
+      Math.max(24, width - 3),
+    ).map((line) => ` ${t.fg("dim", line)}`),
+    "",
+  ];
+
+  if (orgBound.length > 0) {
+    lines.push(` ${t.fg("accent", "▰")} ${t.fg("muted", "🔗 ORG-BOUND")}`, "");
+    for (const instance of orgBound) lines.push(...renderConnectionInstance(t, width, instance));
+  }
+  if (unbound.length > 0) {
+    lines.push(
+      ` ${t.fg("warning", "▰")} ${t.fg("muted", "⚠ EXISTING CONNECTION · ORG NOT RECORDED")}`,
+      ...wrapText(
+        "This is not proof of another Salesforce org. SF MCP has no stored org mapping for this existing connection; Pi /mcp may still hold its OAuth grant.",
+        Math.max(24, width - 3),
+      ).map((line) => ` ${t.fg("dim", line)}`),
+      "",
+    );
+    for (const instance of unbound) lines.push(...renderConnectionInstance(t, width, instance));
+  }
+  if (configured.length === 0) lines.push(` ${t.fg("muted", "No configured connections")}`, "");
+
+  lines.push(
+    ` ${t.fg("dim", "OAuth status and grant time remain in Pi's native /mcp runtime.")}`,
+    ` ${t.fg("accent", "❯ [ Back to overview ]")}`,
+    "",
+    ` ${t.fg("dim", "Enter/Esc continue")}`,
+  );
+  return lines;
+}
+
 export function renderToolListPage(input: {
   theme: Theme;
   width: number;
@@ -815,15 +863,108 @@ function riskLabel(risk: McpPreset["risk"] | McpToolDetail["risk"]): string {
   return `${risk.slice(0, 1).toUpperCase()}${risk.slice(1)}`;
 }
 
+function renderConnectionInstance(
+  theme: Theme,
+  width: number,
+  state: PresetRuntimeState,
+): string[] {
+  const binding = state.managed.record?.orgBinding;
+  const name = state.managed.configuredName ?? state.connectionName;
+  const label = binding?.alias ?? binding?.targetOrg ?? "Existing connection (org not recorded)";
+  const headingIcon = binding ? "☁" : "⚠";
+  const headingTone = binding ? "success" : "warning";
+  const cliRelationship = binding
+    ? `Alias ${binding.alias ?? binding.targetOrg} supplied the org identity during setup; SF CLI and MCP credentials are separate`
+    : "Not linked to an SF CLI alias · this connection is independent of the org-bound entries";
+  const setupMethod = state.managed.record
+    ? `SF MCP managed preset · ${resolutionLabel(state.managed.record.resolution)}`
+    : "Existing Pi native MCP configuration · not managed by SF MCP";
+  const lines = [
+    `    ${theme.fg(headingTone, headingIcon)} ${theme.fg("text", theme.bold(label))}`,
+  ];
+  lines.push(
+    ...renderConnectionDetail(
+      theme,
+      width,
+      "●",
+      "Status",
+      state.managed.status === "managed-enabled"
+        ? "Configured and enabled"
+        : plainStatus(state.managed.status),
+      state.managed.status === "managed-enabled" ? "success" : "warning",
+    ),
+    ...renderConnectionDetail(
+      theme,
+      width,
+      "🔗",
+      "Binding",
+      binding ? `Org-pinned · ${binding.orgType}` : "Org mapping not recorded or verified",
+      binding ? "text" : "warning",
+    ),
+    ...(binding
+      ? renderConnectionDetail(theme, width, "🌐", "Org URL", binding.authorizationIssuer, "text")
+      : []),
+    ...renderConnectionDetail(theme, width, "🧭", "SF CLI", cliRelationship, "dim"),
+    ...renderConnectionDetail(
+      theme,
+      width,
+      "🔐",
+      "Authentication",
+      authenticationMethod(state.managed.config),
+    ),
+    ...renderConnectionDetail(theme, width, "🛠", "Configured through", setupMethod),
+    ...renderConnectionDetail(
+      theme,
+      width,
+      "🕒",
+      "Authorization time",
+      "Not exposed to SF MCP · Pi native /mcp owns the OAuth grant",
+      "dim",
+    ),
+    ...renderConnectionDetail(theme, width, "◇", "Native name", name, "dim"),
+    "",
+  );
+  return lines;
+}
+
+function renderConnectionDetail(
+  theme: Theme,
+  width: number,
+  icon: string,
+  label: string,
+  value: string,
+  tone: "text" | "dim" | "success" | "warning" = "text",
+): string[] {
+  const prefix = `      ${icon} ${label}: `;
+  const continuation = " ".repeat(visibleWidth(prefix));
+  return wrapText(value, Math.max(16, width - visibleWidth(prefix) - 1)).map((line, index) =>
+    index === 0
+      ? `${theme.fg("muted", prefix)}${theme.fg(tone, line)}`
+      : `${continuation}${theme.fg(tone, line)}`,
+  );
+}
+
+function authenticationMethod(config: McpServerConfig | undefined): string {
+  if (!config) return "Unknown · inspect Pi native /mcp";
+  if ("oauth" in config && config.oauth) {
+    return "OAuth 2.0 Authorization Code + PKCE · Pi native token store";
+  }
+  if ("headers" in config && config.headers && Object.keys(config.headers).length > 0) {
+    return "Configured HTTP authorization header";
+  }
+  if ("command" in config) return "Local stdio process";
+  return "No OAuth configuration";
+}
+
 function renderInstanceSummary(theme: Theme, instances: readonly PresetRuntimeState[]): string[] {
   const configured = instances.filter((state) => state.managed.status !== "missing");
   if (configured.length === 0) return [`    ${theme.fg("muted", "No configured connections")}`];
   return configured.slice(0, 4).map((state) => {
     const binding = state.managed.record?.orgBinding;
-    const label = binding?.alias ?? binding?.targetOrg ?? "Unbound existing connection";
+    const label = binding?.alias ?? binding?.targetOrg ?? "Existing connection · org not recorded";
     const status = state.managed.status === "managed-enabled" ? "●" : "○";
     const tone = state.managed.status === "managed-enabled" ? "success" : "warning";
-    return `    ${theme.fg(tone, status)} ${theme.fg("text", label)}${binding ? theme.fg("muted", ` · ${binding.orgType}`) : theme.fg("warning", " · identity unbound")}`;
+    return `    ${theme.fg(tone, status)} ${theme.fg("text", label)}${binding ? theme.fg("muted", ` · ${binding.orgType}`) : ""}`;
   });
 }
 

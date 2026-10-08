@@ -138,10 +138,76 @@ describe("SF MCP Manager catalog", () => {
     expect(output).toContain("Connections · 2");
 
     panel.handleInput("\r");
-    output = panel.renderContent(110).join("\n");
-    expect(output).toContain("Headless 360 connections");
+    const connectionLines = panel.renderContent(110);
+    output = connectionLines.join("\n");
+    expect(output).toContain("Headless 360 › Connections");
+    expect(output).toContain("2 configured connections");
+    expect(output).toContain("🔗 2 org-bound");
+    expect(output).toContain("⚠ 0 org not recorded");
+    expect(output).toContain("🌐 Org URL");
+    expect(output).toContain("https://demoa.develop.my.salesforce.com");
     expect(output).toContain("salesforce-headless-360-demoa");
     expect(output).toContain("salesforce-headless-360-demob");
+    expect(output).toContain("OAuth 2.0 Authorization Code + PKCE");
+    expect(output).toContain("SF CLI and MCP credentials are separate");
+    expect(output).toContain("Authorization time");
+    expect(output).toContain("Pi native /mcp owns the OAuth grant");
+    expect(connectionLines.every((line) => visibleWidth(line) <= 110)).toBe(true);
+  });
+
+  it("separates org-bound connections from an existing connection without org proof", () => {
+    const { cwd, panel } = fixture();
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: "headless-360",
+        resolution: "side-by-side",
+        setup: { environment: "sandbox", oauthClientId: "legacy-client" },
+      }).ok,
+    ).toBe(true);
+    expect(
+      installPreset({
+        cwd,
+        scope: "project",
+        presetId: "headless-360",
+        resolution: "side-by-side",
+        connectionName: "salesforce-headless-360-demoa",
+        setup: {
+          oauthClientId: "client-demoa",
+          serverUrl:
+            "https://api.salesforce.com/platform/mcp/v1/d/demoa.develop/platform/headless-360",
+        },
+        orgBinding: {
+          targetOrg: "DemoA",
+          alias: "DemoA",
+          orgId: "example-org-a",
+          orgType: "developer",
+          hostKey: "demoa.develop",
+          serverUrl:
+            "https://api.salesforce.com/platform/mcp/v1/d/demoa.develop/platform/headless-360",
+          authorizationIssuer: "https://demoa.develop.my.salesforce.com",
+        },
+      }).ok,
+    ).toBe(true);
+
+    moveToPreset(panel, "headless-360");
+    panel.handleInput("\r");
+    panel.handleInput("\r");
+    const lines = panel.renderContent(70);
+    const output = lines.join("\n");
+
+    expect(output).toContain("2 configured connections");
+    expect(output).toContain("🔗 ORG-BOUND");
+    expect(output).toContain("⚠ EXISTING CONNECTION · ORG NOT RECORDED");
+    expect(output).toContain("This is not proof of another Salesforce org");
+    expect(output).toContain("☁ DemoA");
+    expect(output).toContain("🌐 Org URL");
+    expect(output).toContain("https://demoa.develop.my.salesforce.com");
+    expect(output).toContain("⚠ Existing connection (org not recorded)");
+    expect(output).toContain("Not linked to an SF CLI alias");
+    expect(output).toContain("SF MCP managed preset");
+    expect(lines.every((line) => visibleWidth(line) <= 70)).toBe(true);
   });
 
   it("renders a colorful category-grouped catalog without internal box borders", () => {
