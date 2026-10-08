@@ -1,7 +1,8 @@
 ---
 id: "0142"
-status: accepted
+status: superseded
 date: 2026-10-07
+supersededBy: ["0143"]
 ---
 
 # Data 360 cards prioritize observed API work

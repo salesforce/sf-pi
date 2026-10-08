@@ -4,6 +4,11 @@ import { Text } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Data360Namespace, SfData360Input } from "./actions/action-types.ts";
 import { buildData360Digest, namespacePresentation } from "./digest.ts";
+import {
+  boundedExpandedPayload,
+  expandedPayloadFor,
+  type BoundedPayloadLines,
+} from "./presentation-data.ts";
 import type { Data360RunDigest, Data360RunSection } from "./types.ts";
 
 interface ToolResult {
@@ -42,12 +47,20 @@ export function renderSfData360Result(
       result.content?.find((item) => item.type === "text")?.text ?? "SF Data 360 completed";
     return new Text(text, 0, 0);
   }
-  return new Text(styleCard(renderData360DigestMarkdown(digest, options), digest, theme), 0, 0);
+  return new Text(
+    styleCard(
+      renderData360DigestMarkdown(digest, { ...options, result: result.details }),
+      digest,
+      theme,
+    ),
+    0,
+    0,
+  );
 }
 
 export function renderData360DigestMarkdown(
   digest: Data360RunDigest,
-  options: { expanded?: boolean } = {},
+  options: { expanded?: boolean; result?: Record<string, unknown> } = {},
 ): string {
   const expanded = options.expanded === true;
   const target = [
@@ -60,18 +73,23 @@ export function renderData360DigestMarkdown(
     `${statusIcon(digest.status)} ${digest.icon} ${digest.title} · ${digest.action}${target ? ` · ${target}` : ""}`,
   ];
   if (digest.pagination) lines.push(`   📚 ${digest.pagination.label}`);
-  appendApiRail(lines, digest);
+  if (digest.api_calls?.length) appendApiRail(lines, digest);
 
   const humanSections = digest.sections.filter(
     (section) => section.title !== "Evidence" && section.title !== "Next Step",
   );
   const visibleSections = humanSections.filter((section) => {
     if (expanded) return true;
-    return ["Outcome", "Results", "Warnings", "Failure", "Request", "Response"].includes(
-      section.title,
-    );
+    if (section.compact) return true;
+    if (["Warnings", "Failure"].includes(section.title)) return true;
+    return digest.card_kind === "api" && ["Request", "Response"].includes(section.title);
   });
-  for (const section of visibleSections) appendSection(lines, section, expanded);
+  for (const section of visibleSections) {
+    appendSection(lines, section, expanded, expandedSectionPayload(section, options.result));
+  }
+  if (expanded && digest.card_kind !== "api" && options.result) {
+    appendRawResult(lines, digest, options.result);
+  }
 
   if (!expanded) {
     const hidden = humanSections.filter((section) => !visibleSections.includes(section)).length;
@@ -85,11 +103,8 @@ export function renderData360DigestMarkdown(
 }
 
 function appendApiRail(lines: string[], digest: Data360RunDigest): void {
+  if (!digest.api_calls?.length) return;
   lines.push("   API");
-  if (!digest.api_calls?.length) {
-    lines.push("   │ ℹ️ No API request recorded");
-    return;
-  }
   for (const call of digest.api_calls.slice(0, 8)) {
     const state =
       call.outcome === "failed"
@@ -117,16 +132,22 @@ function appendApiRail(lines: string[], digest: Data360RunDigest): void {
   }
 }
 
-function appendSection(lines: string[], section: Data360RunSection, expanded: boolean): void {
+function appendSection(
+  lines: string[],
+  section: Data360RunSection,
+  expanded: boolean,
+  expandedPayload?: BoundedPayloadLines,
+): void {
   const rows =
     expanded || section.title === "Request" || section.title === "Response"
       ? (section.rows ?? [])
       : (section.rows ?? []).slice(0, section.title === "Outcome" ? 7 : 4);
   const tableRows = expanded
     ? (section.table?.rows ?? [])
-    : (section.table?.rows ?? []).slice(0, 3);
-  const codeLines =
-    section.title === "Response"
+    : (section.table?.rows ?? []).slice(0, 5);
+  const codeLines = expandedPayload
+    ? expandedPayload.lines
+    : section.title === "Response"
       ? (section.code?.lines ?? []).slice(0, 8)
       : section.title === "Request"
         ? expanded
@@ -138,21 +159,63 @@ function appendSection(lines: string[], section: Data360RunSection, expanded: bo
   if (!rows.length && !tableRows.length && !codeLines.length) return;
   lines.push("", `—— ${section.icon} ${section.title} ——`);
   for (const row of rows) lines.push(`  ${row.icon} ${pad(row.label, 14)} ${row.value}`);
-  if (section.table && tableRows.length)
-    appendTable(lines, section.table.columns, tableRows, section.table.omittedRows);
-  if (section.code && codeLines.length) {
+  if (section.table && tableRows.length) {
+    const hiddenTableRows =
+      Math.max(0, section.table.rows.length - tableRows.length) + (section.table.omittedRows ?? 0);
+    appendTable(lines, section.table.columns, tableRows, hiddenTableRows);
+  }
+  if ((section.code || expandedPayload) && codeLines.length) {
     for (const line of codeLines) lines.push(`  ${line}`);
-    const hiddenCodeLines = Math.max(
-      section.code.omittedLines ?? 0,
-      section.code.lines.length + (section.code.omittedLines ?? 0) - codeLines.length,
-    );
-    if (hiddenCodeLines) {
+    if (expandedPayload?.truncated) {
       lines.push(
-        section.title === "Response"
-          ? `  … response preview capped at 8 lines · ${hiddenCodeLines} more line(s) returned`
-          : `  … ${hiddenCodeLines} more request line(s) omitted`,
+        `  … expanded payload limited to ${expandedPayload.lines.length} of ${expandedPayload.totalLines} lines`,
       );
+      return;
     }
+    if (!expandedPayload && section.code) {
+      const hiddenCodeLines = Math.max(
+        section.code.omittedLines ?? 0,
+        section.code.lines.length + (section.code.omittedLines ?? 0) - codeLines.length,
+      );
+      if (hiddenCodeLines) {
+        lines.push(
+          section.title === "Response"
+            ? `  … response preview capped at 8 lines · ${hiddenCodeLines} more line(s) returned`
+            : `  … ${hiddenCodeLines} more request line(s) omitted`,
+        );
+      }
+    }
+  }
+}
+
+function expandedSectionPayload(
+  section: Data360RunSection,
+  result: Record<string, unknown> | undefined,
+): BoundedPayloadLines | undefined {
+  if (!result) return undefined;
+  if (section.title === "Request") {
+    const request = result.request;
+    return request === undefined ? undefined : boundedExpandedPayload(request);
+  }
+  if (section.title === "Response") {
+    return result.response === undefined ? undefined : boundedExpandedPayload(result.response);
+  }
+  return undefined;
+}
+
+function appendRawResult(
+  lines: string[],
+  digest: Data360RunDigest,
+  result: Record<string, unknown>,
+): void {
+  const payload = boundedExpandedPayload(expandedPayloadFor(result, digest.card_kind));
+  if (!payload.lines.length) return;
+  lines.push("", "—— 🧾 Raw Result ——");
+  for (const line of payload.lines) lines.push(`  ${line}`);
+  if (payload.truncated) {
+    lines.push(
+      `  … expanded payload limited to ${payload.lines.length} of ${payload.totalLines} lines`,
+    );
   }
 }
 

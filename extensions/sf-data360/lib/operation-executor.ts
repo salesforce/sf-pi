@@ -349,10 +349,12 @@ async function runRunbook(
   const instanceUrl = session.target.instanceUrl;
   const params = input.params ?? {};
   const dataspaceName = typeof params.dataspaceName === "string" ? params.dataspaceName : "default";
+  const sourceCalls: Record<string, unknown>[] = [];
 
   try {
     const result = await runAgentObservabilityRunbook(runbookName, params, async (sql) => {
       if (signal?.aborted) throw new Error("d360 runbook cancelled before query.");
+      const apiPath = session.path("/ssot/query-sql", { dataspaceName });
       const resp = await session.request<unknown>({
         method: "POST",
         path: "/ssot/query-sql",
@@ -360,6 +362,18 @@ async function runRunbook(
         body: { sql },
         timeoutMs: input.timeout_ms ?? 45_000,
         signal,
+      });
+      sourceCalls.push({
+        ok: resp.status >= 200 && resp.status < 300,
+        action: "query.sql.run",
+        namespace: "query",
+        status: resp.status,
+        request: {
+          method: "POST",
+          path: apiPath,
+          url: `${instanceUrl}${apiPath}`,
+        },
+        summary: `Platform Tracing source query HTTP ${resp.status}`,
       });
       if (resp.status < 200 || resp.status >= 300 || responseLooksLikeError(stringify(resp.body))) {
         throw new Error(`Query failed (${resp.status}): ${stringify(resp.body).slice(0, 1000)}`);
@@ -376,6 +390,7 @@ async function runRunbook(
       dataspaceName,
       runbook: runbookName,
       result,
+      sourceCalls,
       summary: result.markdown.split("\n")[0],
     };
   } catch (err) {
@@ -387,6 +402,7 @@ async function runRunbook(
       apiVersion,
       dataspaceName,
       runbook: runbookName,
+      ...(sourceCalls.length ? { sourceCalls } : {}),
       error: err instanceof Error ? err.message : String(err),
       summary: `${runbookName} failed`,
     };

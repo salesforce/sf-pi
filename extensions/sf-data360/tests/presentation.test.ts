@@ -3,6 +3,7 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { describe, expect, it } from "vitest";
 import { buildData360Digest, compactDigestText } from "../lib/digest.ts";
+import { boundedExpandedPayload } from "../lib/presentation-data.ts";
 import { presentSfData360Result } from "../lib/result.ts";
 import {
   namespaceIcon,
@@ -350,37 +351,165 @@ describe("Data 360 Run Card presentation", () => {
     expect(presented.details.digest).not.toHaveProperty("transport");
   });
 
-  it("uses one mandatory card scaffold across every business namespace", () => {
-    const namespaces = [
-      "discover",
-      "connect",
-      "prepare",
-      "harmonize",
-      "segment",
-      "activate",
-      "query",
-      "semantic",
-      "observe",
-      "orchestrate",
-      "api",
-    ] as const;
-    for (const namespace of namespaces) {
-      const digest = buildData360Digest({
-        input: { action: `${namespace}.example` },
-        result: {
-          ok: true,
-          action: `${namespace}.example`,
-          namespace,
-          summary: `${namespace} completed`,
+  it("renders Discover search criteria and matching-action previews without fake API sections", async () => {
+    const result = {
+      ok: true,
+      tool: "sf_data360",
+      action: "discover.action.search",
+      namespace: "discover",
+      query: "activation target",
+      summary: "6 matching Data 360 actions",
+      results: Array.from({ length: 6 }, (_value, index) => ({
+        namespace: index < 5 ? "activate" : "semantic",
+        action: `activate.activation_target.example_${index + 1}`,
+        family: "Activation",
+        safety: index < 4 ? "read" : "confirmed",
+        endpoint: { method: "GET", path: `/ssot/activation-targets/example-${index + 1}` },
+      })),
+    };
+    const presented = await presentSfData360Result(
+      { action: "discover.action.search", params: { query: "activation target" } },
+      result,
+      "summary",
+    );
+    const digest = presented.details.digest as Data360RunDigest;
+    const card = renderData360DigestMarkdown(digest);
+
+    expect(card).toContain("—— 🎯 Outcome ——");
+    expect(card).toContain("—— 🔎 Search ——");
+    expect(card).toContain("activation target");
+    expect(card).toContain("—— 📋 Matching Actions ——");
+    expect(card).toContain("activation_target.example_1");
+    expect(card).toContain("1 more row(s) returned");
+    expect(card.indexOf("Matching Actions")).toBeGreaterThan(card.indexOf("Outcome"));
+    expect(card).not.toContain("   API");
+    expect(card).not.toContain("—— 📥 Request ——");
+    expect(card).not.toContain("—— 📤 Response ——");
+
+    const expanded = renderSfData360Result(presented, { expanded: true }, theme)
+      .render(120)
+      .join("\n");
+    expect(expanded).toContain("—— 🧾 Raw Result ——");
+    expect(expanded).toContain("activate.activation_target.example_6");
+  });
+
+  it("renders Observe metrics and their source API instead of empty request placeholders", async () => {
+    const rows = [
+      { operation: "Planner", callCount: 12, averageMs: 240, p95Ms: 610, maxMs: 1200 },
+      { operation: "Prompt Template", callCount: 8, averageMs: 180, p95Ms: 420, maxMs: 890 },
+    ];
+    const result = {
+      ok: true,
+      action: "observe.trace.operation_latency_summary",
+      namespace: "observe",
+      targetOrg: "ExampleData360Org",
+      dataspaceName: "default",
+      runbook: "agent_observability.operation_latency_summary",
+      result: { data: { rows, rowCount: rows.length }, sql: "SELECT operation, COUNT(*)" },
+      sourceCalls: [
+        {
+          action: "query.sql.run",
+          status: 201,
+          request: { method: "POST", path: "/services/data/v68.0/ssot/query-sql" },
         },
-        outputMode: "summary",
-      });
-      const card = renderData360DigestMarkdown(digest);
-      expect(card).toContain("   API");
-      expect(card).toContain("—— 🎯 Outcome ——");
-      expect(card).toContain("—— 📥 Request ——");
-      expect(card).toContain("—— 📤 Response ——");
-    }
+      ],
+      summary: "Operation latency summary: 2 rows",
+    };
+    const presented = await presentSfData360Result(
+      { action: "observe.trace.operation_latency_summary", params: { since: "30d" } },
+      result,
+      "summary",
+    );
+    const card = renderData360DigestMarkdown(presented.details.digest as Data360RunDigest);
+
+    expect(card).toContain("POST");
+    expect(card).toContain("/ssot/query-sql");
+    expect(card).toContain("—— 📊 Operation Latency ——");
+    expect(card).toContain("Planner");
+    expect(card).toContain("Prompt Template");
+    expect(card).not.toContain("No API request recorded");
+    expect(card).not.toContain("No API response recorded");
+  });
+
+  it("renders Orchestrate journey previews without fake local request and response sections", async () => {
+    const journeys = Array.from({ length: 6 }, (_value, index) => ({
+      name: `journey_${index + 1}`,
+      summary: `Journey ${index + 1}`,
+      phases: ["connect", "prepare", "harmonize"],
+      planAction: `journey_${index + 1}.plan`,
+      runAction: `journey_${index + 1}.run`,
+    }));
+    const presented = await presentSfData360Result(
+      { action: "orchestrate.journey.list" },
+      {
+        ok: true,
+        action: "orchestrate.journey.list",
+        namespace: "orchestrate",
+        journeys,
+        summary: "Listed Data 360 outcome journeys",
+      },
+      "summary",
+    );
+    const card = renderData360DigestMarkdown(presented.details.digest as Data360RunDigest);
+
+    expect(card).toContain("—— 🧭 Outcome Journeys ——");
+    expect(card).toContain("journey_1");
+    expect(card).toContain("1 more row(s) returned");
+    expect(card).not.toContain("   API");
+    expect(card).not.toContain("—— 📥 Request ——");
+    expect(card).not.toContain("—— 📤 Response ——");
+  });
+
+  it("shows five compact sample rows and the complete sanitized payload when expanded", async () => {
+    const connectors = Array.from({ length: 60 }, (_value, index) => ({
+      name: `connector_${index + 1}`,
+      label: `Connector ${index + 1}`,
+      releaseLevel: "GA",
+      ...(index === 59 ? { password: "must-not-render" } : {}),
+    }));
+    const result = {
+      ok: true,
+      action: "connect.connector.list",
+      namespace: "connect",
+      targetOrg: "ExampleData360Org",
+      instanceUrl: "https://example.my.salesforce.com",
+      operationId: "d360_connector_list",
+      safety: "read",
+      status: 200,
+      transport: "connect",
+      request: { method: "GET", path: "/services/data/v68.0/ssot/connectors" },
+      response: { connectorInfoList: connectors },
+      summary: "Connectors listed",
+    };
+    const presented = await presentSfData360Result(
+      { action: "connect.connector.list" },
+      result,
+      "summary",
+    );
+    const digest = presented.details.digest as Data360RunDigest;
+    const collapsed = renderData360DigestMarkdown(digest);
+    expect(collapsed).toContain("—— 📋 Connectors ——");
+    expect(collapsed).toContain("connector_5");
+    expect(collapsed).not.toContain("connector_6");
+    expect(collapsed.indexOf("Connectors")).toBeGreaterThan(collapsed.indexOf("Outcome"));
+
+    const expanded = renderSfData360Result(presented, { expanded: true }, theme)
+      .render(140)
+      .join("\n");
+    expect(expanded).toContain("connector_60");
+    expect(expanded).toContain("[REDACTED]");
+    expect(expanded).not.toContain("must-not-render");
+    expect(expanded).not.toContain("response preview capped at 8 lines");
+  });
+
+  it("bounds pathological expanded payloads at the approved safety limit", () => {
+    const bounded = boundedExpandedPayload({
+      rows: Array.from({ length: 6_000 }, (_value, index) => ({ index, value: `row-${index}` })),
+    });
+
+    expect(bounded.truncated).toBe(true);
+    expect(bounded.lines.length).toBeLessThanOrEqual(5_000);
+    expect(bounded.totalLines).toBeGreaterThan(bounded.lines.length);
   });
 
   it("uses a unique icon for every business namespace", () => {

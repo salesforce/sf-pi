@@ -2,6 +2,11 @@
 /** Build action-aware Data 360 Run Digests from thin SDK operation results. */
 import type { Data360Namespace } from "./actions/action-types.ts";
 import { formatData360Sql } from "./sql-format.ts";
+import {
+  data360CardKind,
+  previewSectionsFor,
+  sanitizeData360Payload,
+} from "./presentation-data.ts";
 import type {
   BuildData360DigestInput,
   Data360ApiCallRailItem,
@@ -43,23 +48,28 @@ export function buildData360Digest(input: BuildData360DigestInput): Data360RunDi
   const summary =
     stringValue(result.summary) ?? `${action} ${status === "fail" ? "failed" : "completed"}`;
   const transport = transportFor(result);
+  const cardKind = data360CardKind(namespace, result);
   const requestEvidence = objectValue(result.request);
   const pagination = paginationFor(result, requestEvidence, input.input.params);
   const apiCalls = apiCallsFor(result, transport, input.input.params, pagination);
   const sections: Data360RunSection[] = [];
 
-  sections.push({ icon: "🎯", title: "Outcome", rows: outcomeRows(result, status, transport) });
+  sections.push({
+    icon: "🎯",
+    title: "Outcome",
+    rows: outcomeRows(result, status, transport, cardKind),
+    compact: true,
+  });
+  sections.push(...previewSectionsFor(input.input, result, cardKind));
   if (namespace === "query") sections.push(...querySections(input));
   if (["prepare", "harmonize", "semantic"].includes(namespace)) {
     const metadata = metadataSection(result);
     if (metadata) sections.push(metadata);
   }
-  const collection = collectionSection(result);
-  if (collection) sections.push(collection);
-  const request = requestSection(result, transport);
-  if (request) sections.push(request);
-  const response = responseSection(result, transport);
-  if (response) sections.push(response);
+  if (cardKind === "api") {
+    sections.push(requestSection(result, transport));
+    sections.push(responseSection(result, transport));
+  }
   const warning = warningSection(result, transport);
   if (warning) sections.push(warning);
   const failure = failureSection(result);
@@ -88,6 +98,7 @@ export function buildData360Digest(input: BuildData360DigestInput): Data360RunDi
     icon: presentation.icon,
     title: `Data 360 ${presentation.label}`,
     summary,
+    card_kind: cardKind,
     target:
       stringValue(result.targetOrg) ||
       stringValue(result.apiVersion) ||
@@ -123,7 +134,14 @@ export function structuredResultFromDigest(
         status: digest.status,
         summary: digest.summary,
       },
-      data: result.response ?? result.result ?? result.results ?? result.actions,
+      data:
+        result.response ??
+        result.result ??
+        result.results ??
+        result.actions ??
+        result.journeys ??
+        result.contract ??
+        result.journey,
       request: result.request,
       transport: digest.transport,
       api_calls: digest.api_calls,
@@ -170,6 +188,7 @@ function outcomeRows(
   result: Record<string, unknown>,
   status: Data360RunStatus,
   transport: Data360RunDigest["transport"],
+  cardKind: Data360RunDigest["card_kind"],
 ): Data360DigestRow[] {
   const rows: Data360DigestRow[] = [
     { icon: statusIcon(status), label: "Status", value: outcomeStatus(result, status) },
@@ -186,7 +205,7 @@ function outcomeRows(
       value: String(result.status),
     });
   }
-  if (transport) {
+  if (transport && !(transport.used === "local" && cardKind !== "api")) {
     rows.push({
       icon: transport.fallback ? "⚠️" : "🔀",
       label: "Transport",
@@ -234,7 +253,7 @@ function querySections(input: BuildData360DigestInput): Data360RunSection[] {
     sections.push({ icon: "📈", title: "Query Status", rows });
   }
   const table = queryTable(response);
-  if (table) sections.push({ icon: "📋", title: "Results", table });
+  if (table) sections.push({ icon: "📋", title: "Results", table, compact: true });
   return sections;
 }
 
@@ -273,28 +292,6 @@ function metadataSection(result: Record<string, unknown>): Data360RunSection | u
   return rows.length || table ? { icon: "🗂️", title: "Data Object", rows, table } : undefined;
 }
 
-function collectionSection(result: Record<string, unknown>): Data360RunSection | undefined {
-  const response = objectValue(result.response);
-  for (const [key, value] of Object.entries(response)) {
-    if (
-      !Array.isArray(value) ||
-      !value.length ||
-      ["data", "metadata", "fields", "dataFields"].includes(key)
-    )
-      continue;
-    const objects = value.filter(
-      (entry) => entry && typeof entry === "object" && !Array.isArray(entry),
-    );
-    if (!objects.length) continue;
-    return {
-      icon: "📚",
-      title: humanize(key),
-      table: objectTable(objects, preferredColumns(objects[0] as Record<string, unknown>), 10),
-    };
-  }
-  return undefined;
-}
-
 function requestSection(
   result: Record<string, unknown>,
   transport: Data360RunDigest["transport"],
@@ -329,7 +326,7 @@ function requestSection(
     icon: "📥",
     title: "Request",
     rows,
-    code: hasPayload ? jsonCode(sanitizePayload(payloadWithoutSql), 40) : undefined,
+    code: hasPayload ? jsonCode(sanitizeData360Payload(payloadWithoutSql), 40) : undefined,
   };
 }
 
@@ -362,7 +359,9 @@ function responseSection(
     title: "Response",
     rows,
     code:
-      result.response === undefined ? undefined : jsonCode(sanitizePayload(result.response), 45),
+      result.response === undefined
+        ? undefined
+        : jsonCode(sanitizeData360Payload(result.response), 45),
   };
 }
 
@@ -403,18 +402,16 @@ function apiCallsFor(
 ): Data360ApiCallRailItem[] | undefined {
   const request = objectValue(result.request);
   const chain = arrayValue(result.executionChain).map(objectValue);
+  const sourceCalls = arrayValue(result.sourceCalls).map(objectValue);
   const probes = arrayValue(result.probes).map(objectValue);
-  if (!Object.keys(request).length && !transport?.fallback && !chain.length && !probes.length) {
-    if (transport?.used !== "local") return undefined;
-    return [
-      {
-        transport: "LOCAL",
-        method: "LOCAL",
-        url: "No network request",
-        outcome: result.ok === false ? "failed" : result.dryRun === true ? "planned" : "success",
-        detail: stringValue(result.action),
-      },
-    ];
+  if (
+    !Object.keys(request).length &&
+    !transport?.fallback &&
+    !chain.length &&
+    !sourceCalls.length &&
+    !probes.length
+  ) {
+    return undefined;
   }
   const calls: Data360ApiCallRailItem[] = [];
   if (transport?.fallback) {
@@ -444,6 +441,18 @@ function apiCallsFor(
     if (!Object.keys(stepRequest).length) continue;
     calls.push(
       apiCallFromRequest(step, stepRequest, inferTransport(step), paginationFor(step, stepRequest)),
+    );
+  }
+  for (const source of sourceCalls.slice(0, 8 - calls.length)) {
+    const sourceRequest = objectValue(source.request);
+    if (!Object.keys(sourceRequest).length) continue;
+    calls.push(
+      apiCallFromRequest(
+        source,
+        sourceRequest,
+        inferTransport(source),
+        paginationFor(source, sourceRequest),
+      ),
     );
   }
   for (const probe of probes.slice(0, 8 - calls.length)) {
@@ -630,14 +639,12 @@ function queryTable(
   const columns = metadata.map(
     (column, index) => stringValue(column.name) ?? `column_${index + 1}`,
   );
-  const shown = rows
-    .slice(0, 10)
-    .map((row) =>
-      Array.isArray(row)
-        ? row.map(formatCell)
-        : columns.map((column) => formatCell(objectValue(row)[column])),
-    );
-  return { columns, rows: shown, omittedRows: Math.max(0, rows.length - shown.length) };
+  const shown = rows.map((row) =>
+    Array.isArray(row)
+      ? row.map(formatCell)
+      : columns.map((column) => formatCell(objectValue(row)[column])),
+  );
+  return { columns, rows: shown };
 }
 
 function objectTable(
@@ -654,12 +661,6 @@ function objectTable(
     rows: shown,
     omittedRows: Math.max(0, values.length - shown.length),
   };
-}
-
-function preferredColumns(row: Record<string, unknown>): string[] {
-  const preferred = ["name", "apiName", "developerName", "label", "status", "state", "type", "id"];
-  const selected = preferred.filter((key) => row[key] !== undefined);
-  return (selected.length ? selected : Object.keys(row)).slice(0, 6);
 }
 
 function completeUrl(
@@ -761,16 +762,6 @@ function classifyFailure(result: Record<string, unknown>): string {
   if (blob.includes("missing") || blob.includes("required")) return "invalid_input";
   if (typeof result.status === "number" && result.status >= 500) return "platform_error";
   return "api_error";
-}
-function sanitizePayload(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizePayload);
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-      key,
-      /(token|secret|authorization|password)/i.test(key) ? "[REDACTED]" : sanitizePayload(entry),
-    ]),
-  );
 }
 function jsonCode(value: unknown, maxLines: number): Data360RunSection["code"] | undefined {
   if (value === undefined) return undefined;

@@ -5,6 +5,7 @@ import type { Data360Namespace, SfData360Input } from "./actions/action-types.ts
 
 export type Data360RunStatus = "pass" | "warning" | "fail" | "planned" | "info";
 export type Data360Transport = "connect" | "query-v3" | "ingestion" | "local";
+export type Data360CardKind = "api" | "local" | "analysis" | "orchestration";
 
 export interface Data360DigestRow {
   icon: string;
@@ -24,6 +25,7 @@ export interface Data360RunSection {
   rows?: Data360DigestRow[];
   code?: { language: "sql" | "json" | "text"; lines: string[]; omittedLines?: number };
   table?: Data360DigestTable;
+  compact?: boolean;
 }
 
 export interface Data360PaginationDigest {
@@ -57,6 +59,7 @@ export interface Data360RunDigest {
   icon: string;
   title: string;
   summary: string;
+  card_kind: Data360CardKind;
   target?: {
     alias?: string;
     apiVersion?: string;

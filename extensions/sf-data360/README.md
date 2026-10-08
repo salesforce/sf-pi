@@ -68,15 +68,15 @@ api.*          exact endpoint escape hatch
 - Tenant ingestion uses the Data 360 Ingestion API.
 - `api.request` provides day-zero reach for an exact unpromoted endpoint.
 - The official Connect OpenAPI document, hosted Data 360 MCP, and public reference repository provide complementary parity evidence; none is a runtime dependency.
-- Results use rich Data 360 Run Cards modeled after SF Apex: API rails, readable SQL, always-visible request/response previews, domain tables, transport fallbacks, prominent pagination, and grounded orchestration traces.
+- Results use payload- and provenance-aware Data 360 Run Cards: every successful card previews real result data, direct API cards expose request/response detail, and local catalogs, derived analysis, and orchestration plans use focused business views instead of fake API placeholders.
 
 ## Run Cards
 
-Every business namespace has a distinct icon and title. Collapsed and expanded cards always show the API rail, outcome, complete request metadata, and a response preview capped at eight JSON lines. Offset pagination is promoted from a query-string detail into an explicit page, item range, batch size, offset, limit, and returned-count annotation. Domain-specific SQL, metadata, and result tables remain additive.
+Every business namespace has a distinct icon and title. Outcome is followed immediately by a five-row or bounded domain Preview. Direct API cards then show the API rail, complete request metadata, and an eight-line response preview. Local Discover, derived Observe, and Orchestrate cards omit meaningless Request/Response sections and instead show criteria, matches, readiness, metrics, journeys, recommendations, or execution steps.
 
-Evidence artifacts and next-step guidance remain in the semantic digest and stable `structuredContent` for models and programmatic callers, but they are not rendered as human card sections. `summary` returns the compact model digest and normal human card. `inline` adds a bounded semantic preview instead of dumping raw JSON. `file_only` preserves the same card and stores the full response as an artifact.
+Expanding a direct API card shows its complete sanitized request and response. Expanding a local, analysis, or orchestration card shows its complete canonical result. Human display is hard-bounded at 5,000 lines or 2 MB; the existing artifact retains larger payloads. Evidence artifacts and next-step guidance remain in the semantic digest and stable `structuredContent` for models and programmatic callers, but they are not rendered as human card sections.
 
-When one assistant turn observes two or more non-local Data 360 API calls, SF Data 360 appends one bounded, top-level Mermaid trace grouped by business namespace. The trace is a projection of observed calls, pagination, and outcomes; it does not infer unexecuted dependencies or embed raw utterances and URLs.
+Offset pagination remains explicit through page, item range, batch size, offset, limit, and returned-count annotations. Multi-call Mermaid traces include versionless endpoint templates. Independent calls fan out by business module; only pagination series and proven execution chains render sequentially. Diagrams never embed raw utterances, org URLs, identifiers, or opaque tokens.
 
 ## Commands
 

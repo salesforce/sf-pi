@@ -10,8 +10,9 @@ Repository rules still apply. This extension exposes exactly one Pi system tool:
 4. `lib/actions/action-registry.ts` — generated business action lookup and routing.
 5. `lib/actions/dispatcher.ts` — local, journey, and endpoint dispatch.
 6. `lib/operation-executor.ts` — thin generated Connect API executor.
-7. `lib/query-v3.ts` and `lib/actions/ingest/` — direct data-plane transports.
-8. The matching focused Behavior Proof.
+7. `lib/digest.ts`, `lib/presentation-data.ts`, `lib/render.ts`, and `lib/orchestration-diagram.ts` — model/human result projections.
+8. `lib/query-v3.ts` and `lib/actions/ingest/` — direct data-plane transports.
+9. The matching focused Behavior Proof.
 
 ## Contracts
 

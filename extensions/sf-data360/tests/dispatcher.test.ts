@@ -535,6 +535,15 @@ describe("Data 360 dispatcher", () => {
       action: "stdm.find_sessions",
       capability: "agent_observability.stdm_find_sessions",
       summary: "🔎 STDM sessions: 1",
+      sourceCalls: [
+        expect.objectContaining({
+          status: 200,
+          request: expect.objectContaining({
+            method: "POST",
+            path: "/services/data/v67.0/ssot/query-sql?dataspaceName=default",
+          }),
+        }),
+      ],
     });
   });
 

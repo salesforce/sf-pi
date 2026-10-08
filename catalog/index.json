@@ -380,10 +380,10 @@
         "lib/sf-data360-tool.ts",
         "lib/sdk.ts",
         "lib/digest.ts",
+        "lib/presentation-data.ts",
+        "lib/orchestration-diagram.ts",
         "lib/render.ts",
-        "lib/actions/dispatcher.ts",
-        "lib/actions/action-registry.ts",
-        "lib/safety.ts"
+        "lib/actions/dispatcher.ts"
       ],
       "safety": [
         "No MCP runtime or Java subprocess is used.",
@@ -408,7 +408,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 10445
+    "srcLoc": 11178
   },
   {
     "id": "sf-devbar",
