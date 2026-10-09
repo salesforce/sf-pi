@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.338.0](https://github.com/salesforce/sf-pi/compare/v0.337.1...v0.338.0) (2026-10-09)
+
+
+### Features
+
+* **sf-soql:** harden validation and conformance ([79e5c6b](https://github.com/salesforce/sf-pi/commit/79e5c6b1b89a29cd316e3bf3170bebfa9dea13f8))
+
 ## [0.337.1](https://github.com/salesforce/sf-pi/compare/v0.337.0...v0.337.1) (2026-10-08)
 
 
