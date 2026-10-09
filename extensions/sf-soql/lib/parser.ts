@@ -1,47 +1,29 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** SOQL parsing, comment extraction, and safe query normalization. */
 
-import { createRequire } from "node:module";
+import {
+  extractFormulaExpressions,
+  normalizeAndValidateSoql,
+  type SoqlParseOptions,
+} from "./syntax.ts";
 import type {
-  parseHeaderComments as parseHeaderCommentsType,
-  SOQLParser as SOQLParserType,
-} from "@salesforce/soql-common";
-import type {
+  SoqlFieldExpansion,
   SoqlFunctionField,
   SoqlQueryShape,
+  SoqlSelectedField,
   SoqlSemiJoinShape,
   SoqlSubqueryShape,
   SoqlTypeOfClause,
 } from "./types.ts";
 
-const require = createRequire(import.meta.url);
-const { parseHeaderComments, SOQLParser } = require("@salesforce/soql-common") as {
-  parseHeaderComments: typeof parseHeaderCommentsType;
-  SOQLParser: typeof SOQLParserType;
-};
+const TRAILING_QUERY_MODIFIERS = ["OFFSET", "FOR", "UPDATE", "SET OPTIONS"];
 
-const TRAILING_ALL_ROWS = /\s+ALL\s+ROWS\s*;?\s*$/i;
+export type { SoqlParseOptions } from "./syntax.ts";
+export { stripAllRows } from "./syntax.ts";
 
-export function parseSoql(rawQuery: string): SoqlQueryShape {
-  const raw = rawQuery.trim();
-  const parsedComments = parseHeaderComments(raw);
-  const { soql, allRows } = stripAllRows(parsedComments.soqlText.trim().replace(/;\s*$/, ""));
-  const syntaxErrors = validateSyntax(soql);
-  const shape = parseShape(soql);
-  return {
-    raw,
-    normalized: soql,
-    operation: allRows ? "queryAll" : "query",
-    all_rows: allRows,
-    header_comments: parsedComments.headerComments?.trim() || undefined,
-    syntax_errors: syntaxErrors.length ? syntaxErrors : undefined,
-    ...shape,
-  };
-}
-
-export function stripAllRows(soql: string): { soql: string; allRows: boolean } {
-  const allRows = TRAILING_ALL_ROWS.test(soql);
-  return { soql: soql.replace(TRAILING_ALL_ROWS, "").trim(), allRows };
+export function parseSoql(rawQuery: string, options: SoqlParseOptions = {}): SoqlQueryShape {
+  const syntax = normalizeAndValidateSoql(rawQuery, options);
+  return { ...syntax, ...parseShape(syntax.normalized ?? "") };
 }
 
 export function hasTopLevelLimit(query: string): boolean {
@@ -65,7 +47,14 @@ export function withLimit(query: string, limit: number): string {
       .replace(/^LIMIT\s+\d+\b/i, `LIMIT ${Math.min(current, limit)}`);
     return `${prefix}${suffix}`;
   }
-  return `${query.trim()} LIMIT ${limit}`;
+  let insertAt = query.length;
+  for (const keyword of TRAILING_QUERY_MODIFIERS) {
+    const index = findTopLevelKeyword(query, keyword);
+    if (index >= 0 && index < insertAt) insertAt = index;
+  }
+  const prefix = query.slice(0, insertAt).trimEnd();
+  const suffix = query.slice(insertAt).trimStart();
+  return `${prefix} LIMIT ${limit}${suffix ? ` ${suffix}` : ""}`;
 }
 
 export function isAggregateOrCount(query: string): boolean {
@@ -74,10 +63,15 @@ export function isAggregateOrCount(query: string): boolean {
 }
 
 export function toCountQuery(query: string): string {
+  if (findTopLevelKeyword(query, "GROUP BY") >= 0 || findTopLevelKeyword(query, "HAVING") >= 0) {
+    throw new Error(
+      "query.count does not rewrite grouped queries; run the aggregate query directly.",
+    );
+  }
   const fromIndex = findTopLevelKeyword(query, "FROM");
   if (fromIndex < 0) return query;
   let tail = query.slice(fromIndex);
-  const stopKeywords = ["ORDER BY", "LIMIT", "OFFSET", "FOR", "UPDATE"];
+  const stopKeywords = ["ORDER BY", "LIMIT", "OFFSET", "FOR", "UPDATE", "SET OPTIONS"];
   let stop = tail.length;
   for (const keyword of stopKeywords) {
     const idx = findTopLevelKeyword(tail, keyword);
@@ -87,33 +81,18 @@ export function toCountQuery(query: string): string {
   return `SELECT COUNT() ${tail}`;
 }
 
-function validateSyntax(query: string): SoqlQueryShape["syntax_errors"] {
-  try {
-    const parser = SOQLParser({ isApex: true, isMultiCurrencyEnabled: true, apiVersion: 67.0 });
-    const result = parser.parseQuery(query);
-    return result.getParserErrors().map((err) => ({
-      line: err.getLineNumber(),
-      column: err.getCharacterPositionInLine(),
-      message: err.getMessage(),
-    }));
-  } catch (err) {
-    return [{ line: 0, column: 0, message: err instanceof Error ? err.message : String(err) }];
-  }
-}
-
 function parseShape(query: string): Partial<SoqlQueryShape> {
   const selectClause = topLevelSelectClause(query);
   const fields = splitTopLevel(selectClause)
     .map((field) => field.trim())
     .filter(Boolean);
-  const fromIndex = findTopLevelKeyword(query, "FROM");
-  const primaryObject =
-    fromIndex >= 0 ? readIdentifier(query.slice(fromIndex + 4).trim()) : undefined;
+  const from = readFromObject(query);
   const subqueries = fields
     .filter((field) => /^\(\s*SELECT\b/i.test(field))
     .map(parseSubquery)
     .filter((value): value is SoqlSubqueryShape => Boolean(value));
   const normalFields = fields.filter((field) => !/^\(\s*SELECT\b/i.test(field));
+  const selectedFields = normalFields.map((field) => parseSelectedField(field, from.aliases));
   const whereClause = topLevelClause(query, "WHERE", [
     "GROUP BY",
     "HAVING",
@@ -122,8 +101,15 @@ function parseShape(query: string): Partial<SoqlQueryShape> {
     "OFFSET",
     "FOR",
     "UPDATE",
+    "SET OPTIONS",
   ]);
-  const orderByClause = topLevelClause(query, "ORDER BY", ["LIMIT", "OFFSET", "FOR", "UPDATE"]);
+  const orderByClause = topLevelClause(query, "ORDER BY", [
+    "LIMIT",
+    "OFFSET",
+    "FOR",
+    "UPDATE",
+    "SET OPTIONS",
+  ]);
   const groupByClause = topLevelClause(query, "GROUP BY", [
     "HAVING",
     "ORDER BY",
@@ -131,6 +117,7 @@ function parseShape(query: string): Partial<SoqlQueryShape> {
     "OFFSET",
     "FOR",
     "UPDATE",
+    "SET OPTIONS",
   ]);
   const havingClause = topLevelClause(query, "HAVING", [
     "ORDER BY",
@@ -138,36 +125,65 @@ function parseShape(query: string): Partial<SoqlQueryShape> {
     "OFFSET",
     "FOR",
     "UPDATE",
+    "SET OPTIONS",
   ]);
   const aliases = extractAliases(normalFields);
   const typeOfFields = normalFields.filter((field) => /^TYPEOF\b/i.test(field));
   const outerWhereClause = whereClause ? stripNestedSelectQueries(whereClause) : undefined;
+  const canonicalize = (field: string) => canonicalizePath(field, from.aliases);
   const functionFields = [
     ...extractFunctionFields(normalFields.join(", "), "select"),
     ...extractFunctionFields(outerWhereClause, "where"),
     ...extractFunctionFields(groupByClause, "group_by"),
     ...extractFunctionFields(havingClause, "having"),
     ...extractFunctionFields(orderByClause, "order_by"),
-  ];
+  ].map((reference) => ({ ...reference, field: canonicalize(reference.field) }));
+  const formulaExpressions = extractFormulaExpressions(outerWhereClause).map((formula) => ({
+    ...formula,
+    left_field: canonicalize(formula.left_field),
+    right_field: canonicalize(formula.right_field),
+  }));
   return {
-    primary_object: primaryObject,
+    primary_object: from.object,
+    object_alias: from.alias,
+    object_aliases: Object.keys(from.aliases).length ? from.aliases : undefined,
     fields: normalFields,
-    relationships: normalFields
-      .filter((field) => field.includes("."))
-      .map((field) => field.split(".")[0]),
+    selected_fields: selectedFields,
+    field_expansions: selectedFields
+      .map((field) => field.expansion)
+      .filter((value): value is SoqlFieldExpansion => Boolean(value)),
+    formula_expressions: formulaExpressions,
+    where_clause: outerWhereClause,
+    relationships: selectedFields
+      .filter((field) => field.kind === "field" && field.field?.includes("."))
+      .map((field) => field.field?.split(".")[0] as string),
     subqueries,
-    semi_joins: whereClause ? extractSemiJoins(whereClause) : [],
+    semi_joins: (whereClause ? extractSemiJoins(whereClause) : []).map((join) => ({
+      ...join,
+      outer_field: canonicalize(join.outer_field),
+    })),
     function_fields: functionFields,
-    where_fields: outerWhereClause ? extractWhereFields(outerWhereClause) : [],
-    order_by_fields: orderByClause ? extractOrderByFields(orderByClause) : [],
-    group_by_fields: groupByClause ? extractGroupByFields(groupByClause) : [],
-    having_fields: havingClause ? extractHavingFields(havingClause) : [],
+    where_fields: outerWhereClause ? extractWhereFields(outerWhereClause).map(canonicalize) : [],
+    order_by_fields: orderByClause ? extractOrderByFields(orderByClause).map(canonicalize) : [],
+    group_by_fields: groupByClause ? extractGroupByFields(groupByClause).map(canonicalize) : [],
+    having_fields: havingClause ? extractHavingFields(havingClause).map(canonicalize) : [],
     aliases,
     bind_variables: extractBindVariables(query),
     type_of_fields: typeOfFields,
-    type_of_clauses: extractTypeOfClauses(typeOfFields),
-    aggregate_fields: extractAggregateFields(normalFields),
-    literal_filters: outerWhereClause ? extractLiteralFilters(outerWhereClause) : [],
+    type_of_clauses: extractTypeOfClauses(typeOfFields).map((clause) => ({
+      ...clause,
+      relationship: canonicalize(clause.relationship),
+    })),
+    aggregate_fields: extractAggregateFields(normalFields).map((aggregate) => ({
+      ...aggregate,
+      field: aggregate.field ? canonicalize(aggregate.field) : undefined,
+    })),
+    literal_filters: outerWhereClause
+      ? extractLiteralFilters(outerWhereClause).map((filter) => ({
+          ...filter,
+          field: canonicalize(filter.field),
+        }))
+      : [],
     limit: readTopLevelLimit(query),
   };
 }
@@ -180,6 +196,12 @@ function parseSubquery(field: string): SoqlSubqueryShape | undefined {
   return {
     relationship,
     fields: nested.fields ?? [],
+    object_alias: nested.object_alias,
+    object_aliases: nested.object_aliases,
+    selected_fields: nested.selected_fields,
+    field_expansions: nested.field_expansions,
+    formula_expressions: nested.formula_expressions,
+    where_clause: nested.where_clause,
     subqueries: nested.subqueries,
     semi_joins: nested.semi_joins,
     function_fields: nested.function_fields,
@@ -195,6 +217,70 @@ function parseSubquery(field: string): SoqlSubqueryShape | undefined {
     literal_filters: nested.literal_filters,
     limit: nested.limit,
   };
+}
+
+function readFromObject(query: string): {
+  object?: string;
+  alias?: string;
+  aliases: Record<string, string>;
+} {
+  const source = topLevelClause(query, "FROM", [
+    "USING SCOPE",
+    "WHERE",
+    "WITH",
+    "GROUP BY",
+    "HAVING",
+    "ORDER BY",
+    "LIMIT",
+    "OFFSET",
+    "FOR",
+    "UPDATE",
+    "SET OPTIONS",
+  ]);
+  if (!source) return { aliases: {} };
+  const bindings = splitTopLevel(source).map(parseFromBinding).filter(Boolean);
+  const first = bindings[0];
+  if (!first) return { aliases: {} };
+  const aliases: Record<string, string> = {};
+  if (first.alias) aliases[first.alias] = "";
+  for (const binding of bindings.slice(1)) {
+    if (!binding?.alias) continue;
+    aliases[binding.alias] = canonicalizePath(binding.path, aliases);
+  }
+  return { object: first.path, alias: first.alias, aliases };
+}
+
+function parseFromBinding(value: string): { path: string; alias?: string } | undefined {
+  const match = /^([a-zA-Z_][\w.]*)(?:\s+([a-zA-Z_][\w]*))?$/.exec(value.trim());
+  return match ? { path: match[1], alias: match[2] } : undefined;
+}
+
+function parseSelectedField(raw: string, objectAliases: Record<string, string>): SoqlSelectedField {
+  if (/^TYPEOF\b/i.test(raw)) return { kind: "typeof", raw };
+  const expansion = /^FIELDS\s*\(\s*(ALL|CUSTOM|STANDARD)\s*\)$/i.exec(raw)?.[1]?.toUpperCase() as
+    SoqlFieldExpansion | undefined;
+  if (expansion) return { kind: "fields", raw, expansion };
+  if (/^[a-zA-Z_][\w]*\s*\(/.test(raw)) return { kind: "function", raw };
+  const field = /^([a-zA-Z_][\w.]*)(?:\s+([a-zA-Z_][\w]*))?$/.exec(raw);
+  if (field) {
+    return {
+      kind: "field",
+      raw,
+      field: canonicalizePath(field[1], objectAliases),
+      ...(field[2] ? { alias: field[2] } : {}),
+    };
+  }
+  return { kind: "expression", raw };
+}
+
+function canonicalizePath(path: string, objectAliases: Record<string, string>): string {
+  const [prefix, ...tail] = path.split(".");
+  if (!tail.length) return path;
+  const alias = Object.entries(objectAliases).find(
+    ([name]) => name.toLowerCase() === prefix.toLowerCase(),
+  );
+  if (!alias) return path;
+  return [alias[1], ...tail].filter(Boolean).join(".");
 }
 
 function topLevelSelectClause(query: string): string {
@@ -243,6 +329,10 @@ function extractSemiJoins(whereClause: string): SoqlSemiJoinShape[] {
       outer_field: match[1],
       object: nested.primary_object,
       fields: nested.fields ?? [],
+      selected_fields: nested.selected_fields,
+      field_expansions: nested.field_expansions,
+      formula_expressions: nested.formula_expressions,
+      where_clause: nested.where_clause,
       semi_joins: nested.semi_joins,
       function_fields: nested.function_fields,
       where_fields: nested.where_fields,

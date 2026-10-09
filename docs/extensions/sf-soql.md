@@ -33,7 +33,8 @@ Open its Manager detail or change its package state with:
 - No startup org probes; Salesforce connections are resolved only during explicit sf_soql tool actions.
 - Lifecycle actions use @salesforce/core / REST and Tooling APIs as the fast native path; missing recurring capabilities should become small native actions instead of subprocess fallbacks.
 - Omitted api mode resolves automatically from current-org REST and Tooling schema evidence; explicit rest/tooling selections remain strict.
-- Every query execution performs recursive mode-aware schema validation first, including multi-level parent paths, child-subquery clauses, semi-joins, polymorphic Name/TYPEOF contracts, and fields nested in supported functions, and blocks predictable failures before the query endpoint.
+- Every query execution performs one syntax pass at the current org-supported API version, then recursive mode-aware schema validation including single and chained relationship aliases, multi-level parent paths, child-subquery clauses, semi-joins, polymorphic Name/TYPEOF contracts, FIELDS() bounds, FORMULA() fields, supported function fields, and documented standard-object query restrictions.
+- REST and Tooling query actions reject Apex bind variables before execution; embedded Apex file diagnostics use a distinct Apex parsing context, balanced bracket-query discovery, and constant Database.query*() expression evaluation while sf-apex remains the whole-file Apex diagnostics owner.
 - query.sample defaults to a small safe limit. query.run without LIMIT returns a review card unless max_rows or allow_unbounded is explicit.
 - query.queryAll and ALL ROWS are explicit and rendered as deleted/archived-row scope warnings.
 - query.export is confined to .sf-pi/exports/soql/ under the workspace.

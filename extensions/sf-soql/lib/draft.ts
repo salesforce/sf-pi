@@ -2,10 +2,11 @@
 /** Deterministic, API-aware SOQL draft generation from explicit inputs. */
 
 import type { SoqlConnection as Connection } from "./api.ts";
-import { apiVersion } from "./api.ts";
+import { apiVersion, parserApiVersion } from "./api.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { parseSoql } from "./parser.ts";
 import { resolutionReason, resolveSchemaCandidates } from "./resolver.ts";
+import { validateSchemaShape } from "./schema-validator.ts";
 import type {
   SfSoqlParams,
   SfSoqlSessionState,
@@ -66,33 +67,37 @@ export async function queryDraft(
   ]
     .filter(Boolean)
     .join(" ");
-  const shape = { ...parseSoql(query), api: selected.api };
+  const shape = {
+    ...parseSoql(query, { apiVersion: parserApiVersion(conn), context: "api" }),
+    api: selected.api,
+  };
+  if (shape.syntax_errors?.length) {
+    findings.push(
+      ...shape.syntax_errors.map((error) =>
+        finding("error", "❌", "Syntax", `${error.line}:${error.column} ${error.message}`),
+      ),
+    );
+  }
+  findings.push(...(await validateSchemaShape(conn, describe, shape, selected.api, state)));
   const reason = resolutionReason(
     params.api ?? "auto",
     resolution.candidates,
     selected.api,
     matchingCandidates.length === 1 && resolution.candidates.length > 1 ? selected.api : undefined,
   );
+  const hasErrors = findings.some((item) => item.severity === "error");
+  const hasWarnings = findings.some((item) => item.severity === "warning");
   const digest = buildDigest({
     action: "query.draft",
-    status: findings.some((item) => item.severity === "warning") ? "warning" : "pass",
+    status: hasErrors ? "fail" : hasWarnings ? "warning" : "pass",
     icon: "📝",
     title: `SOQL Draft · ${objectName}`,
     org: { alias: params.target_org, api_version: apiVersion(conn) },
     meta: [selected.api.toUpperCase()],
     query: shape,
     validation: {
-      verdict: findings.length ? "review" : "safe",
-      findings: findings.length
-        ? findings
-        : [
-            finding(
-              "info",
-              "✅",
-              "Draft",
-              "Draft query uses verified top-level fields and an explicit LIMIT.",
-            ),
-          ],
+      verdict: hasErrors ? "invalid" : hasWarnings ? "review" : "safe",
+      findings,
     },
     api_resolution: {
       requested: params.api ?? "auto",
@@ -113,10 +118,7 @@ export async function queryDraft(
       section(
         "🛡️",
         "Findings",
-        (findings.length
-          ? findings
-          : [finding("info", "✅", "Draft", "Ready for query.validate or query.sample.")]
-        ).map((item) => row(item.icon, item.label, item.message)),
+        findings.map((item) => row(item.icon, item.label, item.message)),
       ),
     ],
   });

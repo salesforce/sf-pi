@@ -174,13 +174,16 @@ async function main(): Promise<void> {
       state,
     ),
   );
-  await run("schema.search harness", () =>
-    schemaSearch(conn, {
-      action: "schema.search",
-      target_org: targetOrg,
-      query: "harness",
-      limit: 5,
-    }),
+  await run(
+    "schema.search harness",
+    () =>
+      schemaSearch(conn, {
+        action: "schema.search",
+        target_org: targetOrg,
+        query: "harness",
+        limit: 5,
+      }),
+    ["pass", "warning"],
   );
   const draft = await run("query.draft", () =>
     queryDraft(conn, {
@@ -198,8 +201,12 @@ async function main(): Promise<void> {
     draft.query?.normalized?.includes("LIMIT 5"),
     "query.draft should include an explicit LIMIT",
   );
-  await run("lsp.status", () =>
-    Promise.resolve(lspStatus({ action: "lsp.status", target_org: targetOrg })),
+  const parserStatus = await run("lsp.status", () =>
+    Promise.resolve(lspStatus(conn, { action: "lsp.status", target_org: targetOrg })),
+  );
+  assert(
+    parserStatus.org?.api_version === conn.target.apiVersion,
+    "parser status should report the current org-supported API version",
   );
   await run("query.validate relationship", () =>
     validateQuery(conn, {
@@ -218,6 +225,59 @@ async function main(): Promise<void> {
       },
       state,
     ),
+  );
+  await run("query.validate object alias", () =>
+    validateQuery(conn, {
+      action: "query.validate",
+      target_org: targetOrg,
+      query: "SELECT a.Id, a.Owner.Name FROM Account a LIMIT 1",
+    }),
+  );
+  await run("query.sample multi-object alias", () =>
+    sampleQuery(
+      conn,
+      {
+        action: "query.sample",
+        target_org: targetOrg,
+        query: "SELECT COUNT() FROM Contact c, c.Account a WHERE a.Name != null",
+        max_rows: 1,
+      },
+      state,
+    ),
+  );
+  await run("query.validate FORMULA", () =>
+    validateQuery(conn, {
+      action: "query.validate",
+      target_org: targetOrg,
+      query: "SELECT Id FROM Opportunity WHERE FORMULA('Amount - ExpectedRevenue') > 100 LIMIT 1",
+    }),
+  );
+  await run(
+    "query.validate API bind blocked",
+    () =>
+      validateQuery(conn, {
+        action: "query.validate",
+        target_org: targetOrg,
+        query: "SELECT Id FROM Account WHERE Name = :name LIMIT 1",
+      }),
+    "fail",
+  );
+  await run(
+    "query.validate unbounded FIELDS blocked",
+    () =>
+      validateQuery(conn, {
+        action: "query.validate",
+        target_org: targetOrg,
+        query: "SELECT FIELDS(ALL) FROM Account",
+      }),
+    "fail",
+  );
+  await run("query.validate bounded FIELDS", () =>
+    validateQuery(conn, {
+      action: "query.validate",
+      target_org: targetOrg,
+      query: "SELECT FIELDS(ALL) FROM Account LIMIT 200",
+    }),
   );
   await run("query.validate child relationship field", () =>
     validateQuery(
@@ -398,6 +458,18 @@ async function main(): Promise<void> {
       state,
     ),
   );
+  await run("query.sample scalar aggregate", () =>
+    sampleQuery(
+      conn,
+      {
+        action: "query.sample",
+        target_org: targetOrg,
+        query: "SELECT MAX(CreatedDate) FROM Account",
+        max_rows: 1,
+      },
+      state,
+    ),
+  );
   const autoTooling = await run("query.sample auto tooling", () =>
     sampleQuery(
       conn,
@@ -411,6 +483,105 @@ async function main(): Promise<void> {
       state,
     ),
   );
+  await run("query.sample Tooling alias", () =>
+    sampleQuery(
+      conn,
+      {
+        action: "query.sample",
+        target_org: targetOrg,
+        api: "tooling",
+        query: "SELECT a.Id, a.Name, a.ApiVersion FROM ApexClass a LIMIT 1",
+        max_rows: 1,
+      },
+      state,
+    ),
+  );
+  await run("query.sample Tooling aggregate", () =>
+    sampleQuery(
+      conn,
+      {
+        action: "query.sample",
+        target_org: targetOrg,
+        api: "tooling",
+        query: "SELECT Status, COUNT(Id) total FROM ApexClass GROUP BY Status LIMIT 5",
+        max_rows: 5,
+      },
+      state,
+    ),
+  );
+  await run(
+    "query.sample ContentDocumentLink requires implementation filter",
+    () =>
+      sampleQuery(
+        conn,
+        {
+          action: "query.sample",
+          target_org: targetOrg,
+          query: "SELECT Id, ContentDocumentId, LinkedEntityId FROM ContentDocumentLink LIMIT 1",
+          max_rows: 1,
+        },
+        state,
+      ),
+    "fail",
+  );
+  await run("query.sample ContentDocumentLink supported filter", () =>
+    sampleQuery(
+      conn,
+      {
+        action: "query.sample",
+        target_org: targetOrg,
+        query:
+          "SELECT Id, ContentDocumentId, LinkedEntityId FROM ContentDocumentLink WHERE ContentDocumentId = '069000000000001AAA' LIMIT 1",
+        max_rows: 1,
+      },
+      state,
+    ),
+  );
+  await run(
+    "query.sample Vote requires implementation filter",
+    () =>
+      sampleQuery(
+        conn,
+        {
+          action: "query.sample",
+          target_org: targetOrg,
+          query: "SELECT Id, ParentId FROM Vote LIMIT 1",
+          max_rows: 1,
+        },
+        state,
+      ),
+    "fail",
+  );
+  await run("query.sample Vote supported filter", () =>
+    sampleQuery(
+      conn,
+      {
+        action: "query.sample",
+        target_org: targetOrg,
+        query: "SELECT Id, ParentId FROM Vote WHERE Id = '0D7000000000001AAA' LIMIT 1",
+        max_rows: 1,
+      },
+      state,
+    ),
+  );
+  const officialSemanticFailures = [
+    "SELECT MAX(CreatedDate) FROM Account LIMIT 1",
+    "SELECT convertTimezone(CreatedDate) FROM Opportunity LIMIT 1",
+    "SELECT CreatedDate, Amount FROM Opportunity WHERE CALENDAR_YEAR(CreatedDate) = THIS_YEAR LIMIT 1",
+    "SELECT CALENDAR_YEAR(CreatedDate), Amount FROM Opportunity LIMIT 1",
+  ];
+  for (const [index, query] of officialSemanticFailures.entries()) {
+    await run(
+      `query.sample official semantic restriction ${index + 1}`,
+      () =>
+        sampleQuery(
+          conn,
+          { action: "query.sample", target_org: targetOrg, query, max_rows: 1 },
+          state,
+        ),
+      "fail",
+    );
+  }
   assert(
     autoTooling.query?.api === "tooling",
     "auto mode should resolve ApexCodeCoverage to Tooling",
@@ -435,15 +606,19 @@ async function main(): Promise<void> {
   const apexFile = path.join(tempDir, "EmbeddedSoql.cls");
   await writeFile(
     apexFile,
-    "public class EmbeddedSoql { public void run(){ List<Account> rows = [SELECT Id, Name FROM Account LIMIT 1]; } }\n",
+    "public class EmbeddedSoql { public void run(){ List<Account> rows = [SELECT Id, Name FROM Account WHERE Name = 'A]B' LIMIT 1]; List<SObject> dynamicRows = Database.query('SELECT Id ' + 'FROM Contact LIMIT 1'); } }\n",
     "utf8",
   );
-  await run("file.diagnose Apex", () =>
+  const apexDiagnose = await run("file.diagnose Apex", () =>
     diagnoseFile(
       conn,
       { action: "file.diagnose", target_org: targetOrg, file: apexFile },
       process.cwd(),
     ),
+  );
+  assert(
+    apexDiagnose.sections.find((section) => section.title === "Queries")?.rows.length === 2,
+    "file.diagnose Apex should discover bracket and constant Database.query SOQL",
   );
   const exportDigest = await run("query.export csv", () =>
     exportQueryResult(

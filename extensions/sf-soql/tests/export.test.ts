@@ -36,6 +36,28 @@ describe("resolveExportTarget", () => {
 });
 
 describe("exportQueryResult", () => {
+  it("retains the latest successful artifacts after a later blocked result", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "sf-soql-export-retained-test-"));
+    const source = path.join(cwd, "source.csv");
+    await writeFile(source, "Id,Name\n001,Acme\n", "utf8");
+    const state: SfSoqlSessionState = {
+      lastArtifacts: [{ path: source, kind: "flattened-csv" }],
+      lastDigest: { artifacts: [] } as unknown as NonNullable<SfSoqlSessionState["lastDigest"]>,
+    };
+
+    try {
+      await exportQueryResult(
+        { action: "query.export", output_file: "retained.csv", format: "csv" },
+        state,
+        cwd,
+      );
+      const target = path.join(cwd, ".sf-pi", "exports", "soql", "retained.csv");
+      await expect(readFile(target, "utf8")).resolves.toBe("Id,Name\n001,Acme\n");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("rejects symlink targets and symlink parent directories", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "sf-soql-export-symlink-test-"));
     const source = path.join(cwd, "source.csv");

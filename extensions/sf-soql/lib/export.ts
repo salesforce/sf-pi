@@ -144,7 +144,7 @@ function findArtifact(
   state: SfSoqlSessionState,
   format: NonNullable<SfSoqlParams["format"]>,
 ): SoqlArtifact | undefined {
-  const artifacts = state.lastDigest?.artifacts ?? [];
+  const artifacts = state.lastArtifacts ?? state.lastDigest?.artifacts ?? [];
   const preferredKind = kindFor(format);
   return (
     artifacts.find((artifact) => artifact.kind === preferredKind) ??

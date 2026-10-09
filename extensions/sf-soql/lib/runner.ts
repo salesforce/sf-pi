@@ -2,7 +2,7 @@
 /** Query plan and execution operations for sf-soql. */
 
 import type { SoqlConnection as Connection } from "./api.ts";
-import { apiCall, apiVersion, explainQuery, queryAll, restQuery } from "./api.ts";
+import { apiCall, apiVersion, explainQuery, parserApiVersion, queryAll, restQuery } from "./api.ts";
 import { writeRunBundle, writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { errorResult } from "./errors.ts";
@@ -211,8 +211,14 @@ export async function sampleQuery(
 ): Promise<ToolResult> {
   const maxRows = clamp(params.max_rows ?? params.limit ?? DEFAULT_SAMPLE_ROWS, 1, HARD_MAX_ROWS);
   const rawQuery = requireQuery(params);
-  const shape = parseSoql(rawQuery);
-  const query = withLimit(shape.normalized ?? rawQuery, maxRows);
+  const shape = parseSoql(rawQuery, { apiVersion: parserApiVersion(conn), context: "api" });
+  const normalized = shape.normalized ?? rawQuery;
+  const hasGrouping = Boolean(
+    shape.group_by_fields?.length ||
+    shape.function_fields?.some((reference) => reference.context === "group_by"),
+  );
+  const query =
+    isAggregateOrCount(normalized) && !hasGrouping ? normalized : withLimit(normalized, maxRows);
   return executeQuery(
     conn,
     { ...params, query, max_rows: maxRows },
@@ -228,7 +234,7 @@ export async function runQuery(
   state: SfSoqlSessionState,
 ): Promise<ToolResult> {
   const rawQuery = requireQuery(params);
-  const shape = parseSoql(rawQuery);
+  const shape = parseSoql(rawQuery, { apiVersion: parserApiVersion(conn), context: "api" });
   const query = shape.normalized ?? rawQuery;
   const explicitLimit = readTopLevelLimit(query);
   const maxRows = clamp(params.max_rows ?? explicitLimit ?? DEFAULT_MAX_ROWS, 1, HARD_MAX_ROWS);
@@ -281,7 +287,7 @@ export async function countQuery(
   state: SfSoqlSessionState,
 ): Promise<ToolResult> {
   const rawQuery = requireQuery(params);
-  const shape = parseSoql(rawQuery);
+  const shape = parseSoql(rawQuery, { apiVersion: parserApiVersion(conn), context: "api" });
   return executeQuery(
     conn,
     { ...params, query: toCountQuery(shape.normalized ?? rawQuery), max_rows: 1 },
@@ -297,7 +303,7 @@ export async function runQueryAll(
   state: SfSoqlSessionState,
 ): Promise<ToolResult> {
   const rawQuery = requireQuery(params);
-  const shape = parseSoql(rawQuery);
+  const shape = parseSoql(rawQuery, { apiVersion: parserApiVersion(conn), context: "api" });
   const maxRows = clamp(params.max_rows ?? params.limit ?? DEFAULT_MAX_ROWS, 1, HARD_MAX_ROWS);
   return executeQuery(
     conn,
@@ -420,6 +426,7 @@ async function executeQuery(
     });
     state.lastRunnable = { ...params, api: apiMode };
     state.lastDigest = digest;
+    state.lastArtifacts = artifacts;
     return toolResultFromDigest(digest);
   } catch (err) {
     return errorResult({ ...params, action }, err);

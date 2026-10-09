@@ -126,9 +126,31 @@ const opportunityDescribe: SObjectDescribe = {
   label: "Opportunity",
   queryable: true,
   fields: [
-    { name: "Id", type: "id", filterable: true, sortable: true },
-    { name: "Name", type: "string", filterable: true, sortable: true },
-    { name: "StageName", type: "picklist", filterable: true, sortable: true },
+    { name: "Id", type: "id", filterable: true, sortable: true, custom: false },
+    { name: "Name", type: "string", filterable: true, sortable: true, custom: false },
+    {
+      name: "StageName",
+      type: "picklist",
+      filterable: true,
+      sortable: true,
+      custom: false,
+    },
+    { name: "Amount", type: "currency", filterable: true, sortable: true, custom: false },
+    {
+      name: "ExpectedRevenue",
+      type: "currency",
+      filterable: true,
+      sortable: true,
+      custom: false,
+    },
+    { name: "CloseDate", type: "date", filterable: true, sortable: true, custom: false },
+    {
+      name: "CreatedDate",
+      type: "datetime",
+      filterable: true,
+      sortable: true,
+      custom: false,
+    },
   ],
   childRelationships: [],
 };
@@ -138,8 +160,29 @@ const userDescribe: SObjectDescribe = {
   label: "User",
   queryable: true,
   fields: [
+    { name: "Id", type: "id", filterable: true, sortable: true, custom: false },
+    { name: "Name", type: "string", filterable: true, sortable: true, custom: false },
+  ],
+  childRelationships: [],
+};
+
+const contentDocumentLinkDescribe: SObjectDescribe = {
+  name: "ContentDocumentLink",
+  queryable: true,
+  fields: [
     { name: "Id", type: "id", filterable: true, sortable: true },
-    { name: "Name", type: "string", filterable: true, sortable: true },
+    { name: "ContentDocumentId", type: "reference", filterable: true, sortable: true },
+    { name: "LinkedEntityId", type: "reference", filterable: true, sortable: true },
+  ],
+  childRelationships: [],
+};
+
+const voteDescribe: SObjectDescribe = {
+  name: "Vote",
+  queryable: true,
+  fields: [
+    { name: "Id", type: "id", filterable: true, sortable: true },
+    { name: "ParentId", type: "reference", filterable: true, sortable: true },
   ],
   childRelationships: [],
 };
@@ -194,6 +237,8 @@ function fakeSession(): SalesforceSession {
     ["/sobjects/Name/describe", nameDescribe],
     ["/sobjects/Opportunity/describe", opportunityDescribe],
     ["/sobjects/User/describe", userDescribe],
+    ["/sobjects/ContentDocumentLink/describe", contentDocumentLinkDescribe],
+    ["/sobjects/Vote/describe", voteDescribe],
     ["/sobjects/BothObject/describe", restOverlapDescribe],
     ["/tooling/sobjects/ToolOnly/describe", toolingDescribe],
     ["/tooling/sobjects/BothObject/describe", toolingOverlapDescribe],
@@ -218,6 +263,8 @@ function fakeSession(): SalesforceSession {
             { name: "Task", label: "Task", queryable: true },
             { name: "Opportunity", label: "Opportunity", queryable: true },
             { name: "User", label: "User", queryable: true },
+            { name: "ContentDocumentLink", label: "Content Document Link", queryable: true },
+            { name: "Vote", label: "Vote", queryable: true },
             { name: "BothObject", label: "Both Object", queryable: true },
           ],
         };
@@ -663,5 +710,272 @@ describe("SF SOQL API-aware preflight", () => {
     expect(result.details.digest.status).toBe("fail");
     expect(result.content[0].text).toContain("REST");
     expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("accepts a top-level object alias and validates canonical field paths", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT a.Id, a.Owner.Name FROM Account a LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts chained multi-object aliases and validates their relationship paths", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT c.Id, a.Name, o.Name FROM Contact c, c.Account a, a.Owner o WHERE a.Name != null AND o.Name != null LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks API bind variables before the query endpoint", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id FROM Account WHERE Name = :name LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("Bind Variables");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("validates both FORMULA fields against their owning schema", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const valid = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id FROM Opportunity WHERE FORMULA('Amount - ExpectedRevenue') > 100 LIMIT 1",
+      max_rows: 1,
+    });
+    expect(valid.details.digest.status).toBe("pass");
+
+    const invalid = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id FROM Opportunity WHERE FORMULA('CloseDate - CreatedDate') > 10 LIMIT 1",
+      max_rows: 1,
+    });
+    expect(invalid.details.digest.status).toBe("fail");
+    expect(invalid.content[0].text).toContain("cannot mix date and datetime");
+  });
+
+  it("enforces bounded FIELDS(ALL) and FIELDS(CUSTOM) queries", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const unbounded = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT FIELDS(ALL) FROM Account",
+    });
+    expect(unbounded.details.digest.status).toBe("fail");
+    expect(unbounded.content[0].text).toContain("FIELDS(ALL) requires LIMIT 200 or less");
+
+    const bounded = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT FIELDS(ALL) FROM Account LIMIT 200",
+    });
+    expect(bounded.details.digest.status).toBe("pass");
+
+    const emptyCustom = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT FIELDS(CUSTOM) FROM User LIMIT 200",
+    });
+    expect(emptyCustom.details.digest.status).toBe("fail");
+    expect(emptyCustom.content[0].text).toContain("User has no custom fields");
+  });
+
+  it("validates FIELDS bounds recursively in child subqueries", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const unbounded = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, (SELECT FIELDS(ALL) FROM Contacts) FROM Account LIMIT 1",
+    });
+    expect(unbounded.details.digest.status).toBe("fail");
+    expect(unbounded.content[0].text).toContain("Contacts FIELDS Limit");
+
+    const bounded = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, (SELECT FIELDS(ALL) FROM Contacts LIMIT 200) FROM Account LIMIT 1",
+    });
+    expect(bounded.details.digest.status).toBe("pass");
+  });
+
+  it("accepts a documented Id bound for an unbounded FIELDS expansion", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT FIELDS(ALL) FROM Account WHERE Id IN ('001000000000001AAA')",
+    });
+
+    expect(
+      result.details.digest.validation.findings.some(
+        (finding: { label: string }) => finding.label === "FIELDS Limit",
+      ),
+    ).toBe(false);
+  });
+
+  it("blocks guaranteed duplicate and aggregate FIELDS expansions", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const duplicate = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, FIELDS(ALL) FROM Account LIMIT 200",
+    });
+    expect(duplicate.details.digest.status).toBe("fail");
+    expect(duplicate.content[0].text).toContain("duplicates explicitly selected fields");
+
+    const aggregate = await execute(tool, {
+      action: "query.validate",
+      target_org: "ExampleOrg",
+      query: "SELECT FIELDS(STANDARD), COUNT(Id) FROM Account GROUP BY Id LIMIT 200",
+    });
+    expect(aggregate.details.digest.status).toBe("fail");
+    expect(aggregate.content[0].text).toContain("cannot be combined with aggregate or grouping");
+  });
+
+  it("blocks ContentDocumentLink without an implementation filter before execution", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, ContentDocumentId FROM ContentDocumentLink LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("ContentDocumentLink requires a WHERE filter");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("accepts documented ContentDocumentLink and Vote implementation filters", async () => {
+    const contentSession = fakeSession();
+    const contentTool = await registeredTool(contentSession);
+    const contentResult = await execute(contentTool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query:
+        "SELECT Id, ContentDocumentId FROM ContentDocumentLink WHERE ContentDocumentId = '069000000000001AAA' LIMIT 1",
+      max_rows: 1,
+    });
+    expect(contentResult.details.digest.status).toBe("pass");
+    expect(contentSession.query).toHaveBeenCalledTimes(1);
+
+    const voteSession = fakeSession();
+    const voteTool = await registeredTool(voteSession);
+    const voteResult = await execute(voteTool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, ParentId FROM Vote WHERE Id = '0D7000000000001AAA' LIMIT 1",
+      max_rows: 1,
+    });
+    expect(voteResult.details.digest.status).toBe("pass");
+    expect(voteSession.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks Vote without an implementation filter before execution", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT Id, ParentId FROM Vote LIMIT 1",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.content[0].text).toContain("Vote requires a WHERE filter");
+    expect(session.query).not.toHaveBeenCalled();
+  });
+
+  it("does not inject LIMIT into scalar aggregate samples", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.sample",
+      target_org: "ExampleOrg",
+      query: "SELECT MAX(CreatedDate) FROM Account",
+      max_rows: 1,
+    });
+
+    expect(result.details.digest.status).toBe("pass");
+    expect(session.query).toHaveBeenCalledWith(
+      expect.objectContaining({ soql: "SELECT MAX(CreatedDate) FROM Account" }),
+    );
+  });
+
+  it("blocks documented query semantic failures before execution", async () => {
+    for (const query of [
+      "SELECT MAX(CreatedDate) FROM Account LIMIT 1",
+      "SELECT convertTimezone(CreatedDate) FROM Opportunity LIMIT 1",
+      "SELECT CreatedDate, Amount FROM Opportunity WHERE CALENDAR_YEAR(CreatedDate) = THIS_YEAR LIMIT 1",
+      "SELECT CALENDAR_YEAR(CreatedDate), Amount FROM Opportunity LIMIT 1",
+    ]) {
+      const session = fakeSession();
+      const tool = await registeredTool(session);
+      const result = await execute(tool, {
+        action: "query.sample",
+        target_org: "ExampleOrg",
+        query,
+        max_rows: 1,
+      });
+      expect(result.details.digest.status).toBe("fail");
+      expect(session.query).not.toHaveBeenCalled();
+    }
+  });
+
+  it("does not label a syntactically invalid draft as safe", async () => {
+    const session = fakeSession();
+    const tool = await registeredTool(session);
+
+    const result = await execute(tool, {
+      action: "query.draft",
+      target_org: "ExampleOrg",
+      object: "Account",
+      fields: ["Id", "Name"],
+      filters: ["Name ="],
+      max_rows: 5,
+    });
+
+    expect(result.details.digest.status).toBe("fail");
+    expect(result.details.digest.validation.verdict).toBe("invalid");
+    expect(result.content[0].text).toContain("Syntax");
   });
 });

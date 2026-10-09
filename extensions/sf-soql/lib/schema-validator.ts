@@ -3,6 +3,7 @@
 
 import type { SoqlConnection as Connection } from "./api.ts";
 import { finding } from "./digest.ts";
+import { validateFieldExpansions } from "./fields-validator.ts";
 import { loadSchemaDescription } from "./resolver.ts";
 import type {
   SfSoqlSessionState,
@@ -39,8 +40,7 @@ async function validateFields(
 ): Promise<SoqlFinding[]> {
   const findings: SoqlFinding[] = [];
   const fieldMap = new Map(describe.fields.map((field) => [field.name.toLowerCase(), field]));
-  for (const field of shape.fields ?? []) {
-    if (isExpression(field)) continue;
+  for (const field of selectedFieldPaths(shape)) {
     if (!field.includes(".")) {
       const direct = fieldMap.get(field.toLowerCase());
       if (!direct)
@@ -123,7 +123,7 @@ async function validateFields(
     }
     const childDescribe = (await loadSchemaDescription(conn, rel.childSObject, api, state))
       .describe;
-    const childShape = shapeForSubquery(subquery);
+    const childShape = shapeForSubquery(subquery, shape.syntax_context);
     const childFindings = [
       ...(await validateFields(conn, childDescribe, childShape, api, state)),
       ...(await validateFieldCapabilities(conn, childDescribe, childShape, api, state)),
@@ -139,7 +139,7 @@ async function validateFields(
   for (const semiJoin of shape.semi_joins ?? []) {
     const joinedDescribe = (await loadSchemaDescription(conn, semiJoin.object, api, state))
       .describe;
-    const joinedShape = shapeForSemiJoin(semiJoin);
+    const joinedShape = shapeForSemiJoin(semiJoin, shape.syntax_context);
     const joinedFindings = [
       ...(joinedShape.type_of_clauses?.length
         ? [
@@ -257,9 +257,19 @@ async function validateTypeOfClauses(
   return findings;
 }
 
-function shapeForSubquery(subquery: SoqlSubqueryShape): SoqlQueryShape {
+function shapeForSubquery(
+  subquery: SoqlSubqueryShape,
+  syntaxContext: SoqlQueryShape["syntax_context"],
+): SoqlQueryShape {
   return {
     fields: subquery.fields,
+    object_alias: subquery.object_alias,
+    object_aliases: subquery.object_aliases,
+    selected_fields: subquery.selected_fields,
+    field_expansions: subquery.field_expansions,
+    formula_expressions: subquery.formula_expressions,
+    where_clause: subquery.where_clause,
+    syntax_context: syntaxContext,
     subqueries: subquery.subqueries,
     semi_joins: subquery.semi_joins,
     function_fields: subquery.function_fields,
@@ -277,9 +287,17 @@ function shapeForSubquery(subquery: SoqlSubqueryShape): SoqlQueryShape {
   };
 }
 
-function shapeForSemiJoin(semiJoin: SoqlSemiJoinShape): SoqlQueryShape {
+function shapeForSemiJoin(
+  semiJoin: SoqlSemiJoinShape,
+  syntaxContext: SoqlQueryShape["syntax_context"],
+): SoqlQueryShape {
   return {
     fields: semiJoin.fields,
+    selected_fields: semiJoin.selected_fields,
+    field_expansions: semiJoin.field_expansions,
+    formula_expressions: semiJoin.formula_expressions,
+    where_clause: semiJoin.where_clause,
+    syntax_context: syntaxContext,
     semi_joins: semiJoin.semi_joins,
     function_fields: semiJoin.function_fields,
     where_fields: semiJoin.where_fields,
@@ -303,7 +321,10 @@ async function validateFieldCapabilities(
   api: SoqlApiMode,
   state?: SfSoqlSessionState,
 ): Promise<SoqlFinding[]> {
-  const findings: SoqlFinding[] = [];
+  const findings: SoqlFinding[] = [
+    ...validateFieldExpansions(describe, shape),
+    ...(await validateFormulaExpressions(conn, describe, shape, api, state)),
+  ];
   for (const fieldName of shape.where_fields ?? []) {
     const resolved = await resolveField(conn, describe, fieldName, api, state);
     if (!resolved) {
@@ -417,6 +438,100 @@ async function validateFieldCapabilities(
   }
   return findings;
 }
+
+function selectedFieldPaths(shape: SoqlQueryShape): string[] {
+  if (shape.selected_fields) {
+    return shape.selected_fields
+      .filter((field) => field.kind === "field" && field.field)
+      .map((field) => field.field as string);
+  }
+  return (shape.fields ?? []).filter((field) => !isExpression(field));
+}
+
+async function validateFormulaExpressions(
+  conn: Connection,
+  describe: SObjectDescribe,
+  shape: SoqlQueryShape,
+  api: SoqlApiMode,
+  state?: SfSoqlSessionState,
+): Promise<SoqlFinding[]> {
+  const findings: SoqlFinding[] = [];
+  for (const expression of shape.formula_expressions ?? []) {
+    const left = await resolveField(conn, describe, expression.left_field, api, state);
+    const right = await resolveField(conn, describe, expression.right_field, api, state);
+    if (!left) {
+      findings.push(
+        finding(
+          "error",
+          "❌",
+          "FORMULA Field",
+          `${expression.left_field} does not exist on ${describe.name}.`,
+        ),
+      );
+    }
+    if (!right) {
+      findings.push(
+        finding(
+          "error",
+          "❌",
+          "FORMULA Field",
+          `${expression.right_field} does not exist on ${describe.name}.`,
+        ),
+      );
+    }
+    if (!left || !right) continue;
+    const leftType = left.field.type?.toLowerCase();
+    const rightType = right.field.type?.toLowerCase();
+    if (!leftType || !FORMULA_FIELD_TYPES.has(leftType)) {
+      findings.push(
+        finding(
+          "error",
+          "❌",
+          "FORMULA Type",
+          `${expression.left_field} has unsupported FORMULA type ${leftType ?? "unknown"}.`,
+        ),
+      );
+    }
+    if (!rightType || !FORMULA_FIELD_TYPES.has(rightType)) {
+      findings.push(
+        finding(
+          "error",
+          "❌",
+          "FORMULA Type",
+          `${expression.right_field} has unsupported FORMULA type ${rightType ?? "unknown"}.`,
+        ),
+      );
+    }
+    const eitherDate =
+      DATE_FIELD_TYPES.has(leftType ?? "") || DATE_FIELD_TYPES.has(rightType ?? "");
+    if (eitherDate && leftType !== rightType) {
+      findings.push(
+        finding(
+          "error",
+          "❌",
+          "FORMULA Date Types",
+          `FORMULA cannot mix date and datetime or combine a date field with a non-date field (${leftType ?? "unknown"}, ${rightType ?? "unknown"}).`,
+        ),
+      );
+    }
+    for (const resolved of [left, right]) {
+      if (resolved.field.filterable === false) {
+        findings.push(
+          finding(
+            "error",
+            "❌",
+            "FORMULA Filterable",
+            `${resolved.field.name} is not filterable on ${resolved.objectName}.`,
+          ),
+        );
+      }
+    }
+  }
+  return findings;
+}
+
+const FORMULA_FIELD_TYPES = new Set(["currency", "date", "datetime", "double", "int"]);
+const DATE_FIELD_TYPES = new Set(["date", "datetime"]);
 
 const DATE_FUNCTIONS = new Set([
   "CALENDAR_MONTH",

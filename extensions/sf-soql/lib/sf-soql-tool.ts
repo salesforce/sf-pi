@@ -150,7 +150,7 @@ export function registerSfSoqlTool(pi: ExtensionAPI): void {
           case "file.diagnose":
             return diagnoseFile(conn, params, ctx.cwd, state);
           case "lsp.status":
-            return lspStatus(params);
+            return lspStatus(conn, params);
           case "query.validate":
             return validateQuery(conn, params, state);
           case "query.explain":

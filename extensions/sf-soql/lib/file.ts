@@ -4,10 +4,17 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { SoqlConnection as Connection } from "./api.ts";
-import { apiVersion } from "./api.ts";
+import { apiVersion, parserApiVersion } from "./api.ts";
+import { extractStaticSoqlQueries, type EmbeddedSoqlQuery } from "./apex-query-extractor.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
 import { parseSoql } from "./parser.ts";
-import type { SfSoqlParams, SfSoqlSessionState, SoqlFinding, ToolResult } from "./types.ts";
+import type {
+  SfSoqlParams,
+  SfSoqlSessionState,
+  SoqlFinding,
+  SoqlParseContext,
+  ToolResult,
+} from "./types.ts";
 import { validateQuery } from "./validator.ts";
 
 export async function diagnoseFile(
@@ -21,9 +28,12 @@ export async function diagnoseFile(
   const filePath = path.resolve(cwd, file);
   const text = await readFile(filePath, "utf8");
   const queries = extractQueries(filePath, text);
+  const parseContext: SoqlParseContext =
+    filePath.endsWith(".cls") || filePath.endsWith(".trigger") ? "apex" : "api";
   const findings: SoqlFinding[] = [];
   const rows = [];
-  for (const [index, query] of queries.entries()) {
+  for (const [index, discovered] of queries.entries()) {
+    const query = discovered.query;
     const validation = await validateQuery(
       conn,
       {
@@ -32,6 +42,7 @@ export async function diagnoseFile(
         query,
         api: params.api,
         include_plan: params.include_plan,
+        parse_context: parseContext,
       },
       state,
     );
@@ -45,8 +56,8 @@ export async function diagnoseFile(
     rows.push(
       row(
         digest?.status === "fail" ? "❌" : queryFindings.length ? "⚠️" : "✅",
-        `Query ${index + 1}`,
-        summarizeQuery(query),
+        `Query ${index + 1} · L${discovered.line}`,
+        summarizeQuery(query, parserApiVersion(conn), parseContext),
       ),
     );
   }
@@ -85,22 +96,21 @@ export async function diagnoseFile(
   return toolResultFromDigest(digest);
 }
 
-function extractQueries(filePath: string, text: string): string[] {
-  if (filePath.endsWith(".soql")) return [text.trim()].filter(Boolean);
-  if (filePath.endsWith(".cls") || filePath.endsWith(".trigger"))
-    return extractApexBracketQueries(text);
-  return [text.trim()].filter((query) => /^SELECT\b/i.test(query));
+function extractQueries(filePath: string, text: string): EmbeddedSoqlQuery[] {
+  if (filePath.endsWith(".cls") || filePath.endsWith(".trigger")) {
+    return extractStaticSoqlQueries(text);
+  }
+  const query = text.trim();
+  if (!query || (!filePath.endsWith(".soql") && !/^SELECT\b/i.test(query))) return [];
+  const start = text.indexOf(query);
+  return [{ query, start, end: start + query.length, line: 1, column: start + 1, source: "file" }];
 }
 
-function extractApexBracketQueries(text: string): string[] {
-  const queries: string[] = [];
-  const re = /\[\s*(SELECT\b[\s\S]*?)\]/gi;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(text))) queries.push(match[1].replace(/\s+/g, " ").trim());
-  return queries;
-}
-
-function summarizeQuery(query: string): string {
-  const shape = parseSoql(query);
+function summarizeQuery(
+  query: string,
+  apiVersionNumber: number,
+  context: SoqlParseContext,
+): string {
+  const shape = parseSoql(query, { apiVersion: apiVersionNumber, context });
   return `${shape.primary_object ?? "Unknown"}: ${query.replace(/\s+/g, " ")}`;
 }

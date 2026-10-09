@@ -2,11 +2,12 @@
 /** Parse + API-aware describe-backed SOQL validation. */
 
 import type { SoqlConnection as Connection } from "./api.ts";
-import { apiCall, apiVersion } from "./api.ts";
+import { apiCall, apiVersion, parserApiVersion } from "./api.ts";
 import { writeSoqlArtifact } from "./artifacts.ts";
 import { buildDigest, finding, row, section, toolResultFromDigest } from "./digest.ts";
-import { validateWithSoqlLsp } from "./lsp.ts";
+import { validateObjectSpecificRules } from "./object-validator.ts";
 import { isAggregateOrCount, parseSoql } from "./parser.ts";
+import { validateQuerySemantics } from "./query-semantics.ts";
 import { describeResolutionError, resolutionReason, resolveSchemaCandidates } from "./resolver.ts";
 import { validateSchemaShape } from "./schema-validator.ts";
 import type {
@@ -36,31 +37,37 @@ export async function inspectQuery(
   state?: SfSoqlSessionState,
 ): Promise<QueryInspection> {
   const rawQuery = requireQuery(params);
-  const shape = parseSoql(rawQuery);
+  const context = params.parse_context ?? "api";
+  const shape = parseSoql(rawQuery, { apiVersion: parserApiVersion(conn), context });
   const apiCalls = [
-    apiCall("PARSE", "SOQL", shape.syntax_errors?.length ? "syntax=errors" : "syntax=ok"),
+    apiCall(
+      "PARSE",
+      "SOQL",
+      `${shape.syntax_errors?.length ? "syntax=errors" : "syntax=ok"} · context=${context} · api=v${apiVersion(conn)}`,
+    ),
   ];
   const findings: SoqlFinding[] = [];
   const requestedApi = params.api ?? "auto";
-  const lspDiagnostics = shape.normalized ? validateWithSoqlLsp(shape.normalized) : [];
-  for (const diagnostic of lspDiagnostics) {
-    findings.push(
-      finding(
-        diagnostic.severity === 1 ? "error" : "warning",
-        diagnostic.severity === 1 ? "❌" : "⚠️",
-        "LSP Syntax",
-        `${formatDiagnosticLocation(diagnostic)} ${diagnostic.message}`.trim(),
-      ),
-    );
-  }
-  if (shape.syntax_errors?.length && lspDiagnostics.length === 0) {
+  if (shape.syntax_errors?.length) {
     findings.push(
       ...shape.syntax_errors.map((err) =>
         finding("error", "❌", "Syntax", `${err.line}:${err.column} ${err.message}`),
       ),
     );
   }
+  if (context === "api" && shape.bind_variables?.length) {
+    findings.push(
+      finding(
+        "error",
+        "❌",
+        "Bind Variables",
+        "REST and Tooling query actions do not accept Apex bind variables.",
+      ),
+    );
+  }
   findings.push(...validateTypeOfCompatibility(shape));
+  findings.push(...validateQuerySemantics(shape));
+  findings.push(...validateObjectSpecificRules(shape));
 
   let resolvedApi: SoqlApiMode | undefined;
   let selectedReason: string | undefined;
@@ -163,13 +170,13 @@ export async function inspectQuery(
       ),
     );
   }
-  if (shape.bind_variables?.length) {
+  if (context === "apex" && shape.bind_variables?.length) {
     findings.push(
       finding(
         "info",
         "🔗",
         "Bind Variables",
-        `Detected bind variables: ${shape.bind_variables.join(", ")}. Runtime values are not validated by sf-soql.`,
+        `Detected Apex bind variables: ${shape.bind_variables.join(", ")}. Runtime values are not validated by sf-soql.`,
       ),
     );
   }
@@ -346,15 +353,6 @@ function selectEvaluation<T extends { api: SoqlApiMode }>(
   if (valid.length === 1) return valid[0];
   if (valid.length > 1) return valid.find((candidate) => candidate.api === "rest") ?? valid[0];
   return evaluations.find((candidate) => candidate.api === "rest") ?? evaluations[0];
-}
-
-function formatDiagnosticLocation(diagnostic: {
-  range?: { start?: { line?: number; character?: number } };
-}): string {
-  const line = diagnostic.range?.start?.line;
-  const character = diagnostic.range?.start?.character;
-  if (line === undefined || character === undefined) return "";
-  return `${line + 1}:${character + 1}`;
 }
 
 function validateTypeOfCompatibility(shape: SoqlQueryShape): SoqlFinding[] {

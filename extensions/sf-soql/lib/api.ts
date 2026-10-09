@@ -25,6 +25,14 @@ export function apiVersion(sf: SoqlConnection): string {
   return sf.target.apiVersion;
 }
 
+export function parserApiVersion(sf: SoqlConnection): number {
+  const version = Number.parseFloat(apiVersion(sf));
+  if (!Number.isFinite(version)) {
+    throw new Error(`Salesforce connection returned an invalid API version: ${apiVersion(sf)}`);
+  }
+  return version;
+}
+
 export function orgAlias(sf: SoqlConnection, fallback?: string): string | undefined {
   return fallback ?? sf.target.alias ?? sf.target.targetOrg ?? sf.target.username;
 }

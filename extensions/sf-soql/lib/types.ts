@@ -24,6 +24,8 @@ export type SfSoqlAction =
 export type SoqlApiMode = "rest" | "tooling";
 export type SoqlApiPreference = SoqlApiMode | "auto";
 export type SoqlOperation = "query" | "queryAll" | "count" | "explain";
+export type SoqlParseContext = "api" | "apex";
+export type SoqlFieldExpansion = "ALL" | "CUSTOM" | "STANDARD";
 
 export interface SfSoqlParams {
   action: SfSoqlAction;
@@ -44,11 +46,14 @@ export interface SfSoqlParams {
   allow_unbounded?: boolean;
   include_deleted?: boolean;
   output_mode?: "summary" | "inline" | "file_only";
+  /** Internal-only parsing context. Tool callers do not set this field. */
+  parse_context?: SoqlParseContext;
 }
 
 export interface SfSoqlSessionState {
   lastRunnable?: SfSoqlParams;
   lastDigest?: SoqlRunDigest;
+  lastArtifacts?: SoqlArtifact[];
   schemaCache?: Map<string, SObjectDescribe>;
   objectCatalogCache?: Map<string, SObjectCatalogEntry[]>;
 }
@@ -111,10 +116,28 @@ export interface SoqlFunctionField {
   context: "select" | "where" | "group_by" | "having" | "order_by";
 }
 
+export interface SoqlSelectedField {
+  kind: "field" | "function" | "typeof" | "fields" | "expression";
+  raw: string;
+  field?: string;
+  alias?: string;
+  expansion?: SoqlFieldExpansion;
+}
+
+export interface SoqlFormulaExpression {
+  left_field: string;
+  operator: "+" | "-";
+  right_field: string;
+}
+
 export interface SoqlSemiJoinShape {
   outer_field: string;
   object: string;
   fields: string[];
+  selected_fields?: SoqlSelectedField[];
+  field_expansions?: SoqlFieldExpansion[];
+  formula_expressions?: SoqlFormulaExpression[];
+  where_clause?: string;
   semi_joins?: SoqlSemiJoinShape[];
   function_fields?: SoqlFunctionField[];
   where_fields?: string[];
@@ -133,6 +156,12 @@ export interface SoqlSemiJoinShape {
 export interface SoqlSubqueryShape {
   relationship: string;
   fields: string[];
+  object_alias?: string;
+  object_aliases?: Record<string, string>;
+  selected_fields?: SoqlSelectedField[];
+  field_expansions?: SoqlFieldExpansion[];
+  formula_expressions?: SoqlFormulaExpression[];
+  where_clause?: string;
   subqueries?: SoqlSubqueryShape[];
   semi_joins?: SoqlSemiJoinShape[];
   function_fields?: SoqlFunctionField[];
@@ -154,8 +183,16 @@ export interface SoqlQueryShape {
   normalized?: string;
   operation?: SoqlOperation;
   api?: SoqlApiMode;
+  syntax_context?: SoqlParseContext;
+  syntax_api_version?: number;
   primary_object?: string;
+  object_alias?: string;
+  object_aliases?: Record<string, string>;
   fields?: string[];
+  selected_fields?: SoqlSelectedField[];
+  field_expansions?: SoqlFieldExpansion[];
+  formula_expressions?: SoqlFormulaExpression[];
+  where_clause?: string;
   relationships?: string[];
   subqueries?: SoqlSubqueryShape[];
   semi_joins?: SoqlSemiJoinShape[];
