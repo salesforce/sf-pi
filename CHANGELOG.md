@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.2](https://github.com/salesforce/sf-pi/compare/v0.339.1...v0.339.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **llm-gateway:** prioritize gpt-6.1 sol requests ([14b0c5e](https://github.com/salesforce/sf-pi/commit/14b0c5ec979802a07463b58cc20f12a3b0886d92))
+
 ## [0.339.1](https://github.com/salesforce/sf-pi/compare/v0.339.0...v0.339.1) (2026-10-14)
 
 
