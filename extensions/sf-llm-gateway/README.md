@@ -82,10 +82,15 @@ All gateway model costs are reported as zero because provider billing is handled
 outside Pi. Usage status uses the available user/key information endpoints and
 does not claim a lifetime counter when the service cannot prove one.
 
-For Gateway Responses requests using exactly `gpt-5.6-sol` or `gpt-6-sol`, SF Pi
-sends `service_tier: "priority"` automatically, including simple and full streams.
-Other models and providers are unchanged. The request does not prove that the
-Gateway honored the tier; SF Pi does not inspect or enforce the effective tier.
+For Gateway Responses requests using exactly `gpt-5.6-sol`, `gpt-6-sol`, or
+`gpt-6.1-sol`, SF Pi sends `service_tier: "priority"` automatically, including
+simple and full streams. Other models and providers are unchanged. The request
+does not prove that the Gateway honored the tier; SF Pi does not inspect or
+enforce the effective tier.
+
+GPT-6.1 Sol inherits its exact thinking-level map from Pi's public model catalog:
+`low`, `medium`, `high`, `xhigh`, and `max` are available; unsupported `off` and
+`minimal` levels remain hidden. SF Pi does not invent or remap model capabilities.
 
 For Gateway Responses and Chat Completions requests, SF Pi omits the optional
 `prompt_cache_key` request field. A Gateway model ID does not reveal which

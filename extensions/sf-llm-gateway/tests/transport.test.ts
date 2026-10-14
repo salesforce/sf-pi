@@ -241,10 +241,13 @@ describe("generic Chat Completions adapter", () => {
 });
 
 describe("generic Responses adapter", () => {
-  it.each(["gpt-5.6-sol", "gpt-6-sol"])("requests priority traffic for Gateway %s", async (id) => {
-    const payload = await captureResponsesPayload({ ...responsesModel(), id });
-    expect(payload).toMatchObject({ model: id, service_tier: "priority" });
-  });
+  it.each(["gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol"])(
+    "requests priority traffic for Gateway %s",
+    async (id) => {
+      const payload = await captureResponsesPayload({ ...responsesModel(), id });
+      expect(payload).toMatchObject({ model: id, service_tier: "priority" });
+    },
+  );
 
   it.each([false, true])("omits the Gateway cache key on Responses (full=%s)", async (full) => {
     const onPayload = vi.fn((payload: unknown) => ({
@@ -307,14 +310,13 @@ describe("generic Responses adapter", () => {
     expect(nonGateway).not.toHaveProperty("service_tier");
   });
 
-  it("requests priority for full Responses streams too", async () => {
-    const payload = await captureResponsesPayload(
-      { ...responsesModel(), id: "gpt-6-sol" },
-      {},
-      true,
-    );
-    expect(payload).toMatchObject({ model: "gpt-6-sol", service_tier: "priority" });
-  });
+  it.each(["gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol"])(
+    "requests priority for full Gateway %s Responses streams too",
+    async (id) => {
+      const payload = await captureResponsesPayload({ ...responsesModel(), id }, {}, true);
+      expect(payload).toMatchObject({ model: id, service_tier: "priority" });
+    },
+  );
 
   it.each([false, true])(
     "hoists image-bearing tool outputs into a correlated user message (full=%s)",

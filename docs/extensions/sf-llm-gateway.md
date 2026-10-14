@@ -38,7 +38,7 @@ Open its Manager detail or change its package state with:
 - Catalog-backed GPT models retain Pi's Responses transport even when Gateway discovery declares chat; other models continue to honor discovered route mode.
 - Gateway OpenAI-compatible requests omit the optional prompt_cache_key field without changing other providers; this may reduce cache affinity.
 - Gateway Responses image-bearing tool outputs preserve function-call correlation and move recognized images into a labeled adjacent user message; unknown parts and other providers remain unchanged.
-- Only exact Gateway GPT-5.6 Sol and GPT-6 Sol Responses requests ask for priority; the effective tier is not asserted.
+- Only exact Gateway GPT-5.6 Sol, GPT-6 Sol, and GPT-6.1 Sol Responses requests ask for priority; the effective tier is not asserted.
 - Sentinel-only empty access clears stale selectable models; ambiguous discovery failures retain the last-known catalog.
 - Recognized access, unsupported-image, transient-stream, and configuration failures are replaced with bounded guidance without echoing raw provider bodies.
 - Transient-stream guidance keeps a fixed transport cause so Pi agent auto-retry still applies.

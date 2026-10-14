@@ -104,7 +104,7 @@ describe("conservative model inference", () => {
     expect(toProviderModelConfig(id, undefined, [reference]).api).toBe(api);
   });
 
-  it.each(["gpt-5.6-sol", "gpt-6-sol"])(
+  it.each(["gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol"])(
     "keeps catalog-backed GPT model %s on Responses when discovery declares chat",
     (id) => {
       const reference: PiModelReference = {
@@ -124,6 +124,22 @@ describe("conservative model inference", () => {
       expect(config.input).toEqual(["text", "image"]);
     },
   );
+
+  it("preserves GPT-6.1 Sol's exact catalog thinking levels", () => {
+    expect(toProviderModelConfig("gpt-6.1-sol")).toMatchObject({
+      api: "openai-responses",
+      reasoning: true,
+      thinkingLevelMap: {
+        off: null,
+        minimal: null,
+        low: "low",
+        medium: "medium",
+        high: "high",
+        xhigh: "xhigh",
+        max: "max",
+      },
+    });
+  });
 
   it("keeps discovery chat authoritative for a non-GPT Responses model", () => {
     const reference: PiModelReference = {

@@ -12,7 +12,7 @@ import { omitGatewayPromptCacheKey } from "./prompt-cache-key.ts";
 import { streamGatewayResponsesWithTerminalGuard } from "./responses-terminal-guard.ts";
 import { withGatewayResponsesToolImageCompatibility } from "./responses-tool-images.ts";
 
-const PRIORITY_MODEL_IDS = new Set(["gpt-5.6-sol", "gpt-6-sol"]);
+const PRIORITY_MODEL_IDS = new Set(["gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol"]);
 
 // Pi's simple Responses stream does not forward serviceTier; samplingParams reaches both paths.
 function withPriorityTraffic<T extends OpenAIResponsesOptions | SimpleStreamOptions>(

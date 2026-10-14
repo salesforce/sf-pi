@@ -117,10 +117,10 @@ copy.
     Opt-in probes use authenticated Gateway models, hard request/count bounds, fixed prompts/tools, and
     a generated non-private image for explicit vision checks. Return only local status/timing summaries;
     never persist or upload prompt content, response content, credentials, endpoints, or session identifiers.
-11. **Priority is an exact Responses request policy.** For only `gpt-5.6-sol` and `gpt-6-sol`
-    on the Gateway provider, send `service_tier: "priority"` through both simple and full
-    Responses streams. Do not infer eligibility from a family or suffix, mutate other providers,
-    or claim the Gateway honored the requested tier without response evidence.
+11. **Priority is an exact Responses request policy.** For only `gpt-5.6-sol`, `gpt-6-sol`,
+    and `gpt-6.1-sol` on the Gateway provider, send `service_tier: "priority"` through both
+    simple and full Responses streams. Do not infer eligibility from a family or suffix, mutate
+    other providers, or claim the Gateway honored the requested tier without response evidence.
 12. **Gateway cache-key compatibility is model-neutral.** Omit the optional
     `prompt_cache_key` field from Gateway Responses and Chat Completions payloads after
     preserving any caller payload hook. Never infer backend support from a model ID,
