@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Behavior proofs for protocol-neutral Gateway request diagnostics. */
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import { isRetryableAssistantError, type AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionContext, MessageEndEvent } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -93,20 +93,44 @@ describe("normalizeGatewayRequestError", () => {
     expect(normalized).not.toContain("litellm.BadRequestError");
   });
 
-  it.each([
+  const TRANSIENT_STREAM_ERRORS = [
     "terminated",
     "Request timed out.",
     "Connection error.",
     "sf-llm-gateway API error (503): upstream connect error or disconnect/reset before headers",
-  ])("normalizes transient stream failure without claiming the model failed: %s", (raw) => {
-    expect(normalizeGatewayRequestError(raw, READY)).toBe(
-      [
-        "SF LLM Gateway stream for sf-llm-gateway/example-model ended before local completion.",
-        "This is a retryable transport failure, not proof that the model rejected the request.",
-        "Run /sf-llm-gateway doctor; Pi agent retries apply when retry.enabled is true.",
-      ].join("\n"),
-    );
-  });
+    "Response payload is not completed: <TransferEncodingError: 400, message='Not enough data to satisfy transfer length header.'>",
+  ];
+
+  it.each(TRANSIENT_STREAM_ERRORS)(
+    "normalizes transient stream failure without claiming the model failed: %s",
+    (raw) => {
+      const normalized = normalizeGatewayRequestError(raw, READY);
+
+      expect(normalized).toBe(
+        [
+          "SF LLM Gateway stream for sf-llm-gateway/example-model ended before local completion.",
+          "Cause: transport terminated before the response completed.",
+          "This is a retryable transport failure, not proof that the model rejected the request.",
+          "Run /sf-llm-gateway doctor; Pi agent retries apply when retry.enabled is true.",
+        ].join("\n"),
+      );
+      expect(normalized).not.toContain("TransferEncodingError");
+    },
+  );
+
+  it.each(TRANSIENT_STREAM_ERRORS)(
+    "keeps the normalized transient failure retryable by Pi's agent retry policy: %s",
+    (raw) => {
+      const normalized = normalizeGatewayRequestError(raw, READY);
+
+      expect(
+        isRetryableAssistantError({
+          ...errorMessage("sf-llm-gateway", normalized),
+          stopReason: "error",
+        }),
+      ).toBe(true);
+    },
+  );
 
   it("does not echo an unsafe model identifier into access guidance", () => {
     const normalized = normalizeGatewayRequestError("team_model_access_denied", {

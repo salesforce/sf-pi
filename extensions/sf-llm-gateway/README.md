@@ -94,6 +94,12 @@ hint. The omission is Gateway-only and model-neutral; it may reduce cache
 locality on compatible routes but does not disable other prompt caching or alter
 other request fields.
 
+For Gateway Responses routes that accept images only in user messages, SF Pi
+keeps each image-bearing function-call output and moves its recognized images
+into one labeled user message after the complete tool-output run. Labels preserve
+the image-to-call ordering for parallel results. Unknown output parts fail closed,
+and direct user images, text-only tool results, and other providers are unchanged.
+
 A Gateway capability record is considered complete only when it declares the
 route mode, positive input/output limits, vision support, reasoning support, and
 function-calling support. Required `/v1/models` discovery can supply route mode
@@ -194,6 +200,9 @@ numbers look surprising.
   unmatched deployment IDs are excluded without model-specific routing rules.
 - Recognized access, unsupported-image, transient-stream, and configuration failures are replaced
   with bounded, protocol-neutral guidance; raw provider response bodies are not repeated.
+  Transient-stream guidance retains a fixed transport cause so Pi agent retries still apply.
+- Gateway Responses tool-result images are labeled and moved to an adjacent user message without
+  changing function-call outputs, unknown content, direct user images, or other providers.
 - Generated-image probes use a fixed non-private one-pixel PNG and run only after an explicit command.
 - Terminal-close recovery requires one terminal event and fully completed output items; partial tools
   remain errors.
@@ -255,6 +264,11 @@ the session being compacted.
 **A request reports an unsupported `prompt_cache_key`:** Update SF Pi and retry.
 Current SF Pi omits this field on Gateway requests. If the error persists, ask
 the Gateway administrator to check the selected model's parameter handling.
+
+**A tool-returned image fails while direct image input works:** Update SF Pi and
+retry. Current SF Pi preserves the function-call outputs while moving their images
+to a labeled adjacent user message for Gateway Responses compatibility. If the
+failure persists, run the explicit `--image` probe to verify direct image input.
 
 **A route rejects an image even though the public model supports images:** Exact
 Pi-backed models retain their public image-input capability even when Gateway metadata

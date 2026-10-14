@@ -56,7 +56,10 @@ function isTransientGatewayStreamError(errorMessage: string): boolean {
     lower === "connection error." ||
     lower === "connection error" ||
     /api error \(5\d\d\)/u.test(lower) ||
-    lower.includes("upstream connect error")
+    lower.includes("upstream connect error") ||
+    // aiohttp-style truncated body from the Gateway proxy; the stream ended mid-response.
+    lower.includes("response payload is not completed") ||
+    lower.includes("transferencodingerror")
   );
 }
 
@@ -94,6 +97,9 @@ export function normalizeGatewayRequestError(
   if (isTransientGatewayStreamError(errorMessage)) {
     return [
       `SF LLM Gateway stream for ${gatewayModelLabel(readiness.modelId)} ended before local completion.`,
+      // Keep a fixed transport cause that Pi's retry classifier recognizes; replacing the raw
+      // transient error with guidance alone would silently disable agent auto-retry.
+      "Cause: transport terminated before the response completed.",
       "This is a retryable transport failure, not proof that the model rejected the request.",
       `Run /${PROVIDER_NAME} doctor; Pi agent retries apply when retry.enabled is true.`,
     ].join("\n");

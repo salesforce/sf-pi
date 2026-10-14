@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission, capability-coverage diagnostics and offline cache filtering, mixed-API dispatch, guarded Responses terminal-close recovery, Gateway-only prompt-cache-key omission, exact GPT Sol Responses priority requests, cache-only dedicated-compaction readiness and focused setup, explicit refresh, connectivity diagnostics, opt-in bounded text/tool/generated-image probes, and usage status.
+Complete Pi Provider for the Salesforce LLM Gateway. Pi-owned credential persistence and model storage, authenticated dynamic discovery with exact Pi-catalog admission, capability-coverage diagnostics and offline cache filtering, mixed-API dispatch, guarded Responses terminal-close recovery, Gateway-only prompt-cache-key omission and tool-image compatibility, exact GPT Sol Responses priority requests, cache-only dedicated-compaction readiness and focused setup, explicit refresh, connectivity diagnostics, opt-in bounded text/tool/generated-image probes, and usage status.
 
 ## Start
 
@@ -37,9 +37,11 @@ Open its Manager detail or change its package state with:
 - Discovery and restored cache entries publish only exact IDs backed by a reusable public Pi catalog API.
 - Catalog-backed GPT models retain Pi's Responses transport even when Gateway discovery declares chat; other models continue to honor discovered route mode.
 - Gateway OpenAI-compatible requests omit the optional prompt_cache_key field without changing other providers; this may reduce cache affinity.
+- Gateway Responses image-bearing tool outputs preserve function-call correlation and move recognized images into a labeled adjacent user message; unknown parts and other providers remain unchanged.
 - Only exact Gateway GPT-5.6 Sol and GPT-6 Sol Responses requests ask for priority; the effective tier is not asserted.
 - Sentinel-only empty access clears stale selectable models; ambiguous discovery failures retain the last-known catalog.
 - Recognized access, unsupported-image, transient-stream, and configuration failures are replaced with bounded guidance without echoing raw provider bodies.
+- Transient-stream guidance keeps a fixed transport cause so Pi agent auto-retry still applies.
 - Responses terminal-close recovery accepts one terminal event only after all observed output items finish, preserves caller cancellation, and records a bounded warning diagnostic.
 - Capability coverage counts only complete route records with mode, token limits, vision, reasoning, and function-calling declarations; missing or partial metadata is non-blocking for exact Pi-backed image input, while explicit contradictions warn in doctor.
 - Ordinary doctor runs never invoke models; opt-in text, tool, and generated non-private image probes are bounded, billable, content-free, local-only, and never persisted or uploaded.

@@ -10,6 +10,7 @@ import {
   type OpenAICompletionsOptions,
   type OpenAIResponsesOptions,
   type SimpleStreamOptions,
+  type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import {
   formatAnthropicStreamError,
@@ -50,6 +51,60 @@ function responsesModel(): Model<"openai-responses"> {
     name: "Example Responses Model",
     baseUrl: "https://gateway.invalid",
   };
+}
+
+function imageToolContext(model: Model<"openai-responses">): TranscriptContext {
+  const timestamp = Date.now();
+  const usage = {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  };
+  return normalizeContext({
+    systemPrompt: "",
+    tools: [],
+    messages: [
+      { role: "user", content: "Read both images.", timestamp },
+      {
+        role: "assistant",
+        content: [
+          { type: "toolCall", id: "call-a|fc_a", name: "read", arguments: { path: "a.png" } },
+          { type: "toolCall", id: "call-b|fc_b", name: "read", arguments: { path: "b.png" } },
+        ],
+        api: model.api,
+        provider: model.provider,
+        model: model.id,
+        usage,
+        stopReason: "toolUse",
+        timestamp,
+      },
+      {
+        role: "toolResult",
+        toolCallId: "call-a|fc_a",
+        toolName: "read",
+        content: [
+          { type: "text", text: "First image" },
+          { type: "image", data: "aW1hZ2UtYQ==", mimeType: "image/png" },
+        ],
+        isError: false,
+        timestamp,
+      },
+      {
+        role: "toolResult",
+        toolCallId: "call-b|fc_b",
+        toolName: "read",
+        content: [
+          { type: "text", text: "Second image" },
+          { type: "image", data: "aW1hZ2UtYg==", mimeType: "image/png" },
+        ],
+        isError: false,
+        timestamp,
+      },
+    ],
+  });
 }
 
 function terminalButOpenResponsesStreamer(
@@ -98,6 +153,7 @@ async function captureResponsesPayload(
   model: Model<"openai-responses">,
   options: Pick<SimpleStreamOptions, "samplingParams" | "onPayload" | "sessionId"> = {},
   full = false,
+  context = CONTEXT,
 ): Promise<Record<string, unknown> | undefined> {
   let payload: Record<string, unknown> | undefined;
   const requestOptions = {
@@ -113,8 +169,8 @@ async function captureResponsesPayload(
     },
   };
   const stream = full
-    ? streamSfGatewayResponsesFull(model, CONTEXT, requestOptions)
-    : streamSfGatewayResponses(model, CONTEXT, requestOptions);
+    ? streamSfGatewayResponsesFull(model, context, requestOptions)
+    : streamSfGatewayResponses(model, context, requestOptions);
   await stream.result();
   return payload;
 }
@@ -258,6 +314,122 @@ describe("generic Responses adapter", () => {
       true,
     );
     expect(payload).toMatchObject({ model: "gpt-6-sol", service_tier: "priority" });
+  });
+
+  it.each([false, true])(
+    "hoists image-bearing tool outputs into a correlated user message (full=%s)",
+    async (full) => {
+      const model: Model<"openai-responses"> = {
+        ...responsesModel(),
+        input: ["text", "image"],
+      };
+      const onPayload = vi.fn((payload: unknown) => {
+        const next = structuredClone(payload) as { input: Array<Record<string, unknown>> };
+        const lastOutput = next.input.map((item) => item.type).lastIndexOf("function_call_output");
+        next.input.splice(
+          lastOutput + 1,
+          0,
+          { type: "tool_search_call", call_id: "search", status: "completed" },
+          {
+            type: "tool_search_output",
+            call_id: "search",
+            status: "completed",
+            tools: [],
+          },
+        );
+        return next;
+      });
+
+      const payload = await captureResponsesPayload(
+        model,
+        { onPayload },
+        full,
+        imageToolContext(model),
+      );
+      const input = payload?.input as Array<Record<string, unknown>>;
+      const outputs = input.filter((item) => item.type === "function_call_output");
+      const imageMessage = input.find(
+        (item) =>
+          item.type === "message" &&
+          item.role === "user" &&
+          Array.isArray(item.content) &&
+          item.content.some(
+            (part) => typeof part === "object" && part !== null && part.type === "input_image",
+          ),
+      );
+
+      expect(onPayload).toHaveBeenCalledOnce();
+      expect(outputs).toHaveLength(2);
+      expect(outputs).toMatchObject([
+        { call_id: "call-a", output: expect.stringContaining("Tool image group 1") },
+        { call_id: "call-b", output: expect.stringContaining("Tool image group 2") },
+      ]);
+      expect(imageMessage).toMatchObject({
+        type: "message",
+        role: "user",
+        content: [
+          { type: "input_text", text: "Images returned by the tool calls above:" },
+          { type: "input_text", text: "Tool image group 1:" },
+          { type: "input_image", image_url: "data:image/png;base64,aW1hZ2UtYQ==" },
+          { type: "input_text", text: "Tool image group 2:" },
+          { type: "input_image", image_url: "data:image/png;base64,aW1hZ2UtYg==" },
+        ],
+      });
+      expect(input.indexOf(imageMessage!)).toBeGreaterThan(
+        input.map((item) => item.type).lastIndexOf("tool_search_output"),
+      );
+    },
+  );
+
+  it("does not discard unknown tool-output content while considering image hoisting", async () => {
+    const model: Model<"openai-responses"> = {
+      ...responsesModel(),
+      input: ["text", "image"],
+    };
+    const onPayload = vi.fn((payload: unknown) => {
+      const next = structuredClone(payload) as { input: Array<Record<string, unknown>> };
+      const output = next.input.find((item) => item.type === "function_call_output");
+      (output?.output as unknown[]).push({ type: "input_file", file_id: "file_example" });
+      return next;
+    });
+
+    const payload = await captureResponsesPayload(
+      model,
+      { onPayload },
+      false,
+      imageToolContext(model),
+    );
+    const input = payload?.input as Array<Record<string, unknown>>;
+    const outputs = input.filter((item) => item.type === "function_call_output");
+
+    expect(outputs[0]?.output).toEqual(
+      expect.arrayContaining([{ type: "input_file", file_id: "file_example" }]),
+    );
+    expect(
+      input.some(
+        (item) =>
+          item.type === "message" &&
+          item.role === "user" &&
+          Array.isArray(item.content) &&
+          item.content.some(
+            (part) => typeof part === "object" && part !== null && part.type === "input_image",
+          ),
+      ),
+    ).toBe(false);
+  });
+
+  it("leaves image-bearing tool outputs nested for non-Gateway providers", async () => {
+    const model: Model<"openai-responses"> = {
+      ...responsesModel(),
+      provider: "openai",
+      input: ["text", "image"],
+    };
+    const payload = await captureResponsesPayload(model, {}, false, imageToolContext(model));
+    const input = payload?.input as Array<Record<string, unknown>>;
+    const outputs = input.filter((item) => item.type === "function_call_output");
+
+    expect(outputs).toHaveLength(2);
+    expect(outputs.every((item) => Array.isArray(item.output))).toBe(true);
   });
 
   it("uses only the selected Responses protocol and does not construct a fallback", () => {

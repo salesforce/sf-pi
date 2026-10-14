@@ -20,6 +20,7 @@
  * - Advertises model-specific thinking capabilities while Pi/user settings choose the active level
  * - Repairs retired gateway enabledModels entries before startup validation
  * - Omits the optional prompt_cache_key field from Gateway OpenAI-compatible requests
+ * - Moves Gateway Responses tool-result images into labeled adjacent user content
  * - Requests priority traffic for exact GPT-5.6 Sol and GPT-6 Sol Gateway Responses models
  * - Recovers one fully completed Responses terminal event when Gateway HTTP EOF is late
  * - No SF Pi-owned model-specific headers or deployment-routing policy

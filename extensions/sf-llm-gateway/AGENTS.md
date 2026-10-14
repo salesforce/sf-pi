@@ -33,6 +33,7 @@ Repo-level rules still apply; see root `AGENTS.md`.
 | Masked API-key input                           | `common secure credential prompt`                    |
 | HTTP transport (OpenAI-compat + Anthropic)     | `lib/transport.ts`                                   |
 | Responses terminal-close guard                 | `lib/transport-internal/responses-terminal-guard.ts` |
+| Responses tool-image compatibility             | `lib/transport-internal/responses-tool-images.ts`    |
 | Monthly usage / key info / health fetcher      | `lib/monthly-usage.ts`                               |
 | Pi settings mutation (defaults, enabledModels) | `lib/pi-settings.ts`                                 |
 | Footer + status report formatting              | `lib/status.ts`                                      |
@@ -134,6 +135,10 @@ copy.
     function-calling flags. Missing/partial records are informational and must not disable exact Pi-backed
     image input; doctor flags explicit vision/reasoning contradictions. The generated-image probe verifies
     deployed behavior without requiring end users to control Gateway metadata.
+15. **Responses tool-image compatibility is request-local and lossless.** For Gateway Responses only,
+    preserve every function-call output and move recognized image parts into one labeled user message after
+    the complete tool-result run. Use the request model supplied to the payload hook, preserve caller hooks
+    exactly once, leave unknown parts untouched, and never change direct user images or other providers.
 
 ## Command handler pattern
 
@@ -167,6 +172,7 @@ When adding a subcommand:
 - `tests/config.test.ts` — settings mutations covered by the `apply*` / `restore*` helpers
 - `tests/models.test.ts` — family inference / discovered metadata
 - `tests/native-retry-lifecycle.test.ts` — exact-Pi agent retry lifecycle behavior
+- `tests/transport.test.ts` — Gateway-only payload compatibility and Responses terminal recovery
 - `tests/anthropic-transport.test.ts` — Gateway error normalization without local retries
 
 ## Non-goals
