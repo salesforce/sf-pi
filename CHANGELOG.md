@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.1](https://github.com/salesforce/sf-pi/compare/v0.339.0...v0.339.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **llm-gateway:** preserve retries and tool images ([eba7cbb](https://github.com/salesforce/sf-pi/commit/eba7cbb00f20de0c666e8dee87b0300f40e52be0))
+
 ## [0.339.0](https://github.com/salesforce/sf-pi/compare/v0.338.0...v0.339.0) (2026-10-14)
 
 
