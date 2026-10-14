@@ -390,7 +390,11 @@ export default function sfSkills(pi: ExtensionAPI) {
     // Bump persistent counters on explicit /skill:<name> invocations.
     // We mirror sf-skills-hud's signal model (explicit only) so the
     // counter never drifts ahead of what the HUD calls "used".
-    const text = typeof event.prompt === "string" ? event.prompt : "";
+    // Pi 1.2 also emits this event for custom-message-triggered runs. Read
+    // structurally so explicit user prompts remain compatible with the Pi 1.0 floor.
+    const start = event as { messageType?: unknown; prompt?: unknown };
+    if (start.messageType === "custom") return;
+    const text = typeof start.prompt === "string" ? start.prompt : "";
     if (!text) return;
     const block = parseSkillBlock(text);
     if (!block?.name) return;

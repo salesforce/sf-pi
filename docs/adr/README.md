@@ -119,9 +119,9 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0139: SF Docs Restores Pi-Owned Bearer Authentication](./0139-sf-docs-restores-pi-owned-bearer-authentication.md) — 2026-10-05
 - [0141: Data 360 is one Pi-native SDK tool with a hard cutover](./0141-data-360-single-sdk-tool-hard-cutover.md) — 2026-10-06
 - [0143: Data 360 cards are payload- and provenance-aware](./0143-data-360-cards-are-payload-and-provenance-aware.md) — 2026-10-08
-- [0144: Pi 1.1.0 audit edge and runtime signals](./0144-pi-110-audit-edge-and-runtime-signals.md) — 2026-10-08
 - [0145: SF MCP supports org-bound connection instances](./0145-sf-mcp-org-bound-connection-instances.md) — 2026-10-08
 - [0146: SF SOQL Execution Is API-Aware and Self-Grounding](./0146-sf-soql-execution-is-api-aware-and-self-grounding.md) — 2026-10-08
+- [0147: Pi 1.2.0 audit edge and run-start discrimination](./0147-pi-120-audit-edge-and-run-start-discrimination.md) — 2026-10-14
 
 ## Proposed
 
@@ -159,6 +159,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0138: Pi 1.0.3 audit edge](./0138-pi-103-audit-edge.md) — 2026-10-05 — superseded by [ADR 0140](./0140-pi-104-audit-edge-and-focused-tool-profiles.md)
 - [0140: Pi 1.0.4 audit edge and focused tool profiles](./0140-pi-104-audit-edge-and-focused-tool-profiles.md) — 2026-10-05 — superseded by [ADR 0144](./0144-pi-110-audit-edge-and-runtime-signals.md)
 - [0142: Data 360 cards prioritize observed API work](./0142-data-360-cards-prioritize-observed-api-work.md) — 2026-10-07 — superseded by [ADR 0143](./0143-data-360-cards-are-payload-and-provenance-aware.md)
+- [0144: Pi 1.1.0 audit edge and runtime signals](./0144-pi-110-audit-edge-and-runtime-signals.md) — 2026-10-08 — superseded by [ADR 0147](./0147-pi-120-audit-edge-and-run-start-discrimination.md)
 
 ### Rejected
 

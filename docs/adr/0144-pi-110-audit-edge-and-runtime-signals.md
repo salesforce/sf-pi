@@ -1,8 +1,9 @@
 ---
 id: "0144"
-status: accepted
+status: superseded
 date: 2026-10-08
 supersedes: ["0140"]
+supersededBy: ["0147"]
 ---
 
 # Pi 1.1.0 audit edge and runtime signals
