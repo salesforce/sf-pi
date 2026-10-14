@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.3](https://github.com/salesforce/sf-pi/compare/v0.339.2...v0.339.3) (2026-10-14)
+
+
+### Bug Fixes
+
+* **data360:** name exact discovery entry points in tool guidance ([ea1a744](https://github.com/salesforce/sf-pi/commit/ea1a744722f63bc7e1d2b78186ee831fe5eb2edf))
+
 ## [0.339.2](https://github.com/salesforce/sf-pi/compare/v0.339.1...v0.339.2) (2026-10-14)
 
 
