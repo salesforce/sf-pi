@@ -38,7 +38,7 @@ const OutputSchema = Type.Object({
 const Params = Type.Object({
   action: Type.String({
     description:
-      "Business action under discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, or api.",
+      "Business action under discover, connect, prepare, harmonize, segment, activate, query, semantic, observe, orchestrate, or api. Start with discover.route for intent, discover.action.list to list actions, discover.action.search to find an action, or discover.action.describe to inspect its contract. Use exact action names returned by discovery; do not guess names.",
   }),
   params: Type.Optional(
     Type.Record(Type.String(), Type.Any(), { description: "Action parameters." }),
@@ -83,7 +83,7 @@ export function registerSfData360Tool(pi: ExtensionAPI): void {
     promptSnippet:
       "Use one sf_data360 tool with business-namespaced actions for the complete Data 360 API lifecycle.",
     promptGuidelines: [
-      "Use discover.* to route intent or inspect action contracts before complex calls.",
+      "Use discover.route to route intent, discover.action.list to list actions, discover.action.search to find an action, and discover.action.describe to inspect its contract before complex calls. Use exact action names returned by discovery; do not guess names.",
       "Use connect → prepare → harmonize → segment → activate as the Data 360 lifecycle; query, semantic, and observe inspect or augment it; orchestrate coordinates multiple phases.",
       "Use dry_run before mutations and allow_mutation=true only after review. Use api.request only for exact endpoints not yet promoted to a named action.",
     ],

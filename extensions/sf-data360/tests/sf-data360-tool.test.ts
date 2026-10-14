@@ -7,6 +7,8 @@ import {
 } from "../lib/sf-data360-tool.ts";
 
 type RegisteredTool = {
+  parameters: { properties: { action: { description?: string } } };
+  promptGuidelines: string[];
   outputSchema?: unknown;
   renderCall?: (...args: unknown[]) => unknown;
   renderResult?: (...args: unknown[]) => unknown;
@@ -30,6 +32,23 @@ describe("single sf_data360 tool registration", () => {
     expect(registered.sf_data360.outputSchema).toBeDefined();
     expect(registered.sf_data360.renderCall).toEqual(expect.any(Function));
     expect(registered.sf_data360.renderResult).toEqual(expect.any(Function));
+  });
+
+  it("names the exact discovery entry points in the action schema and prompt guidance", () => {
+    const registerTool = vi.fn();
+    registerSfData360Tool({ exec: vi.fn(), registerTool } as never);
+    const tool = registerTool.mock.calls[0][0] as RegisteredTool;
+    const actionDescription = tool.parameters.properties.action.description;
+    const guidance = tool.promptGuidelines.join("\n");
+    for (const action of [
+      "discover.route",
+      "discover.action.list",
+      "discover.action.search",
+      "discover.action.describe",
+    ]) {
+      expect(actionDescription).toContain(action);
+      expect(guidance).toContain(action);
+    }
   });
 
   it("appends public execution-chain audit entries", () => {
