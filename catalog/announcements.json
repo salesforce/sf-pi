@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.339.2-2026-10-14",
-  "latestVersion": "0.339.2",
+  "revision": "release-0.339.3-2026-10-14",
+  "latestVersion": "0.339.3",
   "announcements": [
     {
-      "id": "release-0.339.2",
+      "id": "release-0.339.3",
       "kind": "update",
-      "title": "sf-pi v0.339.2 — llm-gateway: prioritize gpt-6.1 sol requests",
+      "title": "sf-pi v0.339.3 — data360: name exact discovery entry points in tool guidance",
       "publishedAt": "2026-10-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.3",
       "severity": "info",
-      "body": "llm-gateway: prioritize gpt-6.1 sol requests"
+      "body": "data360: name exact discovery entry points in tool guidance"
     }
   ]
 }
