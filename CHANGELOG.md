@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.4](https://github.com/salesforce/sf-pi/compare/v0.339.3...v0.339.4) (2026-10-15)
+
+
+### Bug Fixes
+
+* **data360:** bound rich run cards and honor display preferences ([23fb357](https://github.com/salesforce/sf-pi/commit/23fb3577de05fd9cc7ab06206761aeb984ab1e47))
+
 ## [0.339.3](https://github.com/salesforce/sf-pi/compare/v0.339.2...v0.339.3) (2026-10-14)
 
 
