@@ -6,6 +6,10 @@ import {
   registerSfData360Tool,
 } from "../lib/sf-data360-tool.ts";
 
+vi.mock("../../../lib/common/display/settings.ts", () => ({
+  readEffectiveSfPiDisplaySettings: () => ({ profile: "compact", source: "project" }),
+}));
+
 type RegisteredTool = {
   parameters: { properties: { action: { description?: string } } };
   promptGuidelines: string[];
@@ -104,6 +108,7 @@ describe("single sf_data360 tool registration", () => {
     expect(result.structuredContent).toMatchObject({
       outcome: { action: "discover.action.describe", status: "pass" },
     });
+    expect(result.details.sfPi).toMatchObject({ renderHints: { profile: "compact" } });
     expect(exec).not.toHaveBeenCalled();
   });
 });

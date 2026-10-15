@@ -5,10 +5,9 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Data360Namespace, SfData360Input } from "./actions/action-types.ts";
 import { buildData360Digest, namespacePresentation } from "./digest.ts";
 import {
-  boundedExpandedPayload,
-  expandedPayloadFor,
-  type BoundedPayloadLines,
-} from "./presentation-data.ts";
+  normalizeSfPiDisplayProfile,
+  type SfPiDisplayProfile,
+} from "../../../lib/common/display/types.ts";
 import type { Data360RunDigest, Data360RunSection } from "./types.ts";
 
 interface ToolResult {
@@ -49,7 +48,13 @@ export function renderSfData360Result(
   }
   return new Text(
     styleCard(
-      renderData360DigestMarkdown(digest, { ...options, result: result.details }),
+      renderData360DigestMarkdown(digest, {
+        ...options,
+        profile: normalizeSfPiDisplayProfile(
+          (result.details?.sfPi as { renderHints?: { profile?: unknown } } | undefined)?.renderHints
+            ?.profile,
+        ),
+      }),
       digest,
       theme,
     ),
@@ -60,9 +65,11 @@ export function renderSfData360Result(
 
 export function renderData360DigestMarkdown(
   digest: Data360RunDigest,
-  options: { expanded?: boolean; result?: Record<string, unknown> } = {},
+  options: { expanded?: boolean; profile?: SfPiDisplayProfile } = {},
 ): string {
   const expanded = options.expanded === true;
+  const profile = options.profile ?? "balanced";
+  const previewRows = profile === "compact" ? 3 : profile === "verbose" ? 10 : 5;
   const target = [
     digest.target?.alias,
     digest.target?.dataspace ? `space=${digest.target.dataspace}` : undefined,
@@ -73,7 +80,7 @@ export function renderData360DigestMarkdown(
     `${statusIcon(digest.status)} ${digest.icon} ${digest.title} · ${digest.action}${target ? ` · ${target}` : ""}`,
   ];
   if (digest.pagination) lines.push(`   📚 ${digest.pagination.label}`);
-  if (digest.api_calls?.length) appendApiRail(lines, digest);
+  if (expanded && digest.api_calls?.length) appendApiRail(lines, digest);
 
   const humanSections = digest.sections.filter(
     (section) => section.title !== "Evidence" && section.title !== "Next Step",
@@ -85,10 +92,10 @@ export function renderData360DigestMarkdown(
     return digest.card_kind === "api" && ["Request", "Response"].includes(section.title);
   });
   for (const section of visibleSections) {
-    appendSection(lines, section, expanded, expandedSectionPayload(section, options.result));
+    appendSection(lines, section, expanded, previewRows);
   }
-  if (expanded && digest.card_kind !== "api" && options.result) {
-    appendRawResult(lines, digest, options.result);
+  if (expanded && digest.artifacts?.length) {
+    lines.push("", `  📁 Full result: ${digest.artifacts[0].path}`);
   }
 
   if (!expanded) {
@@ -96,7 +103,7 @@ export function renderData360DigestMarkdown(
     if (hidden > 0)
       lines.push(
         "",
-        `  … expand for SQL, tables, and ${hidden} more module section${hidden === 1 ? "" : "s"}`,
+        `  … Expand for SQL, tables, and ${hidden} more module section${hidden === 1 ? "" : "s"}`,
       );
   }
   return lines.join("\n");
@@ -136,86 +143,53 @@ function appendSection(
   lines: string[],
   section: Data360RunSection,
   expanded: boolean,
-  expandedPayload?: BoundedPayloadLines,
+  previewRows: number,
 ): void {
+  const sourceRows = section.rows ?? [];
   const rows =
-    expanded || section.title === "Request" || section.title === "Response"
-      ? (section.rows ?? [])
-      : (section.rows ?? []).slice(0, section.title === "Outcome" ? 7 : 4);
-  const tableRows = expanded
-    ? (section.table?.rows ?? [])
-    : (section.table?.rows ?? []).slice(0, 5);
-  const codeLines = expandedPayload
-    ? expandedPayload.lines
-    : section.title === "Response"
-      ? (section.code?.lines ?? []).slice(0, 8)
+    expanded || ["Warnings", "Failure"].includes(section.title)
+      ? sourceRows
       : section.title === "Request"
-        ? expanded
-          ? (section.code?.lines ?? [])
-          : (section.code?.lines ?? []).slice(0, 8)
-        : expanded
-          ? (section.code?.lines ?? [])
-          : [];
+        ? sourceRows.filter((row) => ["Method", "URL", "Safety", "Request"].includes(row.label))
+        : sourceRows.slice(0, section.title === "Outcome" ? previewRows + 2 : previewRows);
+  const tableRows = (section.table?.rows ?? []).slice(0, expanded ? 50 : previewRows);
+  // Request/response JSON and canonical raw payloads belong in the artifact, not the card.
+  const codeLines =
+    expanded && section.code?.language !== "json" ? (section.code?.lines ?? []).slice(0, 50) : [];
   if (!rows.length && !tableRows.length && !codeLines.length) return;
   lines.push("", `—— ${section.icon} ${section.title} ——`);
-  for (const row of rows) lines.push(`  ${row.icon} ${pad(row.label, 14)} ${row.value}`);
+  for (const row of rows) {
+    const value =
+      !expanded && section.title === "Request" && row.label === "URL"
+        ? endpointPath(row.value)
+        : row.value;
+    lines.push(`  ${row.icon} ${pad(row.label, 14)} ${value}`);
+  }
   if (section.table && tableRows.length) {
     const hiddenTableRows =
       Math.max(0, section.table.rows.length - tableRows.length) + (section.table.omittedRows ?? 0);
     appendTable(lines, section.table.columns, tableRows, hiddenTableRows);
-  }
-  if ((section.code || expandedPayload) && codeLines.length) {
-    for (const line of codeLines) lines.push(`  ${line}`);
-    if (expandedPayload?.truncated) {
+    if (hiddenTableRows) {
       lines.push(
-        `  … expanded payload limited to ${expandedPayload.lines.length} of ${expandedPayload.totalLines} lines`,
+        expanded
+          ? "  … Inline table limited to 50 rows · full result in artifact"
+          : "  … Expand to see more table rows",
       );
-      return;
     }
-    if (!expandedPayload && section.code) {
-      const hiddenCodeLines = Math.max(
-        section.code.omittedLines ?? 0,
-        section.code.lines.length + (section.code.omittedLines ?? 0) - codeLines.length,
-      );
-      if (hiddenCodeLines) {
-        lines.push(
-          section.title === "Response"
-            ? `  … response preview capped at 8 lines · ${hiddenCodeLines} more line(s) returned`
-            : `  … ${hiddenCodeLines} more request line(s) omitted`,
-        );
-      }
-    }
+  }
+  for (const line of codeLines) lines.push(`  ${line}`);
+  if (section.code && codeLines.length) {
+    const omitted = section.code.lines.length - codeLines.length + (section.code.omittedLines ?? 0);
+    if (omitted) lines.push(`  … ${omitted} more line(s) · full result in artifact`);
   }
 }
 
-function expandedSectionPayload(
-  section: Data360RunSection,
-  result: Record<string, unknown> | undefined,
-): BoundedPayloadLines | undefined {
-  if (!result) return undefined;
-  if (section.title === "Request") {
-    const request = result.request;
-    return request === undefined ? undefined : boundedExpandedPayload(request);
-  }
-  if (section.title === "Response") {
-    return result.response === undefined ? undefined : boundedExpandedPayload(result.response);
-  }
-  return undefined;
-}
-
-function appendRawResult(
-  lines: string[],
-  digest: Data360RunDigest,
-  result: Record<string, unknown>,
-): void {
-  const payload = boundedExpandedPayload(expandedPayloadFor(result, digest.card_kind));
-  if (!payload.lines.length) return;
-  lines.push("", "—— 🧾 Raw Result ——");
-  for (const line of payload.lines) lines.push(`  ${line}`);
-  if (payload.truncated) {
-    lines.push(
-      `  … expanded payload limited to ${payload.lines.length} of ${payload.totalLines} lines`,
-    );
+function endpointPath(value: string): string {
+  try {
+    const url = new URL(value);
+    return url.pathname + url.search;
+  } catch {
+    return value;
   }
 }
 

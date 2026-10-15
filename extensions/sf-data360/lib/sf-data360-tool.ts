@@ -9,6 +9,7 @@ import {
   getSharedSfEnvironment,
 } from "../../../lib/common/sf-environment/shared-runtime.ts";
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+import { readEffectiveSfPiDisplaySettings } from "../../../lib/common/display/settings.ts";
 import { readEffectiveData360Settings } from "./settings.ts";
 import { renderSfData360Call, renderSfData360Result } from "./render.ts";
 import { presentSfData360Result } from "./result.ts";
@@ -107,6 +108,7 @@ export function registerSfData360Tool(pi: ExtensionAPI): void {
           input,
           result,
           input.output_mode ?? settings.defaultOutputMode,
+          readEffectiveSfPiDisplaySettings(ctx.cwd).profile,
         );
       } catch (error) {
         return presentSfData360Result(
@@ -119,6 +121,7 @@ export function registerSfData360Tool(pi: ExtensionAPI): void {
             summary: `${input.action} failed`,
           },
           input.output_mode ?? "summary",
+          readEffectiveSfPiDisplaySettings(ctx.cwd).profile,
         );
       }
     },

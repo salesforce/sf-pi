@@ -313,21 +313,21 @@ function requestSection(
           : "No API request recorded",
     });
   }
-  const body = request.body;
-  const bodyRecord = objectValue(body);
-  const payloadWithoutSql = Object.fromEntries(
-    Object.entries(bodyRecord).filter(([key]) => key !== "sql"),
-  );
-  const hasPayload =
-    body !== undefined &&
-    body !== null &&
-    (Object.keys(payloadWithoutSql).length > 0 || !Object.keys(bodyRecord).length);
-  return {
-    icon: "📥",
-    title: "Request",
-    rows,
-    code: hasPayload ? jsonCode(sanitizeData360Payload(payloadWithoutSql), 40) : undefined,
-  };
+  const body = objectValue(sanitizeData360Payload(request.body));
+  for (const [key, value] of Object.entries(body)) {
+    if (key === "sql") continue;
+    addRow(
+      rows,
+      "•",
+      key,
+      value !== null && typeof value === "object"
+        ? Array.isArray(value)
+          ? `${value.length} items`
+          : "Object · omitted from card"
+        : value,
+    );
+  }
+  return { icon: "📥", title: "Request", rows };
 }
 
 function responseSection(
@@ -337,7 +337,8 @@ function responseSection(
   const response = objectValue(result.response);
   const rows: Data360DigestRow[] = [];
   addRow(rows, "🌐", "HTTP", result.status);
-  addRow(rows, "🧾", "Returned rows", response.returnedRows);
+  addRow(rows, "🧾", "Returned rows", rowCount(result));
+  addRow(rows, "📦", "Returned objects", resourceCount(result));
   addRow(rows, "📦", "Total", response.totalSize ?? response.total ?? response.count);
   addRow(rows, "🗝️", "Keys", Object.keys(response).join(", ") || undefined);
   if (result.response === undefined) {
@@ -358,10 +359,6 @@ function responseSection(
     icon: "📤",
     title: "Response",
     rows,
-    code:
-      result.response === undefined
-        ? undefined
-        : jsonCode(sanitizeData360Payload(result.response), 45),
   };
 }
 
@@ -763,15 +760,7 @@ function classifyFailure(result: Record<string, unknown>): string {
   if (typeof result.status === "number" && result.status >= 500) return "platform_error";
   return "api_error";
 }
-function jsonCode(value: unknown, maxLines: number): Data360RunSection["code"] | undefined {
-  if (value === undefined) return undefined;
-  const lines = JSON.stringify(value, null, 2).split("\n");
-  return {
-    language: "json",
-    lines: lines.slice(0, maxLines),
-    omittedLines: Math.max(0, lines.length - maxLines),
-  };
-}
+
 function codeBlock(value: string, maxLines: number): NonNullable<Data360RunSection["code"]> {
   const lines = value.split("\n");
   return {

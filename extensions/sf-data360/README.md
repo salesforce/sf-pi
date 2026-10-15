@@ -72,9 +72,9 @@ api.*          exact endpoint escape hatch
 
 ## Run Cards
 
-Every business namespace has a distinct icon and title. Outcome is followed immediately by a five-row or bounded domain Preview. Direct API cards then show the API rail, complete request metadata, and an eight-line response preview. Local Discover, derived Observe, and Orchestrate cards omit meaningless Request/Response sections and instead show criteria, matches, readiness, metrics, journeys, recommendations, or execution steps.
+Every business namespace has a distinct icon and title. Outcome is followed immediately by a domain Preview. The shared `sfPi.display.profile` preference controls collapsed table samples: compact shows three rows, balanced (default) five, and verbose ten. Direct API cards retain Request and Response sections with endpoint, safety, HTTP status, and returned-count facts. Local Discover, derived Observe, and Orchestrate cards instead show criteria, matches, readiness, metrics, journeys, recommendations, or execution steps.
 
-Expanding a direct API card shows its complete sanitized request and response. Expanding a local, analysis, or orchestration card shows its complete canonical result. Human display is hard-bounded at 5,000 lines or 2 MB; the existing artifact retains larger payloads. Evidence artifacts and next-step guidance remain in the semantic digest and stable `structuredContent` for models and programmatic callers, but they are not rendered as human card sections.
+Expanding shows up to 50 rows per table, the API rail, full request URL, and summarized request parameters. SQL remains available as a bounded expanded section. Neither state prints raw request/response JSON or canonical payload dumps. Omitted table rows are counted explicitly; expanded cards point to the full-result artifact for larger results. Structured content retains the full returned data. Evidence and next-step guidance remain model-visible rather than separate human card sections.
 
 Offset pagination remains explicit through page, item range, batch size, offset, limit, and returned-count annotations. Multi-call Mermaid traces include versionless endpoint templates. Independent calls fan out by business module; only pagination series and proven execution chains render sequentially. Diagrams never embed raw utterances, org URLs, identifiers, or opaque tokens.
 

@@ -3,7 +3,6 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { describe, expect, it } from "vitest";
 import { buildData360Digest, compactDigestText } from "../lib/digest.ts";
-import { boundedExpandedPayload } from "../lib/presentation-data.ts";
 import { presentSfData360Result } from "../lib/result.ts";
 import {
   namespaceIcon,
@@ -62,6 +61,111 @@ const queryResult = {
 };
 
 describe("Data 360 Run Card presentation", () => {
+  it("keeps complete DMO results payload-free in both card states", async () => {
+    const dataModelObject = Array.from({ length: 200 }, (_value, index) => ({
+      name: `Example_${index + 1}__dlm`,
+      label: `Example ${index + 1}`,
+      category: "PROFILE",
+      fields: Array.from({ length: 30 }, (_field, field) => ({
+        name: `NestedField_${field}__c`,
+        type: "Text",
+      })),
+    }));
+    const presented = await presentSfData360Result(
+      { action: "harmonize.dmo.list" },
+      {
+        ok: true,
+        action: "harmonize.dmo.list",
+        namespace: "harmonize",
+        status: 200,
+        transport: "connect",
+        request: {
+          method: "GET",
+          url: "https://example.my.salesforce.com/services/data/v68.0/ssot/data-model-objects",
+          body: { parameters: { hiddenRequestPayload: "must-not-render" } },
+        },
+        response: { dataModelObject },
+      },
+      "summary",
+    );
+    for (const expanded of [false, true]) {
+      const component = renderSfData360Result(presented, { expanded }, theme);
+      const card = component.render(120).join("\n");
+      for (const section of ["Outcome", "Data Model Objects", "Request", "Response"])
+        expect(card).toContain(section);
+      expect(card).not.toContain("NestedField_");
+      expect(card).not.toContain("hiddenRequestPayload");
+      expect(card).not.toContain('"dataModelObject":');
+      expect(card).not.toContain("Raw Result");
+      expect(component.render(80).length).toBeLessThan(expanded ? 180 : 80);
+    }
+    const collapsed = renderSfData360Result(presented, { expanded: false }, theme)
+      .render(120)
+      .join("\n");
+    expect(collapsed).toContain("Example_5__dlm");
+    expect(collapsed).not.toContain("Example_6__dlm");
+    expect(collapsed).not.toContain("https://");
+    expect(collapsed).toContain("Expand");
+    const expanded = renderSfData360Result(presented, { expanded: true }, theme)
+      .render(120)
+      .join("\n");
+    expect(expanded).toContain("Example_50__dlm");
+    expect(expanded).not.toContain("Example_51__dlm");
+    expect(expanded).toContain("150 more");
+    expect(expanded).toContain(presented.details.artifactPath);
+    expect(expanded).toContain("https://example.my.salesforce.com");
+  });
+
+  it.each([
+    ["compact", 3],
+    ["balanced", 5],
+    ["verbose", 10],
+  ] as const)(
+    "uses the %s preference for collapsed samples without limiting expanded tables",
+    async (profile, count) => {
+      const presented = await presentSfData360Result(
+        { action: "connect.connector.list" },
+        {
+          ok: true,
+          action: "connect.connector.list",
+          response: {
+            connectorInfoList: Array.from({ length: 12 }, (_value, index) => ({
+              name: `connector_${index + 1}`,
+            })),
+          },
+        },
+        "summary",
+        profile,
+      );
+      const collapsed = renderSfData360Result(presented, { expanded: false }, theme)
+        .render(120)
+        .join("\n");
+      expect(collapsed).toContain(`connector_${count}`);
+      expect(collapsed).not.toContain(`connector_${count + 1}`);
+      expect(
+        renderSfData360Result(presented, { expanded: true }, theme).render(120).join("\n"),
+      ).toContain("connector_12");
+    },
+  );
+
+  it("keeps warnings and failure recovery visible even with the compact preference", () => {
+    const digest = buildData360Digest({
+      input: { action: "harmonize.dmo.list" },
+      result: {
+        ok: false,
+        action: "harmonize.dmo.list",
+        error: "Example failure",
+        suggestion: "Retry after checking access",
+        warnings: Array.from({ length: 8 }, (_value, index) => `Notice ${index + 1}`),
+      },
+      outputMode: "summary",
+    });
+    const card = renderData360DigestMarkdown(digest, { profile: "compact" });
+    expect(card).toContain("Notice 8");
+    expect(card).toContain("Example failure");
+    expect(card).toContain("Retry after checking access");
+  });
+
   it("formats SQL into readable clauses without damaging quoted values", () => {
     const formatted = formatData360Sql(queryResult.request.body.sql);
     expect(formatted).toContain('SELECT\n  "Id__c",');
@@ -114,12 +218,11 @@ describe("Data 360 Run Card presentation", () => {
     );
     const digest = presented.details.digest as Data360RunDigest;
     const collapsed = renderData360DigestMarkdown(digest);
-    expect(collapsed).toContain(
-      "https://example.my.salesforce.com/services/data/v67.0/ssot/query-sql",
-    );
+    expect(collapsed).toContain("/services/data/v67.0/ssot/query-sql");
+    expect(collapsed).not.toContain("https://");
     expect(collapsed).toContain("—— 📥 Request ——");
     expect(collapsed).toContain("—— 📤 Response ——");
-    expect(collapsed).toContain("expand for SQL");
+    expect(collapsed).toContain("Expand for SQL");
     expect(collapsed).not.toContain("complete request/response");
     expect(collapsed).not.toContain("—— 🧾 SQL ——");
     expect(collapsed).not.toContain("—— 📄 Evidence ——");
@@ -166,7 +269,7 @@ describe("Data 360 Run Card presentation", () => {
     expect(renderData360DigestMarkdown(digest, { expanded: true })).not.toContain("Next Step");
   });
 
-  it("highlights offset pagination and keeps the collapsed response preview to eight lines", () => {
+  it("highlights offset pagination without rendering raw response JSON", () => {
     const dataModelObject = Array.from({ length: 200 }, (_value, index) => ({
       name: `Example_${index + 401}__dlm`,
       label: `Example ${index + 401}`,
@@ -208,13 +311,15 @@ describe("Data 360 Run Card presentation", () => {
     });
     const card = renderData360DigestMarkdown(digest);
     expect(card).toContain("Page 3 · items 401–600 · batch size 200");
-    expect(card).toContain("offset=400 · limit=200 · returned=200");
+    const expanded = renderData360DigestMarkdown(digest, { expanded: true });
+    expect(expanded).toContain("offset=400 · limit=200 · returned=200");
     expect(card).toContain("—— 📥 Request ——");
     expect(card).toContain("🔒 Safety");
     expect(card).toContain("—— 📤 Response ——");
-    expect(card).toContain('"dataModelObject": [');
-    expect(card).toContain("response preview capped at 8 lines");
-    expect(card).not.toContain('"name": "Example_402__dlm"');
+    expect(card).toContain("Returned objects");
+    expect(card).not.toContain('"dataModelObject": [');
+    expect(card).toContain("Example_402__dlm");
+    expect(card).not.toContain("Example_406__dlm");
   });
 
   it("keeps the mandatory scaffold bounded at narrow and wide terminal widths", () => {
@@ -311,7 +416,9 @@ describe("Data 360 Run Card presentation", () => {
       expanded: true,
     });
     expect(dryRunCard).toContain("🟡 🧱 Data 360 Prepare");
-    expect(dryRunCard).toContain('"connectorType": "IngestApi"');
+    expect(dryRunCard).toContain("connectorType");
+    expect(dryRunCard).toContain("IngestApi");
+    expect(dryRunCard).not.toContain('"connectorType":');
     expect(dryRunCard).toContain("Dry run · not executed");
   });
 
@@ -389,7 +496,7 @@ describe("Data 360 Run Card presentation", () => {
     const expanded = renderSfData360Result(presented, { expanded: true }, theme)
       .render(120)
       .join("\n");
-    expect(expanded).toContain("—— 🧾 Raw Result ——");
+    expect(expanded).not.toContain("—— 🧾 Raw Result ——");
     expect(expanded).toContain("activate.activation_target.example_6");
   });
 
@@ -420,7 +527,9 @@ describe("Data 360 Run Card presentation", () => {
       result,
       "summary",
     );
-    const card = renderData360DigestMarkdown(presented.details.digest as Data360RunDigest);
+    const card = renderData360DigestMarkdown(presented.details.digest as Data360RunDigest, {
+      expanded: true,
+    });
 
     expect(card).toContain("POST");
     expect(card).toContain("/ssot/query-sql");
@@ -460,7 +569,7 @@ describe("Data 360 Run Card presentation", () => {
     expect(card).not.toContain("—— 📤 Response ——");
   });
 
-  it("shows five compact sample rows and the complete sanitized payload when expanded", async () => {
+  it("shows five compact sample rows and bounds expanded tables without raw payloads", async () => {
     const connectors = Array.from({ length: 60 }, (_value, index) => ({
       name: `connector_${index + 1}`,
       label: `Connector ${index + 1}`,
@@ -496,20 +605,12 @@ describe("Data 360 Run Card presentation", () => {
     const expanded = renderSfData360Result(presented, { expanded: true }, theme)
       .render(140)
       .join("\n");
-    expect(expanded).toContain("connector_60");
-    expect(expanded).toContain("[REDACTED]");
+    expect(expanded).toContain("connector_50");
+    expect(expanded).not.toContain("connector_51");
+    expect(expanded).toContain("10 more row(s) returned");
+    expect(expanded).toContain(presented.details.artifactPath);
     expect(expanded).not.toContain("must-not-render");
     expect(expanded).not.toContain("response preview capped at 8 lines");
-  });
-
-  it("bounds pathological expanded payloads at the approved safety limit", () => {
-    const bounded = boundedExpandedPayload({
-      rows: Array.from({ length: 6_000 }, (_value, index) => ({ index, value: `row-${index}` })),
-    });
-
-    expect(bounded.truncated).toBe(true);
-    expect(bounded.lines.length).toBeLessThanOrEqual(5_000);
-    expect(bounded.totalLines).toBeGreaterThan(bounded.lines.length);
   });
 
   it("uses a unique icon for every business namespace", () => {

@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Model, structured, artifact, and Run Card result seam for sf_data360. */
-import type { SfPiToolResultEnvelope } from "../../../lib/common/display/types.ts";
+import type {
+  SfPiDisplayProfile,
+  SfPiToolResultEnvelope,
+} from "../../../lib/common/display/types.ts";
 import { buildData360Digest, compactDigestText, structuredResultFromDigest } from "./digest.ts";
 import { writeFullD360Output } from "./truncation.ts";
 import type { SfData360Input } from "./actions/action-types.ts";
@@ -10,13 +13,24 @@ export async function presentSfData360Result(
   input: SfData360Input,
   result: Record<string, unknown>,
   outputMode: "summary" | "inline" | "file_only",
+  profile: SfPiDisplayProfile = "balanced",
 ): Promise<SfData360ToolResult> {
   const raw = JSON.stringify(result, null, 2);
+  const previewDigest = buildData360Digest({ input, result, outputMode });
   const artifactPath =
-    outputMode === "file_only" || shouldPersist(result, raw)
+    outputMode === "file_only" ||
+    shouldPersist(result, raw) ||
+    previewDigest.sections.some(
+      (section) =>
+        (section.table?.rows.length ?? 0) > 50 ||
+        Boolean(section.table?.omittedRows) ||
+        Boolean(section.code?.omittedLines),
+    )
       ? await writeFullD360Output(raw)
       : undefined;
-  const digest = buildData360Digest({ input, result, artifactPath, outputMode });
+  const digest = artifactPath
+    ? buildData360Digest({ input, result, artifactPath, outputMode })
+    : previewDigest;
   const structuredContent = structuredResultFromDigest(digest, result);
   const text =
     outputMode === "inline"
@@ -31,7 +45,7 @@ export async function presentSfData360Result(
     summary: digest.summary,
     data: { digest, outcome: structuredContent.outcome },
     ...(artifactPath ? { truncation: { truncated: false, fullOutputPath: artifactPath } } : {}),
-    renderHints: { profile: "balanced", collapsedLines: 36, expandedMaxLines: 120 },
+    renderHints: { profile },
   } as SfPiToolResultEnvelope;
   return {
     content: [{ type: "text", text }],

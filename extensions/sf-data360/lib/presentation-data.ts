@@ -8,16 +8,6 @@ import type {
   Data360RunSection,
 } from "./types.ts";
 
-export const EXPANDED_PAYLOAD_MAX_LINES = 5_000;
-export const EXPANDED_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024;
-
-export interface BoundedPayloadLines {
-  lines: string[];
-  truncated: boolean;
-  totalLines: number;
-  totalBytes: number;
-}
-
 export function data360CardKind(
   namespace: Data360Namespace,
   result: Record<string, unknown>,
@@ -75,7 +65,18 @@ export function previewSectionsFor(
         {
           icon: "📋",
           title: previewTitle(action, collection.key),
-          table: tableFromObjects(rows),
+          table:
+            collection.key === "dataModelObject"
+              ? {
+                  columns: ["Name", "Label", "Category", "Fields"],
+                  rows: rows.map((row) => [
+                    formatCell(row.name),
+                    formatCell(row.label),
+                    formatCell(row.category),
+                    Array.isArray(row.fields) ? String(row.fields.length) : "—",
+                  ]),
+                }
+              : tableFromObjects(rows),
           compact: true,
         },
       ];
@@ -107,16 +108,6 @@ export function previewSectionsFor(
   return [];
 }
 
-export function expandedPayloadFor(
-  result: Record<string, unknown>,
-  cardKind: Data360CardKind,
-): unknown {
-  if (cardKind === "api" && result.response !== undefined) return result.response;
-  if (cardKind === "analysis" && result.result !== undefined) return result.result;
-  const canonical = canonicalDisplayPayload(result, cardKind);
-  return canonical.value === undefined ? result : canonical.value;
-}
-
 export function sanitizeData360Payload(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeData360Payload);
   if (!value || typeof value !== "object") return value;
@@ -128,31 +119,6 @@ export function sanitizeData360Payload(value: unknown): unknown {
         : sanitizeData360Payload(entry),
     ]),
   );
-}
-
-export function boundedExpandedPayload(value: unknown): BoundedPayloadLines {
-  const text = JSON.stringify(sanitizeData360Payload(value), null, 2) ?? "null";
-  const allLines = text.split("\n");
-  const totalBytes = Buffer.byteLength(text, "utf8");
-  const lines: string[] = [];
-  let bytes = 0;
-  for (const line of allLines) {
-    const lineBytes = Buffer.byteLength(`${line}\n`, "utf8");
-    if (
-      lines.length >= EXPANDED_PAYLOAD_MAX_LINES ||
-      bytes + lineBytes > EXPANDED_PAYLOAD_MAX_BYTES
-    ) {
-      break;
-    }
-    lines.push(line);
-    bytes += lineBytes;
-  }
-  return {
-    lines,
-    truncated: lines.length < allLines.length,
-    totalLines: allLines.length,
-    totalBytes,
-  };
 }
 
 interface CanonicalPayload {

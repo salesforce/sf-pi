@@ -15,11 +15,11 @@ Compact cards also hid domain samples for non-`response` payloads, while expande
 
 ## Decision
 
-The Data 360 presenter classifies each result as direct API, local catalog, derived analysis, or orchestration. All cards show outcome followed immediately by a five-row or bounded domain Preview. API, Request, and Response sections appear only for direct API calls. Derived analysis may show its grounded source calls without claiming that the transformed result is an API response.
+The Data 360 presenter classifies each result as direct API, local catalog, derived analysis, or orchestration. All cards show outcome followed immediately by a preference-controlled or bounded domain Preview. API, Request, and Response sections appear only for direct API calls. Derived analysis may show its grounded source calls without claiming that the transformed result is an API response.
 
 One canonical payload resolver supports direct responses, nested analysis rows, search results, actions, journeys, contracts, recommended actions, plans, probes, and execution chains. Discover, Observe, and Orchestrate add focused adapters for search criteria, action contracts, readiness, session and trace data, latency metrics, journeys, recommendations, and execution steps.
 
-Collapsed direct API cards retain an eight-line sanitized response preview. Expanded cards render the complete sanitized request and response; local, analysis, and orchestration cards render their complete canonical result. Expanded display is bounded at 5,000 lines or 2 MB to protect terminal responsiveness, while the existing artifact keeps the complete payload.
+Collapsed cards use the shared display profile for three, five, or ten sample table rows. Direct API cards retain summarized Request and Response facts, not raw JSON. Expanded cards add full request URLs, summarized parameters, source API calls, bounded SQL, and up to 50 rows per table. Raw request/response and canonical payload dumps are excluded from both states. Omitted table rows are counted, and capped tables retain a full-result artifact. Structured content preserves the complete returned data.
 
 Turn-level Mermaid projections show versionless endpoint templates. Independent calls fan out from the resolved Data 360 work; only pagination series and proven execution chains render sequentially. Omitted calls are summarized by business module and endpoint count rather than an opaque remaining-call count. URLs, org identifiers, opaque tokens, and raw utterances remain excluded.
 
@@ -29,6 +29,6 @@ Turn-level Mermaid projections show versionless endpoint templates. Independent 
 - Local actions no longer show fake API, Request, or Response placeholders.
 - Observe runbooks preserve the Query SQL source-call evidence used to derive their metrics.
 - Orchestrate cards expose journeys, recommendations, phases, or execution steps.
-- Expanded payloads can be large by explicit user choice but remain sanitized and hard-bounded.
+- Expanded cards reveal more domain data without thousands of payload lines; full evidence remains available outside the card.
 - Diagram arrows distinguish observed dependency from independent work.
 - The shared presenter still owns all 577 actions; endpoint-specific tools or card implementations are not introduced.

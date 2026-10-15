@@ -51,6 +51,21 @@ describe("sf_data360 Run Card result presentation", () => {
     expect(result.content[0]?.text).toContain("2 resources");
   });
 
+  it("retains full evidence when a small collection exceeds the inline table cap", async () => {
+    const response = {
+      connectorInfoList: Array.from({ length: 51 }, (_value, index) => ({
+        name: `connector_${index + 1}`,
+      })),
+    };
+    const result = await presentSfData360Result(
+      { action: "connect.connector.list" },
+      { ok: true, action: "connect.connector.list", response },
+      "summary",
+    );
+    expect(result.details.artifactPath).toEqual(expect.any(String));
+    expect(result.structuredContent.data).toEqual(response);
+  });
+
   it("persists error evidence while creating a failure Run Card", async () => {
     const result = await presentSfData360Result(
       { action: "prepare.datakit.list" },
