@@ -27,6 +27,7 @@ export type GatewayCommandId =
   | "set-default"
   | "models"
   | "compaction"
+  | "priority"
   | "doctor"
   | "usage-probe"
   | "tokens"
@@ -134,6 +135,14 @@ export const GATEWAY_COMMAND_SURFACE: readonly GatewayCommandSurfaceItem[] = [
     acceptsScope: true,
   },
   {
+    id: "priority",
+    label: "Priority request status",
+    usage: "priority [status|on|off|reset] [global|project]",
+    description:
+      "Show or save priority requests for eligible Gateway Responses models. Priority may carry higher charges; off requests the default tier.",
+    section: "Setup",
+  },
+  {
     id: "compaction",
     label: "Configure dedicated compaction",
     usage: "compaction [global|project]",
@@ -231,6 +240,22 @@ export function getGatewayArgumentCompletions(prefix: string): SfPiArgumentCompl
   const surface = GATEWAY_COMMAND_SURFACE.find(
     (item) => item.id === sub || item.aliases?.some((alias) => alias === sub),
   );
+  if (surface?.id === "priority") {
+    if (context.tokenIndex === 1)
+      return completeArgumentTail(
+        ["status", "on", "off", "reset"].map((value) => ({
+          value,
+          label: value,
+          description: `Priority requests: ${value}`,
+          appendSpace: value !== "status",
+        })),
+        context,
+        [surface.id],
+      );
+    const action = context.tokens[1];
+    if (context.tokenIndex === 2 && action && ["on", "off", "reset"].includes(action))
+      return completeArgumentTail(scopeCompletions(), context, [surface.id, action]);
+  }
   if (surface?.acceptsScope && context.tokenIndex === 1) {
     return completeArgumentTail(scopeCompletions(), context, [surface.id]);
   }

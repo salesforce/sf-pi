@@ -33,6 +33,11 @@ import {
   settingsPathForScope,
   type GatewayCompactionModelOption,
 } from "./compaction-settings.ts";
+import {
+  readScopedPriority,
+  readEffectivePrioritySettings,
+  writeScopedPriority,
+} from "./priority-settings.ts";
 import { GatewayCompactionModelPicker } from "./compaction-model-picker.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -43,6 +48,7 @@ type PanelField =
   | "baseUrl"
   | "exclusiveScope"
   | "compactionModel"
+  | "priority"
   | "open-token"
   | "import-claude"
   | "save"
@@ -58,6 +64,7 @@ type ExclusiveScopeMode = "inherit" | "exclusive" | "additive";
 type ConfigPanelOptions = {
   /** Show token-page / Claude Code import buttons. Used by the standalone setup overlay. */
   externalActions?: boolean;
+  projectTrusted?: boolean;
   /** Close after save and return a gatewayAction to the host. Manager-hosted settings save in place. */
   closeOnSave?: boolean;
   /** Authenticated Gateway catalog projected by the Manager-hosted settings action. */
@@ -152,6 +159,8 @@ export class GatewayConfigPanelComponent implements Focusable {
 
   private readonly focusOrder: readonly PanelField[];
   private focusIndex = 0;
+  private savedPriority: boolean | undefined;
+  private persistedPriority: boolean | undefined;
   private savedBaseUrl: string;
   private savedExclusiveScopeMode: ExclusiveScopeMode;
   private persistedBaseUrl: string;
@@ -176,10 +185,13 @@ export class GatewayConfigPanelComponent implements Focusable {
       "baseUrl",
       "exclusiveScope",
       "compactionModel",
+      "priority",
       ...(options.externalActions ? (["open-token", "import-claude"] as const) : []),
       "save",
       "cancel",
     ];
+    this.savedPriority = readScopedPriority(cwd, scope);
+    this.persistedPriority = this.savedPriority;
     this.state = getSetupOverlayState(cwd, scope);
     this.savedBaseUrl = this.state.scopeSaved.baseUrl ?? "";
     this.savedExclusiveScopeMode = this.modeFromSavedExclusiveScope(
@@ -211,6 +223,19 @@ export class GatewayConfigPanelComponent implements Focusable {
 
     if (focus === "exclusiveScope") {
       if (this.handleExclusiveScopeInput(data)) {
+        return;
+      }
+    }
+
+    if (focus === "priority") {
+      if (
+        isLeftKey(data) ||
+        isRightKey(data) ||
+        matchesKey(data, "space") ||
+        matchesKey(data, "enter") ||
+        matchesKey(data, "return")
+      ) {
+        this.cyclePriority(isLeftKey(data) ? -1 : 1);
         return;
       }
     }
@@ -379,6 +404,23 @@ export class GatewayConfigPanelComponent implements Focusable {
     );
     for (const row of compactionRows) lines.push(pad(` ${row}`));
     lines.push(pad(""));
+
+    const priority = readEffectivePrioritySettings(
+      this.cwd,
+      undefined,
+      this.options.projectTrusted === true,
+    );
+    const priorityValue =
+      this.savedPriority === undefined ? "Inherit" : this.savedPriority ? "On" : "Off";
+    const priorityLabel = `Priority requests: [ ${priorityValue} ]`;
+    lines.push(
+      pad(
+        ` ${this.currentFocus() === "priority" ? theme.fg("accent", priorityLabel) : priorityLabel}`,
+      ),
+    );
+    lines.push(pad(`   Effective now: ${priority.enabled ? "On" : "Off"} (${priority.source})`));
+    lines.push(pad("   Priority may carry higher charges. Off requests the default tier."));
+    lines.push("");
 
     lines.push(pad(` ${theme.fg("muted", "Actions")}`));
     if (this.options.externalActions) {
@@ -616,6 +658,13 @@ export class GatewayConfigPanelComponent implements Focusable {
     return false;
   }
 
+  private cyclePriority(direction: -1 | 1): void {
+    const values = [undefined, false, true];
+    this.savedPriority =
+      values[(values.indexOf(this.savedPriority) + direction + values.length) % values.length];
+    this.errorMessage = null;
+  }
+
   private submitCurrentFocus(): void {
     const focus = this.currentFocus();
     if (focus === "baseUrl") {
@@ -628,6 +677,10 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
     if (focus === "compactionModel") {
       this.compactionModelPicker.cycle(1);
+      return;
+    }
+    if (focus === "priority") {
+      this.cyclePriority(1);
       return;
     }
     if (focus === "cancel") {
@@ -682,7 +735,12 @@ export class GatewayConfigPanelComponent implements Focusable {
 
     const gatewayChanged = this.isGatewayDirty(normalizedSavedBaseUrl);
     const compactionChanged = this.compactionModelPicker.isDirty();
-    const changed = gatewayChanged || compactionChanged;
+    const priorityChanged = this.savedPriority !== this.persistedPriority;
+    if (priorityChanged && this.scope === "project" && !this.options.projectTrusted) {
+      this.errorMessage = "Trust this project before changing project priority preferences.";
+      return;
+    }
+    const changed = gatewayChanged || compactionChanged || priorityChanged;
 
     if (!changed && !this.options.closeOnSave) {
       this.savedMessage = "No changes to save.";
@@ -696,6 +754,10 @@ export class GatewayConfigPanelComponent implements Focusable {
     if (compactionChanged) {
       this.compactionModelPicker.persist();
     }
+    if (priorityChanged) {
+      writeScopedPriority(this.cwd, this.scope, this.savedPriority);
+      this.persistedPriority = this.savedPriority;
+    }
     this.markSaved(normalizedSavedBaseUrl, savedExclusiveScope);
 
     if (this.options.closeOnSave) {
@@ -704,11 +766,13 @@ export class GatewayConfigPanelComponent implements Focusable {
     }
 
     this.reloadRequired = this.reloadRequired || gatewayChanged;
-    this.savedMessage = gatewayChanged
-      ? compactionChanged
-        ? "Saved gateway and compaction settings."
-        : "Saved gateway settings."
-      : "Saved compaction preference.";
+    this.savedMessage = priorityChanged
+      ? "Saved settings. Priority preference applies to subsequent requests."
+      : gatewayChanged
+        ? compactionChanged
+          ? "Saved gateway and compaction settings."
+          : "Saved gateway settings."
+        : "Saved compaction preference.";
     this.errorMessage = null;
   }
 
@@ -730,7 +794,11 @@ export class GatewayConfigPanelComponent implements Focusable {
   }
 
   private isDirty(normalizedSavedBaseUrl: string | undefined): boolean {
-    return this.isGatewayDirty(normalizedSavedBaseUrl) || this.compactionModelPicker.isDirty();
+    return (
+      this.isGatewayDirty(normalizedSavedBaseUrl) ||
+      this.compactionModelPicker.isDirty() ||
+      this.savedPriority !== this.persistedPriority
+    );
   }
 
   private isGatewayDirty(normalizedSavedBaseUrl: string | undefined): boolean {
@@ -793,6 +861,7 @@ export class GatewayConfigPanelComponent implements Focusable {
 /** Convention export name used by the catalog generator. */
 export const createConfigPanel: ConfigPanelFactory = (theme, cwd, scope, done, _tui, ctx) => {
   return new GatewayConfigPanelComponent(theme, scope, cwd, done, {
+    projectTrusted: ctx?.isProjectTrusted?.() ?? false,
     compactionModels: buildGatewayCompactionModelOptions(ctx?.modelRegistry.getAvailable() ?? []),
   });
 };

@@ -339,7 +339,13 @@ describe("gateway extension lifecycle", () => {
     expect(shutdown).toBeDefined();
 
     await start?.({ type: "session_start" }, ctx);
-    expect(providerRuntimeMock.bind).toHaveBeenCalledWith(cwd, ctx.ui, "tui", ctx.modelRegistry);
+    expect(providerRuntimeMock.bind).toHaveBeenCalledWith(
+      cwd,
+      ctx.ui,
+      "tui",
+      ctx.modelRegistry,
+      expect.any(Function),
+    );
     expect(monthlyUsageMock.registerGatewayMonthlyUsageRefresher).toHaveBeenCalledTimes(1);
 
     await shutdown?.({ type: "session_shutdown", reason: "resume" }, ctx);

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 import { createConfigPanel, GatewayConfigPanelComponent } from "../lib/config-panel.ts";
 import { BASE_URL_ENV, projectGatewayConfigPath, readGatewaySavedConfig } from "../lib/config.ts";
+import { readEffectivePrioritySettings } from "../lib/priority-settings.ts";
 import { readEffectiveCompactionSettings } from "../lib/compaction-settings.ts";
 
 const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
@@ -40,6 +41,41 @@ afterEach(() => {
 });
 
 describe("GatewayConfigPanelComponent Manager contract", () => {
+  it("saves priority off without reload and resets to inheritance", () => {
+    const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, vi.fn(), {
+      projectTrusted: true,
+    });
+    for (let i = 0; i < 3; i++) panel.handleInput("\x1b[B");
+    panel.handleInput("\x1b[C"); // inherit -> off
+    panel.handleInput("\x1b[B");
+    panel.handleInput("\r");
+    expect(readEffectivePrioritySettings(tempProjectDir, undefined, true)).toEqual({
+      enabled: false,
+      source: "project",
+    });
+    expect(panel.renderContent(100).join("\n")).toContain("Effective now: Off (project)");
+    expect(panel.renderContent(100).join("\n")).not.toContain("Reload required");
+    panel.handleInput("\x1b[A");
+    panel.handleInput("\x1b[D"); // off -> inherit
+    panel.handleInput("\x1b[B");
+    panel.handleInput("\r");
+    expect(readEffectivePrioritySettings(tempProjectDir, undefined, true)).toEqual({
+      enabled: true,
+      source: "default",
+    });
+  });
+  it("refuses project priority saves without trust", () => {
+    const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, vi.fn());
+    for (let i = 0; i < 3; i++) panel.handleInput("\x1b[B");
+    panel.handleInput("\x1b[C");
+    panel.handleInput("\x1b[B");
+    panel.handleInput("\r");
+    expect(panel.renderContent(100).join("\n")).toContain("Trust this project");
+    expect(readEffectivePrioritySettings(tempProjectDir, undefined, true)).toEqual({
+      enabled: true,
+      source: "default",
+    });
+  });
   it("hides lifecycle actions in the Manager settings page", () => {
     const panel = new GatewayConfigPanelComponent(theme, "project", tempProjectDir, vi.fn());
 
@@ -95,7 +131,8 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
     panel.handleInput("\x1b[C"); // inherit -> active
     panel.handleInput("\x1b[C"); // active -> Claude Sonnet 5
-    panel.handleInput("\x1b[B"); // compaction model -> Save
+    panel.handleInput("\x1b[B"); // compaction model -> priority
+    panel.handleInput("\x1b[B"); // priority -> Save
     panel.handleInput("\r");
 
     expect(readEffectiveCompactionSettings(tempProjectDir)).toMatchObject({
@@ -114,7 +151,8 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
     panel.handleInput("https://gateway.example.com/v1");
     panel.handleInput("\r"); // base URL -> scoped model mode
     panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
-    panel.handleInput("\x1b[B"); // compaction model -> Save
+    panel.handleInput("\x1b[B"); // compaction model -> priority
+    panel.handleInput("\x1b[B"); // priority -> Save
     panel.handleInput("\r"); // Save in place
 
     expect(done).not.toHaveBeenCalled();
@@ -138,7 +176,8 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
 
     panel.handleInput("\x1b[B"); // base URL -> scoped model mode
     panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
-    panel.handleInput("\x1b[B"); // compaction model -> Open token page
+    panel.handleInput("\x1b[B"); // compaction model -> priority
+    panel.handleInput("\x1b[B"); // priority -> Open token page
     panel.handleInput("\r");
 
     expect(done).toHaveBeenCalledWith({
@@ -153,7 +192,8 @@ describe("GatewayConfigPanelComponent Manager contract", () => {
 
     panel.handleInput("\x1b[B"); // base URL -> scoped model mode
     panel.handleInput("\x1b[B"); // scoped model mode -> compaction model
-    panel.handleInput("\x1b[B"); // compaction model -> Save
+    panel.handleInput("\x1b[B"); // compaction model -> priority
+    panel.handleInput("\x1b[B"); // priority -> Save
     panel.handleInput("\r"); // Save in place
     panel.handleInput("\x1b");
 

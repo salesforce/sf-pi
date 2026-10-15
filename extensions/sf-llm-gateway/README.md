@@ -83,10 +83,37 @@ outside Pi. Usage status uses the available user/key information endpoints and
 does not claim a lifetime counter when the service cannot prove one.
 
 For Gateway Responses requests using exactly `gpt-5.6-sol`, `gpt-6-sol`, or
-`gpt-6.1-sol`, SF Pi sends `service_tier: "priority"` automatically, including
-simple and full streams. Other models and providers are unchanged. The request
-does not prove that the Gateway honored the tier; SF Pi does not inspect or
+`gpt-6.1-sol`, SF Pi requests `service_tier: "priority"` by default, including
+simple and full streams. Priority may carry higher charges. Other models and
+providers are unchanged. The request does not prove that the Gateway honored the tier; SF Pi does not inspect or
 enforce the effective tier.
+
+Opt out without changing models or credentials:
+
+```text
+/sf-llm-gateway priority off global
+/sf-llm-gateway priority status
+```
+
+Use `on` to restore priority or `reset` to remove the saved override. Mutations
+accept `global` (the default) or `project` scope. The existing gateway settings
+panel also offers **Priority requests: Inherit / Off / On**. Off explicitly
+requests `service_tier: "default"`; the preference is authoritative after caller
+payload hooks for these eligible models only. Other models and providers retain
+their caller-supplied settings. Requests already in flight are unchanged.
+
+The preference lives at `sfPi.llmGateway.priority` in Pi `settings.json`:
+
+```json
+{ "sfPi": { "llmGateway": { "priority": false } } }
+```
+
+A trusted project's preference overrides the global preference; missing values
+inherit, and the built-in default remains on. Untrusted project preferences are
+ignored and project writes are refused. Changes apply to subsequent requests
+without restart or model discovery, including dedicated compaction and explicit
+probes routed through the same provider. Status shows the effective value and
+source, not a verified billing rate or effective response tier.
 
 GPT-6.1 Sol inherits its exact thinking-level map from Pi's public model catalog:
 `low`, `medium`, `high`, `xhigh`, and `max` are available; unsupported `off` and

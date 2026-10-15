@@ -120,6 +120,7 @@ describe("Manager Gateway setup", () => {
       cwd,
       mode: "tui",
       hasUI: true,
+      isProjectTrusted: () => true,
       model: undefined,
       modelRegistry,
       ui,
@@ -158,6 +159,7 @@ describe("Manager Gateway setup", () => {
       cwd,
       mode: "tui",
       hasUI: true,
+      isProjectTrusted: () => true,
       modelRegistry: { getAvailable },
       ui: { notify: vi.fn(), setStatus: vi.fn() },
     } as unknown as ExtensionCommandContext;
@@ -202,6 +204,7 @@ describe("Manager Gateway setup", () => {
       cwd,
       mode: "tui",
       hasUI: true,
+      isProjectTrusted: () => true,
       model: undefined,
       modelRegistry,
       ui,
@@ -222,7 +225,8 @@ describe("Manager Gateway setup", () => {
     panel.handleInput?.("https://gateway.example.test/v1");
     panel.handleInput?.("\r"); // base URL -> scoped model mode
     panel.handleInput?.("\x1b[B"); // scoped model mode -> compaction model
-    panel.handleInput?.("\x1b[B"); // compaction model -> primary Save action
+    panel.handleInput?.("\x1b[B"); // compaction model -> priority
+    panel.handleInput?.("\x1b[B"); // priority -> primary Save action
     panel.handleInput?.("\r");
     await Promise.resolve();
     await Promise.resolve();

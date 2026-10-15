@@ -21,7 +21,7 @@
  * - Repairs retired gateway enabledModels entries before startup validation
  * - Omits the optional prompt_cache_key field from Gateway OpenAI-compatible requests
  * - Moves Gateway Responses tool-result images into labeled adjacent user content
- * - Requests priority traffic for exact GPT-5.6 Sol, GPT-6 Sol, and GPT-6.1 Sol Responses models
+ * - Offers scoped priority opt-out for exact eligible Gateway Responses models
  * - Recovers one fully completed Responses terminal event when Gateway HTTP EOF is late
  * - No SF Pi-owned model-specific headers or deployment-routing policy
  * - Keeps the runtime spine in this file while pushing settings/status helpers to lib/
@@ -236,6 +236,7 @@ import {
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { markBootStep } from "../../lib/common/boot-timing.ts";
 import { globalAgentPath } from "../../lib/common/pi-paths.ts";
+import { handlePriorityCommand } from "./lib/priority-command.ts";
 import { clearCompactionStatus } from "../../lib/common/compaction-status/store.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -250,6 +251,7 @@ type CommandArgs = {
     | "help"
     | "models"
     | "compaction"
+    | "priority"
     | "doctor"
     | "usage-probe"
     | "tokens"
@@ -357,7 +359,9 @@ export default function sfLlmGatewayInternalExtension(pi: ExtensionAPI) {
   };
 
   pi.on("session_start", async (_event, ctx) => {
-    gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry);
+    gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry, () =>
+      ctx.isProjectTrusted(),
+    );
     publishGatewayCompactionStatus(
       ctx.cwd,
       ctx.modelRegistry.getAvailable(),
@@ -510,6 +514,7 @@ function gatewayManagerAction(
           createPanel: (theme, cwd, scope, done, ctx) =>
             new GatewayConfigPanelComponent(theme, scope, cwd, done, {
               closeOnSave: true,
+              projectTrusted: ctx.isProjectTrusted(),
               compactionModels: buildGatewayCompactionModelOptions(
                 ctx.modelRegistry.getAvailable(),
               ),
@@ -558,6 +563,8 @@ async function handleCommand(
       return handleModelsCommand(pi, ctx);
     case "compaction":
       return handleCompactionSetupCommand(pi, ctx, parsed.scope);
+    case "priority":
+      return handlePriorityCommand(pi, ctx, parsed.positional ?? []);
     case "doctor":
       return handleDoctorCommand(pi, ctx, parsed.positional ?? []);
     case "usage-probe":
@@ -617,6 +624,8 @@ async function handlePanelAction(
       return handleModelsCommand(pi, ctx);
     case "compaction":
       return handleCompactionSetupCommand(pi, ctx, scope);
+    case "priority":
+      return handlePriorityCommand(pi, ctx, ["status"]);
     case "doctor":
       return handleDoctorCommand(pi, ctx, []);
     case "usage-probe":
@@ -648,7 +657,9 @@ function getPanelDefaultModelId(ctx: ExtensionCommandContext): string {
 
 function bindGatewayProviderContext(ctx: ExtensionCommandContext): void {
   if (gatewayProviderRuntime.authController.getActiveCwd() !== ctx.cwd) {
-    gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry);
+    gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry, () =>
+      ctx.isProjectTrusted(),
+    );
   }
 }
 
@@ -1651,6 +1662,13 @@ export function parseCommandArgs(args: string): CommandArgs {
   if (sub === "compaction") {
     return { subcommand: "compaction", scope };
   }
+  if (sub === "priority") {
+    return {
+      subcommand: "priority",
+      scope: tokens[2]?.toLowerCase() === "project" ? "project" : "global",
+      positional: tokens.slice(1),
+    };
+  }
   if (sub === "doctor" || sub === "dr") {
     return { subcommand: "doctor", scope, positional: tokens.slice(1) };
   }
@@ -1761,7 +1779,7 @@ async function runSetupWizard(
   while (true) {
     const result = await ctx.ui.custom<SetupOverlayResult | undefined>(
       (_tui, theme, _keybindings, done) =>
-        new GatewaySetupOverlayComponent(theme, scope, ctx.cwd, done),
+        new GatewaySetupOverlayComponent(theme, scope, ctx.cwd, done, ctx.isProjectTrusted()),
       {
         overlay: true,
         // Use function form for responsive sizing on terminal resize

@@ -7,6 +7,18 @@ import { describe, expect, it } from "vitest";
 import { GATEWAY_COMMAND_SURFACE, getGatewayArgumentCompletions } from "../lib/command-surface.ts";
 
 describe("gateway command surface", () => {
+  it("completes priority actions and scopes", () => {
+    expect(getGatewayArgumentCompletions("priority ")?.map((item) => item.value)).toEqual([
+      "priority status",
+      "priority on ",
+      "priority off ",
+      "priority reset ",
+    ]);
+    expect(getGatewayArgumentCompletions("priority off p")?.map((item) => item.value)).toEqual([
+      "priority off project",
+    ]);
+    expect(getGatewayArgumentCompletions("priority status ")).toBeNull();
+  });
   it("identifies scoped command-surface actions", () => {
     expect(
       GATEWAY_COMMAND_SURFACE.filter((item) => item.acceptsScope).map((item) => item.id),

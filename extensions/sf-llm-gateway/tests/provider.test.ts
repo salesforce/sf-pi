@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Behavior proofs for the complete native SF LLM Gateway Provider. */
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -19,6 +19,8 @@ import {
 } from "@earendil-works/pi-ai";
 import { ModelRuntime, type ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { compareVersions, getInstalledPiVersion } from "../../../lib/common/pi-compat.ts";
+import { writeScopedPriority } from "../lib/priority-settings.ts";
+import { GATEWAY_PRIORITY_ENV } from "../lib/transport-internal/openai-responses.ts";
 import { PROVIDER_NAME } from "../lib/config.ts";
 import type { GatewayModelInfoMap } from "../lib/models.ts";
 import type { GatewayModelIdDiscovery } from "../lib/models-internal/fetchers.ts";
@@ -125,6 +127,7 @@ interface StreamCall {
   baseUrl: string;
   apiKey?: string;
   resolvedRoot?: string;
+  priority?: string;
 }
 
 function streams(calls: StreamCall[]): GatewayStreamImplementations {
@@ -168,6 +171,7 @@ function call(
     modelId: model.id,
     baseUrl: model.baseUrl,
     apiKey: options?.apiKey,
+    priority: options?.env?.[GATEWAY_PRIORITY_ENV],
     resolvedRoot: options?.env?.[GATEWAY_RESOLVED_ROOT_ENV],
   };
 }
@@ -221,6 +225,44 @@ function cachedAnthropicModel(id: string): Model<"anthropic-messages"> {
 }
 
 describe("complete native Gateway Provider", () => {
+  it("reads priority at dispatch time for both streams and respects changing project trust", async () => {
+    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-priority-provider-"));
+    const agentDir = mkdtempSync(path.join(tmpdir(), "sf-pi-priority-agent-"));
+    const original = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      const calls: StreamCall[] = [];
+      const runtime = createTestGatewayProviderRuntime({
+        authController: authController(),
+        fetchers: fetchers(),
+        streams: streams(calls),
+      });
+      let trusted = true;
+      runtime.bind(cwd, UNUSED_UI, "tui", undefined, () => trusted);
+      const { models } = await configuredModels(runtime);
+      await models.refresh({ allowNetwork: true });
+      const model = runtime.provider.getModels().find((model) => model.api === "openai-responses")!;
+      writeScopedPriority(cwd, "global", false);
+      await models.completeSimple(model, EMPTY_CONTEXT);
+      await models.complete(model, EMPTY_CONTEXT);
+      expect(calls.slice(-2).map((call) => call.priority)).toEqual(["off", "off"]);
+      writeScopedPriority(cwd, "project", true);
+      await models.completeSimple(model, EMPTY_CONTEXT);
+      expect(calls.at(-1)?.priority).toBe("on");
+      trusted = false;
+      await models.complete(model, EMPTY_CONTEXT);
+      expect(calls.at(-1)?.priority).toBe("off");
+      writeScopedPriority(cwd, "global", true);
+      await models.completeSimple(model, EMPTY_CONTEXT);
+      expect(calls.at(-1)?.priority).toBe("on");
+      runtime.clear();
+    } finally {
+      if (original === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = original;
+      rmSync(cwd, { recursive: true, force: true });
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
   it("starts with an empty catalog and performs no construction network", () => {
     const network = fetchers();
     const controller = authController();

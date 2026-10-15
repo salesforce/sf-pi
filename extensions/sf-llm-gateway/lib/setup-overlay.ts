@@ -124,6 +124,7 @@ export class GatewaySetupOverlayComponent implements Focusable {
     scope: "global" | "project",
     cwd: string,
     private readonly done: (result: SetupOverlayResult | undefined) => void,
+    projectTrusted = false,
   ) {
     // Translate the shared panel's save and external-action results into the
     // standalone overlay result consumed by the extension entry point.
@@ -153,7 +154,7 @@ export class GatewaySetupOverlayComponent implements Focusable {
         // lifecycle work remain explicit commands outside this setup overlay.
         this.done({ action: "save" });
       },
-      { externalActions: true, closeOnSave: true },
+      { externalActions: true, closeOnSave: true, projectTrusted },
     );
   }
 

@@ -6,6 +6,7 @@
  * runtime event handlers makes the main index easier to scan and easier to test.
  */
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { readEffectivePrioritySettings } from "./priority-settings.ts";
 import { readEffectiveCompactionSettings } from "./compaction-settings.ts";
 import {
   API_KEY_ENV,
@@ -84,6 +85,7 @@ export function buildStatusReport(
   const savedConfig = getMergedSavedGatewayConfig(ctx.cwd);
   const savedScope = getSavedExclusiveScopeStatus(ctx.cwd);
   const compaction = readEffectiveCompactionSettings(ctx.cwd, undefined, ctx.isProjectTrusted());
+  const priority = readEffectivePrioritySettings(ctx.cwd, undefined, ctx.isProjectTrusted());
   const activeModel = getActiveModelDefinition(ctx.model?.id, state.discovery?.modelIds);
   const contextUsage = ctx.getContextUsage();
   const discovery = state.discovery;
@@ -110,6 +112,7 @@ export function buildStatusReport(
     `Active model: ${ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "none"}`,
     `Active SF model: ${activeModel ? activeModel.name : "no"}`,
     `Compaction model: ${compaction.model} (${compaction.source})`,
+    `Priority requests: ${priority.enabled ? "ON" : "OFF"} (${priority.source}; eligible Gateway Responses models only)`,
     "Thinking selection: managed by Pi/user settings",
     `Context usage: ${contextUsage ? `${formatTokens(contextUsage.tokens)} / ${formatTokens(contextUsage.contextWindow)}` : "unknown"}`,
     `Monthly usage: ${formatMonthlyUsageReportLine(state.monthlyUsage, state.monthlyUsageError)}`,

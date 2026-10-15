@@ -24,8 +24,8 @@ describe("Gateway session cwd guards", () => {
   });
 
   it("binds the complete Provider to the active session cwd", () => {
-    expect(indexSource).toContain(
-      "gatewayProviderRuntime.bind(ctx.cwd, ctx.ui, ctx.mode, ctx.modelRegistry)",
+    expect(indexSource).toMatch(
+      /gatewayProviderRuntime\.bind\(ctx\.cwd, ctx\.ui, ctx\.mode, ctx\.modelRegistry, \(\) =>\s*ctx\.isProjectTrusted\(\)/u,
     );
     expect(indexSource).toContain("repairGatewayIdentitySettings(ctx.cwd)");
     expect(indexSource).toContain("repairGatewayDefaultModelSettings(ctx.cwd");

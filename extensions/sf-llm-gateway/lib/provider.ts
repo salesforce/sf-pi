@@ -50,6 +50,9 @@ import {
   streamSfGatewayResponsesFull,
 } from "./transport.ts";
 
+import { readEffectivePrioritySettings } from "./priority-settings.ts";
+import { GATEWAY_PRIORITY_ENV } from "./transport-internal/openai-responses.ts";
+
 const PLACEHOLDER_ROOT = "https://gateway.invalid";
 
 export interface GatewayNativeDiscoveryState {
@@ -97,6 +100,7 @@ export interface GatewayProviderRuntime {
     ui: ExtensionUIContext,
     mode: ExtensionContext["mode"],
     modelRegistry?: ModelRegistry,
+    isProjectTrusted?: () => boolean,
   ): void;
   clear(): void;
   getLastDiscovery(): GatewayNativeDiscoveryState;
@@ -149,6 +153,7 @@ function withEndpoint<TApi extends GatewayApi>(
 
 function createApiMap(
   streams: GatewayStreamImplementations,
+  priorityEnabled: () => boolean,
 ): Partial<Record<GatewayApi, ProviderStreams>> {
   return {
     "anthropic-messages": {
@@ -174,11 +179,17 @@ function createApiMap(
     "openai-responses": {
       stream(model, context, options) {
         const routed = withEndpoint(model as Model<"openai-responses">, options);
-        return streams.responsesFull(routed, context, options);
+        return streams.responsesFull(routed, context, {
+          ...options,
+          env: { ...options?.env, [GATEWAY_PRIORITY_ENV]: priorityEnabled() ? "on" : "off" },
+        });
       },
       streamSimple(model, context, options) {
         const routed = withEndpoint(model as Model<"openai-responses">, options);
-        return streams.responsesSimple(routed, context, options);
+        return streams.responsesSimple(routed, context, {
+          ...options,
+          env: { ...options?.env, [GATEWAY_PRIORITY_ENV]: priorityEnabled() ? "on" : "off" },
+        });
       },
     },
   };
@@ -295,13 +306,22 @@ export function createGatewayProviderRuntime(
     }
   };
 
+  let activeCwd: string | undefined;
+  let projectTrusted = () => false;
+  const priorityEnabled = () =>
+    readEffectivePrioritySettings(
+      activeCwd ?? "",
+      undefined,
+      Boolean(activeCwd) && projectTrusted(),
+    ).enabled;
+
   const nativeProvider = createProvider<GatewayApi>({
     id: PROVIDER_NAME,
     name: PROVIDER_DISPLAY_NAME,
     auth: { apiKey: authController.auth },
     models: baseline,
     fetchModels,
-    api: createApiMap(streams),
+    api: createApiMap(streams, priorityEnabled),
   });
   const provider: Provider<GatewayApi> = {
     ...nativeProvider,
@@ -332,11 +352,15 @@ export function createGatewayProviderRuntime(
   return {
     provider,
     authController,
-    bind(cwd, ui, mode, modelRegistry) {
+    bind(cwd, ui, mode, modelRegistry, isProjectTrusted = () => false) {
+      activeCwd = cwd;
+      projectTrusted = isProjectTrusted;
       resetSessionDiagnostics();
       authController.bind(cwd, ui, mode, modelRegistry);
     },
     clear() {
+      activeCwd = undefined;
+      projectTrusted = () => false;
       authController.clear();
       resetSessionDiagnostics();
     },

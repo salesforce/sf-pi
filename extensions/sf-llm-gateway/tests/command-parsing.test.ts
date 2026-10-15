@@ -15,6 +15,22 @@ import { parseCommandArgs } from "../index.ts";
 // -------------------------------------------------------------------------------------------------
 
 describe("parseCommandArgs", () => {
+  it("parses priority action and scope without dropping invalid arguments", () => {
+    expect(parseCommandArgs("priority off project")).toEqual({
+      subcommand: "priority",
+      scope: "project",
+      positional: ["off", "project"],
+    });
+    expect(parseCommandArgs("priority status")).toMatchObject({
+      subcommand: "priority",
+      positional: ["status"],
+    });
+    expect(parseCommandArgs("priority off invalid extra").positional).toEqual([
+      "off",
+      "invalid",
+      "extra",
+    ]);
+  });
   it("defaults to status with global scope when no args", () => {
     const result = parseCommandArgs("");
     expect(result.subcommand).toBe("status");

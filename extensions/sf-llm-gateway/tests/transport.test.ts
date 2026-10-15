@@ -12,6 +12,7 @@ import {
   type SimpleStreamOptions,
   type TranscriptContext,
 } from "@earendil-works/pi-ai";
+import { GATEWAY_PRIORITY_ENV } from "../lib/transport-internal/openai-responses.ts";
 import {
   formatAnthropicStreamError,
   streamSfGatewayOpenAI,
@@ -151,7 +152,7 @@ async function resultAfterTerminalCloseGuard(
 
 async function captureResponsesPayload(
   model: Model<"openai-responses">,
-  options: Pick<SimpleStreamOptions, "samplingParams" | "onPayload" | "sessionId"> = {},
+  options: Pick<SimpleStreamOptions, "samplingParams" | "onPayload" | "sessionId" | "env"> = {},
   full = false,
   context = CONTEXT,
 ): Promise<Record<string, unknown> | undefined> {
@@ -241,6 +242,49 @@ describe("generic Chat Completions adapter", () => {
 });
 
 describe("generic Responses adapter", () => {
+  it.each([false, true])(
+    "honors opt-out after caller hooks for both streams (full=%s)",
+    async (full) => {
+      for (const id of ["gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol"]) {
+        const onPayload = vi.fn((payload: unknown) => ({
+          ...(payload as object),
+          service_tier: "priority",
+          metadata: { test: true },
+        }));
+        const payload = await captureResponsesPayload(
+          { ...responsesModel(), id },
+          {
+            env: { [GATEWAY_PRIORITY_ENV]: "off" },
+            samplingParams: { service_tier: "priority", top_p: 0.5 },
+            onPayload,
+          },
+          full,
+        );
+        expect(payload).toMatchObject({
+          service_tier: "default",
+          top_p: 0.5,
+          metadata: { test: true },
+        });
+        expect(payload).not.toHaveProperty("prompt_cache_key");
+        expect(onPayload).toHaveBeenCalledOnce();
+      }
+    },
+  );
+  it("does not apply opt-out policy to other models or providers", async () => {
+    const options = {
+      env: { [GATEWAY_PRIORITY_ENV]: "off" },
+      samplingParams: { service_tier: "priority" },
+    };
+    expect(await captureResponsesPayload(responsesModel(), options)).toMatchObject({
+      service_tier: "priority",
+    });
+    expect(
+      await captureResponsesPayload(
+        { ...responsesModel(), id: "gpt-6-sol", provider: "openai" },
+        options,
+      ),
+    ).toMatchObject({ service_tier: "priority" });
+  });
   it.each(["gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol"])(
     "requests priority traffic for Gateway %s",
     async (id) => {
