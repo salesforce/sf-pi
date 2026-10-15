@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.339.3-2026-10-14",
-  "latestVersion": "0.339.3",
+  "revision": "release-0.339.4-2026-10-15",
+  "latestVersion": "0.339.4",
   "announcements": [
     {
-      "id": "release-0.339.3",
+      "id": "release-0.339.4",
       "kind": "update",
-      "title": "sf-pi v0.339.3 — data360: name exact discovery entry points in tool guidance",
-      "publishedAt": "2026-10-14T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.3",
+      "title": "sf-pi v0.339.4 — data360: bound rich run cards and honor display preferences",
+      "publishedAt": "2026-10-15T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.4",
       "severity": "info",
-      "body": "data360: name exact discovery entry points in tool guidance"
+      "body": "data360: bound rich run cards and honor display preferences"
     }
   ]
 }
