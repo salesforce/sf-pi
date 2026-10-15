@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.5](https://github.com/salesforce/sf-pi/compare/v0.339.4...v0.339.5) (2026-10-15)
+
+
+### Bug Fixes
+
+* **llm-gateway:** add scoped priority request opt-out ([91f4e7e](https://github.com/salesforce/sf-pi/commit/91f4e7e090bc372761de7b80517c7fda81ac41fb))
+
 ## [0.339.4](https://github.com/salesforce/sf-pi/compare/v0.339.3...v0.339.4) (2026-10-15)
 
 
