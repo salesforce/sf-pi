@@ -25,6 +25,7 @@ import type {
   GuardrailConfig,
   OrgAwareGateConfig,
   OrgAwareRule,
+  OrgAwareMatch,
   PoliciesConfig,
   PolicyRule,
 } from "./types.ts";
@@ -260,9 +261,36 @@ function sanitizeOrgAwareRule(input: unknown): OrgAwareRule | undefined {
   const raw = input as Record<string, unknown>;
   if (typeof raw.id !== "string") return undefined;
   const match = raw.match as Record<string, unknown> | undefined;
-  if (!match || match.tool !== "bash" || !match.ast) return undefined;
-  const ast = match.ast as Record<string, unknown>;
-  if (typeof ast.cmd !== "string") return undefined;
+  if (!match) return undefined;
+  let cleanedMatch: OrgAwareMatch;
+  if (match.tool === "sf_integrate" || match.tool === "sf_flow") {
+    const actions = Array.isArray(match.actions)
+      ? match.actions.filter(
+          (value): value is string => typeof value === "string" && value.length > 0,
+        )
+      : [];
+    if (!actions.length) return undefined;
+    cleanedMatch = { tool: match.tool, actions };
+  } else {
+    if (match.tool !== "bash" || !match.ast) return undefined;
+    const ast = match.ast as Record<string, unknown>;
+    if (typeof ast.cmd !== "string") return undefined;
+    cleanedMatch = {
+      tool: "bash",
+      ast: {
+        cmd: ast.cmd,
+        subCmd: Array.isArray(ast.subCmd)
+          ? (ast.subCmd as (string | string[])[]).filter(
+              (v) => typeof v === "string" || Array.isArray(v),
+            )
+          : undefined,
+        flagIn:
+          ast.flagIn && typeof ast.flagIn === "object"
+            ? (ast.flagIn as Record<string, string[]>)
+            : undefined,
+      },
+    };
+  }
   const whenOrgType = Array.isArray(raw.whenOrgType)
     ? raw.whenOrgType.filter(
         (v): v is "production" | "sandbox" | "scratch" | "developer" | "trial" | "unknown" =>
@@ -279,21 +307,7 @@ function sanitizeOrgAwareRule(input: unknown): OrgAwareRule | undefined {
   return {
     id: raw.id,
     description: typeof raw.description === "string" ? raw.description : undefined,
-    match: {
-      tool: "bash",
-      ast: {
-        cmd: ast.cmd,
-        subCmd: Array.isArray(ast.subCmd)
-          ? (ast.subCmd as (string | string[])[]).filter(
-              (v) => typeof v === "string" || Array.isArray(v),
-            )
-          : undefined,
-        flagIn:
-          ast.flagIn && typeof ast.flagIn === "object"
-            ? (ast.flagIn as Record<string, string[]>)
-            : undefined,
-      },
-    },
+    match: cleanedMatch,
     whenOrgType,
     action,
     behavior,

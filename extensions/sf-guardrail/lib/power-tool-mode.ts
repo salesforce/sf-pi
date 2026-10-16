@@ -4,7 +4,7 @@ import type { ClassifiedDecision } from "./types.ts";
 
 export type GuardrailPowerToolMode = "off" | "native" | "all";
 export type GuardrailNativeToolFamily =
-  "apex" | "agentscript" | "data360" | "browser" | "slack" | "soql";
+  "apex" | "agentscript" | "data360" | "browser" | "slack" | "soql" | "integrate" | "flow";
 
 export interface GuardrailPowerToolSettings {
   mode?: GuardrailPowerToolMode;
@@ -26,6 +26,12 @@ export const NATIVE_TOOL_FAMILIES: Array<{
   { id: "data360", label: "Data 360 execution", description: "confirmed Data 360 actions" },
   { id: "browser", label: "SF Browser commits", description: "Save/Delete/Activate UI gestures" },
   { id: "slack", label: "Slack Canvas writes", description: "slack_canvas create/edit" },
+  {
+    id: "integrate",
+    label: "Integration mutations",
+    description: "setup, credential population, OAuth authorization",
+  },
+  { id: "flow", label: "Flow lifecycle", description: "deploy, activate, deactivate" },
   { id: "soql", label: "SOQL disclosures", description: "export, queryAll, unbounded reads" },
 ];
 
@@ -72,7 +78,7 @@ export function shouldPowerToolAutoApprove(
   settings: GuardrailPowerToolSettings | undefined,
 ): boolean {
   const mode = settings?.mode ?? "off";
-  if (mode === "off") return false;
+  if (decision.action !== "confirm" || mode === "off") return false;
   if (isProductionLikeDecision(decision) && settings?.productionUnknown !== true) return false;
   if (mode === "all") return true;
   if (decision.feature !== "nativeToolGate") return false;
@@ -85,6 +91,8 @@ export function nativeToolFamilyForDecision(
 ): GuardrailNativeToolFamily | undefined {
   if (decision.feature !== "nativeToolGate") return undefined;
   const family = decision.approvalScope?.operationFamily ?? "";
+  if (family.startsWith("integration ")) return "integrate";
+  if (family === "flow lifecycle") return "flow";
   if (family === "anonymous apex") return "apex";
   if (family.startsWith("agent ")) return "agentscript";
   if (family.startsWith("data360")) return "data360";
@@ -107,7 +115,7 @@ function isProductionLikeDecision(decision: ClassifiedDecision): boolean {
   // data without a target_org. Treat those unresolved decisions as Unknown Org
   // so the separate productionUnknown opt-in remains meaningful.
   const family = nativeToolFamilyForDecision(decision);
-  return family === "browser" || family === "soql";
+  return family === "browser" || family === "soql" || family === "integrate" || family === "flow";
 }
 
 function isPowerToolMode(value: unknown): value is GuardrailPowerToolMode {

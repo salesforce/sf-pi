@@ -2,7 +2,7 @@
 
 ## What It Does
 
-SF Integrate provides plan-bound Salesforce integration authentication setup in explicit non-production orgs.
+SF Integrate provides plan-bound Salesforce integration authentication setup in explicit Salesforce orgs.
 
 ```text
 plan → guarded create → secret-safe population → authorization → verify → bounded test
@@ -112,7 +112,7 @@ External Auth Identity Provider → External Credential → Named Credential
 - No startup org probe, metadata describe, subprocess, or network call runs automatically.
 - Every org-backed action requires an explicit target org.
 - `setup.apply`, `secret.populate`, and `oauth.authorize` require a source-bound plan, `allow_mutation=true`, and separate Guardrail approval.
-- Production and unknown org mutations are refused.
+- SF Guardrail owns production and unknown-org mutation policy. Its production integration rule defaults to Block; users can select Ask me or Off in Guardrail settings. Power Tool Mode applies only to confirmation decisions and requires the separate production/unknown-org opt-in.
 - Plans are session-bound, org-bound, API-version-bound, and content-rehashed at apply time. Generic inbound and outbound resources remain create-only; hosted MCP can adopt only an exact existing ECA.
 - Raw secret values aren't accepted by the tool schema. Secrets come from a masked prompt or named environment variable and are sent directly to Salesforce.
 - Custom API-key External Credential metadata receives check-only validation before deployment.

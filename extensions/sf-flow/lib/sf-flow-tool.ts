@@ -181,7 +181,7 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
       "Use sf_flow diagnose.file before validate.check; check-only validation never deploys or activates a Flow.",
       "Use sf_flow fix.apply only with a current fix_id and source_version returned by diagnose.file; stale or unsupported fixes are refused.",
       "Use sf_flow lifecycle.status for canonical REST lifecycle evidence; do not delegate FlowDefinitionView lifecycle verification to generic SOQL guessing.",
-      "Use sf_flow deploy.activate for one exact local Flow file, sf_flow lifecycle.activate for one exact existing version, and sf_flow lifecycle.deactivate for deterministic deactivation. Mutations require explicit target_org and allow_mutation=true, remain Guardrail-mediated, and refuse production or unknown orgs.",
+      "Use sf_flow deploy.activate for one exact local Flow file, sf_flow lifecycle.activate for one exact existing version, and sf_flow lifecycle.deactivate for deterministic deactivation. Mutations require explicit target_org and allow_mutation=true, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail.",
       "Do not invent `sf flow activate` or manually build temporary activation projects; SF CLI has no such Flow activation command.",
       "Use sf_flow targeted Flow tests only after an eligible Flow test exists in the org.",
       "Use the installed SF Flow guide path declared in <sf_engineering_constitution> for core Flow families, lifecycle ordering, and proof boundaries.",

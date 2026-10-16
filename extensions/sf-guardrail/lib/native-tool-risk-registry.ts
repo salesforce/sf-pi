@@ -150,7 +150,6 @@ function classifySfIntegrate(
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
-    blockProductionOrUnknown: true,
     allowSession: action === "setup.apply",
   };
 }
@@ -205,7 +204,6 @@ function classifySfFlowLifecycle(
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
-    blockProductionOrUnknown: true,
   };
 }
 

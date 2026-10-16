@@ -62,6 +62,8 @@ describe("bundled defaults", () => {
         "sf-apex-run-prod",
         "sf-data-mutate-prod",
         "sf-org-api-destructive-prod",
+        "native-sf-integrate-prod",
+        "native-sf-flow-prod",
       ]),
     );
   });

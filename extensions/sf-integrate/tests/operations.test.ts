@@ -149,64 +149,71 @@ describe("SF Integrate operations", () => {
       adapter(),
     );
 
-    expect(result.details).toMatchObject({ ok: true, ready: true, mutation_allowed: true });
+    expect(result.details).toMatchObject({
+      ok: true,
+      ready: true,
+      mutation_policy: "sf-guardrail",
+    });
     expect(result.content[0]?.text).toContain("PASS");
   });
 
-  it("creates a source-bound plan and applies check-only before deploy", async () => {
-    const integrationAdapter = adapter();
-    const planned = await designPlan(
-      {
-        action: "design.plan",
-        target_org: "IntegrationDev",
-        mcp_preset: "headless-360",
-      },
-      session(),
-      state,
-      integrationAdapter,
-    );
-    expect(planned.details).toMatchObject({
-      eca_operation: "create",
-      activation: { operation: "create", developer_name: "platform_headless_360" },
-    });
-    const planId = String(planned.details.plan_id);
-    const planHash = String(planned.details.plan_hash);
+  it.each(["developer", "production", "unknown"])(
+    "validates and verifies a source-bound plan for %s after Guardrail mediation",
+    async (orgType) => {
+      const integrationAdapter = adapter();
+      const planned = await designPlan(
+        {
+          action: "design.plan",
+          target_org: "IntegrationDev",
+          mcp_preset: "headless-360",
+        },
+        session(orgType),
+        state,
+        integrationAdapter,
+      );
+      expect(planned.details).toMatchObject({
+        eca_operation: "create",
+        activation: { operation: "create", developer_name: "platform_headless_360" },
+      });
+      const planId = String(planned.details.plan_id);
+      const planHash = String(planned.details.plan_hash);
 
-    const applied = await applySetup(
-      {
-        action: "setup.apply",
-        target_org: "IntegrationDev",
-        app_name: "SfPiHeadless360Mcp",
-        plan_id: planId,
-        plan_hash: planHash,
-        allow_mutation: true,
-      },
-      session(),
-      state,
-      integrationAdapter,
-    );
+      const applied = await applySetup(
+        {
+          action: "setup.apply",
+          target_org: "IntegrationDev",
+          app_name: "SfPiHeadless360Mcp",
+          plan_id: planId,
+          plan_hash: planHash,
+          allow_mutation: true,
+        },
+        session(orgType),
+        state,
+        integrationAdapter,
+      );
 
-    expect(applied.details).toMatchObject({
-      ok: true,
-      verified: true,
-      activation: { active: true, operation: "create" },
-      navigation: {
-        path: "/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
-        url: "https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
-      },
-    });
-    expect(applied.content[0]?.text).toContain(
-      "Open in Salesforce: https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
-    );
-    expect(integrationAdapter.deploy).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ checkOnly: true }),
-    );
-    expect(integrationAdapter.deploy).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ checkOnly: false }),
-    );
-  });
+      expect(applied.details).toMatchObject({
+        ok: true,
+        verified: true,
+        activation: { active: true, operation: "create" },
+        navigation: {
+          path: "/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+          url: "https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+        },
+      });
+      expect(applied.content[0]?.text).toContain(
+        "Open in Salesforce: https://example.develop.my.salesforce.com/lightning/setup/ManageExternalClientApplication/0xI000000000001/detail",
+      );
+      expect(integrationAdapter.deploy).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ checkOnly: true }),
+      );
+      expect(integrationAdapter.deploy).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ checkOnly: false }),
+      );
+    },
+  );
 
   it("adopts an exact existing ECA and active hosted server without redeploying", async () => {
     const integrationAdapter = adapter();
@@ -333,22 +340,67 @@ describe("SF Integrate operations", () => {
     expect(integrationAdapter.deploy).not.toHaveBeenCalled();
   });
 
-  it("refuses production even with mutation intent", async () => {
-    await expect(
-      applySetup(
-        {
-          action: "setup.apply",
-          target_org: "Prod",
-          app_name: "SfPiHeadless360Mcp",
-          plan_id: "plan_x",
-          plan_hash: "sha256:x",
-          allow_mutation: true,
-        },
-        session("production"),
-        state,
+  it.each(["production", "unknown"])(
+    "leaves %s policy to Guardrail but still validates the plan",
+    async (orgType) => {
+      const integrationAdapter = adapter();
+      await expect(
+        applySetup(
+          {
+            action: "setup.apply",
+            target_org: "ExplicitOrg",
+            app_name: "SfPiHeadless360Mcp",
+            plan_id: "missing",
+            plan_hash: "sha256:x",
+            allow_mutation: true,
+          },
+          session(orgType),
+          state,
+          integrationAdapter,
+        ),
+      ).rejects.toThrow("plan");
+      expect(integrationAdapter.deploy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["production", "unknown"])(
+    "reports read-only capability readiness for %s",
+    async (orgType) => {
+      const integrationAdapter = adapter();
+      const result = await orgPreflight(
+        { action: "org.preflight", target_org: "ExplicitOrg" },
+        session(orgType),
+        integrationAdapter,
+      );
+      expect(result.details).toMatchObject({
+        ok: true,
+        ready: true,
+        mutation_policy: "sf-guardrail",
+      });
+      expect(result.details).not.toHaveProperty("mutation_allowed");
+      expect(integrationAdapter.deploy).not.toHaveBeenCalled();
+      expect(integrationAdapter.applyMcpServerActivation).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps missing capability and API failures distinct from safety policy", async () => {
+    const integrationAdapter = adapter();
+    vi.mocked(integrationAdapter.describeMetadataTypes).mockResolvedValue(new Set());
+    const result = await orgPreflight(
+      { action: "org.preflight", target_org: "ExplicitOrg" },
+      session("production"),
+      integrationAdapter,
+    );
+    expect(result).toMatchObject({ isError: true, details: { ok: false, ready: false } });
+    const lowApiSession = session("production");
+    (lowApiSession.target as { apiVersion: string }).apiVersion = "60.0";
+    expect(
+      await orgPreflight(
+        { action: "org.preflight", target_org: "ExplicitOrg" },
+        lowApiSession,
         adapter(),
       ),
-    ).rejects.toThrow("refuses production or unknown");
+    ).toMatchObject({ isError: true, details: { ready: false } });
   });
 
   it("returns a secret-free MCP handoff with the public consumer key", async () => {

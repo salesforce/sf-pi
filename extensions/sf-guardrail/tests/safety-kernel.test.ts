@@ -480,7 +480,7 @@ describe("Safety Kernel", () => {
     expect(decision).toMatchObject({
       action: "block",
       feature: "nativeToolGate",
-      ruleId: "native-sf-integrate-setup",
+      ruleId: "native-sf-integrate-prod",
       orgType: "production",
     });
   });
@@ -684,7 +684,7 @@ describe("Safety Kernel", () => {
     expect(decision).toMatchObject({
       action: "block",
       feature: "nativeToolGate",
-      ruleId: "native-sf-flow-lifecycle",
+      ruleId: "native-sf-flow-prod",
       orgType: "production",
     });
     expect(decision?.reason).toContain("refuses production or unknown");

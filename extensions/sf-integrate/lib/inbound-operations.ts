@@ -141,7 +141,6 @@ export async function applyInboundSetup(
       "setup.apply requires allow_mutation=true; Guardrail approval remains separate.",
     );
   }
-  assertNonProduction(session);
   const plan = currentPlan(params, session, state);
   const before = await adapter.inspectEca(session, plan.app_name);
   if (Object.values(before.components).some(Boolean)) {
@@ -592,12 +591,6 @@ function decodeXml(value: string): string {
     .replace(/&quot;/gu, '"')
     .replace(/&apos;/gu, "'")
     .replace(/&amp;/gu, "&");
-}
-
-function assertNonProduction(session: SalesforceSession): void {
-  if (!["sandbox", "scratch", "developer", "trial"].includes(session.target.orgType)) {
-    throw new Error("SF Integrate inbound mutation refuses production or unknown orgs.");
-  }
 }
 
 function result(

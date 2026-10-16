@@ -47,7 +47,7 @@ The intended loop is:
 
 A successful local diagnosis does not establish deployment readiness. Salesforce check-only validation is the platform evidence boundary.
 
-Lifecycle mutations require an explicit target org and `allow_mutation=true`, remain Guardrail-mediated, and refuse production or unknown orgs. `deploy.activate` leaves the checked-in file unchanged by staging a temporary Active copy. `lifecycle.activate` never guesses latest. `lifecycle.deactivate` deploys `FlowDefinition` metadata with `<activeVersionNumber>0</activeVersionNumber>`, then verifies `FlowDefinitionView.IsActive=false` and `ActiveVersionId=null`; schedule-triggered Flows also require no matching `CronTrigger`. See [`AGENT_GUIDE.md`](./AGENT_GUIDE.md#activation-and-deactivation).
+Lifecycle mutations require an explicit target org and `allow_mutation=true`, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail. `deploy.activate` leaves the checked-in file unchanged by staging a temporary Active copy. `lifecycle.activate` never guesses latest. `lifecycle.deactivate` deploys `FlowDefinition` metadata with `<activeVersionNumber>0</activeVersionNumber>`, then verifies `FlowDefinitionView.IsActive=false` and `ActiveVersionId=null`; schedule-triggered Flows also require no matching `CronTrigger`. See [`AGENT_GUIDE.md`](./AGENT_GUIDE.md#activation-and-deactivation).
 
 ## Org-Grounded Authoring
 

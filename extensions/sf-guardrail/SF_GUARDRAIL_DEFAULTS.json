@@ -535,6 +535,26 @@
         "whenOrgType": ["production"],
         "action": "confirm",
         "confirmMessage": "Publish an agent authoring bundle to PRODUCTION org {orgAlias}?\n\n  {command}"
+      },
+      {
+        "id": "native-sf-integrate-prod",
+        "description": "Production integration mutations",
+        "match": {
+          "tool": "sf_integrate",
+          "actions": ["setup.apply", "secret.populate", "oauth.authorize"]
+        },
+        "whenOrgType": ["production", "unknown"],
+        "action": "block"
+      },
+      {
+        "id": "native-sf-flow-prod",
+        "description": "Production Flow lifecycle mutations",
+        "match": {
+          "tool": "sf_flow",
+          "actions": ["deploy.activate", "lifecycle.activate", "lifecycle.deactivate"]
+        },
+        "whenOrgType": ["production", "unknown"],
+        "action": "block"
       }
     ]
   }

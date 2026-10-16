@@ -1,6 +1,6 @@
 # SF Integrate Agent Guide
 
-Use `sf_integrate` for plan-bound integration authentication setup in explicit non-production Salesforce orgs.
+Use `sf_integrate` for plan-bound integration authentication setup in explicit Salesforce orgs.
 
 ## Choose the lifecycle
 
@@ -73,7 +73,7 @@ The standard profile source is always check-only validated before deployment. Cu
 ## Mutation safety
 
 - Every org-backed action requires `target_org`; default-org fallback is refused.
-- `setup.apply`, `secret.populate`, and `oauth.authorize` require `allow_mutation=true`, remain Guardrail-mediated, and refuse production or unknown orgs.
+- `setup.apply`, `secret.populate`, and `oauth.authorize` require `allow_mutation=true`, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail.
 - Plans are session-bound, org-bound, API-version-bound, and content-rehashed at apply time. Generic inbound and outbound plans are create-only; hosted MCP plans can adopt an exact ECA without modifying it.
 - Existing mismatched resources or state that appears after planning is drift and is never overwritten silently.
 - Headless activation uses `McpServerAccess` only after runtime Tooling describe proves its exact contract. Missing capabilities or permissions route to the SF Browser fallback.
@@ -90,4 +90,9 @@ The standard profile source is always check-only validated before deployment. Cu
 - `setup.verify` proves exact stack, access, assignment, and available authentication status.
 - `connection.test` proves only one bounded GET callout at that time.
 
-Production policies, existing-resource updates, rotation, migration, rollback, private endpoints, AWS SigV4, and user-selected destructive cleanup remain future work.
+Existing-resource updates, rotation, migration, rollback, private endpoints, AWS SigV4, and user-selected destructive cleanup remain future work.
+
+`org.preflight` reports read-only capability readiness. `ready=true` is not
+mutation authorization. Production and unknown targets default to Block under
+Guardrail's `native-sf-integrate-prod` rule; Guardrail settings and Power Tool Mode
+own changes to that decision. There is no family-tool production override.

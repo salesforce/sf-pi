@@ -210,7 +210,6 @@ export async function applyMcpServerActivation(input: {
   session: SalesforceSession;
   plan: McpServerActivationPlan;
 }): Promise<McpServerActivationResult> {
-  assertNonProduction(input.session);
   if (input.plan.operation === "browser") {
     throw new Error("Browser activation plans must use the SF Browser fallback.");
   }

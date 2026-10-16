@@ -606,7 +606,7 @@
         "No startup project scans, org probes, subprocesses, or network calls; the tool registers on session_start and performs work only for explicit actions or a successful Flow file edit.",
         "Normal Pi read/write/edit tools own Flow business-logic changes; fix.apply is limited to source-bound API-version, Auto-Layout, and unused-variable transformations and refuses stale source.",
         "validate.check stages one exact Flow in a temporary directory and uses Metadata API checkOnly=true; it never deploys or activates metadata.",
-        "deploy.activate, lifecycle.activate, and lifecycle.deactivate require explicit target_org plus allow_mutation=true, are Guardrail-mediated, refuse production/unknown orgs, perform check-only before mutation, and verify resulting state through REST FlowDefinitionView/FlowVersionView evidence.",
+        "deploy.activate, lifecycle.activate, and lifecycle.deactivate require explicit target_org plus allow_mutation=true, are Guardrail-mediated, delegate production/unknown-org policy to SF Guardrail, perform check-only before mutation, and verify resulting state through REST FlowDefinitionView/FlowVersionView evidence.",
         "Local-file activation stages an isolated Active copy without changing the repository source; exact-version activation never guesses latest; deactivation deploys FlowDefinition activeVersionNumber=0 and verifies IsActive=false plus ActiveVersionId=null and no remaining scheduled job.",
         "Flow test execution is API-native, targeted, wait-bounded, and limited to explicit Flow API names or Flow test names; no all-org test default or Flow test suites are exposed.",
         "Org-grounded author.plan runs only with an explicit target_org and returns bounded read-only object/event fields, matching action contracts, matching subflow contracts, and explicit coverage gaps.",
@@ -618,7 +618,7 @@
     "entry": "extensions/sf-flow/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 8019
+    "srcLoc": 8016
   },
   {
     "id": "sf-guardrail",
@@ -668,14 +668,14 @@
         "Every block / allow / confirm decision is persisted as an audit entry.",
         "Power Tool Mode can persistently auto-approve selected confirm-class decisions; authenticated developer/scratch/sandbox/trial targets and trusted Salesforce-owned non-production URLs honor that setting, while production/unknown org auto-approve is a separate opt-in and hard blocks are never bypassed.",
         "Operator auto-approve env mode is process-scoped, audited, and does not bypass hard blocks.",
-        "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice Agent Script lifecycle, SF Integrate setup and credential population, SF Flow activation/deactivation, Data 360, Apex, Slack Canvas, SF Browser commit surfaces, Salesforce MCP record writes/deletes, Backup and Recover writes, Content writes, Headless 360 dispatch, DX mutations, hosted Data 360 execution, every experimental Agentforce Sales operation, and managed external MCP operations. Legacy SObject and unsupported hosted mutations fail closed.",
+        "Known high-value native tool mutations are mediated before execution through the same Safety Kernel and HITL path, including first-slice Agent Script lifecycle, SF Integrate setup and credential population, SF Flow activation/deactivation, Data 360, Apex, Slack Canvas, SF Browser commit surfaces, Salesforce MCP record writes/deletes, Backup and Recover writes, Content writes, Headless 360 dispatch, DX mutations, hosted Data 360 execution, every experimental Agentforce Sales operation, and managed external MCP operations. Integration and Flow production/unknown restrictions use configurable org-operation rules (Block by default), and both families participate in Power Tool Mode. Legacy SObject and unsupported hosted mutations fail closed.",
         "alwaysActive=false but disabling removes the safety layer entirely; the manager surfaces this clearly."
       ]
     },
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6396
+    "srcLoc": 6434
   },
   {
     "id": "sf-herdr",
@@ -749,7 +749,7 @@
     "docs": {
       "intentGroup": "Work with Salesforce orgs",
       "agentGuide": "AGENT_GUIDE.md",
-      "summary": "Owns plan-bound Salesforce integration authentication setup in explicit non-production orgs. The hosted MCP slice creates or adopts an exact Headless 360 External Client App, activates the hosted server through runtime-proved Tooling capabilities with an SF Browser fallback, and emits an org-bound SF MCP handoff. The generic ECA slice supports grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, direct Salesforce Setup navigation, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.",
+      "summary": "Owns plan-bound Salesforce integration authentication setup in explicit Salesforce orgs. The hosted MCP slice creates or adopts an exact Headless 360 External Client App, activates the hosted server through runtime-proved Tooling capabilities with an SF Browser fallback, and emits an org-bound SF MCP handoff. The generic ECA slice supports grounded Authorization Code, public PKCE, Client Credentials, Device, JWT Bearer, and Token Exchange profiles with four-core-component Metadata API check-only validation, Token Exchange handler binding, exact readback, direct Salesforce Setup navigation, and disposable matrix proofs. The outbound slice supports OAuth and API-key External Credential plus Named Credential stacks, secret-safe population, principal permission access, consent URLs, resulting-state verification, and GET-only callout proof through SF Apex.",
       "primaryFiles": [
         "index.ts",
         "lib/sf-integrate-tool.ts",
@@ -768,7 +768,7 @@
       ],
       "safety": [
         "No startup org probes, metadata describes, subprocesses, or network calls; the family tool registers on session_start and contacts Salesforce only for explicit actions.",
-        "Every org-backed action requires an explicit target_org. setup.apply, secret.populate, and oauth.authorize require a current session-bound plan ID/hash/exact target plus allow_mutation=true, remain Guardrail-mediated, and refuse production or unknown orgs.",
+        "Every org-backed action requires an explicit target_org. setup.apply, secret.populate, and oauth.authorize require a current session-bound plan ID/hash/exact target plus allow_mutation=true, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail.",
         "Hosted MCP setup adopts an exact existing app or creates one after Metadata API check-only validation; generic inbound setup remains create-only. Both refuse current-state or plan-content drift and verify the app, global OAuth settings, OAuth scopes, and org-local OAuth policy components.",
         "Headless 360 is a public PKCE specialization. Its hosted-server activation uses McpServerAccess only after runtime Tooling describe proves the exact fields and write capabilities; unsupported or ambiguous state routes to the SF Browser MCP Servers destination.",
         "Generic ECA profiles support the core OAuth flow matrix; PEM public certificates and sensitive global OAuth settings stay in mode-0600 artifacts and ephemeral deploy staging, and private keys are rejected.",
@@ -776,13 +776,13 @@
         "SF Integrate never edits mcp.json or stores OAuth tokens. The final client-ID copy remains an explicit handoff to SF MCP and Pi's native MCP OAuth runtime.",
         "External Client App navigation returns only a non-session-bearing instance Setup URL and a structured SF Browser route; frontdoor login URLs and session identifiers are never returned.",
         "Generic inbound and outbound slices are create-only and refuse existing-resource drift. Hosted MCP adopts only exact existing ECA state. The outbound connection proof is GET-only, delegates execution to sf_apex, and never returns the external response body.",
-        "Production policies, existing-resource updates, rotations, migration, rollback, and user-selected destructive cleanup remain out of scope."
+        "Existing-resource updates, rotations, migration, rollback, and user-selected destructive cleanup remain out of scope."
       ]
     },
     "entry": "extensions/sf-integrate/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4878
+    "srcLoc": 4852
   },
   {
     "id": "sf-llm-gateway",
