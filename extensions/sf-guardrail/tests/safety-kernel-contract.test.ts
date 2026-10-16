@@ -689,3 +689,76 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
     expect(decision?.orgType).toBe("production");
   });
 });
+
+describe("Guardrail owns native production policy", () => {
+  it.each([
+    ["sf_integrate", "setup.apply", "native-sf-integrate-prod"],
+    ["sf_flow", "lifecycle.activate", "native-sf-flow-prod"],
+  ])("controls %s through existing rule behaviors", async (toolName, action, ruleId) => {
+    mockedEnv = env("PolicyProd", "production");
+    const config = readBundledConfig();
+    const input = { action, target_org: "PolicyProd", allow_mutation: true };
+    const evaluate = () => evaluateSafety({ toolName, input, cwd: "/project", config });
+    expect(await evaluate()).toMatchObject({ action: "block", ruleId });
+    const rule = config.orgAwareGate.rules.find((candidate) => candidate.id === ruleId)!;
+    rule.behavior = "confirm";
+    rule.enabled = true;
+    expect(await evaluate()).toMatchObject({ action: "confirm", ruleId });
+    rule.behavior = "off";
+    rule.enabled = false;
+    expect(await evaluate()).toMatchObject({ action: "confirm", feature: "nativeToolGate" });
+    expect(
+      await evaluateSafety({
+        toolName,
+        input: { action: "org.preflight", target_org: "PolicyProd" },
+        cwd: "/project",
+        config,
+      }),
+    ).toBeUndefined();
+    expect(
+      await evaluateSafety({
+        toolName: "bash",
+        input: { command: "echo safe" },
+        cwd: "/project",
+        config,
+      }),
+    ).toBeUndefined();
+    mockedEnv = env("PolicyDev", "developer");
+    rule.behavior = "block";
+    rule.enabled = true;
+    expect(
+      await evaluateSafety({
+        toolName,
+        input: { ...input, target_org: "PolicyDev" },
+        cwd: "/project",
+        config,
+      }),
+    ).toMatchObject({ action: "confirm" });
+  });
+});
+
+describe("Native production rule coverage", () => {
+  it.each([
+    ["sf_integrate", "setup.apply", "native-sf-integrate-prod"],
+    ["sf_integrate", "secret.populate", "native-sf-integrate-prod"],
+    ["sf_integrate", "oauth.authorize", "native-sf-integrate-prod"],
+    ["sf_flow", "deploy.activate", "native-sf-flow-prod"],
+    ["sf_flow", "lifecycle.activate", "native-sf-flow-prod"],
+    ["sf_flow", "lifecycle.deactivate", "native-sf-flow-prod"],
+  ])("blocks %s %s on unknown targets by default", async (toolName, action, ruleId) => {
+    const config = readBundledConfig();
+    const input = { action, target_org: "UnresolvedPolicyOrg", allow_mutation: true };
+    expect(await evaluateSafety({ toolName, input, cwd: "/project", config })).toMatchObject({
+      action: "block",
+      ruleId,
+      orgResolutionGuessed: true,
+    });
+    const rule = config.orgAwareGate.rules.find((candidate) => candidate.id === ruleId)!;
+    rule.behavior = "confirm";
+    expect(await evaluateSafety({ toolName, input, cwd: "/project", config })).toMatchObject({
+      action: "confirm",
+      ruleId,
+      approvalScope: { allowSession: false },
+    });
+  });
+});

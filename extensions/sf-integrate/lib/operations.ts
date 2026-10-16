@@ -60,7 +60,7 @@ export function status(): ToolResult {
         },
       ],
       next: [
-        "Run org.preflight with an explicit non-production target_org, then choose direction=mcp, direction=inbound, or direction=outbound.",
+        "Run org.preflight with an explicit target_org, then choose direction=mcp, direction=inbound, or direction=outbound.",
       ],
     },
     { supported_presets: [SF_MCP_HEADLESS_360_REQUIREMENT.presetId] },
@@ -78,14 +78,13 @@ export async function orgPreflight(
     session,
     HEADLESS_SERVER_DEVELOPER_NAME,
   );
-  const nonProduction = isNonProduction(session);
   const apiReady = Number.parseFloat(session.target.apiVersion) >= 61;
-  const ready = missing.length === 0 && apiReady && nonProduction;
+  const ready = missing.length === 0 && apiReady;
   const findings = [
     {
       label: "Org type",
       value: session.target.orgType,
-      tone: nonProduction ? ("success" as const) : ("error" as const),
+      tone: "info" as const,
     },
     {
       label: "API version",
@@ -112,7 +111,7 @@ export async function orgPreflight(
       status: ready ? "success" : "error",
       summary: ready
         ? "The explicit target supports the Headless 360 External Client App stack."
-        : "The target is not eligible for this mutation slice.",
+        : "Required integration capabilities are unavailable.",
       chips: [{ label: `API ${session.target.apiVersion}`, tone: apiReady ? "success" : "error" }],
       scope: orgScope(session),
       rails: [
@@ -130,14 +129,14 @@ export async function orgPreflight(
       sections: [{ icon: "🛡️", title: "Readiness", rows: findings }],
       next: [
         ready
-          ? "Run design.plan for headless-360."
-          : "Choose an explicit sandbox, scratch, developer, or trial org with the required metadata types.",
+          ? "Run design.plan for headless-360; mutation permission is controlled by SF Guardrail."
+          : "Use an API version and target with the required metadata types.",
       ],
     },
     {
       ready,
       missing_metadata_types: missing,
-      mutation_allowed: nonProduction,
+      mutation_policy: "sf-guardrail",
       activation_api_available: activation.supported,
       activation_fallback: activation.supported ? undefined : "sf-browser",
       api_version: session.target.apiVersion,
@@ -288,7 +287,6 @@ export async function applySetup(
       "setup.apply requires allow_mutation=true; Guardrail approval remains separate.",
     );
   }
-  assertNonProduction(session);
   const plan = assertPlanMatches(state.plans.get(params.plan_id ?? ""), {
     planId: params.plan_id,
     planHash: params.plan_hash,
@@ -858,16 +856,6 @@ function assertPlanTarget(plan: IntegrationPlan, session: SalesforceSession): vo
   if (plan.target.api_version !== session.target.apiVersion) {
     throw new Error("The target org API version changed after planning. Run design.plan again.");
   }
-}
-
-function assertNonProduction(session: SalesforceSession): void {
-  if (!isNonProduction(session)) {
-    throw new Error("SF Integrate setup.apply refuses production or unknown orgs in Phase 1.");
-  }
-}
-
-function isNonProduction(session: SalesforceSession): boolean {
-  return ["sandbox", "scratch", "developer", "trial"].includes(session.target.orgType);
 }
 
 function orgLabel(session: SalesforceSession): string {

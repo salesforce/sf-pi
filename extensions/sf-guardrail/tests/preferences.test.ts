@@ -46,6 +46,18 @@ describe("guardrail preferences", () => {
     );
   });
 
+  it.each(["native-sf-integrate-prod", "native-sf-flow-prod"])(
+    "persists %s through the existing settings surface",
+    (ruleId) => {
+      const key = `orgAwareGate.rules.${ruleId}.enabled` as const;
+      expect(preferences.preferenceValue(configModule.loadConfig().config, key)).toBe("hard block");
+      for (const value of ["confirm", "off", "hard block"]) {
+        preferences.updateUserPreference(key, value);
+        expect(preferences.preferenceValue(configModule.loadConfig().config, key)).toBe(value);
+      }
+    },
+  );
+
   it("writes timeout overrides to Pi settings that loadConfig reads", () => {
     preferences.updateUserPreference("confirmTimeoutMs", "60000");
 

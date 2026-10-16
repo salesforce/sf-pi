@@ -7,9 +7,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { evaluateNativeToolRisk } from "../lib/native-tool-risk-gate.ts";
 import { classifyNativeToolRisk } from "../lib/native-tool-risk-registry.ts";
 import { normalizeSafetySubject } from "../lib/safety-subject.ts";
-import type { GuardrailConfig, NativeToolSafetySubject } from "../lib/types.ts";
+import { readBundledConfig } from "../lib/config.ts";
+import type { NativeToolSafetySubject } from "../lib/types.ts";
 
-const config = { productionAliases: [] } as unknown as GuardrailConfig;
+const config = readBundledConfig();
 const tempDirs: string[] = [];
 
 afterEach(() => {

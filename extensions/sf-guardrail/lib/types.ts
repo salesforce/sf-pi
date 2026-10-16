@@ -71,10 +71,8 @@ export interface ShellAstMatch {
   flagIn?: Record<string, string[]>;
 }
 
-export interface OrgAwareMatch {
-  tool: "bash";
-  ast: ShellAstMatch;
-}
+export type OrgAwareMatch =
+  { tool: "bash"; ast: ShellAstMatch } | { tool: "sf_integrate" | "sf_flow"; actions: string[] };
 
 export type OrgTypeFilter =
   "production" | "sandbox" | "scratch" | "developer" | "trial" | "unknown";

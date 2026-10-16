@@ -126,7 +126,7 @@ export async function deployAndActivateFlow(
   dependencies: FlowLifecycleDependencies = {},
   signal?: AbortSignal,
 ): Promise<ToolResult> {
-  assertMutationAllowed(params, session);
+  assertMutationAllowed(params);
   if (!params.file) throw new Error("file is required for deploy.activate");
   const workspace = await resolveFlowWorkspace(params.workspace, cwd);
   const file = await resolveFlowFile(params.file, workspace);
@@ -180,7 +180,7 @@ export async function activateFlowVersion(
   dependencies: FlowLifecycleDependencies = {},
   signal?: AbortSignal,
 ): Promise<ToolResult> {
-  assertMutationAllowed(params, session);
+  assertMutationAllowed(params);
   const flowName = requireFlowName(params.flow_name);
   const version = requireVersion(params.version);
   const adapter = dependencies.adapter ?? defaultFlowLifecycleAdapter;
@@ -245,7 +245,7 @@ export async function deactivateFlow(
   dependencies: FlowLifecycleDependencies = {},
   signal?: AbortSignal,
 ): Promise<ToolResult> {
-  assertMutationAllowed(params, session);
+  assertMutationAllowed(params);
   const flowName = requireFlowName(params.flow_name);
   const adapter = dependencies.adapter ?? defaultFlowLifecycleAdapter;
   const before = await readLifecycleState(adapter, session, flowName);
@@ -700,15 +700,12 @@ function requireScheduledActivation(flowName: string, state: LifecycleState): vo
   }
 }
 
-function assertMutationAllowed(params: SfFlowParams, session: SalesforceSession): void {
+function assertMutationAllowed(params: SfFlowParams): void {
   if (!params.target_org?.trim()) {
     throw new Error("target_org is required for Flow lifecycle mutations");
   }
   if (params.allow_mutation !== true) {
     throw new Error("allow_mutation=true is required for Flow lifecycle mutations");
-  }
-  if (session.target.orgType === "production" || session.target.orgType === "unknown") {
-    throw new Error(`Refusing Flow lifecycle mutation for org type ${session.target.orgType}.`);
   }
 }
 

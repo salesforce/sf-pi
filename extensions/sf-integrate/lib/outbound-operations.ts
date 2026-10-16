@@ -167,7 +167,6 @@ export async function applyOutboundSetup(
       "setup.apply requires allow_mutation=true; Guardrail approval remains separate.",
     );
   }
-  assertNonProduction(session);
   const plan = currentPlan(params, session, state);
   const evidence = await applyOutboundPlan(session, plan, signal);
   const findings = outboundVerificationFindings(plan, evidence.verification);
@@ -213,7 +212,6 @@ export async function populateOutboundSecretOperation(
       "secret.populate requires allow_mutation=true; Guardrail approval remains separate.",
     );
   }
-  assertNonProduction(session);
   const plan = currentPlan(params, session, state);
   if (plan.credential_shape.length === 0) {
     throw new Error(`${plan.auth_type} has no secret.populate step.`);
@@ -592,12 +590,4 @@ function orgScope(session: SalesforceSession): NonNullable<SfPiResultCard["scope
     { label: "type", value: session.target.orgType },
     { label: "api", value: session.target.apiVersion },
   ];
-}
-
-function assertNonProduction(session: SalesforceSession): void {
-  if (!["sandbox", "scratch", "developer", "trial"].includes(session.target.orgType)) {
-    throw new Error(
-      "SF Integrate outbound mutation refuses production or unknown orgs in Phase 2.",
-    );
-  }
 }

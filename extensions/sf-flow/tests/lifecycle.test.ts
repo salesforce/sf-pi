@@ -355,7 +355,7 @@ describe("SF Flow lifecycle", () => {
     });
   });
 
-  it("requires explicit mutation intent and refuses production or unknown orgs", async () => {
+  it("requires explicit mutation intent", async () => {
     const lifecycle = adapter();
     await expect(
       activateFlowVersion(
@@ -369,19 +369,50 @@ describe("SF Flow lifecycle", () => {
         { adapter: lifecycle, ...artifacts },
       ),
     ).rejects.toThrow("allow_mutation=true");
-
-    await expect(
-      activateFlowVersion(
+  });
+  it.each(["production", "unknown"])(
+    "leaves %s policy to Guardrail and verifies activation",
+    async (orgType) => {
+      const lifecycle = adapter({
+        getDefinition: vi
+          .fn()
+          .mockResolvedValueOnce({
+            ApiName: "Autolaunched_Example",
+            IsActive: false,
+            ActiveVersionId: null,
+            LatestVersionId: "301LATEST",
+            VersionNumber: 2,
+          })
+          .mockResolvedValue({
+            ApiName: "Autolaunched_Example",
+            IsActive: true,
+            ActiveVersionId: "301ACTIVE",
+            LatestVersionId: "301LATEST",
+            VersionNumber: 2,
+          }),
+        getActiveVersion: vi.fn().mockResolvedValue({ VersionNumber: 2, Status: "Active" }),
+      });
+      const result = await activateFlowVersion(
         {
           action: "lifecycle.activate",
-          target_org: "Production",
+          target_org: "ExplicitOrg",
           flow_name: "Autolaunched_Example",
           version: 2,
           allow_mutation: true,
         },
-        session("production"),
+        session(orgType),
         { adapter: lifecycle, ...artifacts },
-      ),
-    ).rejects.toThrow("Refusing Flow lifecycle mutation for org type production");
-  });
+      );
+      expect(result.details.ok).toBe(true);
+      expect(lifecycle.deploy).toHaveBeenCalledTimes(2);
+      expect(lifecycle.deploy).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ check_only: true }),
+      );
+      expect(lifecycle.deploy).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ check_only: false }),
+      );
+    },
+  );
 });

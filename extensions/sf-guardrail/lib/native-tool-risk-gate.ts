@@ -11,6 +11,7 @@ import {
   resolveOrgContextForTargetWithLookup,
   type OrgContext,
 } from "./org-context.ts";
+import { resolveRuleBehavior } from "./rule-behavior.ts";
 import type { ClassifiedDecision, GuardrailConfig, NativeToolSafetySubject } from "./types.ts";
 
 export function evaluateNativeToolRisk(
@@ -25,7 +26,7 @@ export function evaluateNativeToolRisk(
         ? knownSurfaceOrg(subject.targetOrgType, subject.targetOrgResolutionSource ?? "mcpConfig")
         : resolveOrgContextForTarget(subject.targetOrg, cwd, config.productionAliases)
     : undefined;
-  return buildNativeToolDecision(subject, org);
+  return buildNativeToolDecision(subject, org, config);
 }
 
 export async function evaluateNativeToolRiskWithOrgLookup(
@@ -48,25 +49,36 @@ export async function evaluateNativeToolRiskWithOrgLookup(
     cwd,
     config.productionAliases,
   );
-  return buildNativeToolDecision(subject, refinedOrg);
+  return buildNativeToolDecision(subject, refinedOrg, config);
 }
 
 function buildNativeToolDecision(
   subject: NativeToolSafetySubject,
   org: OrgContext | undefined,
+  config: GuardrailConfig,
 ): ClassifiedDecision {
   const scope = nativeToolSafetyEnvelope(subject, org);
   const unknownTarget = org?.guessed === true || org?.type === "unknown";
   const productionTarget = org?.type === "production";
+  // Reuse org-operation preferences; Off leaves the base native confirmation intact.
+  const rule = config.orgAwareGate.rules.find(
+    (candidate) =>
+      candidate.match.tool !== "bash" &&
+      candidate.match.tool === subject.toolName &&
+      candidate.match.actions.includes(subject.action ?? "") &&
+      candidate.whenOrgType.includes(unknownTarget ? "unknown" : (org?.type ?? "unknown")) &&
+      resolveRuleBehavior(candidate) !== "off",
+  );
   const hardBlock =
-    subject.blockProductionOrUnknown === true && (productionTarget || unknownTarget);
+    (subject.blockProductionOrUnknown === true && (productionTarget || unknownTarget)) ||
+    (rule !== undefined && resolveRuleBehavior(rule) === "block");
   const reason = hardBlock
     ? `${subject.reason}\n\nThis native lifecycle mutation refuses production or unknown target orgs.`
     : org?.guessed && subject.usesSalesforceOrg
       ? `${subject.reason}\n\nNote: sf-guardrail could not verify the target org type and is treating it as production.`
       : subject.reason;
   return {
-    ruleId: subject.ruleId,
+    ruleId: rule?.id ?? subject.ruleId,
     feature: "nativeToolGate",
     action: hardBlock ? "block" : "confirm",
     reason,

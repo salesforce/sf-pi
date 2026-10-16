@@ -10,7 +10,7 @@ describe("renderGuardrailGuidance", () => {
     expect(guidance).toContain("<sf_guardrail>");
     expect(guidance).toContain("Safety Mediator");
     expect(guidance).toContain("Never bypass");
-    expect(guidance).toContain("Active hard blocks: none.");
+    expect(guidance).toContain("Org-aware: native-sf-integrate-prod, native-sf-flow-prod");
     expect(guidance).toContain("Non-default rule overrides: none.");
     expect(guidance).not.toContain("rm -rf");
     expect(guidance).not.toContain("git push --force");

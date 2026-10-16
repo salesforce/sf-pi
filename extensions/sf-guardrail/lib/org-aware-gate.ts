@@ -25,7 +25,7 @@ export function evaluateOrgAware(
   if (!tokens) return undefined;
 
   for (const rule of rules) {
-    if (rule.enabled === false) continue;
+    if (rule.match.tool !== "bash" || rule.enabled === false) continue;
     if (!rule.whenOrgType.includes(org.type)) continue;
     if (!matches(tokens, rule.match.ast)) continue;
     if (rule.id === "sf-deploy-prod" && hasDeployRehearsalFlag(tokens.args)) continue;

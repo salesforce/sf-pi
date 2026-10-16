@@ -84,7 +84,7 @@ The only mutating lifecycle action is `fix.apply`, and it owns exactly three det
 
 `lifecycle.status` reads `FlowDefinitionView` and `FlowVersionView` through the standard REST query surface. It does not use Tooling API queries. `deploy.activate` stages an isolated Active copy of one local Flow, runs generation diagnostics and Active check-only validation, performs the guarded deployment, and verifies the resulting active version. The checked-in source is unchanged. `lifecycle.activate` requires an exact positive version and never guesses latest.
 
-Mutating lifecycle actions require explicit `target_org` plus `allow_mutation=true`, remain Guardrail-mediated, and refuse production or unknown orgs. The execution-intent flag is not approval.
+Mutating lifecycle actions require explicit `target_org` plus `allow_mutation=true`, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail. The execution-intent flag is not approval.
 
 Deploying the same Flow source with `<status>Draft</status>` creates or updates a Draft version but does **not** clear the already active version. `lifecycle.deactivate` deterministically deploys a `FlowDefinition` component equivalent to:
 

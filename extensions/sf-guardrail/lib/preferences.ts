@@ -366,6 +366,9 @@ function orgAwareRuleLabel(rule: OrgAwareRule): string {
 
 function orgAwareRuleDescription(rule: OrgAwareRule): string {
   switch (rule.id) {
+    case "native-sf-integrate-prod":
+    case "native-sf-flow-prod":
+      return "Controls native mutations on production and unknown targets; Off retains normal native confirmation.";
     case "sf-deploy-prod":
       return "Warns before metadata deploys to a detected production org.";
     case "sf-apex-run-prod":
@@ -381,6 +384,11 @@ function orgAwareRuleDescription(rule: OrgAwareRule): string {
 
 function orgAwareRuleExample(rule: OrgAwareRule): string {
   switch (rule.id) {
+    case "native-sf-integrate-prod":
+    case "native-sf-flow-prod":
+      return rule.match.tool === "bash"
+        ? rule.id
+        : `${rule.match.tool} ${rule.match.actions.join(", ")}`;
     case "sf-deploy-prod":
       return "sf project deploy start -o Prod";
     case "sf-apex-run-prod":

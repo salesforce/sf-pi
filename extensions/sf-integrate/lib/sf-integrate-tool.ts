@@ -190,7 +190,7 @@ export function registerSfIntegrateTool(
     name: SF_INTEGRATE_TOOL_NAME,
     label: "SF Integrate",
     description:
-      "Plan, apply, populate, authorize, verify, and test Salesforce integration authentication. Supports exact ECA create/adopt plus hosted-server activation for Headless 360, the core inbound External Client App OAuth matrix, and modern outbound External Credentials and Named Credentials in explicit non-production orgs.",
+      "Plan, apply, populate, authorize, verify, and test Salesforce integration authentication. Supports exact ECA create/adopt plus hosted-server activation for Headless 360, the core inbound External Client App OAuth matrix, and modern outbound External Credentials and Named Credentials in explicit Salesforce orgs.",
     promptSnippet:
       "Set up Salesforce hosted MCP OAuth, generic inbound ECA OAuth profiles, and outbound Named Credential stacks with plan-bound changes and compact proof.",
     promptGuidelines: [
@@ -199,7 +199,7 @@ export function registerSfIntegrateTool(
       "Use direction=inbound with eca_flow for Authorization Code, PKCE, Client Credentials, Device, JWT Bearer, or Token Exchange ECA profiles. Run plan, check-only-backed apply, then exact readback verification.",
       "Successful hosted MCP handoff includes the exact org identity, trusted host key, activation state, deterministic per-org server name, non-session-bearing Salesforce Setup URL, and navigation.route for sf_browser_open_org.",
       "Use direction=outbound for modern External Credential + Named Credential stacks. Run design.plan, setup.apply, secret.populate when required, setup.verify, then a GET-only connection.test.",
-      "Every org-backed action requires an explicit target_org. Mutations require allow_mutation=true, remain Guardrail-mediated, and refuse production or unknown orgs.",
+      "Every org-backed action requires an explicit target_org. Mutations require allow_mutation=true, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail.",
       "Never pass secret values in tool arguments. secret.populate accepts only a masked TUI prompt or an environment-variable name.",
       "Use OAuth browser consent only after principal access and identity-provider credentials are configured. Salesforce stores the resulting tokens.",
     ],

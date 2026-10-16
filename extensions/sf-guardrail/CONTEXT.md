@@ -177,3 +177,12 @@ Domain expert: "No. The canonical posture is **Safety Mediator**. Users can tune
 Developer: "What happens if the org cannot be verified?"
 
 Domain expert: "That is a **Fail-Closed Outcome**. The action should block or ask the human instead of silently allowing the operation."
+
+## Native org-sensitive policy ownership
+
+For Integration and Flow lifecycle mutations, **SF Guardrail** owns the
+**Rule Behavior** for production and unknown targets. Family tools validate
+execution intent, exact targets, plans, capabilities, and resulting state; they
+must not duplicate this org-type safety policy. **Power Tool Mode** applies to
+confirm-class decisions only; **Hard Blocks** remain authoritative. Read-only
+preflight describes capabilities without granting mutation permission.

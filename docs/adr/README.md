@@ -122,6 +122,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0145: SF MCP supports org-bound connection instances](./0145-sf-mcp-org-bound-connection-instances.md) — 2026-10-08
 - [0146: SF SOQL Execution Is API-Aware and Self-Grounding](./0146-sf-soql-execution-is-api-aware-and-self-grounding.md) — 2026-10-08
 - [0147: Pi 1.2.0 audit edge and run-start discrimination](./0147-pi-120-audit-edge-and-run-start-discrimination.md) — 2026-10-14
+- [0148: Guardrail owns Integration and Flow org-sensitive safety](./0148-guardrail-owns-integration-and-flow-org-safety.md) — 2026-10-16
 
 ## Proposed
 

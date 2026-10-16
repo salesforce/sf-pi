@@ -177,3 +177,38 @@ describe("Power Tool Mode", () => {
     );
   });
 });
+
+describe("Power Tool Mode integration and Flow controls", () => {
+  it.each(["integrate", "flow"] as const)("selects %s and requires production opt-in", (family) => {
+    const subject = decision({
+      orgType: "production",
+      approvalScope: {
+        ...decision().approvalScope!,
+        operationFamily: family === "integrate" ? "integration setup" : "flow lifecycle",
+      },
+    });
+    expect(shouldPowerToolAutoApprove(subject, { mode: "native", nativeFamilies: [family] })).toBe(
+      false,
+    );
+    expect(
+      shouldPowerToolAutoApprove(subject, {
+        mode: "native",
+        nativeFamilies: [family],
+        productionUnknown: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldPowerToolAutoApprove(subject, {
+        mode: "native",
+        nativeFamilies: [],
+        productionUnknown: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldPowerToolAutoApprove(
+        { ...subject, action: "block" },
+        { mode: "all", productionUnknown: true },
+      ),
+    ).toBe(false);
+  });
+});

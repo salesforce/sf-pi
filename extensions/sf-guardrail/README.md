@@ -90,6 +90,31 @@ operator control and retain the audit output; hard blocks remain active.
 **Audit is empty after resume:** Decisions belong to the active session file.
 Confirm that the resumed branch is the one that recorded the decision.
 
+## Integration and Flow production controls
+
+SF Guardrail owns org-sensitive safety policy for `sf_integrate` mutations and
+`sf_flow` lifecycle mutations. The family tools keep execution-intent, exact-target,
+plan/version, validation, and resulting-state checks; they do not independently
+refuse production or unknown orgs. Read-only preflight reports capabilities, not
+permission to mutate.
+
+In Manager settings → Salesforce org operation rules:
+
+- `native-sf-integrate-prod` covers setup, credential population, and OAuth authorization.
+- `native-sf-flow-prod` covers deploy/activate, exact-version activation, and deactivation.
+
+Both rules default to **Block** for production and unknown targets. **Ask me** uses
+the normal approval path. **Off** removes the additional org-sensitive restriction;
+the native mutation still requires confirmation unless an existing approval or
+operator setting permits it.
+
+Power Tool Mode includes Integration and Flow families. Production/unknown
+confirmation decisions require its separate production/unknown opt-in before
+auto-approval. Hard blocks always win and all decisions use the existing audit
+trail. Disabling Guardrail removes this safety mediation; it does not enable a
+hidden second policy layer in the family tools. Disposable E2E cleanup remains
+restricted to non-production targets because it runs outside the Pi tool boundary.
+
 ## File Structure
 
 <!-- GENERATED:file-structure:start -->
