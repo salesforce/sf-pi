@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.6](https://github.com/salesforce/sf-pi/compare/v0.339.5...v0.339.6) (2026-10-16)
+
+
+### Bug Fixes
+
+* **guardrail:** own integration and flow production controls ([#818](https://github.com/salesforce/sf-pi/issues/818)) ([742d1f8](https://github.com/salesforce/sf-pi/commit/742d1f886f0e32cd4138a4079fe8d34428d32700))
+
 ## [0.339.5](https://github.com/salesforce/sf-pi/compare/v0.339.4...v0.339.5) (2026-10-15)
 
 
