@@ -49,6 +49,27 @@ describe("production audit policy", () => {
     expect(result.unresolved[0]).toMatchObject({ id: "GHSA-xxxx-yyyy-zzzz" });
   });
 
+  it("no longer exempts the now-upgradable HTTP cache dependency", () => {
+    const cacheReport = {
+      vulnerabilities: {
+        cache: {
+          severity: "high",
+          via: [
+            {
+              name: "http-cache-semantics",
+              url: "https://github.com/advisories/GHSA-ch52-4w7c-c8xp",
+            },
+          ],
+        },
+      },
+    };
+    const result = evaluateAuditReport(cacheReport);
+    expect(result.ok).toBe(false);
+    expect(result.unresolved).toContainEqual(
+      expect.objectContaining({ id: "GHSA-ch52-4w7c-c8xp" }),
+    );
+  });
+
   it("rejects expired and stale exceptions", () => {
     const expired = evaluateAuditReport(report(), allowlist, new Date("2026-11-03T00:00:00Z"));
     expect(expired.ok).toBe(false);

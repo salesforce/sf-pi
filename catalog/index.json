@@ -173,7 +173,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1658
+    "srcLoc": 1679
   },
   {
     "id": "sf-browser",
@@ -782,7 +782,7 @@
     "entry": "extensions/sf-integrate/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4852
+    "srcLoc": 4853
   },
   {
     "id": "sf-llm-gateway",
@@ -1014,7 +1014,7 @@
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9993
+    "srcLoc": 9994
   },
   {
     "id": "sf-ohana-spinner",

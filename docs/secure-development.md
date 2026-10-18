@@ -98,6 +98,26 @@ sf code-analyzer run --rule-selector Recommended --target extensions/sf-guardrai
 - Package overrides in `package.json` include notes explaining why patched
   transitive dependency versions are pinned.
 
+## Local file and cryptography controls
+
+- Pi settings writes use a private staging directory and exclusive mode-0600
+  file creation, then atomically replace the destination. A destination symlink
+  is replaced rather than followed; failed staging preserves previous settings.
+- Visual-response audits inspect and read one opened regular session file,
+  reject symlinks where the platform supports no-follow, and enforce per-file
+  and total byte budgets even when files grow or are replaced during a read.
+- Integration plan SHA-256 digests bind reviewed metadata, and MCP configuration
+  checksums detect drift in private managed state. Neither is a password verifier.
+  OAuth client IDs and scopes are public configuration, not passwords.
+- OAuth runtime proofs sign JWTs with RS256. Signature verification and tampered
+  payload rejection are tested; password-stretching algorithms do not replace
+  digital signatures.
+- The remaining `braces` advisory is transitive through Apex's glob-based
+  `CoverageReporter`. SF Pi uses `TestService` report writers instead; a focused
+  proof verifies test/coverage JSON without invoking that reporter. The dependency
+  remains installed, and its exact audit exception still expires on 2026-11-02.
+  This is bounded reachability evidence, not a claim that the package is patched.
+
 ## Secret and public artifact controls
 
 - Do not commit secrets, org auth files, access tokens, SFDX auth URLs, Slack

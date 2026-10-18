@@ -188,6 +188,7 @@ export function inspectManagedServer(
   };
 }
 
+/** Private drift checksum, not authentication or a password-storage mechanism. */
 export function fingerprintConfig(config: McpServerConfig): string {
   return createHash("sha256").update(stableJson(config)).digest("hex").slice(0, 16);
 }

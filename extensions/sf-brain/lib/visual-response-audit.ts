@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Aggregate-only audit of terminal Mermaid and visual-icon usage in Pi sessions. */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { closeSync, constants, fstatSync, openSync, readSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { analyzeVisualResponse } from "./visual-response.ts";
@@ -111,22 +111,16 @@ export function captureVisualResponseAudit(
 
   for (const name of selected) {
     const filePath = path.join(options.sessionDir, name);
-    let size: number;
-    try {
-      size = statSync(filePath).size;
-    } catch {
-      summary.sessionsSkippedForBounds += 1;
-      continue;
-    }
-    if (size > maxFileBytes || inspectedBytes + size > maxTotalBytes) {
-      summary.sessionsSkippedForBounds += 1;
-      continue;
-    }
-    inspectedBytes += size;
-
     let entries: unknown[];
     try {
-      entries = readFileSync(filePath, "utf8")
+      const text = readBoundedSession(
+        filePath,
+        Math.min(maxFileBytes, maxTotalBytes - inspectedBytes),
+        (bytes) => {
+          inspectedBytes += bytes;
+        },
+      );
+      entries = text
         .split("\n")
         .filter(Boolean)
         .flatMap((line) => {
@@ -252,8 +246,35 @@ export function renderVisualResponseAuditMarkdown(report: VisualResponseAuditRep
   ].join("\n");
 }
 
+/** Inspect and read the same opened regular file, including a final size check. */
+function readBoundedSession(
+  filePath: string,
+  maxBytes: number,
+  accountBytes: (bytes: number) => void,
+): string {
+  if (maxBytes < 1) throw new Error("Session byte budget exhausted.");
+  const fd = openSync(filePath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size > maxBytes) throw new Error("Session exceeds file bounds.");
+    const chunks: Buffer[] = [];
+    let bytes = 0;
+    while (bytes < maxBytes) {
+      const chunk = Buffer.alloc(Math.min(64 * 1024, maxBytes - bytes));
+      const count = readSync(fd, chunk, 0, chunk.length, null);
+      if (count === 0) break;
+      bytes += count;
+      accountBytes(count);
+      chunks.push(chunk.subarray(0, count));
+    }
+    if (fstatSync(fd).size > bytes) throw new Error("Session grew beyond file bounds.");
+    return Buffer.concat(chunks, bytes).toString("utf8");
+  } finally {
+    closeSync(fd);
+  }
+}
+
 function listSessionFiles(sessionDir: string): string[] {
-  if (!existsSync(sessionDir)) return [];
   try {
     return readdirSync(sessionDir)
       .filter((name) => name.endsWith(".jsonl"))

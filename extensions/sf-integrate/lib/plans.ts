@@ -56,6 +56,7 @@ export async function buildIntegrationPlan(
     activation: input.activation,
     sources,
   };
+  // This digest binds reviewed non-secret metadata; it is not a password verifier.
   const planHash = `sha256:${createHash("sha256").update(stableJson(material)).digest("hex")}`;
   const planId = `plan_${planHash.slice("sha256:".length, "sha256:".length + 16)}`;
   const plan: IntegrationPlan = {

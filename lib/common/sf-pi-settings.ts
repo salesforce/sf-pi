@@ -10,7 +10,16 @@
  * sf-pi package discovery + filter state lives in sf-pi-package-state.ts,
  * not here. This file only knows how to read and write a settings file.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import {
   globalSettingsPath as resolveGlobalSettingsPath,
@@ -34,7 +43,6 @@ export function projectSettingsPath(cwd: string): string {
  * That keeps command handlers simple and avoids surfacing parse noise to users.
  */
 export function readJsonFile(filePath: string): Record<string, unknown> {
-  if (!existsSync(filePath)) return {};
   try {
     const raw = readFileSync(filePath, "utf8");
     const parsed = JSON.parse(raw);
@@ -44,11 +52,23 @@ export function readJsonFile(filePath: string): Record<string, unknown> {
   }
 }
 
-/** Write a JSON object to disk, creating parent directories as needed. */
+/** Replace settings atomically using a private, exclusively created staging file. */
 export function writeJsonFile(filePath: string, data: Record<string, unknown>): void {
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  // Writes Pi settings.json (globalAgentDir or <cwd>/.pi), not an OS temp file.
-  // CodeQL taints getAgentDir() because tests override the agent dir under os.tmpdir().
-  // codeql[js/insecure-temporary-file]
-  writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  const serialized = `${JSON.stringify(data, null, 2)}\n`;
+  const dir = path.dirname(filePath);
+  mkdirSync(dir, { recursive: true });
+  const stagingDir = mkdtempSync(path.join(dir, ".sf-pi-settings-"));
+  const stagingFile = path.join(stagingDir, "settings.json");
+  try {
+    const fd = openSync(stagingFile, "wx", 0o600);
+    try {
+      writeFileSync(fd, serialized, "utf8");
+    } finally {
+      closeSync(fd);
+    }
+    // Rename publishes complete JSON and replaces a destination symlink, not its target.
+    renameSync(stagingFile, filePath);
+  } finally {
+    rmSync(stagingDir, { recursive: true, force: true });
+  }
 }

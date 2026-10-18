@@ -3,11 +3,12 @@
 /** Core External Client App OAuth profile matrix with disposable live proof. */
 
 import { execFile } from "node:child_process";
-import { createSign, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { signJwt } from "../lib/oauth-jwt.ts";
 import { connectSalesforce } from "../../lib/common/sf-conn/index.ts";
 import {
   applyInboundSetup,
@@ -552,16 +553,6 @@ async function revokeIfPresent(baseUrl: string, body: Record<string, unknown>): 
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ token }),
   });
-}
-
-function signJwt(payload: Record<string, unknown>, privateKey: string): string {
-  const header = base64url(Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })));
-  const body = base64url(Buffer.from(JSON.stringify(payload)));
-  const input = `${header}.${body}`;
-  const signer = createSign("RSA-SHA256");
-  signer.update(input);
-  signer.end();
-  return `${input}.${base64url(signer.sign(privateKey))}`;
 }
 
 function createSyntheticSubjectToken(): string {

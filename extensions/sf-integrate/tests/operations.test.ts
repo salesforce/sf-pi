@@ -340,6 +340,36 @@ describe("SF Integrate operations", () => {
     expect(integrationAdapter.deploy).not.toHaveBeenCalled();
   });
 
+  it("rejects modified plan contents even with the original id and hash", async () => {
+    const integrationAdapter = adapter();
+    const planned = await designPlan(
+      { action: "design.plan", target_org: "IntegrationDev" },
+      session(),
+      state,
+      integrationAdapter,
+    );
+    const planId = String(planned.details.plan_id);
+    const planHash = String(planned.details.plan_hash);
+    const retained = state.plans.get(planId)!;
+    retained.oauth_scopes.push("unreviewed-scope");
+    await expect(
+      applySetup(
+        {
+          action: "setup.apply",
+          target_org: "IntegrationDev",
+          app_name: "SfPiHeadless360Mcp",
+          plan_id: planId,
+          plan_hash: planHash,
+          allow_mutation: true,
+        },
+        session(),
+        state,
+        integrationAdapter,
+      ),
+    ).rejects.toThrow("contents changed after planning");
+    expect(integrationAdapter.deploy).not.toHaveBeenCalled();
+  });
+
   it.each(["production", "unknown"])(
     "leaves %s policy to Guardrail but still validates the plan",
     async (orgType) => {

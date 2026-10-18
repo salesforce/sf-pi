@@ -11,14 +11,7 @@ const TEMPORARY_NO_FIX_ADVISORIES = [
     packageName: "braces",
     expiresOn: "2026-11-02",
     reason:
-      "No patched npm release exists; transitive through fast-glob in @salesforce/apex-node. Remove when upstream issue micromatch/braces#70 is fixed.",
-  },
-  {
-    id: "GHSA-ch52-4w7c-c8xp",
-    packageName: "http-cache-semantics",
-    expiresOn: "2026-11-02",
-    reason:
-      "No patched npm release exists; transitive through got in @salesforce/source-deploy-retrieve. SF Pi is not a shared HTTP cache. Remove when upstream issue kornelski/http-cache-semantics#56 is fixed.",
+      "No patched npm release exists; transitive through the unused CoverageReporter glob path in @salesforce/apex-node. SF Pi uses TestService report writers, not CoverageReporter. Remove when upstream issue micromatch/braces#70 is fixed.",
   },
 ];
 
