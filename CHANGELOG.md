@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.10](https://github.com/salesforce/sf-pi/compare/v0.339.9...v0.339.10) (2026-10-18)
+
+
+### Bug Fixes
+
+* **security:** harden local file access and refresh cache dependency ([87320dd](https://github.com/salesforce/sf-pi/commit/87320dda6dc248b8cfb00e15ca5f041af92225af))
+
 ## [0.339.9](https://github.com/salesforce/sf-pi/compare/v0.339.8...v0.339.9) (2026-10-18)
 
 
