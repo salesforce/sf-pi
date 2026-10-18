@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.339.6-2026-10-16",
-  "latestVersion": "0.339.6",
+  "revision": "release-0.339.7-2026-10-18",
+  "latestVersion": "0.339.7",
   "announcements": [
     {
-      "id": "release-0.339.6",
+      "id": "release-0.339.7",
       "kind": "update",
-      "title": "sf-pi v0.339.6 — guardrail: own integration and flow production controls",
-      "publishedAt": "2026-10-16T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.6",
+      "title": "sf-pi v0.339.7 — runtime: audit Pi 1.3.0 without raising the support floor",
+      "publishedAt": "2026-10-18T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.7",
       "severity": "info",
-      "body": "guardrail: own integration and flow production controls"
+      "body": "runtime: audit Pi 1.3.0 without raising the support floor"
     }
   ]
 }
