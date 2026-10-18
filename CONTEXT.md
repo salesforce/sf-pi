@@ -22,7 +22,7 @@ _Avoid_: latest available release, hard maximum
 
 **Pi Runtime Support Window**:
 The audited releases from the inclusive **Pi Runtime Floor** through the
-**Pi Runtime Audit Edge**. Newer stable `0.x` releases inside the hard loadable
+**Pi Runtime Audit Edge**. Newer stable `1.x` releases inside the hard loadable
 range can run in forward-compatibility mode without becoming audited
 implicitly.
 _Avoid_: open-ended compatibility claim, nightly-only support
