@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.11](https://github.com/salesforce/sf-pi/compare/v0.339.10...v0.339.11) (2026-10-19)
+
+
+### Bug Fixes
+
+* **devbar:** show image width icon and preserve coherent Agent Script dependencies ([7bbd29b](https://github.com/salesforce/sf-pi/commit/7bbd29baf956c302925929b908254ebb1f25826c))
+
 ## [0.339.10](https://github.com/salesforce/sf-pi/compare/v0.339.9...v0.339.10) (2026-10-18)
 
 
