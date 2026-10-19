@@ -38,6 +38,7 @@ export interface SlackResearchInput {
 interface QueryParts {
   terms: string[];
   exactPhrases: string[];
+  channelId?: string;
   channelName?: string;
   fromHandle?: string;
   withDisplayName?: string;
@@ -121,7 +122,11 @@ export async function buildSlackSearchPlan(
   const explanation: string[] = [];
   const resolved: SlackSearchPlan["resolved"] = { ...(options.resolved || {}) };
 
-  if (input.channel_ref && !resolved.channel) {
+  if (resolved.channelId) {
+    explanation.push(`Using exact channel ID ${resolved.channelId}; search validates access.`);
+  }
+
+  if (input.channel_ref && !resolved.channel && !resolved.channelId) {
     const channel = await resolveChannel(token, input.channel_ref, signal, { limit: 5 });
     if (channel.best) {
       resolved.channel = channel.best;
@@ -193,6 +198,7 @@ export function buildQueryParts(
   return {
     terms,
     exactPhrases,
+    channelId: resolved.channelId,
     channelName: resolved.channel?.name,
     fromHandle,
     withDisplayName,
@@ -211,7 +217,8 @@ export function compileSlackQuery(parts: QueryParts): string {
   const tokens: string[] = [];
   tokens.push(...parts.exactPhrases.map((phrase) => quotePhrase(phrase)));
   tokens.push(...parts.terms.map(escapeBareTerm));
-  if (parts.channelName) tokens.push(`in:#${parts.channelName.replace(/^#/, "")}`);
+  if (parts.channelId) tokens.push(`in:${parts.channelId}`);
+  else if (parts.channelName) tokens.push(`in:#${parts.channelName.replace(/^#/, "")}`);
   if (parts.fromHandle) tokens.push(`from:${parts.fromHandle.replace(/^@/, "")}`);
   if (parts.withDisplayName) tokens.push(`with:@${parts.withDisplayName.replace(/^@/, "")}`);
   if (parts.after) tokens.push(`after:${parts.after}`);
@@ -271,12 +278,10 @@ function buildFallbackQueries(
       withDisplayName: undefined,
     }),
   );
-  queries.push(compileSlackQuery({ ...parts, exactPhrases: [], channelName: undefined }));
   queries.push(
     compileSlackQuery({
       ...parts,
       exactPhrases: [],
-      channelName: undefined,
       fromHandle: undefined,
       withDisplayName: undefined,
       contentFilters: [],

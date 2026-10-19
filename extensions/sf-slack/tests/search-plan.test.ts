@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Tests for sf-slack search query planning helpers. */
 import { describe, expect, it } from "vitest";
-import { buildQueryParts, compileSlackQuery } from "../lib/search-plan.ts";
+import { buildQueryParts, buildSlackSearchPlan, compileSlackQuery } from "../lib/search-plan.ts";
 import type { SlackSearchPlan } from "../lib/types.ts";
 
 const resolved: SlackSearchPlan["resolved"] = {
@@ -32,6 +32,19 @@ const resolved: SlackSearchPlan["resolved"] = {
 };
 
 describe("search plan helpers", () => {
+  it("preserves a resolved channel name in every fallback", async () => {
+    const plan = await buildSlackSearchPlan(
+      "xoxp-test",
+      { query: '"release checklist" guide', channel_ref: "team-share-lab", strategy: "broad" },
+      undefined,
+      { resolved: { channel: resolved.channel } },
+    );
+    expect(plan.fallbacks.length).toBeGreaterThan(0);
+    for (const query of [plan.primary, ...plan.fallbacks]) {
+      expect(query).toContain("in:#team-share-lab");
+    }
+  });
+
   it("compiles channel, author, participant, date, content, reaction, and thread operators", () => {
     const parts = buildQueryParts(
       {

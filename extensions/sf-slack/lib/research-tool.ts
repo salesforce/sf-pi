@@ -39,6 +39,7 @@ import {
 } from "./format.ts";
 import { buildSlackSearchPlan, type SlackResearchInput } from "./search-plan.ts";
 import { requireConfirmedChannel } from "./recipient-confirm.ts";
+import { isSlackChannelId } from "./resolve.ts";
 import { buildSlackTextResult, SLACK_OUTPUT_DESCRIPTION_SUFFIX } from "./truncation.ts";
 import type { ApiErr } from "./types.ts";
 
@@ -134,7 +135,7 @@ export function registerResearchTool(pi: ExtensionAPI): void {
       if ("result" in channelResolution) return channelResolution.result;
 
       const plan = await buildSlackSearchPlan(auth.token, input, signal, {
-        resolved: channelResolution.channel ? { channel: channelResolution.channel } : undefined,
+        resolved: channelResolution,
       });
       const candidateQueries = [plan.primary, ...plan.fallbacks]
         .filter(Boolean)
@@ -158,7 +159,7 @@ export function registerResearchTool(pi: ExtensionAPI): void {
       const searchErrors: ApiErr[] = [];
 
       for (const query of candidateQueries) {
-        const search = await runSearch(auth.token, query, limit, signal);
+        const search = await runSearch(auth.token, query, limit, signal, plan.resolved.channelId);
         executedQueries.push(query);
         queryCounts.push({ query, count: search.matches.length, api: search.api });
         if (search.error) searchErrors.push(search.error);
@@ -229,21 +230,20 @@ export function registerResearchTool(pi: ExtensionAPI): void {
   });
 }
 
-// slack_research is scoped to a user-named channel_ref. Delegate to the
-// shared HITL helper so the dialog flow matches every other workflow —
-// including the 'Type exact name/ID' escape hatch, infinite retry loop,
-// and headless loud-failure.
+// Exact IDs are read locators: let the scoped search validate access.
+// Fuzzy channel references still use shared HITL confirmation.
 async function resolveRequiredChannel(
   token: string,
   input: SlackResearchInput,
   signal: AbortSignal | undefined,
   ctx: ExtensionContext,
 ): Promise<
-  | { channel?: ResolvedChannel }
+  | { channelId?: string; channel?: ResolvedChannel }
   | { result: { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> } }
 > {
   const channelRef = input.channel_ref?.trim();
   if (!channelRef) return {};
+  if (isSlackChannelId(channelRef)) return { channelId: channelRef };
 
   const confirmed = await requireConfirmedChannel(ctx, token, channelRef, signal);
   if (confirmed.ok && confirmed.recipient.type === "channel") {
@@ -282,9 +282,12 @@ async function runSearch(
   query: string,
   limit: number,
   signal?: AbortSignal,
+  channelId?: string,
 ): Promise<{ api: string; matches: SlackSearchMatch[]; error?: ApiErr }> {
   const assistantParams: Record<string, string | number> = {
-    query,
+    // Real-time search requires mention syntax for ID filters; legacy
+    // search.messages retains the raw-ID operator used by the search plan.
+    query: channelId ? query.replace(`in:${channelId}`, `in:<#${channelId}>`) : query,
     count: clampLimit(limit, DEFAULT_SEARCH_LIMIT, 20),
     // Include DMs + MPIMs so research doesn't silently drop DM content.
     channel_types: DEFAULT_ASSISTANT_CHANNEL_TYPES,

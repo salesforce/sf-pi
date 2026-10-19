@@ -92,7 +92,9 @@ route through `requireConfirmedChannel` / `requireConfirmedUser` in
 `lib/recipient-confirm.ts`. A strictly parsed `slack` thread `message_url` is an
 exact locator rather than fuzzy recipient resolution: it calls the requested
 read directly and lets Slack validate access/existence without a selection
-prompt. `slack_send` is the other exception: it resolves candidates
+prompt. An exact `slack_research.channel_ref` ID is also a read locator:
+research searches that ID directly without metadata confirmation, and every
+fallback retains the channel restriction. `slack_send` is the other exception: it resolves candidates
 itself and folds recipient confidence/alternates into the final send confirmation
 so normal sends do not show two separate dialogs. The shared helper remains the
 single source of truth for:
@@ -104,7 +106,7 @@ single source of truth for:
 
 Do not reintroduce ad-hoc `resolveChannelParam` / `resolveUserParam`
 helpers in new read tool files; delegate fuzzy references to the shared helper.
-Do not extend the direct-permalink exception to raw IDs or fuzzy names. For
+Do not extend these exact-locator exceptions to other raw-ID reads or fuzzy names. For
 `slack_send`, keep recipient review inside the single final confirmation rather
 than adding a separate select dialog. The `resolveChannel` / `resolveUser`
 primitives in `lib/resolve.ts` are intentionally one layer below — they perform

@@ -77,6 +77,24 @@ describe("resolveChannel — raw ID verification (Bug #1 regression guard)", () 
     expect(result.best).toBeUndefined();
     // The resolver still emits a warning so the caller can surface it.
     expect(result.warnings.some((w) => w.includes("could not be verified"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("team_access_not_granted"))).toBe(true);
+  });
+
+  it.each([
+    { ok: false, error: "missing_scope", needed: "channels:read" },
+    { ok: true, channel: {} },
+  ])("retains scope errors or reports unavailable verification reasons (%j)", async (payload) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })),
+    );
+    const result = await resolveChannel("xoxp-test", "C01ABCEXAMPLE");
+    expect(result.best).toBeUndefined();
+    expect(result.warnings.join(" ")).toContain(
+      payload.ok
+        ? "verification reason unavailable"
+        : "missing_scope (needed scope: channels:read)",
+    );
   });
 
   it("returns cleanly when every Slack call times out (issue #17 regression guard)", async () => {

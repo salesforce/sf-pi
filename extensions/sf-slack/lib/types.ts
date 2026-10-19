@@ -411,6 +411,8 @@ export interface SlackSearchPlan {
   fallbacks: string[];
   explanation: string[];
   resolved: {
+    /** Explicit read locator; does not imply metadata verification. */
+    channelId?: string;
     channel?: ResolvedChannel;
     fromUser?: ResolvedUser | { handle: "me"; displayName: "me" };
     withUser?: ResolvedUser;

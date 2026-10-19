@@ -9,6 +9,7 @@
  */
 import {
   DEFAULT_LIST_LIMIT,
+  type ApiErr,
   type AssistantSearchContextResponse,
   type ConversationsInfoResponse,
   type ConversationsListResponse,
@@ -105,13 +106,12 @@ export async function resolveChannel(
 
     strategy.push("channel_id");
     const resolved = await resolveChannelById(token, input, signal);
-    if (resolved) {
-      addChannelCandidate(candidates, resolved);
+    if (resolved.channel) {
+      addChannelCandidate(candidates, resolved.channel);
       return finalizeResolve("channel", input, candidates, strategy, warnings, limit);
     }
     warnings.push(
-      `Channel ID "${input}" is syntactically valid but could not be verified via conversations.info. ` +
-        "The token may lack channels:read or the ID may not exist in this workspace.",
+      `Channel ID "${input}" metadata could not be verified via conversations.info: ${resolved.reason}.`,
     );
     // Fall through to cache / conversations.list / search lookups in case
     // the ID happens to appear under a different access path.
@@ -252,7 +252,7 @@ function formatCandidate(candidate: ResolvedChannel | ResolvedUser, index: numbe
 
 /** Verify a raw channel ID via conversations.info.
  *
- *  Returns `undefined` when the ID cannot be verified. Previously this
+ *  Returns the failure reason when the ID cannot be verified. Previously this
  *  helper fabricated a 0.75-confidence candidate for unverified IDs,
  *  which was enough to pass the permissive internal 0.60 threshold in
  *  slack / slack_channel / slack_file — letting bogus IDs like
@@ -265,7 +265,7 @@ async function resolveChannelById(
   token: string,
   channelId: string,
   signal?: AbortSignal,
-): Promise<ResolvedChannel | undefined> {
+): Promise<{ channel?: ResolvedChannel; reason?: string }> {
   const info = await slackApi<ConversationsInfoResponse>(
     "conversations.info",
     token,
@@ -275,11 +275,14 @@ async function resolveChannelById(
   if (info.ok && info.data.channel?.name) {
     const channel = toResolvedChannel(info.data.channel, 1, "conversations.info");
     getChannelCache().set(channel.id, channel.name);
-    return channel;
+    return { channel };
   }
-  // conversations.info failed (team_access_not_granted, channel_not_found,
-  // missing_scope, etc). Don't fabricate a candidate.
-  return undefined;
+  if (!info.ok) {
+    const error = info as ApiErr;
+    const scope = error.needed ? ` (needed scope: ${error.needed})` : "";
+    return { reason: `${error.error}${scope}` };
+  }
+  return { reason: "verification reason unavailable (response contained no channel name)" };
 }
 
 function findChannelsInCache(ref: string): ResolvedChannel[] {

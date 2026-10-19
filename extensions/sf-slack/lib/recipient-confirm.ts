@@ -160,7 +160,9 @@ async function requireConfirmed(
       options.title ??
       (resolution.candidates.length > 0
         ? `Pick Slack ${type} for "${ref}" (best confidence ${resolution.confidence.toFixed(2)})`
-        : `No Slack ${type} matched "${ref}" \u2014 type an exact ref or cancel`);
+        : rawIdFallback
+          ? `Could not verify Slack ${type} metadata for "${ref}" — ${resolution.warnings.join(" ") || "Verification reason unavailable."}`
+          : `No Slack ${type} matched "${ref}" \u2014 type an exact ref or cancel`);
 
     const picked = await ctx.ui.select(title, options_, { signal });
 
@@ -312,10 +314,10 @@ function buildHeadlessMessage(
     : `Slack ${type} "${ref}" could not be resolved. Re-invoke with an exact name or ID.`;
 
   if (resolution.candidates.length === 0) {
-    return header;
+    return [header, ...resolution.warnings].join("\n");
   }
 
-  const lines: string[] = [header, "Candidates:"];
+  const lines: string[] = [header, ...resolution.warnings, "Candidates:"];
   for (const candidate of resolution.candidates.slice(0, 10)) {
     lines.push(`  ${formatCandidate(candidate)}`);
   }

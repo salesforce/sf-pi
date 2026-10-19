@@ -131,6 +131,22 @@ function queueUser(responses: ResolveResult<ResolvedUser>[]): void {
 // ─── Tests ──────────────────────────────────────────────────────────────
 
 describe("requireConfirmedChannel", () => {
+  it.each(["team_access_not_granted", undefined])(
+    "explains unavailable exact-ID metadata without calling the ID invalid (%s)",
+    async (reason) => {
+      const resolution = channelResult("C01ABCEXAMPLE", []);
+      if (reason) resolution.warnings.push(`conversations.info: ${reason}`);
+      queueChannel([resolution]);
+      const { ctx, ui } = makeCtx(true);
+      ui.select.mockResolvedValueOnce("Cancel");
+      await requireConfirmedChannel(ctx, "xoxp-test", "C01ABCEXAMPLE");
+      const title = ui.select.mock.calls[0][0];
+      expect(title).toContain("Could not verify Slack channel metadata");
+      expect(title).toContain(reason ?? "Verification reason unavailable");
+      expect(title).not.toContain("No Slack channel matched");
+    },
+  );
+
   beforeEach(() => {
     resolveChannelMock = undefined;
   });

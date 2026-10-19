@@ -82,6 +82,10 @@ Automation controls:
 
 ## Safety and Data Boundaries
 
+- Exact channel IDs supplied to `slack_research.channel_ref` are read locators:
+  no metadata-confirmation dialog is needed, and every fallback query stays
+  channel-scoped. Slack search validates access; an ID is not treated as verified
+  channel metadata. Fuzzy channel references still use confidence-based clarification.
 - Reads are the default. Mutating surfaces are canvas create/edit, message send,
   and schedule/delete.
 - Every `slack_send` and schedule/delete action requires interactive confirmation
