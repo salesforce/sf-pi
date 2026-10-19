@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.12](https://github.com/salesforce/sf-pi/compare/v0.339.11...v0.339.12) (2026-10-19)
+
+
+### Bug Fixes
+
+* **slack:** use exact channel IDs as scoped research locators ([2acd867](https://github.com/salesforce/sf-pi/commit/2acd8670242c8b1077bb5208868ba8efe944a004)), closes [#793](https://github.com/salesforce/sf-pi/issues/793)
+
 ## [0.339.11](https://github.com/salesforce/sf-pi/compare/v0.339.10...v0.339.11) (2026-10-19)
 
 
