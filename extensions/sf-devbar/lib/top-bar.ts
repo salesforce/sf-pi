@@ -49,7 +49,7 @@ export type TopBarState = {
   gitChanges?: GitChanges | null;
   /** Context usage percentage 0-100. */
   contextPercent?: number | null;
-  /** Inline image width pill text, e.g. "img:120c". Empty when the user
+  /** Inline image width pill text, e.g. "🖼 120c". Empty when the user
    * left Pi's default (`terminal.imageWidthCells = 60`). */
   imageWidthPill?: string;
   /** Optional glyph mode override (test hook). Production auto-detects. */

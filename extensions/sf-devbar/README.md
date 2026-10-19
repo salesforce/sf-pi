@@ -63,8 +63,9 @@ assistant turn.
 **The gateway badge color is unexpected:** It follows the active model provider
 identity. Verify the selected provider/model in Pi before changing colors.
 
-**An `img:Nc` pill appears:** It reflects a non-default
-`terminal.imageWidthCells` setting and is intentionally hidden at the default.
+**A `🖼 Nc` pill appears:** The image icon shows a non-default
+`terminal.imageWidthCells` setting (in terminal cells) and is intentionally hidden
+at the default. ASCII-only terminals use `img:Nc` instead.
 
 ## File Structure
 

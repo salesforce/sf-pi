@@ -260,7 +260,7 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - The org segment stays pending
 - Context says `unknown`
 - The gateway badge color is unexpected
-- An `img:Nc` pill appears
+- A `🖼 Nc` pill appears
 
 **[SF Ohana Spinner](./extensions/sf-ohana-spinner.md#troubleshooting)**
 

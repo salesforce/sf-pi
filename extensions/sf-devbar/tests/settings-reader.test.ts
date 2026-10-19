@@ -145,7 +145,12 @@ describe("formatImageWidthPill", () => {
   });
 
   it("renders a compact pill for non-default values", () => {
-    expect(formatImageWidthPill(120)).toBe("img:120c");
-    expect(formatImageWidthPill(24)).toBe("img:24c");
+    expect(formatImageWidthPill(90, "emoji")).toBe("🖼 90c");
+    expect(formatImageWidthPill(120, "emoji")).toBe("🖼 120c");
+    expect(formatImageWidthPill(24, "emoji")).toBe("🖼 24c");
+  });
+
+  it("keeps an ASCII fallback on terminals without icon support", () => {
+    expect(formatImageWidthPill(90, "ascii")).toBe("img:90c");
   });
 });

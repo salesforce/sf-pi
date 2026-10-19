@@ -118,7 +118,7 @@ export default function sfDevBar(pi: ExtensionAPI) {
   let displayEnv: SfEnvironment | null = null;
   let displayOrgStale = false;
   let gitChanges: GitChanges | null = null;
-  /** Pre-formatted inline-image-width pill (e.g. "img:120c"). Empty string
+  /** Pre-formatted inline-image-width pill (e.g. "🖼 120c"). Empty string
    * when the user keeps the default so the top bar stays unchanged. */
   let imageWidthPill = "";
   let devbarColors: DevbarColors = DEFAULT_DEVBAR_COLORS;

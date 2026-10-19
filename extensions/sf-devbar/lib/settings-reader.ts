@@ -11,6 +11,7 @@
  * devbar stays working even when settings get corrupted mid-session.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { resolveGlyphMode, type GlyphMode } from "../../../lib/common/glyph-policy.ts";
 import { globalSettingsPath, projectSettingsPath } from "../../../lib/common/pi-paths.ts";
 import { hasDevbarColorOverrides, type DevbarColors } from "./colors.ts";
 import { readEffectiveDevbarSettings } from "./settings.ts";
@@ -119,12 +120,16 @@ function toPositiveInt(value: unknown): number | undefined {
 }
 
 /**
- * Format a non-default image width as a compact pill, e.g. `img:120c`.
+ * Format a non-default image width as an icon pill, e.g. `🖼 120c`.
+ * ASCII-only terminals retain the text fallback.
  * Returns an empty string when the value is absent or matches the default,
  * so callers can safely concatenate without further null checks.
  */
-export function formatImageWidthPill(value: number | undefined): string {
+export function formatImageWidthPill(
+  value: number | undefined,
+  mode: GlyphMode = resolveGlyphMode(),
+): string {
   if (typeof value !== "number") return "";
   if (value === DEFAULT_IMAGE_WIDTH_CELLS) return "";
-  return `img:${value}c`;
+  return mode === "ascii" ? `img:${value}c` : `🖼 ${value}c`;
 }

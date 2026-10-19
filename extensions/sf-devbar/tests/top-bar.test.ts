@@ -247,12 +247,14 @@ describe("renderTopBar", () => {
   });
 
   it("shows the image-width pill when set", () => {
-    const [line] = renderTopBar(makeState({ imageWidthPill: "img:120c" }), stubTheme);
-    expect(line).toContain("img:120c");
+    const [line] = renderTopBar(makeState({ imageWidthPill: "🖼 90c" }), stubTheme);
+    expect(line).toContain("🖼 90c");
+    expect(line).not.toContain("img:");
   });
 
   it("hides the image-width pill when empty", () => {
     const [line] = renderTopBar(makeState({ imageWidthPill: "" }), stubTheme);
+    expect(line).not.toContain("🖼");
     expect(line).not.toContain("img:");
   });
 
