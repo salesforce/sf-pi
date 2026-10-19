@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.339.11-2026-10-19",
-  "latestVersion": "0.339.11",
+  "revision": "release-0.339.12-2026-10-19",
+  "latestVersion": "0.339.12",
   "announcements": [
     {
-      "id": "release-0.339.11",
+      "id": "release-0.339.12",
       "kind": "update",
-      "title": "sf-pi v0.339.11 — devbar: show image width icon and preserve coherent Agent Script dependencies",
+      "title": "sf-pi v0.339.12 — slack: use exact channel IDs as scoped research locators, closes #793",
       "publishedAt": "2026-10-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.11",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.12",
       "severity": "info",
-      "body": "devbar: show image width icon and preserve coherent Agent Script dependencies"
+      "body": "slack: use exact channel IDs as scoped research locators, closes #793"
     }
   ]
 }
