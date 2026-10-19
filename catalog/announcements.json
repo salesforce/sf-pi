@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.339.10-2026-10-18",
-  "latestVersion": "0.339.10",
+  "revision": "release-0.339.11-2026-10-19",
+  "latestVersion": "0.339.11",
   "announcements": [
     {
-      "id": "release-0.339.10",
+      "id": "release-0.339.11",
       "kind": "update",
-      "title": "sf-pi v0.339.10 — security: harden local file access and refresh cache dependency",
-      "publishedAt": "2026-10-18T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.10",
+      "title": "sf-pi v0.339.11 — devbar: show image width icon and preserve coherent Agent Script dependencies",
+      "publishedAt": "2026-10-19T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.11",
       "severity": "info",
-      "body": "security: harden local file access and refresh cache dependency"
+      "body": "devbar: show image width icon and preserve coherent Agent Script dependencies"
     }
   ]
 }
