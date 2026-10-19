@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.13](https://github.com/salesforce/sf-pi/compare/v0.339.12...v0.339.13) (2026-10-19)
+
+
+### Bug Fixes
+
+* **deps-dev:** update ESLint to 10.13.0 ([36bc822](https://github.com/salesforce/sf-pi/commit/36bc822903d694e1f038f5b535a5730dd11be235))
+
 ## [0.339.12](https://github.com/salesforce/sf-pi/compare/v0.339.11...v0.339.12) (2026-10-19)
 
 
