@@ -153,7 +153,7 @@
     "@sf-agentscript/agentfabric-dialect": "1.2.36",
     "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "^5.0.5",
-    "eslint": "^10.12.0",
+    "eslint": "^10.13.0",
     "globals": "^17.13.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
