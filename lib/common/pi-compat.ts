@@ -16,7 +16,7 @@
 import * as PiRuntime from "@earendil-works/pi-coding-agent";
 
 /** Oldest Pi release whose public APIs satisfy every bundled extension. */
-export const MIN_PI_VERSION = "1.0.0";
+export const MIN_PI_VERSION = "1.4.0";
 
 /** Exclusive end of the exact patch range covered by required compatibility CI. */
 export const AUDITED_MAX_PI_VERSION_EXCLUSIVE = "1.4.1";

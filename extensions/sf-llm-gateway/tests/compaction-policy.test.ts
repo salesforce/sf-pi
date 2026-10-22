@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionContext, SessionBeforeCompactEvent } from "@earendil-works/pi-coding-agent";
-import type { Api, Model } from "@earendil-works/pi-ai";
+import { createAssistantMessageEventStream, type Api, type Model } from "@earendil-works/pi-ai";
 import { handleGatewayCompaction } from "../lib/compaction.ts";
+import { writeScopedCompactionModel } from "../lib/compaction-settings.ts";
 
 const SONNET = {
   id: "claude-sonnet-5",
@@ -71,21 +72,209 @@ function event(reason: SessionBeforeCompactEvent["reason"] = "manual") {
 function context(cwd: string) {
   const getAvailable = vi.fn(() => [] as Model<Api>[]);
   const complete = vi.fn();
+  const streamSimple = vi.fn((...args: unknown[]) => {
+    const stream = createAssistantMessageEventStream();
+    const response = complete(...args);
+    stream.result = () => response;
+    return stream;
+  });
   const notify = vi.fn();
   return {
     ctx: {
       cwd,
       hasUI: true,
-      modelRegistry: { getAvailable, complete },
+      isProjectTrusted: () => true,
+      modelRegistry: { getAvailable, complete, streamSimple },
       ui: { notify },
     } as unknown as ExtensionContext,
     getAvailable,
     complete,
+    streamSimple,
     notify,
   };
 }
 
+function checkpoint(text = "checkpoint") {
+  return {
+    stopReason: "stop",
+    content: [{ type: "text", text }],
+    usage: {
+      input: 100,
+      output: 20,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 120,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+  };
+}
+
 describe("Gateway compaction policy", () => {
+  it("ignores an untrusted project model preference", async () => {
+    const cwd = tempDir();
+    writeScopedCompactionModel(cwd, "project", "sf-llm-gateway/claude-sonnet-5");
+    const { ctx, getAvailable, streamSimple } = context(cwd);
+    ctx.isProjectTrusted = () => false;
+    await expect(handleGatewayCompaction(event(), ctx)).resolves.toBeUndefined();
+    expect(getAvailable).not.toHaveBeenCalled();
+    expect(streamSimple).not.toHaveBeenCalled();
+  });
+
+  it("cancels before dispatch when the request signal is already aborted", async () => {
+    const { ctx, getAvailable, streamSimple, notify } = context(tempDir());
+    const input = event();
+    input.signal = AbortSignal.abort();
+    await expect(
+      handleGatewayCompaction(input, ctx, {
+        readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+      }),
+    ).resolves.toEqual({ cancel: true });
+    expect(getAvailable).not.toHaveBeenCalled();
+    expect(streamSimple).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("checks the generated prompt before dispatching a large checkpoint", async () => {
+    const { ctx, getAvailable, streamSimple, notify } = context(tempDir());
+    getAvailable.mockReturnValue([{ ...SONNET, contextWindow: 200_000, maxTokens: 1_024 }]);
+    const input = event();
+    input.preparation.previousSummary = "previous context ".repeat(80_000);
+    await expect(
+      handleGatewayCompaction(input, ctx, {
+        readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+      }),
+    ).resolves.toBeUndefined();
+    expect(streamSimple).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining("cannot fit"), "warning");
+  });
+
+  it("rejects a summary that attempts to call a tool", async () => {
+    const { ctx, getAvailable, complete } = context(tempDir());
+    getAvailable.mockReturnValue([SONNET]);
+    complete.mockResolvedValue({
+      ...checkpoint(),
+      content: [
+        { type: "text", text: "checkpoint" },
+        { type: "toolCall", id: "example-call", name: "example_tool", arguments: {} },
+      ],
+    });
+    await expect(
+      handleGatewayCompaction(event(), ctx, {
+        readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("lets Pi merge split-turn summaries and aggregate their usage", async () => {
+    const { ctx, getAvailable, complete } = context(tempDir());
+    getAvailable.mockReturnValue([SONNET]);
+    complete
+      .mockResolvedValueOnce(checkpoint("history checkpoint"))
+      .mockResolvedValueOnce(checkpoint("turn checkpoint"));
+    const input = event();
+    input.customInstructions = "Preserve deployment constraints";
+    input.preparation.previousSummary = "previous checkpoint";
+    input.preparation.isSplitTurn = true;
+    input.preparation.turnPrefixMessages = [
+      { role: "user", content: "unfinished turn", timestamp: 1 },
+    ];
+    const result = await handleGatewayCompaction(input, ctx, {
+      readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+    });
+    expect(complete).toHaveBeenCalledTimes(2);
+    for (const call of complete.mock.calls) {
+      expect(call[0]).toBe(SONNET);
+      expect(JSON.stringify(call[1])).toContain("Preserve deployment constraints");
+    }
+    expect(JSON.stringify(complete.mock.calls[0]?.[1])).toContain("previous checkpoint");
+    expect(JSON.stringify(complete.mock.calls[1]?.[1])).toContain("unfinished turn");
+    expect(result).toMatchObject({
+      compaction: {
+        summary: expect.stringMatching(/history checkpoint[\s\S]*turn checkpoint/),
+        usage: { totalTokens: 240 },
+      },
+    });
+  });
+
+  it("does not persist a split-turn checkpoint when its second summary is blank", async () => {
+    const { ctx, getAvailable, complete, notify } = context(tempDir());
+    getAvailable.mockReturnValue([SONNET]);
+    complete.mockResolvedValueOnce(checkpoint()).mockResolvedValueOnce(checkpoint(" "));
+    const input = event();
+    input.preparation.isSplitTurn = true;
+    input.preparation.turnPrefixMessages = [
+      { role: "user", content: "unfinished turn", timestamp: 1 },
+    ];
+    await expect(
+      handleGatewayCompaction(input, ctx, {
+        readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+      }),
+    ).resolves.toBeUndefined();
+    expect(complete).toHaveBeenCalledTimes(2);
+    expect(notify).toHaveBeenCalledOnce();
+  });
+
+  it.each(["length", "toolUse", "deferred", "error"] as const)(
+    "does not persist a %s response",
+    async (stopReason) => {
+      const { ctx, getAvailable, complete, notify } = context(tempDir());
+      getAvailable.mockReturnValue([SONNET]);
+      complete.mockResolvedValue({
+        stopReason,
+        content: [{ type: "text", text: "partial summary" }],
+      });
+      await expect(
+        handleGatewayCompaction(event(), ctx, {
+          readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+        }),
+      ).resolves.toBeUndefined();
+      expect(notify).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("does not persist a blank summary even when file operations exist", async () => {
+    const { ctx, getAvailable, complete } = context(tempDir());
+    getAvailable.mockReturnValue([SONNET]);
+    complete.mockResolvedValue({ stopReason: "stop", content: [{ type: "text", text: "  " }] });
+    const input = event();
+    input.preparation.fileOps.read.add("src/example.ts");
+    await expect(
+      handleGatewayCompaction(input, ctx, {
+        readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("cancels rather than falling back when the provider aborts", async () => {
+    const { ctx, getAvailable, complete, notify } = context(tempDir());
+    getAvailable.mockReturnValue([SONNET]);
+    complete.mockResolvedValue({ stopReason: "aborted", content: [] });
+    await expect(
+      handleGatewayCompaction(event(), ctx, {
+        readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+      }),
+    ).resolves.toEqual({ cancel: true });
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("preserves previous summaries and custom instructions", async () => {
+    const { ctx, getAvailable, complete } = context(tempDir());
+    getAvailable.mockReturnValue([SONNET]);
+    complete.mockResolvedValue({
+      stopReason: "stop",
+      content: [{ type: "text", text: "checkpoint" }],
+    });
+    const input = event();
+    input.preparation.previousSummary = "Previous checkpoint";
+    input.customInstructions = "Preserve deployment constraints";
+    await handleGatewayCompaction(input, ctx, {
+      readSettings: () => ({ model: "sf-llm-gateway/claude-sonnet-5", source: "global" }),
+    });
+    const request = JSON.stringify(complete.mock.calls[0]?.[1]);
+    expect(request).toContain("Previous checkpoint");
+    expect(request).toContain("Preserve deployment constraints");
+  });
+
   it("leaves compaction to Pi when the effective preference is active", async () => {
     const cwd = tempDir();
     const { ctx, getAvailable, complete } = context(cwd);
@@ -199,12 +388,12 @@ describe("Gateway compaction policy", () => {
         SONNET,
         expect.objectContaining({ messages: expect.any(Array) }),
         expect.objectContaining({
-          maxTokens: 8_192,
           cacheRetention: "none",
           sessionId: expect.any(String),
           signal: expect.any(AbortSignal),
         }),
       );
+      expect(complete.mock.calls[0]?.[2]?.maxTokens).not.toBe(8_192);
       expect(result).toMatchObject({
         compaction: {
           summary: expect.stringMatching(

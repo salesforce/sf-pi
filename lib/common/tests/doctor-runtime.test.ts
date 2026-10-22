@@ -11,7 +11,7 @@ describe("buildRuntimeUpdateAdvice", () => {
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice.join("\n")).toContain("inside the audited >=1.0.0 <1.4.1 window");
+    expect(advice.join("\n")).toContain("inside the audited >=1.4.0 <1.4.1 window");
     expect(advice.join("\n")).toContain("newer stable pre-2.0 releases");
     expect(advice.join("\n")).not.toContain("No unbounded Pi update is recommended");
     expect(advice.join("\n")).not.toContain("npm install -g");
@@ -36,7 +36,7 @@ describe("buildRuntimeUpdateAdvice", () => {
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice[0]).toContain("loads stable Pi >=1.0.0 <2.0.0");
+    expect(advice[0]).toContain("loads stable Pi >=1.4.0 <2.0.0");
     expect(advice).toContain(
       "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.4.0 --force",
     );
@@ -49,7 +49,7 @@ describe("buildRuntimeUpdateAdvice", () => {
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice[0]).toContain("loads stable Pi >=1.0.0 <2.0.0");
+    expect(advice[0]).toContain("loads stable Pi >=1.4.0 <2.0.0");
     expect(advice).toContain(
       "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.4.0 --force",
     );
@@ -62,7 +62,7 @@ describe("buildRuntimeUpdateAdvice", () => {
       allPiPaths: ["/tmp/bin/pi"],
     });
 
-    expect(advice[0]).toContain("loads stable Pi >=1.0.0 <2.0.0");
+    expect(advice[0]).toContain("loads stable Pi >=1.4.0 <2.0.0");
     expect(advice).toContain(
       "npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.4.0 --force",
     );
