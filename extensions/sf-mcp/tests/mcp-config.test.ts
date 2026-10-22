@@ -24,6 +24,63 @@ function tempFile(): string {
 }
 
 describe("native Pi MCP configuration", () => {
+  it.each(["", "\uFEFF"])(
+    "reads valid configuration without rewriting it (prefix %j)",
+    (prefix) => {
+      const file = tempFile();
+      const root = {
+        autoEnableCodemode: false,
+        description: "keep \uFEFF inside text",
+        mcpServers: {
+          existing: { url: "https://example.test/mcp" },
+          inherited: { enabled: false, exposure: "hidden" },
+        },
+      };
+      const bytes = `${prefix}${JSON.stringify(root)}\n`;
+      writeFileSync(file, bytes, "utf8");
+      expect(inspectMcpConfig(file)).toMatchObject({
+        ok: true,
+        root,
+        servers: { existing: root.mcpServers.existing },
+        overrides: { inherited: root.mcpServers.inherited },
+      });
+      expect(readFileSync(file, "utf8")).toBe(bytes);
+    },
+  );
+
+  it("preserves unrelated fields when adding to BOM-prefixed configuration", () => {
+    const file = tempFile();
+    writeFileSync(
+      file,
+      `\uFEFF${JSON.stringify({ autoEnableCodemode: false, mcpServers: { existing: { url: "https://example.test/mcp" } } })}`,
+      "utf8",
+    );
+    expect(upsertMcpServer(file, "new-server", { command: "example-command" })).toMatchObject({
+      ok: true,
+    });
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({
+      autoEnableCodemode: false,
+      mcpServers: {
+        existing: { url: "https://example.test/mcp" },
+        "new-server": { command: "example-command" },
+      },
+    });
+  });
+
+  it.each(["{ malformed", "\uFEFF{ malformed", "\uFEFF\uFEFF{}"])(
+    "refuses malformed content without overwriting it (%j)",
+    (bytes) => {
+      const file = tempFile();
+      writeFileSync(file, bytes, "utf8");
+      expect(inspectMcpConfig(file)).toMatchObject({ ok: false, reason: "invalid-json" });
+      expect(upsertMcpServer(file, "new-server", { command: "example-command" })).toMatchObject({
+        ok: false,
+        reason: "invalid-json",
+      });
+      expect(readFileSync(file, "utf8")).toBe(bytes);
+    },
+  );
+
   it("is absent and empty by default", () => {
     const inspected = inspectMcpConfig(tempFile());
 

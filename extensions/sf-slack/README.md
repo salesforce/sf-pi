@@ -46,6 +46,11 @@ channel resolution; `channel` + `ts` remains available for existing callers.
 | `/sf-slack sent`       | List current-branch delivery activity                  |
 | `/sf-slack help`       | Print usage guidance                                   |
 
+Concurrent `slack_resolve` clarification dialogs use Pi's native dialog stack.
+Each call keeps its own selection or cancellation result; completing the visible
+dialog restores the previous one. SF Slack does not suppress concurrent
+clarifications or maintain a separate dialog queue.
+
 ## Configuration
 
 Use `/sf-slack connect`, then native `/login sf-slack`. Pi owns credential

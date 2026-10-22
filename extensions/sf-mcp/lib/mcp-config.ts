@@ -86,7 +86,8 @@ export function inspectMcpConfig(filePath: string): McpConfigInspection {
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    // Pi accepts one UTF-8 BOM at the start; leave embedded characters untouched.
+    parsed = JSON.parse(raw.replace(/^\uFEFF/u, ""));
   } catch {
     return {
       ok: false,

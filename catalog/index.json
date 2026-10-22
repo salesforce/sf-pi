@@ -1014,7 +1014,7 @@
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9994
+    "srcLoc": 9995
   },
   {
     "id": "sf-ohana-spinner",
@@ -1256,7 +1256,7 @@
     "entry": "extensions/sf-slack/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 12488
+    "srcLoc": 12425
   },
   {
     "id": "sf-soql",

@@ -99,6 +99,19 @@ Gateway authentication uses Pi-owned credentials or canonical environment variab
 
 Pi 0.81.1 matches the Funnel for global inheritance, additive top-level project scope, project-only loading, project trust, missing-root omission, known default-root precedence, and one-skill rescope results. Package deltas, exact filters, complete package collision inventory, and whole-source rescope remain explicit decision rows. SF-specific lifecycle, discovery, stale-wiring diagnostics, rescope convenience, and usage awareness remain retained leverage. E4 authorizes no production deletion or fix.
 
+### Pi 1.4 dialog and configuration alignment
+
+With Pi 1.4.0 as the runtime floor, `slack_resolve` delegates concurrent
+clarification lifecycle to Pi's native dialog stack. The local in-flight gate,
+concurrency warning, and test-only gate exports are removed. Registered-tool
+Behavior Proofs use Pi's real extension UI context and dialog components with
+fake terminal plumbing to verify result ownership, cancellation, and restoration.
+
+SF MCP accepts one leading UTF-8 BOM before strict JSON parsing, matching Pi's
+native configuration reader. Inspection does not rewrite files. Embedded BOM
+characters, unrelated fields, malformed-file refusal, source-bound plans, and
+Guardrail-mediated writes retain their existing contracts.
+
 ## Runtime Delegation / Simplification Backlog
 
 1. **Code Analyzer human-only transcript rows** — landed. Use `appendEntry()` and `registerEntryRenderer()` for auto-scan status rows; keep agent-visible follow-ups as messages.
