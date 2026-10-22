@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.340.1](https://github.com/salesforce/sf-pi/compare/v0.340.0...v0.340.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **runtime:** use native Slack dialogs and accept MCP BOM ([d7ad24d](https://github.com/salesforce/sf-pi/commit/d7ad24d6092b1020c96b5649324126fb0490036f))
+
 ## [0.340.0](https://github.com/salesforce/sf-pi/compare/v0.339.15...v0.340.0) (2026-10-22)
 
 

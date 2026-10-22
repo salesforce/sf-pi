@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.340.0-2026-10-22",
-  "latestVersion": "0.340.0",
+  "revision": "release-0.340.1-2026-10-22",
+  "latestVersion": "0.340.1",
   "announcements": [
     {
-      "id": "release-0.340.0",
+      "id": "release-0.340.1",
       "kind": "update",
-      "title": "sf-pi v0.340.0 — gateway: SF Pi now requires stable Pi >=1.4.0 <2.0.0. Upgrade Pi before updating SF Pi. Su…",
+      "title": "sf-pi v0.340.1 — runtime: use native Slack dialogs and accept MCP BOM",
       "publishedAt": "2026-10-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.340.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.340.1",
       "severity": "info",
-      "body": "gateway: SF Pi now requires stable Pi >=1.4.0 <2.0.0. Upgrade Pi before updating SF Pi. Summary prompts and output budgeting are Pi-owned; split turns can require two summary requests. — gateway: delegate compaction to Pi 1.4.0"
+      "body": "runtime: use native Slack dialogs and accept MCP BOM"
     }
   ]
 }
