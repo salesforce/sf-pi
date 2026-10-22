@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.340.1-2026-10-22",
-  "latestVersion": "0.340.1",
+  "revision": "release-0.340.2-2026-10-22",
+  "latestVersion": "0.340.2",
   "announcements": [
     {
-      "id": "release-0.340.1",
+      "id": "release-0.340.2",
       "kind": "update",
-      "title": "sf-pi v0.340.1 — runtime: use native Slack dialogs and accept MCP BOM",
+      "title": "sf-pi v0.340.2 — org: expose default provenance and refresh mutation target facts",
       "publishedAt": "2026-10-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.340.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.340.2",
       "severity": "info",
-      "body": "runtime: use native Slack dialogs and accept MCP BOM"
+      "body": "org: expose default provenance and refresh mutation target facts"
     }
   ]
 }
