@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.340.3](https://github.com/salesforce/sf-pi/compare/v0.340.2...v0.340.3) (2026-10-22)
+
+
+### Bug Fixes
+
+* **deps:** update ip-address to patched 10.7.4 ([e5fee89](https://github.com/salesforce/sf-pi/commit/e5fee894387f8966b15eaa02316f35e0874ed29b))
+
 ## [0.340.2](https://github.com/salesforce/sf-pi/compare/v0.340.1...v0.340.2) (2026-10-22)
 
 
