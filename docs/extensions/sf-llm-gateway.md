@@ -33,7 +33,7 @@ Open its Manager detail or change its package state with:
 - API-key input uses SF Pi's shared fixed-mask component and never enters Pi's visible stock prompt.
 - Pi alone persists/removes active credentials; setup and import paths write no secrets.
 - Extension config stores only non-secret settings; credentials remain Pi-owned.
-- Dedicated compaction accepts only authenticated cached sf-llm-gateway models, never changes the chat model, requires trusted project scope, and falls back to Pi.
+- Dedicated compaction accepts only authenticated cached sf-llm-gateway models, delegates summary construction and checkpoint formatting to Pi, checks context fit before dispatch, rejects invalid summaries, never changes the chat model, requires trusted project scope, and falls back to Pi.
 - Discovery and restored cache entries publish only exact IDs backed by a reusable public Pi catalog API.
 - Catalog-backed GPT models retain Pi's Responses transport even when Gateway discovery declares chat; other models continue to honor discovered route mode.
 - Gateway OpenAI-compatible requests omit the optional prompt_cache_key field without changing other providers; this may reduce cache affinity.

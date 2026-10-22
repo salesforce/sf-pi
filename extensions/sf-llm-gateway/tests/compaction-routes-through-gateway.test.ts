@@ -118,6 +118,7 @@ async function createCompactionSession(
       input?: number;
       output?: number;
     }>;
+    dedicatedReplies?: Array<{ text: string; stopReason: CompletedStopReason }>;
     authenticated?: boolean;
     throwingCompactionHook?: boolean;
     dedicatedCompactionModel?: boolean;
@@ -126,9 +127,14 @@ async function createCompactionSession(
   const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-compaction-"));
   tempDirs.push(cwd);
   const summarization = vi.fn((model: Model<Api>) => summaryStream(model));
-  const dedicatedSummarization = vi.fn((model: Model<Api>) =>
-    summaryStream(model, "[dedicated summary]"),
-  );
+  let dedicatedCall = 0;
+  const dedicatedSummarization = vi.fn((model: Model<Api>) => {
+    const reply = options.dedicatedReplies?.[dedicatedCall++] ?? {
+      text: "[dedicated summary]",
+      stopReason: "stop" as const,
+    };
+    return summaryStream(model, reply.text, reply.stopReason, { input: 100, output: 20 });
+  });
   let agentCall = 0;
   const agent = vi.fn((model: Model<Api>) => {
     const reply = options.agentReplies?.[agentCall++] ?? {
@@ -313,6 +319,37 @@ describe("Pi compaction → complete Gateway Provider", () => {
       session.dispose();
     }
   });
+
+  it.each([
+    { text: "[partial summary]", stopReason: "length" as const },
+    { text: " ", stopReason: "stop" as const },
+  ])(
+    "persists only the native fallback after an invalid dedicated summary ($stopReason)",
+    async (reply) => {
+      const { session, summarization, dedicatedSummarization } = await createCompactionSession({
+        dedicatedCompactionModel: true,
+        dedicatedReplies: [reply],
+      });
+      try {
+        const activeModel = session.model;
+        await expect(session.compact()).resolves.toMatchObject({
+          summary: expect.stringContaining("[gateway summary]"),
+        });
+        expect(dedicatedSummarization).toHaveBeenCalledOnce();
+        expect(summarization).toHaveBeenCalledOnce();
+        expect(session.model).toBe(activeModel);
+        const checkpoints = session.sessionManager
+          .getBranch()
+          .filter((entry) => entry.type === "compaction");
+        expect(checkpoints).toHaveLength(1);
+        expect(checkpoints[0]).toMatchObject({
+          summary: expect.stringContaining("[gateway summary]"),
+        });
+      } finally {
+        session.dispose();
+      }
+    },
+  );
 
   it("falls back to built-in Gateway compaction when a custom compaction hook throws", async () => {
     const { session, summarization } = await createCompactionSession({

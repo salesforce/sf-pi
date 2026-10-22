@@ -173,6 +173,11 @@ or in global/project Pi settings:
 }
 ```
 
+Pi builds and formats dedicated-model checkpoints too. SF Pi selects the model
+and applies safety/fallback policy through Pi's authenticated model registry; it
+does not maintain a separate summary prompt or fixed 8,192-token output cap.
+Split turns can require two summary requests, with Pi combining their usage.
+
 Set the model to `active` to restore Pi's built-in behavior. The Manager picker
 uses the currently authenticated Gateway catalog rather than a hardcoded list;
 for example, a user may choose a quality-oriented Sonnet model or a

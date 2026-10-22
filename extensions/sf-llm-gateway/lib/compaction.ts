@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Dedicated-model compaction policy for SF LLM Gateway. */
-import { contentText, uuidv7, type Api, type Model } from "@earendil-works/pi-ai";
+/** Dedicated-model policy; Pi owns summary construction and checkpoint formatting. */
+import { contentText } from "@earendil-works/pi-ai";
 import {
-  convertToLlm,
-  serializeConversation,
+  compact,
+  estimateTokens,
   type ExtensionContext,
   type SessionBeforeCompactEvent,
 } from "@earendil-works/pi-coding-agent";
@@ -14,38 +14,7 @@ import {
 } from "./compaction-settings.ts";
 import { PROVIDER_NAME } from "./config.ts";
 
-const MAX_SUMMARY_TOKENS = 8_192;
 const CONTEXT_SAFETY_TOKENS = 4_096;
-const SUMMARY_SYSTEM_PROMPT =
-  "You are a context summarization assistant. Return only a structured checkpoint that another agent can use to continue the work.";
-const SUMMARY_FORMAT = `Use this exact structure:
-
-## Goal
-[Current objective]
-
-## Constraints & Preferences
-- [Requirements and constraints]
-
-## Progress
-### Done
-- [x] [Completed work]
-
-### In Progress
-- [ ] [Current work]
-
-### Blocked
-- [Current blockers]
-
-## Key Decisions
-- **[Decision]**: [Rationale]
-
-## Next Steps
-1. [Ordered next action]
-
-## Critical Context
-- [Exact paths, function names, errors, data, or references needed to continue]
-
-Keep every section concise. Preserve exact technical identifiers and error messages.`;
 
 type GatewayCompactionPreference = Pick<EffectiveCompactionSettings, "model" | "source"> &
   Partial<Pick<EffectiveCompactionSettings, "enabled" | "enabledSource">>;
@@ -63,6 +32,7 @@ export async function handleGatewayCompaction(
     ? dependencies.readSettings(ctx.cwd)
     : readEffectiveCompactionSettings(ctx.cwd, undefined, ctx.isProjectTrusted());
   if (preference.model === ACTIVE_COMPACTION_MODEL) return undefined;
+  if (event.signal.aborted) return { cancel: true };
 
   const modelId = preference.model.slice(`${PROVIDER_NAME}/`.length);
   const model = ctx.modelRegistry
@@ -73,116 +43,53 @@ export async function handleGatewayCompaction(
     return undefined;
   }
 
-  const prompt = buildSummaryPrompt(event);
-  const maxTokens = Math.min(MAX_SUMMARY_TOKENS, positiveMaxTokens(model));
-  if (!fitsContext(model, prompt, maxTokens)) {
-    warnFallback(
-      ctx,
-      `Configured compaction model ${preference.model} cannot fit this checkpoint request.`,
-    );
-    return undefined;
-  }
-
+  let cancelled = false;
+  let failure = `Configured compaction model ${preference.model} failed. Run /sf-llm-gateway doctor.`;
   try {
-    const response = await ctx.modelRegistry.complete(
+    const result = await compact(
+      event.preparation,
       model,
-      {
-        systemPrompt: SUMMARY_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: [{ type: "text", text: prompt }],
-            timestamp: Date.now(),
-          },
-        ],
-      },
-      {
-        maxTokens,
-        signal: event.signal,
-        cacheRetention: "none",
-        sessionId: uuidv7(),
+      undefined,
+      undefined,
+      event.customInstructions,
+      event.signal,
+      undefined,
+      async (summaryModel, context, options) => {
+        // Check Pi's actual prompt before dispatch, rather than maintaining a second prompt.
+        const inputTokens = context.messages.reduce(
+          (sum, message) => sum + estimateTokens(message),
+          0,
+        );
+        const outputTokens = options?.maxTokens ?? Math.max(0, summaryModel.maxTokens);
+        if (
+          summaryModel.contextWindow > 0 &&
+          inputTokens + outputTokens + CONTEXT_SAFETY_TOKENS > summaryModel.contextWindow
+        ) {
+          failure = `Configured compaction model ${preference.model} cannot fit this checkpoint request.`;
+          throw new Error("Summary exceeds model context");
+        }
+
+        const stream = ctx.modelRegistry.streamSimple(summaryModel, context, options);
+        const response = await stream.result();
+        if (event.signal.aborted || response.stopReason === "aborted") {
+          cancelled = true;
+          throw new Error("Summary cancelled");
+        }
+        // Pi rejects length/error/tool-call responses, but does not reject every non-stop
+        // or blank response. Validate each part before Pi adds file lists or merges a split turn.
+        if (response.stopReason !== "stop" || !contentText(response.content).trim()) {
+          throw new Error("Summary did not finish with text");
+        }
+        return stream;
       },
     );
-
-    if (event.signal.aborted || response.stopReason === "aborted") return { cancel: true };
-    if (response.stopReason !== "stop") {
-      warnFallback(ctx, `Configured compaction model ${preference.model} did not finish normally.`);
-      return undefined;
-    }
-
-    const summaryText = contentText(response.content).trim();
-    if (!summaryText) {
-      warnFallback(
-        ctx,
-        `Configured compaction model ${preference.model} returned an empty summary.`,
-      );
-      return undefined;
-    }
-
-    const { readFiles, modifiedFiles } = computeFileLists(event.preparation.fileOps);
-    const summary = `${summaryText}${formatFileOperations(readFiles, modifiedFiles)}`;
-    return {
-      compaction: {
-        summary,
-        firstKeptEntryId: event.preparation.firstKeptEntryId,
-        tokensBefore: event.preparation.tokensBefore,
-        usage: response.usage,
-        details: { readFiles, modifiedFiles },
-      },
-    };
-  } catch {
     if (event.signal.aborted) return { cancel: true };
-    warnFallback(
-      ctx,
-      `Configured compaction model ${preference.model} failed. Run /sf-llm-gateway doctor.`,
-    );
+    return { compaction: result };
+  } catch {
+    if (cancelled || event.signal.aborted) return { cancel: true };
+    warnFallback(ctx, failure);
     return undefined;
   }
-}
-
-function buildSummaryPrompt(event: SessionBeforeCompactEvent): string {
-  const messages = [
-    ...event.preparation.messagesToSummarize,
-    ...event.preparation.turnPrefixMessages,
-  ];
-  const conversation = serializeConversation(convertToLlm(messages));
-  const previousSummary = event.preparation.previousSummary
-    ? `\n\n<previous-summary>\n${event.preparation.previousSummary}\n</previous-summary>`
-    : "";
-  const customInstructions = event.customInstructions
-    ? `\n\nAdditional focus:\n${event.customInstructions}`
-    : "";
-  return `<conversation>\n${conversation}\n</conversation>${previousSummary}\n\n${SUMMARY_FORMAT}${customInstructions}`;
-}
-
-function positiveMaxTokens(model: Model<Api>): number {
-  return model.maxTokens > 0 ? model.maxTokens : MAX_SUMMARY_TOKENS;
-}
-
-function fitsContext(model: Model<Api>, prompt: string, maxTokens: number): boolean {
-  if (model.contextWindow <= 0) return true;
-  const estimatedInputTokens = Math.ceil((SUMMARY_SYSTEM_PROMPT.length + prompt.length) / 4);
-  return estimatedInputTokens + maxTokens + CONTEXT_SAFETY_TOKENS <= model.contextWindow;
-}
-
-function computeFileLists(fileOps: SessionBeforeCompactEvent["preparation"]["fileOps"]): {
-  readFiles: string[];
-  modifiedFiles: string[];
-} {
-  const modified = new Set([...fileOps.edited, ...fileOps.written]);
-  return {
-    readFiles: [...fileOps.read].filter((file) => !modified.has(file)).sort(),
-    modifiedFiles: [...modified].sort(),
-  };
-}
-
-function formatFileOperations(readFiles: string[], modifiedFiles: string[]): string {
-  const sections: string[] = [];
-  if (readFiles.length > 0) sections.push(`<read-files>\n${readFiles.join("\n")}\n</read-files>`);
-  if (modifiedFiles.length > 0) {
-    sections.push(`<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`);
-  }
-  return sections.length > 0 ? `\n\n${sections.join("\n\n")}` : "";
 }
 
 function warnFallback(ctx: ExtensionContext, reason: string): void {
