@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Two non-blocking status bars: a top widget with model/thinking/session/git/context, and a custom footer with project-scoped org info, monthly LLM-gateway budget, and active extension counts.
+Two non-blocking status bars: a top widget with model/thinking/session/git/context, and a custom footer with effective default org and Local/Global/Environment provenance, monthly LLM-gateway budget, and active extension counts.
 
 ## Start
 

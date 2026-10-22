@@ -453,6 +453,7 @@ describe("Safety Kernel — commandGate (Tier 2)", () => {
 describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
   it("confirms sf project deploy start against production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -470,6 +471,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("confirms herdr_pane.run sf project deploy start against production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "herdr_pane",
@@ -486,6 +488,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("confirms chained sf project deploy start against production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -500,6 +503,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("confirms sf project deploy quick against production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -512,6 +516,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("does NOT fire for production deploy rehearsal commands", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     for (const command of [
       "sf project deploy validate -o Prod",
@@ -528,6 +533,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("does NOT fire for sandbox targets", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    lookupOrg("DevInt", "sandbox");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -540,6 +546,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("does NOT fire for explicit non-default scratch aliases resolved by lookup", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    lookupOrg("DevInt", "sandbox");
     lookupOrg("Scratch", "scratch");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
@@ -566,6 +573,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("keeps explicit non-default production aliases gated after lookup", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    lookupOrg("DevInt", "sandbox");
     lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
@@ -583,6 +591,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("confirms sf apex run on production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -595,6 +604,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("confirms sf data upsert on production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -607,6 +617,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("confirms sf org api DELETE on production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -621,6 +632,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("does NOT fire for sf org api GET", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -633,6 +645,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("confirms additional Salesforce mutations on production", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
     const config = readBundledConfig();
     for (const [command, ruleId] of [
       [
@@ -659,6 +672,7 @@ describe("Safety Kernel — orgAwareGate (Tier 2)", () => {
 
   it("does NOT fire additional Salesforce mutation rules for sandbox targets", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    lookupOrg("DevInt", "sandbox");
     const config = readBundledConfig();
     for (const command of [
       "sf data create record --sobject Account --values 'Name=Acme' -o DevInt",
@@ -696,6 +710,7 @@ describe("Guardrail owns native production policy", () => {
     ["sf_flow", "lifecycle.activate", "native-sf-flow-prod"],
   ])("controls %s through existing rule behaviors", async (toolName, action, ruleId) => {
     mockedEnv = env("PolicyProd", "production");
+    lookupOrg("PolicyProd", "production");
     const config = readBundledConfig();
     const input = { action, target_org: "PolicyProd", allow_mutation: true };
     const evaluate = () => evaluateSafety({ toolName, input, cwd: "/project", config });
@@ -724,6 +739,7 @@ describe("Guardrail owns native production policy", () => {
       }),
     ).toBeUndefined();
     mockedEnv = env("PolicyDev", "developer");
+    lookupOrg("PolicyDev", "developer");
     rule.behavior = "block";
     rule.enabled = true;
     expect(

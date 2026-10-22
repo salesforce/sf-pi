@@ -23,7 +23,7 @@ function makeEnv(
     sourceApiVersion: string;
     hasTargetOrg: boolean;
     targetOrg: string;
-    configLocation: "Local" | "Global";
+    configLocation: "Local" | "Global" | "Environment";
     orgDetected: boolean;
     orgAlias: string;
     orgType: SfEnvironment["org"]["orgType"];
@@ -105,11 +105,13 @@ describe("formatAgentContext", () => {
       configLocation: "Global",
     });
     const ctx = formatAgentContext(env)!;
-    expect(ctx).toContain("Default org: MyOrg (sandbox) — Connected");
+    expect(ctx).toContain("Default org: MyOrg (sandbox)");
     expect(ctx).toContain("Connection API version: 66.0");
     expect(ctx).not.toContain("Org API version:");
     expect(ctx).not.toContain("Instance:");
-    expect(ctx).not.toContain("Config scope:");
+    expect(ctx).toContain("Default source: Global CLI configuration");
+    expect(ctx).toContain("Authentication: Saved login; not checked live");
+    expect(ctx).toContain("explicit target");
   });
 
   it("labels configured and fallback connection API provenance", () => {
@@ -151,6 +153,42 @@ describe("formatAgentContext", () => {
 
     expect(ctx).toContain("Connection API version: 66.0");
     expect(ctx).not.toContain("source unknown");
+  });
+
+  it("labels environment overrides without calling them global", () => {
+    const env = makeEnv({
+      hasTargetOrg: true,
+      targetOrg: "Example-Dev",
+      configLocation: "Environment",
+    });
+    expect(formatAgentContext(env)).toContain("Default source: Environment override");
+    expect(formatDetailedStatus(env)).toContain("Source: Environment override");
+  });
+
+  it("renders timestamped verification without trusting legacy Connected status", () => {
+    const env = makeEnv({ hasTargetOrg: true, targetOrg: "Example-Dev", orgDetected: true });
+    env.org.authenticationStatus = "verified";
+    env.org.verifiedAt = Date.parse("2026-01-01T12:00:00Z");
+    expect(formatAgentContext(env)).toContain(
+      "Authentication: Verified at 2026-01-01T12:00:00.000Z",
+    );
+    expect(formatDetailedStatus(env)).toContain(
+      "Authentication: Verified at 2026-01-01T12:00:00.000Z",
+    );
+  });
+
+  it("reports verification failure without suggesting logout or automatic re-login", () => {
+    const env = makeEnv({
+      hasTargetOrg: true,
+      targetOrg: "Example-Dev",
+      orgError: "network timeout",
+    });
+    env.org.authenticationStatus = "verification-failed";
+    const status = formatDetailedStatus(env);
+    expect(status).toContain("Verification failed");
+    expect(status).toContain("network timeout");
+    expect(status).not.toContain("sf org login web");
+    expect(status).not.toContain("logout");
   });
 
   it("includes CLI version", () => {
@@ -219,9 +257,9 @@ describe("formatDetailedStatus", () => {
     expect(status).toContain("✅ SF CLI: v2.130.9");
     expect(status).toContain("✅ Project: my-app");
     expect(status).toContain("Project Source API: 66.0");
-    expect(status).toContain("✅ Target org: MyOrg");
+    expect(status).toContain("✅ Effective default: MyOrg");
     expect(status).toContain("✅ Org: MyOrg (sandbox)");
-    expect(status).toContain("Status: Connected");
+    expect(status).toContain("Authentication: Saved login; not checked live");
     expect(status).toContain("Connection API: 66.0 (auto-resolved)");
   });
 
@@ -264,7 +302,7 @@ describe("formatDetailedStatus", () => {
   it("shows help for missing target-org", () => {
     const env = makeEnv({ projectDetected: true, projectName: "x" });
     const status = formatDetailedStatus(env);
-    expect(status).toContain("⚠ Target org: not configured");
+    expect(status).toContain("⚠ Effective default: not configured");
     expect(status).toContain("sf config set target-org");
   });
 });

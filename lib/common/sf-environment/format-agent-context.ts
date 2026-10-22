@@ -52,10 +52,9 @@ export function formatAgentContext(env: SfEnvironment): string | undefined {
 
   // Org
   if (env.org.detected) {
-    const orgLabel = env.org.alias ?? env.org.username ?? "unknown";
+    const orgLabel = env.config.targetOrg ?? env.org.alias ?? env.org.username ?? "unknown";
     const orgType = env.org.orgType !== "unknown" ? ` (${env.org.orgType})` : "";
-    const status = env.org.connectedStatus ?? "unknown";
-    lines.push(`Default org: ${orgLabel}${orgType} — ${status}`);
+    lines.push(`Default org: ${orgLabel}${orgType}`);
 
     if (env.org.apiVersion) {
       lines.push(
@@ -68,6 +67,11 @@ export function formatAgentContext(env: SfEnvironment): string | undefined {
     lines.push("Default org: not configured");
   }
 
+  if (env.config.hasTargetOrg) {
+    lines.push(`Default source: ${formatDefaultSource(env.config.location)}`);
+    lines.push(`Authentication: ${formatAuthenticationStatus(env)}`);
+  }
+  lines.push("Operations with an explicit target use that target instead of this default.");
   lines.push("</sf_environment>");
 
   return lines.join("\n");
@@ -124,11 +128,10 @@ export function formatDetailedStatus(env: SfEnvironment): string {
 
   // Config
   if (env.config.hasTargetOrg) {
-    lines.push(
-      `✅ Target org: ${env.config.targetOrg} (${env.config.location ?? "unknown"} config)`,
-    );
+    lines.push(`✅ Effective default: ${env.config.targetOrg}`);
+    lines.push(`   Source: ${formatDefaultSource(env.config.location)}`);
   } else {
-    lines.push("⚠ Target org: not configured");
+    lines.push("⚠ Effective default: not configured");
     lines.push("   Run: sf config set target-org=<alias>");
   }
 
@@ -138,7 +141,7 @@ export function formatDetailedStatus(env: SfEnvironment): string {
   if (env.org.detected) {
     const orgType = env.org.orgType !== "unknown" ? ` (${env.org.orgType})` : "";
     lines.push(`✅ Org: ${env.org.alias ?? env.org.username ?? "connected"}${orgType}`);
-    lines.push(`   Status: ${env.org.connectedStatus ?? "unknown"}`);
+    lines.push(`   Authentication: ${formatAuthenticationStatus(env)}`);
     if (env.org.instanceUrl) lines.push(`   Instance: ${env.org.instanceUrl}`);
     if (env.org.apiVersion) {
       lines.push(
@@ -157,15 +160,19 @@ export function formatDetailedStatus(env: SfEnvironment): string {
     }
   } else if (env.config.hasTargetOrg) {
     lines.push(`❌ Org: unable to connect to ${env.config.targetOrg}`);
+    lines.push(`   Authentication: ${formatAuthenticationStatus(env)}`);
     if (env.org.error) {
       lines.push(`   Error: ${env.org.error}`);
     }
     lines.push(
-      "   Try: sf org login web --set-default --alias " + (env.config.targetOrg ?? "MyOrg"),
+      "   Run /sf-org refresh to retry verification; a failed check does not prove the login is invalid.",
     );
   } else {
     lines.push("⚠ Org: no default org configured");
   }
+
+  lines.push("");
+  lines.push("Operations with an explicit target use that target instead of this default.");
 
   // Detection timestamp
   lines.push("");
@@ -192,4 +199,32 @@ function formatConnectionApiVersion(
       // Persisted snapshots created before provenance was added remain readable.
       return version;
   }
+}
+
+/** Human and agent surfaces share the same default provenance labels. */
+export function formatDefaultSource(location: SfEnvironment["config"]["location"]): string {
+  switch (location) {
+    case "Local":
+      return "Local project configuration";
+    case "Global":
+      return "Global CLI configuration";
+    case "Environment":
+      return "Environment override";
+    default:
+      return "Unknown (refresh to resolve)";
+  }
+}
+
+function formatAuthenticationStatus(env: SfEnvironment): string {
+  if (env.org.authenticationStatus === "verification-failed") return "Verification failed";
+  const verifiedAt = env.org.verifiedAt;
+  if (
+    env.org.authenticationStatus === "verified" &&
+    verifiedAt !== undefined &&
+    Number.isFinite(verifiedAt)
+  ) {
+    return `Verified at ${new Date(verifiedAt).toISOString()}`;
+  }
+  // Legacy Connected snapshots did not prove a live authenticated request.
+  return env.org.detected ? "Saved login; not checked live" : "Unable to resolve saved login";
 }

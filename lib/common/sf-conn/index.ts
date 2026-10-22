@@ -96,6 +96,8 @@ export interface CachedSalesforceTarget {
 
 export interface GetCachedSalesforceTargetOptions {
   cwd: string;
+  /** Re-read local auth/config without live API discovery. */
+  fresh?: boolean;
   targetOrg?: string;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -227,13 +229,14 @@ export async function getCachedSalesforceTarget(
   const timeoutMs = options.timeoutMs ?? DEFAULT_CONNECTION_TIMEOUT_MS;
   const deadline = Date.now() + timeoutMs;
   const config = await waitForCaller(
-    resolveConnectionConfig(options.cwd, options.targetOrg),
+    resolveConnectionConfig(options.cwd, options.targetOrg, options.fresh),
     remainingCallerTime(deadline, timeoutMs),
     options.signal,
   );
   const cacheKey = connectionCacheKey(options.cwd, config.targetOrg);
   const org = await orgFromAlias(config.targetOrg, {
     cacheKey,
+    fresh: options.fresh,
     timeoutMs: remainingCallerTime(deadline, timeoutMs),
     signal: options.signal,
   });

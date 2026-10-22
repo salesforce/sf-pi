@@ -4,7 +4,7 @@
  *
  * Bespoke Salesforce developer status bar with two rendering surfaces:
  *   - Top bar (widget above editor): model, thinking, folder, git, context window
- *   - Bottom bar (custom footer): project-scoped org, monthly budget, extensions
+ *   - Bottom bar (custom footer): default org, monthly budget, extensions
  *
  * All data sources are async and non-blocking. Bars render immediately with
  * cached/partial data and fill in as results arrive.
@@ -54,6 +54,7 @@ import {
   restoreFromSessionEntries,
 } from "../../lib/common/sf-environment/shared-runtime.ts";
 import { readPersistedSfEnvironment } from "../../lib/common/sf-environment/persisted-cache.ts";
+import { detectConfig } from "../../lib/common/sf-environment/detect.ts";
 import type { SfEnvironment } from "../../lib/common/sf-environment/types.ts";
 import {
   formatAgentContext,
@@ -222,7 +223,8 @@ export default function sfDevBar(pi: ExtensionAPI) {
     refreshDevbarSettings(ctx.cwd);
     const orgEnv = displayEnv ?? env;
     return {
-      orgName: orgEnv?.org?.alias ?? orgEnv?.org?.username ?? orgEnv?.config?.targetOrg,
+      orgName: env?.config?.targetOrg ?? orgEnv?.org?.alias ?? orgEnv?.org?.username,
+      defaultSource: env?.config?.location,
       orgType: orgEnv?.org?.orgType,
       projectDetected: orgEnv?.project?.detected,
       orgDetected: orgEnv?.org?.detected,
@@ -271,14 +273,12 @@ export default function sfDevBar(pi: ExtensionAPI) {
     if (!ctx.hasUI || !isActiveSession(ctx)) return;
 
     const folder = basename(ctx.cwd);
-    const orgLabel = env?.project?.detected
-      ? (env?.org?.alias ?? env?.config?.targetOrg)
-      : undefined;
-    const orgType = env?.project?.detected ? env?.org?.orgType : undefined;
+    const orgLabel = env?.config?.targetOrg;
+    const orgType = env?.org?.orgType;
     const typeSuffix = orgType && orgType !== "unknown" ? ` (${orgType})` : "";
 
     const titleParts = ["pi"];
-    if (orgLabel) titleParts.push(`${orgLabel}${typeSuffix}`);
+    if (orgLabel) titleParts.push(`Default: ${orgLabel}${typeSuffix}`);
     titleParts.push(folder);
 
     ctx.ui.setTitle(titleParts.join(" — "));
@@ -521,6 +521,19 @@ export default function sfDevBar(pi: ExtensionAPI) {
   // a separate function used by the /sf-org panel) so the equality check is
   // a sound "did anything material change?" signal.
   pi.on("before_agent_start", async (_event, ctx) => {
+    // Re-read only local configuration at the first-turn seam, not during boot.
+    // External CLI config changes must not leave agent context on a previous default.
+    const config = await detectConfig(ctx.cwd, { fresh: true });
+    if (
+      !env ||
+      config.targetOrg !== env.config.targetOrg ||
+      config.location !== env.config.location
+    ) {
+      env = await getSharedSfEnvironment(exec, ctx.cwd, { force: true });
+      refreshDisplayOrgEnvironment(ctx);
+      updateTitle(ctx);
+      requestFooterRender?.();
+    }
     if (!env) return;
 
     const context = formatAgentContext(env);

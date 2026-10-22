@@ -7,8 +7,8 @@ SF DevBar renders two non-blocking Salesforce-oriented terminal surfaces:
 - a **top bar** with SF Pi branding, model and thinking level, workspace, Git
   state, context usage, optional session name, and non-default image width;
 - a **bottom bar** with active gateway usage, SF Pi package count, Salesforce DX
-  project and authenticated org context, plus Slack and SF Docs readiness when
-  useful.
+  project indicator and effective default org, plus Slack and SF Docs readiness
+  when useful.
 
 Each source loads independently from cached or reactive state. `NO_COLOR` keeps
 the same text and layout while removing SF DevBar-owned ANSI styling.
@@ -27,6 +27,27 @@ the same text and layout while removing SF DevBar-owned ANSI styling.
 | `/sf-org refresh`     | Recreate the target connection and refresh org status        |
 | `Ctrl+Shift+B`        | Toggle both bars from the TUI                                |
 | `pi --no-devbar`      | Start without SF DevBar                                      |
+
+## Default org visibility
+
+The footer shows a configured default in any folder, including outside an SFDX
+project: `Default → Example-Dev [sandbox · global]`. Inside projects it also
+shows the `SFDX Project` indicator. The source is labeled `local`, `global`, or
+`env override`; a project can inherit a global default. Production warnings
+remain prominent, and last-known fallback facts carry a stale marker.
+
+`/sf-org status` and agent context report the same default provenance. Saved
+login information is not a live connection check. `/sf-org refresh` performs an
+authenticated identity check and reports its verification timestamp or failure;
+a failed check does not by itself mean a login should be removed. Legacy cached
+`Connected` labels are not treated as verification evidence.
+
+Local CLI configuration is re-read before agent turns so external default changes
+update the footer and context without restarting Pi. The footer describes the
+**default**, not every operation's destination: an explicit `target_org` or
+`--target-org` takes precedence, and an org-pinned MCP connection has its own
+target. Establish the intended destination before mutations rather than treating
+a configured default as user intent.
 
 ## API version status
 

@@ -19,12 +19,15 @@ import path from "node:path";
 // Mock state for @salesforce/core. Tests reset these in `beforeEach`.
 const configGetInfoMock = vi.fn<(key: string) => unknown>();
 const configCreateMock = vi.fn();
+const configClearMock = vi.fn();
+const identityMock = vi.fn();
 const connectSalesforceMock = vi.fn();
 const getCachedSalesforceTargetMock = vi.fn();
 
 vi.mock("@salesforce/core", () => ({
   ConfigAggregator: {
-    create: () => configCreateMock(),
+    create: (options: unknown) => configCreateMock(options),
+    clearInstance: (cwd: string) => configClearMock(cwd),
   },
 }));
 
@@ -37,6 +40,9 @@ vi.mock("../../sf-conn/index.ts", () => ({
 beforeEach(async () => {
   configGetInfoMock.mockReset();
   configCreateMock.mockReset();
+  configClearMock.mockReset();
+  identityMock.mockReset();
+  identityMock.mockResolvedValue({ org_id: "00D000000000000AAA" });
   configCreateMock.mockResolvedValue({ getInfo: configGetInfoMock });
   connectSalesforceMock.mockReset();
   getCachedSalesforceTargetMock.mockReset();
@@ -142,6 +148,7 @@ function fakeSession(opts: {
   orgEdition?: string;
 }) {
   return {
+    identity: identityMock,
     target: {
       targetOrg: opts.alias ?? "RequestedOrg",
       alias: opts.alias,
@@ -324,12 +331,18 @@ describe("detectConfig", () => {
     expect(result.location).toBe("Local");
   });
 
-  it("collapses Environment location to Global for the public target-org shape", async () => {
+  it("preserves Environment default provenance", async () => {
     configGetInfoMock.mockImplementation((key) =>
       key === "target-org" ? { value: "EnvOrg", location: "Environment" } : { value: undefined },
     );
     const result = await detectConfig();
-    expect(result.location).toBe("Global");
+    expect(result.location).toBe("Environment");
+  });
+
+  it("re-reads configuration for an explicit cwd when requested", async () => {
+    await detectConfig("/workspace", { fresh: true });
+    expect(configClearMock).toHaveBeenCalledWith("/workspace");
+    expect(configCreateMock).toHaveBeenCalledWith({ projectPath: "/workspace" });
   });
 
   it("captures an explicit org-api-version independently from target-org", async () => {
@@ -446,7 +459,7 @@ describe("detectOrg", () => {
       orgType: "sandbox",
       apiVersion: "50.0",
       apiVersionSource: "sdk-fallback",
-      connectedStatus: "Connected",
+      connectedStatus: "Saved login; not checked live",
       orgId: "00D000000000001",
       namespacePrefix: "pkg",
       orgEdition: "Enterprise Edition",
@@ -466,6 +479,9 @@ describe("detectOrg", () => {
 
     const result = await detectOrg("TestOrg", { cwd: "/workspace", freshConnection: true });
 
+    expect(result.authenticationStatus).toBe("verified");
+    expect(result.verifiedAt).toEqual(expect.any(Number));
+    expect(identityMock).toHaveBeenCalledWith({ timeoutMs: 10_000 });
     expect(result.apiVersion).toBe("67.0");
     expect(result.apiVersionSource).toBe("resolved");
     expect(connectSalesforceMock).toHaveBeenCalledWith({
@@ -475,6 +491,16 @@ describe("detectOrg", () => {
       timeoutMs: 10_000,
     });
     expect(getCachedSalesforceTargetMock).not.toHaveBeenCalled();
+  });
+
+  it("does not claim verification when the authenticated identity probe fails", async () => {
+    connectSalesforceMock.mockResolvedValueOnce(fakeSession({ alias: "TestOrg" }));
+    identityMock.mockRejectedValueOnce(new Error("network timeout"));
+    const result = await detectOrg("TestOrg", { cwd: "/workspace", freshConnection: true });
+    expect(result.detected).toBe(false);
+    expect(result.authenticationStatus).toBe("verification-failed");
+    expect(result.error).toBe("network timeout");
+    expect(result.verifiedAt).toBeUndefined();
   });
 
   it("captures local target errors as undetected org state", async () => {

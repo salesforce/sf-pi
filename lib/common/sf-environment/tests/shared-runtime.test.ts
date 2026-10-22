@@ -17,7 +17,7 @@ const connectSalesforceMock = vi.fn();
 const getCachedSalesforceTargetMock = vi.fn();
 
 vi.mock("@salesforce/core", () => ({
-  ConfigAggregator: { create: () => configCreateMock() },
+  ConfigAggregator: { create: () => configCreateMock(), clearInstance: vi.fn() },
 }));
 vi.mock("../../sf-conn/index.ts", () => ({
   connectSalesforce: (options: unknown) => connectSalesforceMock(options),
@@ -70,6 +70,7 @@ function fakeTarget(alias: string, apiVersion: string) {
 
 function fakeSession(alias: string, apiVersion: string) {
   return {
+    identity: vi.fn(async () => ({ org_id: "00D000000000000AAA" })),
     target: {
       ...fakeTarget(alias, apiVersion),
       maxApiVersion: apiVersion,

@@ -172,6 +172,34 @@ describe("getCachedSalesforceTarget presentation state", () => {
     expect(target.apiVersionSource).toBe("configured");
     expect(fetchMock).not.toHaveBeenCalled();
   });
+  test("fresh presentation reads replace saved identity without live requests", async () => {
+    const firstConnection = fakeConnection();
+    const secondConnection = fakeConnection();
+    secondConnection.getAuthInfoFields.mockReturnValue({
+      username: "other@example.invalid",
+      orgId: "00D000000000000AAA",
+      instanceUrl: "https://example.my.salesforce.com",
+      isSandbox: false,
+      orgEdition: "Enterprise Edition",
+    });
+    orgCreateMock
+      .mockResolvedValueOnce(fakeOrg(firstConnection))
+      .mockResolvedValueOnce(fakeOrg(secondConnection));
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const first = await getCachedSalesforceTarget({ cwd: "/workspace", targetOrg: "ExampleOrg" });
+    const second = await getCachedSalesforceTarget({
+      cwd: "/workspace",
+      targetOrg: "ExampleOrg",
+      fresh: true,
+    });
+    expect(first.orgType).toBe("sandbox");
+    expect(second.orgType).toBe("production");
+    expect(second.orgId).toBe("00D000000000000AAA");
+    expect(configClearMock).toHaveBeenCalledWith("/workspace");
+    expect(orgCreateMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("connectSalesforce version selection", () => {

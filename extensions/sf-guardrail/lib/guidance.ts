@@ -27,6 +27,7 @@ export function renderGuardrailGuidance(config: GuardrailConfig = readBundledCon
     "<sf_guardrail>",
     "SF Guardrail is the active Safety Mediator for protected files, risky commands, and durable operations.",
     "Operate normally and wait when it requests human approval. Never bypass, weaken, or work around its decision.",
+    "For Salesforce mutations, establish the intended destination and pass an explicit target_org or --target-org. A configured default is not user intent; ask when the destination is unresolved.",
     ...hardBlockLines(hardBlocks),
     ...overrideLines(overrides),
     ...runtimeOverrideLines(config, bundled),

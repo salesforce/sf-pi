@@ -55,7 +55,7 @@ describe("renderBottomBarParts", () => {
       }),
       stubTheme,
     );
-    expect(left).toContain("SFDX Project →");
+    expect(left).toContain("SFDX Project │ Default →");
     expect(left).toContain("Example-Dev");
     expect(left).toContain("sandbox");
     // Bracketed format: "OrgName [⬡ sandbox]"
@@ -63,18 +63,54 @@ describe("renderBottomBarParts", () => {
     expect(left).toContain("]");
   });
 
-  it("hides org info outside a Salesforce project", () => {
+  it("shows the global default outside a Salesforce project", () => {
     const { left } = renderBottomBarParts(
       makeState({
         orgName: "GlobalDefault",
         orgType: "sandbox",
         orgDetected: true,
         projectDetected: false,
+        defaultSource: "Global",
       }),
       stubTheme,
     );
-    expect(left).not.toContain("GlobalDefault");
-    expect(left).not.toContain("sandbox");
+    expect(left).toContain("global");
+    expect(left).toContain("GlobalDefault");
+    expect(left).toContain("Default →");
+    expect(left).toContain("sandbox");
+  });
+
+  it.each([
+    ["Local", "local"],
+    ["Global", "global"],
+    ["Environment", "env override"],
+  ] as const)("shows %s default provenance inside projects", (defaultSource, label) => {
+    const { left } = renderBottomBarParts(
+      makeState({
+        orgName: "Example-Dev",
+        orgDetected: true,
+        projectDetected: true,
+        defaultSource,
+      }),
+      stubTheme,
+    );
+    expect(left).toContain("Default →");
+    expect(left).toContain(label);
+  });
+
+  it("shows an unresolved configured default outside projects", () => {
+    const { left } = renderBottomBarParts(
+      makeState({
+        orgName: "Example-Dev",
+        defaultSource: "Global",
+        orgDetected: false,
+        glyphMode: "ascii",
+      }),
+      stubTheme,
+    );
+    expect(left).toContain("Example-Dev");
+    expect(left).toContain("global");
+    expect(left).toContain("!");
   });
 
   it("shows stale suffix when displaying a last-known usable org", () => {
@@ -177,8 +213,8 @@ describe("renderBottomBarParts", () => {
       stubTheme,
     );
     expect(left.indexOf("💰 $12.34/∞")).toBeLessThan(left.indexOf("SF Pi Packages"));
-    expect(left.indexOf("SF Pi Packages")).toBeLessThan(left.indexOf("SFDX Project →"));
-    expect(left.indexOf("SFDX Project →")).toBeLessThan(left.indexOf("Example-Dev"));
+    expect(left.indexOf("SF Pi Packages")).toBeLessThan(left.indexOf("SFDX Project │ Default →"));
+    expect(left.indexOf("SFDX Project │ Default →")).toBeLessThan(left.indexOf("Example-Dev"));
   });
 
   it("passes the compact Slack status through on the right", () => {

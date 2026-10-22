@@ -20,13 +20,17 @@ import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/
 
 let mockedEnv: SfEnvironment | null = null;
 let mockedLookup: Record<string, OrgInfo> = {};
+let mockedDefaultTargetOrg: string | undefined;
 
 vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
   getCachedSfEnvironment: () => mockedEnv,
 }));
 
 vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
-  detectConfig: async () => ({ hasTargetOrg: false }),
+  detectConfig: async () => ({
+    hasTargetOrg: Boolean(mockedDefaultTargetOrg),
+    targetOrg: mockedDefaultTargetOrg,
+  }),
   detectOrg: async (targetOrg: string) =>
     mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
 }));
@@ -72,11 +76,13 @@ function lookupOrg(alias: string, orgType: OrgInfo["orgType"]): void {
 beforeEach(() => {
   mockedEnv = null;
   mockedLookup = {};
+  mockedDefaultTargetOrg = undefined;
 });
 
 afterEach(() => {
   mockedEnv = null;
   mockedLookup = {};
+  mockedDefaultTargetOrg = undefined;
 });
 
 describe("Safety Kernel", () => {
@@ -109,6 +115,7 @@ describe("Safety Kernel", () => {
 
   it("returns a production deploy decision with an envelope-style approval scope", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
 
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -134,6 +141,8 @@ describe("Safety Kernel", () => {
 
   it("returns no decision for verified non-production deploys", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "bash",
@@ -147,6 +156,8 @@ describe("Safety Kernel", () => {
 
   it("refines explicit non-default orgs before deciding", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
     lookupOrg("Scratch", "scratch");
 
     const decision = await evaluateSafety({
@@ -197,6 +208,8 @@ describe("Safety Kernel", () => {
 
   it("confirms mutating sf_apex anon.run as a native tool safety subject", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "sf_apex",
@@ -227,6 +240,8 @@ describe("Safety Kernel", () => {
 
   it("mediates sf_apex anon.run even when direct mutation signals are absent", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "sf_apex",
@@ -255,6 +270,8 @@ describe("Safety Kernel", () => {
 
   it("confirms inactive AgentScript publication as its own native operation", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "agentscript_lifecycle",
@@ -285,6 +302,8 @@ describe("Safety Kernel", () => {
 
   it("confirms AgentScript activate/deactivate with action-specific fingerprints", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const activate = await evaluateSafety({
       toolName: "agentscript_lifecycle",
@@ -306,6 +325,8 @@ describe("Safety Kernel", () => {
 
   it("uses a distinct Safety Envelope for untested AgentScript activation", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const tested = await evaluateSafety({
       toolName: "agentscript_lifecycle",
@@ -335,6 +356,8 @@ describe("Safety Kernel", () => {
 
   it("confirms live AgentScript Service Agent provisioning as allow-once when permission impact is unresolved", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "agentscript_lifecycle",
@@ -386,6 +409,7 @@ describe("Safety Kernel", () => {
 
   it("confirms plan-bound sf_integrate setup only for non-production targets", async () => {
     mockedEnv = env("IntegrationDev", "developer");
+    lookupOrg("IntegrationDev", "developer");
 
     const decision = await evaluateSafety({
       toolName: "sf_integrate",
@@ -416,6 +440,7 @@ describe("Safety Kernel", () => {
 
   it("separately confirms sf_integrate secret population and OAuth authorization", async () => {
     mockedEnv = env("IntegrationDev", "developer");
+    lookupOrg("IntegrationDev", "developer");
 
     const secret = await evaluateSafety({
       toolName: "sf_integrate",
@@ -462,6 +487,7 @@ describe("Safety Kernel", () => {
 
   it("hard-blocks sf_integrate setup for production targets", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
 
     const decision = await evaluateSafety({
       toolName: "sf_integrate",
@@ -612,6 +638,7 @@ describe("Safety Kernel", () => {
 
   it("confirms mutating sf_flow lifecycle actions with exact action fingerprints", async () => {
     mockedEnv = env("FlowLifecycleDev", "developer");
+    lookupOrg("FlowLifecycleDev", "developer");
 
     const deploy = await evaluateSafety({
       toolName: "sf_flow",
@@ -668,6 +695,7 @@ describe("Safety Kernel", () => {
 
   it("hard-blocks sf_flow lifecycle mutations for production targets", async () => {
     mockedEnv = env("Prod", "production");
+    lookupOrg("Prod", "production");
 
     const decision = await evaluateSafety({
       toolName: "sf_flow",
@@ -707,6 +735,8 @@ describe("Safety Kernel", () => {
 
   it("confirms Data 360 allow_mutation execution paths without mediating dry-runs", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "sf_data360",
@@ -782,6 +812,8 @@ describe("Safety Kernel", () => {
 
   it("confirms Data 360 search index create through the native-tool gate", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "sf_data360",
@@ -839,6 +871,8 @@ describe("Safety Kernel", () => {
 
   it("mediates Query API cancellation even though query reads are otherwise safe", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
     await expect(
       evaluateSafety({
         toolName: "sf_data360",
@@ -859,6 +893,8 @@ describe("Safety Kernel", () => {
 
   it("confirms Data 360 raw REST escape hatch execution", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "sf_data360",
@@ -921,6 +957,8 @@ describe("Safety Kernel", () => {
 
   it("confirms SOQL QueryAll and unbounded reads without prompting bounded reads", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const queryAll = await evaluateSafety({
       toolName: "sf_soql",
@@ -962,6 +1000,8 @@ describe("Safety Kernel", () => {
 
   it("confirms query.run with ALL ROWS as QueryAll-style disclosure", async () => {
     mockedEnv = env("DevInt", "sandbox");
+    mockedDefaultTargetOrg = "DevInt";
+    lookupOrg("DevInt", "sandbox");
 
     const decision = await evaluateSafety({
       toolName: "sf_soql",
@@ -1140,6 +1180,7 @@ describe("Safety Kernel", () => {
   it("resolves the opened browser org so sandbox Power Tool Mode can auto-approve commits", async () => {
     const sessionId = "guardrail-browser-target-org-test";
     mockedEnv = env("DevSandbox", "sandbox");
+    lookupOrg("DevSandbox", "sandbox");
     recordBrowserSessionTargetOrg(sessionId, "DevSandbox");
     writeLatestBrowserSnapshotRefs({
       sessionId,

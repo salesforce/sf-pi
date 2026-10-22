@@ -175,9 +175,13 @@ function normalizePackageDir(raw: {
  * `~/.sfdx/config.json` + project `.sf/config.json` files the `sf` CLI does;
  * just skips the subprocess + JSON parse.
  */
-export async function detectConfig(cwd?: string): Promise<ConfigInfo> {
+export async function detectConfig(
+  cwd?: string,
+  options: { fresh?: boolean } = {},
+): Promise<ConfigInfo> {
   try {
     const ConfigAggregator = await getConfigAggregatorCtor();
+    if (options.fresh) await ConfigAggregator.clearInstance(cwd);
     const aggregator = await ConfigAggregator.create(cwd ? { projectPath: cwd } : undefined);
     const targetInfo = aggregator.getInfo("target-org");
     const apiVersionInfo = aggregator.getInfo("org-api-version");
@@ -191,10 +195,7 @@ export async function detectConfig(cwd?: string): Promise<ConfigInfo> {
     return {
       hasTargetOrg: Boolean(targetOrg),
       targetOrg,
-      // ConfigAggregator.Location is "Local" | "Global" | "Environment".
-      // The previous `sf config list` flow only emitted Local | Global for
-      // target-org, so collapse Environment into Global for that legacy field.
-      location: targetOrg ? (targetInfo?.location === "Local" ? "Local" : "Global") : undefined,
+      location: targetOrg ? normalizeConfigLocation(targetInfo?.location) : undefined,
       apiVersion,
       apiVersionLocation: normalizeConfigLocation(apiVersionInfo?.location),
     };
@@ -223,6 +224,8 @@ export interface DetectOrgOptions {
   /** Recreate the shared target session. Used only by explicit user refreshes. */
   freshConnection?: boolean;
   cwd?: string;
+  /** Re-read saved auth identity without a live connection check (Guardrail lookup). */
+  freshAuth?: boolean;
 }
 
 export async function detectOrg(
@@ -238,8 +241,13 @@ export async function detectOrg(
         fresh: true,
         timeoutMs: DETECT_ORG_TIMEOUT_MS,
       });
+      // API-version discovery alone may use an unauthenticated endpoint or fallback.
+      // A successful authenticated identity request is the verification evidence.
+      await session.identity({ timeoutMs: DETECT_ORG_TIMEOUT_MS });
       return {
         detected: true,
+        authenticationStatus: "verified",
+        verifiedAt: Date.now(),
         alias: session.target.alias ?? targetOrg,
         username: session.target.username,
         orgId: session.target.orgId,
@@ -257,6 +265,7 @@ export async function detectOrg(
       cwd,
       targetOrg,
       timeoutMs: DETECT_ORG_TIMEOUT_MS,
+      ...(options.freshAuth ? { fresh: true } : {}),
     });
     return {
       detected: true,
@@ -265,7 +274,8 @@ export async function detectOrg(
       orgId: target.orgId,
       instanceUrl: target.instanceUrl,
       orgType: target.orgType,
-      connectedStatus: "Connected",
+      connectedStatus: "Saved login; not checked live",
+      authenticationStatus: "saved",
       apiVersion: target.apiVersion,
       apiVersionSource: target.apiVersionSource,
       namespacePrefix: target.namespacePrefix,
@@ -275,6 +285,7 @@ export async function detectOrg(
     return {
       detected: false,
       orgType: "unknown",
+      ...(options.freshConnection ? { authenticationStatus: "verification-failed" as const } : {}),
       error: err instanceof Error ? err.message : "Unknown error",
     };
   }
@@ -335,7 +346,7 @@ export async function detectEnvironment(
   const project = detectProject(cwd);
 
   // Layer 3: Config (in-process, ConfigAggregator)
-  const config = await detectConfig(cwd);
+  const config = await detectConfig(cwd, { fresh: true });
 
   // Layer 4: Org (local/cache-first unless this is an explicit deep refresh)
   let org: OrgInfo;

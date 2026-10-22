@@ -1,11 +1,36 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { EventEmitter } from "node:events";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SessionManager,
   type ExtensionAPI,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
+
+let cachedEnvironment: SfEnvironment | null = null;
+const detectConfigMock = vi.fn();
+const getEnvironmentMock = vi.fn();
+vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
+  detectConfig: (...args: unknown[]) => detectConfigMock(...args),
+}));
+vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
+  bindPiForSessionPersistence: vi.fn(),
+  restoreFromSessionEntries: vi.fn(),
+  getCachedSfEnvironment: () => cachedEnvironment,
+  getSharedSfEnvironment: (...args: unknown[]) => getEnvironmentMock(...args),
+  refreshSharedSfEnvironment: vi.fn(),
+}));
+vi.mock("../../../lib/common/sf-environment/persisted-cache.ts", () => ({
+  readPersistedSfEnvironment: () => null,
+}));
+
+beforeEach(() => {
+  cachedEnvironment = null;
+  detectConfigMock.mockReset();
+  getEnvironmentMock.mockReset();
+});
+
 import sfDevBar from "../index.ts";
 
 function createHarness() {
@@ -18,6 +43,7 @@ function createHarness() {
     fg: (_color: string, text: string) => text,
     bold: (text: string) => text,
   };
+  let footer: { render(width: number): string[] } | undefined;
   let widget:
     { render(width: number): string[]; invalidate(): void; dispose?: () => void } | undefined;
 
@@ -31,7 +57,7 @@ function createHarness() {
     }),
     setFooter: vi.fn((value: unknown) => {
       if (typeof value !== "function") return;
-      value(tui, theme, {
+      footer = value(tui, theme, {
         onBranchChange: () => () => undefined,
         getGitBranch: () => null,
         getExtensionStatuses: () => [],
@@ -81,9 +107,11 @@ function createHarness() {
   } as unknown as ExtensionAPI;
 
   const emit = async (event: string, payload: unknown = { type: event }) => {
+    const results = [];
     for (const handler of handlers.get(event) ?? []) {
-      await handler(payload, ctx);
+      results.push(await handler(payload, ctx));
     }
+    return results;
   };
 
   return {
@@ -92,6 +120,7 @@ function createHarness() {
     tui,
     emit,
     getWidget: () => widget,
+    getFooter: () => footer,
     setContextUsage(value: typeof contextUsage) {
       contextUsage = value;
     },
@@ -114,6 +143,58 @@ describe("sf-devbar compaction repaint", () => {
 
       expect(harness.tui.requestRender).toHaveBeenCalled();
       expect(harness.getWidget()?.render(160).join("\n")).toContain("Context Window unknown");
+    } finally {
+      await harness.emit("session_shutdown", { type: "session_shutdown", reason: "quit" });
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("sf-devbar default targeting", () => {
+  it("refreshes footer and injected context when external CLI configuration changes", async () => {
+    vi.useFakeTimers();
+    cachedEnvironment = {
+      cli: { installed: true },
+      project: { detected: false },
+      config: { hasTargetOrg: true, targetOrg: "Example-Old", location: "Global" },
+      org: { detected: true, orgType: "sandbox", alias: "Example-Old" },
+      detectedAt: Date.now(),
+    };
+    const fresh: SfEnvironment = {
+      ...cachedEnvironment,
+      config: { hasTargetOrg: true, targetOrg: "Example-New", location: "Environment" },
+      org: {
+        detected: true,
+        orgType: "developer",
+        alias: "Example-New",
+        authenticationStatus: "saved",
+      },
+    };
+    detectConfigMock.mockResolvedValue(fresh.config);
+    getEnvironmentMock.mockResolvedValue(fresh);
+    const harness = createHarness();
+    try {
+      sfDevBar(harness.pi);
+      await harness.emit("session_start");
+      expect(harness.getFooter()?.render(240).join("\n")).toContain("Example-Old");
+      expect(detectConfigMock).not.toHaveBeenCalled();
+      const results = await harness.emit("before_agent_start");
+      expect(detectConfigMock).toHaveBeenCalledWith(harness.ctx.cwd, { fresh: true });
+      expect(getEnvironmentMock).toHaveBeenCalledWith(expect.any(Function), harness.ctx.cwd, {
+        force: true,
+      });
+      const rendered = harness.getFooter()?.render(240).join("\n");
+      expect(rendered).toContain("Default →");
+      expect(rendered).toContain("Example-New");
+      expect(rendered).toContain("env override");
+      expect(rendered).not.toContain("Example-Old");
+      expect(results).toEqual([
+        expect.objectContaining({
+          message: expect.objectContaining({
+            content: expect.stringContaining("Default org: Example-New (developer)"),
+          }),
+        }),
+      ]);
     } finally {
       await harness.emit("session_shutdown", { type: "session_shutdown", reason: "quit" });
       vi.useRealTimers();

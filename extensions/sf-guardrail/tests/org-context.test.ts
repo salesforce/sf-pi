@@ -14,18 +14,24 @@ import type { OrgInfo, SfEnvironment } from "../../../lib/common/sf-environment/
 let mockedEnv: SfEnvironment | null = null;
 let mockedLookup: Record<string, OrgInfo> = {};
 let mockedDefaultTargetOrg: string | undefined;
+const configLookup = vi.fn();
+const orgLookup = vi.fn();
 
 vi.mock("../../../lib/common/sf-environment/shared-runtime.ts", () => ({
   getCachedSfEnvironment: () => mockedEnv,
 }));
 
 vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
-  detectConfig: async () =>
-    mockedDefaultTargetOrg
+  detectConfig: async (...args: unknown[]) => {
+    configLookup(...args);
+    return mockedDefaultTargetOrg
       ? { hasTargetOrg: true, targetOrg: mockedDefaultTargetOrg, location: "Global" }
-      : { hasTargetOrg: false },
-  detectOrg: async (targetOrg: string) =>
-    mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" },
+      : { hasTargetOrg: false };
+  },
+  detectOrg: async (targetOrg: string, options: unknown) => {
+    orgLookup(targetOrg, options);
+    return mockedLookup[targetOrg] ?? { detected: false, orgType: "unknown" };
+  },
 }));
 
 import { resolveOrgContext, resolveOrgContextWithLookup } from "../lib/org-context.ts";
@@ -51,6 +57,8 @@ function makeEnv(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): Sf
 }
 
 beforeEach(() => {
+  configLookup.mockClear();
+  orgLookup.mockClear();
   setEnv(null);
   mockedLookup = {};
   mockedDefaultTargetOrg = undefined;
@@ -179,5 +187,38 @@ describe("resolveOrgContext", () => {
     expect(ctx.alias).toBe("OtherOrg");
     expect(ctx.type).toBe("production");
     expect(ctx.guessed).toBe(true);
+  });
+  it("re-resolves a changed default instead of trusting a known cached sandbox", async () => {
+    setEnv(makeEnv("OldDefault", "sandbox"));
+    mockedDefaultTargetOrg = "Example-Prod";
+    mockedLookup["Example-Prod"] = { detected: true, orgType: "production" };
+    const ctx = await resolveOrgContextWithLookup("sf project deploy start", "/workspace", []);
+    expect(ctx).toMatchObject({ alias: "Example-Prod", type: "production", explicit: false });
+    expect(configLookup).toHaveBeenCalledWith("/workspace", { fresh: true });
+    expect(orgLookup).toHaveBeenCalledWith("Example-Prod", { cwd: "/workspace", freshAuth: true });
+  });
+
+  it("does not reuse an alias classification after the saved identity changes", async () => {
+    mockedLookup["Example-Target"] = { detected: true, orgType: "sandbox" };
+    const first = await resolveOrgContextWithLookup(
+      "sf apex run -o Example-Target",
+      "/workspace",
+      [],
+    );
+    expect(first.type).toBe("sandbox");
+    mockedLookup["Example-Target"] = { detected: true, orgType: "production" };
+    const second = await resolveOrgContextWithLookup(
+      "sf apex run -o Example-Target",
+      "/workspace",
+      [],
+    );
+    expect(second.type).toBe("production");
+    expect(configLookup).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when current config has no default despite a cached sandbox", async () => {
+    setEnv(makeEnv("OldDefault", "sandbox"));
+    const ctx = await resolveOrgContextWithLookup("sf project deploy start", "/workspace", []);
+    expect(ctx).toMatchObject({ alias: undefined, type: "production", guessed: true });
   });
 });

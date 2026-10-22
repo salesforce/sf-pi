@@ -5,8 +5,7 @@
  * Segments in order (left-aligned):
  *   1.  LLM gateway monthly cost
  *   2.  SF Pi package count
- *   3.  SFDX project → authenticated org + type badge, only inside a
- *       Salesforce DX project
+ *   3.  Default org + type and provenance, with an SFDX project indicator when applicable
  *
  * Right-aligned:
  *   4.  Slack and SF Docs connection pills
@@ -21,7 +20,7 @@
  */
 
 import { normalizeAnsiForTerminal } from "../../../lib/common/color-policy.ts";
-import type { OrgType } from "../../../lib/common/sf-environment/types.ts";
+import type { ConfigInfo, OrgType } from "../../../lib/common/sf-environment/types.ts";
 import { glyph, resolveGlyphMode, type GlyphMode } from "../../../lib/common/glyph-policy.ts";
 import { DEFAULT_DEVBAR_COLORS, type DevbarColors } from "./colors.ts";
 
@@ -47,6 +46,8 @@ export type BottomBarState = {
   orgName?: string;
   /** Org type for badge rendering. */
   orgType?: OrgType;
+  /** Source of the effective default; explicit operation targets may differ. */
+  defaultSource?: ConfigInfo["location"];
   /** Whether the current folder is a Salesforce DX project. */
   projectDetected?: boolean;
   /** Whether the org was detected at all. */
@@ -112,10 +113,8 @@ export function renderBottomBarParts(
     }
   }
 
-  // 3. SFDX project → org + type badge. Keep org context project-scoped so a
-  // global default org does not appear while the user is outside a Salesforce
-  // folder. The "SFDX Project" prefix is the explicit environment indicator.
-  if (state.projectDetected) {
+  // Show configured defaults in any folder; absence outside a project stays quiet.
+  if (state.projectDetected || state.orgName) {
     leftSegments.push(formatProjectOrgSegment(state, theme, mode, colors));
   }
 
@@ -144,18 +143,23 @@ function formatProjectOrgSegment(
   mode: GlyphMode,
   colors: DevbarColors,
 ): string {
-  const prefix = theme.fg("dim", "SFDX Project →");
+  const project = state.projectDetected ? "SFDX Project │ " : "";
+  const prefix = theme.fg("dim", `${project}Default →`);
+  const source =
+    state.defaultSource === "Environment"
+      ? "env override"
+      : (state.defaultSource?.toLowerCase() ?? "source unknown");
   const isProd = state.orgType === "production";
 
   if (state.orgDetected && state.orgName) {
     const badge = formatOrgTypeBadge(state.orgType, theme, mode, colors);
     const stale = state.orgStale ? ` ${theme.fg("warning", `${glyph("warn", mode)} stale`)}` : "";
-    const orgLabel = badge ? `${state.orgName} [${badge}]` : state.orgName;
+    const orgLabel = `${state.orgName} [${badge ? `${badge} · ` : ""}${source}]`;
     return `${prefix} ${theme.bold(theme.fg(isProd ? "error" : "accent", orgLabel))}${stale}`;
   }
 
   if (state.orgName) {
-    return `${prefix} ${hexFg(colors.orgWarning, `${glyph("warn", mode)} ${state.orgName}`)}`;
+    return `${prefix} ${hexFg(colors.orgWarning, `${glyph("warn", mode)} ${state.orgName} [${source}]`)}`;
   }
 
   return `${prefix} ${hexFg(colors.orgWarning, `${glyph("warn", mode)} No org configured`)}`;

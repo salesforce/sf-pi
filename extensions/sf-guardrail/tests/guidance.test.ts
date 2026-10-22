@@ -10,12 +10,14 @@ describe("renderGuardrailGuidance", () => {
     expect(guidance).toContain("<sf_guardrail>");
     expect(guidance).toContain("Safety Mediator");
     expect(guidance).toContain("Never bypass");
+    expect(guidance).toContain("explicit target_org or --target-org");
+    expect(guidance).toContain("ask when the destination is unresolved");
     expect(guidance).toContain("Org-aware: native-sf-integrate-prod, native-sf-flow-prod");
     expect(guidance).toContain("Non-default rule overrides: none.");
     expect(guidance).not.toContain("rm -rf");
     expect(guidance).not.toContain("git push --force");
     expect(guidance).not.toContain("SF_GUARDRAIL_ALLOW_HEADLESS");
-    expect(guidance.split("\n").length).toBeLessThanOrEqual(10);
+    expect(guidance.split("\n").length).toBeLessThanOrEqual(11);
     expect(guidance).toContain("</sf_guardrail>");
   });
 

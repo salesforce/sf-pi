@@ -18,7 +18,7 @@ export type SfEnvironment = {
   project: ProjectInfo;
   /** Default org configuration. */
   config: ConfigInfo;
-  /** Live org details (requires authenticated org). */
+  /** Saved org details and optional live verification evidence. */
   org: OrgInfo;
   /** When this environment was last detected. */
   detectedAt: number;
@@ -67,8 +67,8 @@ export type ConfigInfo = {
   hasTargetOrg: boolean;
   /** Org alias or username from config. */
   targetOrg?: string;
-  /** Where the target-org config is set: Local (project) or Global. */
-  location?: "Local" | "Global";
+  /** Source of the effective default, including environment overrides. */
+  location?: "Local" | "Global" | "Environment";
   /** Explicit org-api-version override, when configured. */
   apiVersion?: string;
   /** Where the org-api-version override came from. */
@@ -93,6 +93,10 @@ export type OrgInfo = {
   instanceUrl?: string;
   orgType: OrgType;
   connectedStatus?: string;
+  /** Live verification is separate from successfully reading a saved login. */
+  authenticationStatus?: "saved" | "verified" | "verification-failed";
+  /** Timestamp of a successful authenticated identity check, never a cache read. */
+  verifiedAt?: number;
   /** Effective API version selected for SDK requests; not the org's release identity. */
   apiVersion?: string;
   /** How the effective Connection API version was selected. */

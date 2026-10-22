@@ -20,6 +20,21 @@ fail-closed behavior, session approval memory, and audit path:
 Intent flags such as `allow_mutation`, `allow_confirmed`, or `mutation=true` aid
 classification but never become approval.
 
+## Target clarity
+
+For Salesforce mutations, establish the intended destination and pass an explicit
+`target_org` or `--target-org`. A configured default is not user intent; the agent
+is instructed to ask when the destination remains unresolved. This guidance does
+not replace Guardrail approval or change existing rule behaviors.
+
+For matched org-sensitive shell operations and native mutations without an
+already-attested target type, Guardrail re-reads saved configuration/auth facts
+using the supplied workspace directory. It does not use the displayed default
+snapshot or an old alias classification as current targeting authority. Failed
+resolution stays fail-closed. This is local identity resolution, not a background
+live check of every login, and it does not rewrite commands or sandbox shell
+scripts that change their own working directory.
+
 ## Commands
 
 - `/sf-guardrail` — open the Manager detail, or print status without UI.

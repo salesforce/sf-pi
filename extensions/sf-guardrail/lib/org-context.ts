@@ -9,10 +9,9 @@
  *      cached org type.
  *   4. Otherwise fail closed to production.
  *
- * `resolveOrgContextWithLookup()` is the bounded slow path used only after an
- * org-aware rule would fire because the fast path guessed production. It performs
- * an in-process Salesforce config/auth/org lookup and caches the result by alias
- * so scratch/sandbox aliases do not repeatedly trigger production prompts.
+ * `resolveOrgContextWithLookup()` is the bounded slow path used only after a
+ * risky operation is matched. It re-reads in-process Salesforce config/auth
+ * so display snapshots and reassigned aliases cannot choose the risk target.
  */
 import { findLatestBrowserSnapshotSession } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { getCachedSfEnvironment } from "../../../lib/common/sf-environment/shared-runtime.ts";
@@ -49,7 +48,6 @@ export interface OrgContext {
 
 const CONFIG_LOOKUP_TIMEOUT_MS = 2_500;
 const LOOKUP_TIMEOUT_MS = 10_000;
-const lookupCache = new Map<string, OrgContext>();
 
 export function resolveOrgContext(
   command: string,
@@ -147,33 +145,28 @@ export async function resolveOrgContextForTargetWithLookup(
   cwd: string,
   productionAliases: string[],
 ): Promise<OrgContext> {
-  const fast = resolveOrgContextForTarget(targetOrg, cwd, productionAliases);
-  if (!fast.guessed) return fast;
-
-  const alias = targetOrg ?? (await detectDefaultTargetOrg()) ?? fast.alias;
-  if (!alias) return fast;
+  // Display snapshots are not current default/auth authority. Re-read local
+  // config and saved identity at the operation seam without probing the network.
+  const alias = targetOrg ?? (await detectDefaultTargetOrg(cwd));
+  const isExplicit = targetOrg !== undefined;
+  if (!alias) return guessedProduction(undefined, isExplicit);
 
   if (productionAliases.includes(alias)) {
     return {
       alias,
       type: "production",
       guessed: false,
-      explicit: fast.explicit,
+      explicit: isExplicit,
       source: "productionAliases",
     };
   }
 
-  const cached = lookupCache.get(alias);
-  if (cached) return { ...cached, explicit: fast.explicit };
-
   try {
-    const org = await withTimeout(detectOrg(alias), LOOKUP_TIMEOUT_MS);
-    if (!org.detected) return fast.alias ? fast : { ...fast, alias };
-    const resolved = fromOrgInfo(alias, org, fast.explicit, "lookup");
-    lookupCache.set(alias, resolved);
-    return resolved;
+    const org = await withTimeout(detectOrg(alias, { cwd, freshAuth: true }), LOOKUP_TIMEOUT_MS);
+    if (!org.detected) return guessedProduction(alias, isExplicit);
+    return fromOrgInfo(alias, org, isExplicit, "lookup");
   } catch {
-    return fast.alias ? fast : { ...fast, alias };
+    return guessedProduction(alias, isExplicit);
   }
 }
 
@@ -211,9 +204,12 @@ function fromOrgInfo(
   };
 }
 
-async function detectDefaultTargetOrg(): Promise<string | undefined> {
+async function detectDefaultTargetOrg(cwd: string): Promise<string | undefined> {
   try {
-    const config = await withTimeout<ConfigInfo>(detectConfig(), CONFIG_LOOKUP_TIMEOUT_MS);
+    const config = await withTimeout<ConfigInfo>(
+      detectConfig(cwd, { fresh: true }),
+      CONFIG_LOOKUP_TIMEOUT_MS,
+    );
     return config.hasTargetOrg ? config.targetOrg : undefined;
   } catch {
     return undefined;

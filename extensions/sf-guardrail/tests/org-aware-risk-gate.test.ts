@@ -149,4 +149,19 @@ describe("evaluateOrgAwareRisk", () => {
 
     expect(decision).toBeUndefined();
   });
+  it("checks the current default even when the cached sandbox would not fire a rule", async () => {
+    mockedEnv = env("OldDefault", "sandbox");
+    mockedDefaultTargetOrg = "Example-Prod";
+    lookupOrg("Example-Prod", "production");
+    const decision = await evaluateOrgAwareRiskWithOrgLookup(
+      { kind: "shellCommand", toolName: "bash", command: "sf project deploy start" },
+      "/workspace",
+      readBundledConfig(),
+    );
+    expect(decision).toMatchObject({
+      ruleId: "sf-deploy-prod",
+      orgAlias: "Example-Prod",
+      orgType: "production",
+    });
+  });
 });

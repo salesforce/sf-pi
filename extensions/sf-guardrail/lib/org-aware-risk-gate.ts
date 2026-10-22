@@ -5,7 +5,7 @@
  * Evaluates shell Safety Subjects against org-aware rules after the command
  * risk gate has had a chance to block, allow, or short-circuit.
  */
-import { splitSimpleCommands } from "./bash-ast.ts";
+import { matches, tokenize, splitSimpleCommands } from "./bash-ast.ts";
 import { evaluateOrgAware } from "./org-aware-gate.ts";
 import { resolveOrgContext, resolveOrgContextWithLookup, type OrgContext } from "./org-context.ts";
 import { behaviorToAction, resolveRuleBehavior } from "./rule-behavior.ts";
@@ -31,17 +31,25 @@ export async function evaluateOrgAwareRiskWithOrgLookup(
   cwd: string,
   config: GuardrailConfig,
 ): Promise<ClassifiedDecision | undefined> {
-  const fast = evaluateOrgAwareRisk(subject, cwd, config);
-  if (!fast || !fast.orgResolutionGuessed || !fast.orgCommand) {
-    return fast;
+  for (const orgCommand of splitSimpleCommands(subject.command)) {
+    const tokens = tokenize(orgCommand);
+    if (
+      !tokens ||
+      !config.orgAwareGate.rules.some(
+        (rule) =>
+          rule.match.tool === "bash" &&
+          rule.enabled !== false &&
+          resolveRuleBehavior(rule) !== "off" &&
+          matches(tokens, rule.match.ast),
+      )
+    )
+      continue;
+    // Check matching risky commands even when the cached default is non-production.
+    const org = await resolveOrgContextWithLookup(orgCommand, cwd, config.productionAliases);
+    const decision = buildOrgAwareDecision(config, subject.command, orgCommand, org);
+    if (decision) return decision;
   }
-
-  const refinedOrg = await resolveOrgContextWithLookup(
-    fast.orgCommand,
-    cwd,
-    config.productionAliases,
-  );
-  return buildOrgAwareDecision(config, fast.subject, fast.orgCommand, refinedOrg);
+  return undefined;
 }
 
 function buildOrgAwareDecision(
