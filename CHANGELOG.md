@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.340.0](https://github.com/salesforce/sf-pi/compare/v0.339.15...v0.340.0) (2026-10-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **gateway:** SF Pi now requires stable Pi >=1.4.0 <2.0.0. Upgrade Pi before updating SF Pi. Summary prompts and output budgeting are Pi-owned; split turns can require two summary requests.
+
+### Refactors
+
+* **gateway:** delegate compaction to Pi 1.4.0 ([9f90517](https://github.com/salesforce/sf-pi/commit/9f90517b2a1f815e9e253cd18d11e5a2ff2a7a87))
+
 ## [0.339.15](https://github.com/salesforce/sf-pi/compare/v0.339.14...v0.339.15) (2026-10-22)
 
 
