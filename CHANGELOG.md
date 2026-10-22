@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.339.15](https://github.com/salesforce/sf-pi/compare/v0.339.14...v0.339.15) (2026-10-22)
+
+
+### Bug Fixes
+
+* **deps-dev:** align Vite overrides with patched 7.3.7 ([d09c1cb](https://github.com/salesforce/sf-pi/commit/d09c1cb0a2cf43d952d1851e65e3f6a42cc1146f))
+
 ## [0.339.14](https://github.com/salesforce/sf-pi/compare/v0.339.13...v0.339.14) (2026-10-22)
 
 
