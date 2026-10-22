@@ -122,7 +122,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0145: SF MCP supports org-bound connection instances](./0145-sf-mcp-org-bound-connection-instances.md) — 2026-10-08
 - [0146: SF SOQL Execution Is API-Aware and Self-Grounding](./0146-sf-soql-execution-is-api-aware-and-self-grounding.md) — 2026-10-08
 - [0148: Guardrail owns Integration and Flow org-sensitive safety](./0148-guardrail-owns-integration-and-flow-org-safety.md) — 2026-10-16
-- [0149: Pi 1.3.0 audit edge and native runtime fixes](./0149-pi-130-audit-edge-and-native-runtime-fixes.md) — 2026-10-18
+- [0150: Pi 1.4.0 audit edge and native runtime fixes](./0150-pi-140-audit-edge-and-native-runtime-fixes.md) — 2026-10-22
 
 ## Proposed
 
@@ -162,6 +162,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0142: Data 360 cards prioritize observed API work](./0142-data-360-cards-prioritize-observed-api-work.md) — 2026-10-07 — superseded by [ADR 0143](./0143-data-360-cards-are-payload-and-provenance-aware.md)
 - [0144: Pi 1.1.0 audit edge and runtime signals](./0144-pi-110-audit-edge-and-runtime-signals.md) — 2026-10-08 — superseded by [ADR 0147](./0147-pi-120-audit-edge-and-run-start-discrimination.md)
 - [0147: Pi 1.2.0 audit edge and run-start discrimination](./0147-pi-120-audit-edge-and-run-start-discrimination.md) — 2026-10-14 — superseded by [ADR 0149](./0149-pi-130-audit-edge-and-native-runtime-fixes.md)
+- [0149: Pi 1.3.0 audit edge and native runtime fixes](./0149-pi-130-audit-edge-and-native-runtime-fixes.md) — 2026-10-18 — superseded by [ADR 0150](./0150-pi-140-audit-edge-and-native-runtime-fixes.md)
 
 ### Rejected
 
