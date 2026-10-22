@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.340.2](https://github.com/salesforce/sf-pi/compare/v0.340.1...v0.340.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* **org:** expose default provenance and refresh mutation target facts ([f149340](https://github.com/salesforce/sf-pi/commit/f149340187e3374ca5b1d70cd849fb91411af221))
+
 ## [0.340.1](https://github.com/salesforce/sf-pi/compare/v0.340.0...v0.340.1) (2026-10-22)
 
 
