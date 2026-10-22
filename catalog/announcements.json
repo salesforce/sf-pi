@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.339.13-2026-10-19",
-  "latestVersion": "0.339.13",
+  "revision": "release-0.339.14-2026-10-22",
+  "latestVersion": "0.339.14",
   "announcements": [
     {
-      "id": "release-0.339.13",
+      "id": "release-0.339.14",
       "kind": "update",
-      "title": "sf-pi v0.339.13 — deps-dev: update ESLint to 10.13.0",
-      "publishedAt": "2026-10-19T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.13",
+      "title": "sf-pi v0.339.14 — runtime: audit Pi 1.4.0 compatibility",
+      "publishedAt": "2026-10-22T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.339.14",
       "severity": "info",
-      "body": "deps-dev: update ESLint to 10.13.0"
+      "body": "runtime: audit Pi 1.4.0 compatibility"
     }
   ]
 }
