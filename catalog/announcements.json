@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.340.2-2026-10-22",
-  "latestVersion": "0.340.2",
+  "revision": "release-0.340.3-2026-10-22",
+  "latestVersion": "0.340.3",
   "announcements": [
     {
-      "id": "release-0.340.2",
+      "id": "release-0.340.3",
       "kind": "update",
-      "title": "sf-pi v0.340.2 — org: expose default provenance and refresh mutation target facts",
+      "title": "sf-pi v0.340.3 — deps: update ip-address to patched 10.7.4",
       "publishedAt": "2026-10-22T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.340.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.340.3",
       "severity": "info",
-      "body": "org: expose default provenance and refresh mutation target facts"
+      "body": "deps: update ip-address to patched 10.7.4"
     }
   ]
 }
