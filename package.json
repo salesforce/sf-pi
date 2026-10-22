@@ -201,14 +201,14 @@
     "form-data": "^4.0.6",
     "csv-parse": "^7.0.2",
     "vitepress": {
-      "vite": "7.3.5",
+      "vite": "7.3.7",
       "@vitejs/plugin-vue": "^6.0.7"
     },
     "vitest": {
-      "vite": "7.3.5"
+      "vite": "7.3.7"
     },
     "@vitest/mocker": {
-      "vite": "7.3.5"
+      "vite": "7.3.7"
     },
     "esbuild": "^0.28.1",
     "minimatch": "^10.2.5",
