@@ -212,6 +212,9 @@
     },
     "esbuild": "^0.28.1",
     "minimatch": "^10.2.5",
-    "basic-ftp": "^6.2.1"
+    "basic-ftp": "^6.2.1",
+    "@earendil-works/pi-coding-agent": {
+      "undici": "^8.12.2"
+    }
   }
 }
