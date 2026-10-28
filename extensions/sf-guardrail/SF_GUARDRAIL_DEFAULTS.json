@@ -551,7 +551,12 @@
         "description": "Production Flow lifecycle mutations",
         "match": {
           "tool": "sf_flow",
-          "actions": ["deploy.activate", "lifecycle.activate", "lifecycle.deactivate"]
+          "actions": [
+            "deploy.draft",
+            "deploy.activate",
+            "lifecycle.activate",
+            "lifecycle.deactivate"
+          ]
         },
         "whenOrgType": ["production", "unknown"],
         "action": "block"

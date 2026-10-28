@@ -675,7 +675,19 @@ describe("Safety Kernel", () => {
       config: readBundledConfig(),
     });
 
-    for (const decision of [deploy, activate, deactivate]) {
+    const draft = await evaluateSafety({
+      toolName: "sf_flow",
+      input: {
+        action: "deploy.draft",
+        target_org: "FlowLifecycleDev",
+        file: "force-app/main/default/flows/Example.flow-meta.xml",
+        allow_mutation: true,
+      },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    for (const decision of [draft, deploy, activate, deactivate]) {
       expect(decision).toMatchObject({
         action: "confirm",
         feature: "nativeToolGate",
@@ -689,6 +701,7 @@ describe("Safety Kernel", () => {
         allowSession: true,
       });
     }
+    expect(draft?.fingerprint).not.toBe(deploy?.fingerprint);
     expect(deploy?.fingerprint).not.toBe(activate?.fingerprint);
     expect(activate?.fingerprint).not.toBe(deactivate?.fingerprint);
   });

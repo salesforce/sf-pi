@@ -7,6 +7,7 @@ import {
   activateFlowVersion,
   deactivateFlow,
   deployAndActivateFlow,
+  deployDraftFlow,
   flowDefinitionSource,
   getFlowLifecycleStatus,
   stageActiveFlowSource,
@@ -415,4 +416,132 @@ describe("SF Flow lifecycle", () => {
       );
     },
   );
+});
+
+describe("SF Flow deploy.draft", () => {
+  const draftOnlyFile = path.join(
+    import.meta.dirname,
+    "fixtures",
+    "Catalog_Picker_Draft_Only.flow-meta.xml",
+  );
+  const draftSession = () =>
+    ({
+      ...(session() as object),
+      connection: { instanceUrl: "https://example.my.salesforce.com" },
+    }) as never;
+  const params = (file: string) => ({
+    action: "deploy.draft" as const,
+    target_org: "FlowLifecycleDev",
+    file,
+    allow_mutation: true,
+  });
+
+  it("requires explicit mutation intent", async () => {
+    await expect(
+      deployDraftFlow(
+        { action: "deploy.draft", target_org: "FlowLifecycleDev", file: flowFile },
+        process.cwd(),
+        draftSession(),
+        { adapter: adapter(), ...artifacts },
+      ),
+    ).rejects.toThrow("allow_mutation=true");
+  });
+
+  it("deploys a Draft copy, verifies the saved status, and returns the Builder URL", async () => {
+    const before = await readFile(flowFile, "utf8");
+    const deploy = vi.fn<FlowLifecycleAdapter["deploy"]>().mockResolvedValue({
+      id: "0Af000000000011",
+      success: true,
+      status: "Succeeded",
+      component_failures: [],
+      raw: { success: true },
+    });
+    const getLatestVersion = vi
+      .fn()
+      .mockResolvedValue({ DurableId: "301000000000001AAA", VersionNumber: 3, Status: "Draft" });
+
+    const result = await deployDraftFlow(params(flowFile), process.cwd(), draftSession(), {
+      adapter: adapter({ deploy, getLatestVersion }),
+      ...artifacts,
+    });
+
+    expect(deploy).toHaveBeenCalledTimes(1);
+    expect(deploy.mock.calls[0]?.[0]).toMatchObject({ check_only: false, component_type: "Flow" });
+    expect(deploy.mock.calls[0]?.[0].source).toContain("<status>Draft</status>");
+    expect(await readFile(flowFile, "utf8")).toBe(before);
+    expect(result.details).toMatchObject({
+      ok: true,
+      deployment_performed: true,
+      activation_performed: false,
+      version_status: "Draft",
+      version_number: 3,
+      builder_url:
+        "https://example.my.salesforce.com/builder_platform_interaction/flowBuilder.app?flowId=301000000000001AAA",
+      activation_check: null,
+    });
+  });
+
+  it("recovers concrete errors when Salesforce saves an InvalidDraft", async () => {
+    const deploy = vi
+      .fn<FlowLifecycleAdapter["deploy"]>()
+      .mockResolvedValueOnce({
+        id: "0Af000000000012",
+        success: true,
+        status: "Succeeded",
+        component_failures: [],
+        raw: { success: true },
+      })
+      .mockResolvedValueOnce({
+        id: "0Af000000000013",
+        success: false,
+        status: "Failed",
+        component_failures: [{ problem: 'We can\'t find this input attribute: "objectName".' }],
+        raw: { success: false },
+      });
+    const getLatestVersion = vi.fn().mockResolvedValue({
+      DurableId: "301000000000002AAA",
+      VersionNumber: 1,
+      Status: "InvalidDraft",
+    });
+
+    const result = await deployDraftFlow(params(draftOnlyFile), process.cwd(), draftSession(), {
+      adapter: adapter({ deploy, getLatestVersion }),
+      ...artifacts,
+    });
+
+    expect(deploy.mock.calls.map(([input]) => input.check_only)).toEqual([false, true]);
+    expect(deploy.mock.calls[1]?.[0].source).toContain("<status>Active</status>");
+    expect(result.details).toMatchObject({
+      ok: false,
+      version_status: "InvalidDraft",
+      activation_check: {
+        success: false,
+        failures: [{ rule_id: "screen-component-contract" }],
+      },
+    });
+    expect(result.content[0]?.text).toContain("InvalidDraft");
+  });
+
+  it("reports Builder-only InvalidDraft when the activation lane passes", async () => {
+    const deploy = vi.fn<FlowLifecycleAdapter["deploy"]>().mockResolvedValue({
+      id: "0Af000000000014",
+      success: true,
+      status: "Succeeded",
+      component_failures: [],
+      raw: { success: true },
+    });
+    const getLatestVersion = vi.fn().mockResolvedValue({
+      DurableId: "301000000000003AAA",
+      VersionNumber: 1,
+      Status: "InvalidDraft",
+    });
+
+    const result = await deployDraftFlow(params(flowFile), process.cwd(), draftSession(), {
+      adapter: adapter({ deploy, getLatestVersion }),
+      ...artifacts,
+    });
+
+    expect(result.details.ok).toBe(false);
+    expect(JSON.stringify(result.details.digest)).toContain("Builder-only");
+  });
 });

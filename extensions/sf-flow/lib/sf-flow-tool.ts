@@ -16,11 +16,13 @@ import {
   activateFlowVersion,
   deactivateFlow,
   deployAndActivateFlow,
+  deployDraftFlow,
   getFlowLifecycleStatus,
 } from "./lifecycle.ts";
 import { resolveFlowWorkspace } from "./project.ts";
 import { applyFlowQuickFix } from "./quick-fixes.ts";
 import { renderFlowResult } from "./render.ts";
+import { createRepairLoopState } from "./repair-loop.ts";
 import type { SfFlowParams, SfFlowSessionState, ToolResult } from "./types.ts";
 import {
   buildAuthoringPlan,
@@ -50,6 +52,7 @@ export const SF_FLOW_ACTIONS = [
   "fix.apply",
   "validate.check",
   "lifecycle.status",
+  "deploy.draft",
   "deploy.activate",
   "lifecycle.activate",
   "lifecycle.deactivate",
@@ -76,7 +79,7 @@ const Params = Type.Object({
   allow_mutation: Type.Optional(
     Type.Boolean({
       description:
-        "Required execution-intent flag for Flow activation/deactivation; Guardrail approval remains separate.",
+        "Required execution-intent flag for Flow draft deployment and activation/deactivation; Guardrail approval remains separate.",
     }),
   ),
   intent: Type.Optional(
@@ -168,6 +171,7 @@ const Params = Type.Object({
 
 export function registerSfFlowTool(pi: ExtensionAPI): void {
   const state: SfFlowSessionState = {};
+  const validationRepair = createRepairLoopState();
   pi.registerTool<typeof Params>({
     name: SF_FLOW_TOOL_NAME,
     label: "SF Flow",
@@ -179,6 +183,8 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
       "Use sf_flow before generic XML reasoning for Flow metadata; normal Pi file tools own source edits.",
       "Pass target_org to sf_flow author.plan when custom fields, actions, or subflow contracts must be grounded before authoring; omitted targets keep planning local.",
       "Use sf_flow diagnose.file before validate.check; check-only validation never deploys or activates a Flow.",
+      "Treat validate.check as green only when activation_ready=true; a passing Draft lane alone does not prove Flow Builder or activation readiness. Repair one reported failure per round and stop when the repair loop reports stopped.",
+      "Use sf_flow deploy.draft to save one local Flow as an inactive Draft version instead of raw `sf project deploy`; it verifies the saved version status and returns activation-lane errors when Salesforce marks the version InvalidDraft.",
       "Use sf_flow fix.apply only with a current fix_id and source_version returned by diagnose.file; stale or unsupported fixes are refused.",
       "Use sf_flow lifecycle.status for canonical REST lifecycle evidence; do not delegate FlowDefinitionView lifecycle verification to generic SOQL guessing.",
       "Use sf_flow deploy.activate for one exact local Flow file, sf_flow lifecycle.activate for one exact existing version, and sf_flow lifecycle.deactivate for deterministic deactivation. Mutations require explicit target_org and allow_mutation=true, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail.",
@@ -208,9 +214,12 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
         }
 
         if (
-          ["deploy.activate", "lifecycle.activate", "lifecycle.deactivate"].includes(
-            params.action,
-          ) &&
+          [
+            "deploy.draft",
+            "deploy.activate",
+            "lifecycle.activate",
+            "lifecycle.deactivate",
+          ].includes(params.action) &&
           !params.target_org?.trim()
         ) {
           throw new Error("target_org is required for Flow lifecycle mutations");
@@ -228,9 +237,17 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
           case "org.preflight":
             return orgPreflight(session, params);
           case "validate.check":
-            return validateFlowCheck(params, ctx.cwd, session, {}, signal);
+            return validateFlowCheck(
+              params,
+              ctx.cwd,
+              session,
+              { repairState: validationRepair },
+              signal,
+            );
           case "lifecycle.status":
             return getFlowLifecycleStatus(params, session);
+          case "deploy.draft":
+            return deployDraftFlow(params, ctx.cwd, session, {}, signal);
           case "deploy.activate":
             return deployAndActivateFlow(params, ctx.cwd, session, {}, signal);
           case "lifecycle.activate":

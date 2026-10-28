@@ -12,6 +12,7 @@ export type SfFlowAction =
   | "fix.apply"
   | "validate.check"
   | "lifecycle.status"
+  | "deploy.draft"
   | "deploy.activate"
   | "lifecycle.activate"
   | "lifecycle.deactivate"

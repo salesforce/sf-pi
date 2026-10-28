@@ -31,7 +31,7 @@ status, org.preflight
 project.scan, flow.inspect, author.plan, diagnose.file, quality.rules
 fix.apply
 validate.check
-lifecycle.status, deploy.activate, lifecycle.activate, lifecycle.deactivate
+lifecycle.status, deploy.draft, deploy.activate, lifecycle.activate, lifecycle.deactivate
 test.discover, test.plan, test.run, test.result, test.rerun
 ```
 
@@ -41,8 +41,8 @@ The intended loop is:
 2. Edit `.flow-meta.xml` with normal Pi file tools.
 3. Run `diagnose.file` until deterministic local findings are resolved. It returns the exact source version and any safe source-bound quick fixes.
 4. Apply only a current `fix.apply` result when API version, Auto-Layout, or unused-variable cleanup is appropriate. Business logic remains with normal Pi edits.
-5. Run `validate.check` against the intended org. This is a one-file Metadata API check-only operation and saves no metadata.
-6. Use `lifecycle.status` for read-only REST state. When explicitly requested, use `deploy.activate` for one local Flow, `lifecycle.activate` for one exact existing version, or `lifecycle.deactivate` for deterministic cleanup.
+5. Run `validate.check` against the intended org. This is a one-file Metadata API check-only operation in two lanes, the exact source and an Active-staged copy, and saves no metadata. It reports `activation_ready=true` only when the activation lane passes, because a Draft-only pass can still save as `InvalidDraft`.
+6. Use `lifecycle.status` for read-only REST state. When explicitly requested, use `deploy.draft` to save one inactive Draft version with saved-status verification, `deploy.activate` for one local Flow, `lifecycle.activate` for one exact existing version, or `lifecycle.deactivate` for deterministic cleanup.
 7. Run the smallest relevant targeted Flow test when an eligible Flow test exists in the org.
 
 A successful local diagnosis does not establish deployment readiness. Salesforce check-only validation is the platform evidence boundary.
@@ -119,7 +119,8 @@ The Result Card stays compact. SF Flow appends bounded topology as a top-level M
 - No startup org probes, project scans, subprocesses, or network calls.
 - Automatic post-edit feedback is local-only, bounded to three actionable rounds, and stays silent for clean files.
 - `fix.apply` is limited to source-bound API-version, Auto-Layout, and unused-variable fixes and participates in Pi's file mutation queue.
-- `validate.check` stages one Flow in a temporary directory with `checkOnly=true`; it never deploys or activates.
+- `validate.check` stages one Flow and an Active copy in temporary directories with `checkOnly=true`; it never deploys or activates.
+- `deploy.draft` is an exact one-Flow Draft deployment with Guardrail mediation, saved-status verification, and no activation.
 - `deploy.activate`, `lifecycle.activate`, and `lifecycle.deactivate` are exact, one-Flow, check-first operations with Guardrail mediation and resulting-state verification.
 - Test runs require explicit Flow API names or Flow test names and never default to all tests.
 - Complete evidence is persisted under `<globalAgentDir>/sf-pi/sf-flow/`; model-facing output stays compact.

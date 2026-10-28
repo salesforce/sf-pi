@@ -8,6 +8,7 @@ import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import { analyzeFlowSource, resolveFlowFile } from "./analyzer.ts";
 import { artifactTimestamp, writeFlowArtifact } from "./artifacts.ts";
 import { buildFlowDigest, row, section, toolResultFromDigest } from "./digest.ts";
+import { flowFailureHint } from "./failure-hints.ts";
 import { resolveFlowWorkspace } from "./project.ts";
 import type { FlowArtifact, SfFlowParams, ToolResult } from "./types.ts";
 
@@ -31,6 +32,7 @@ export interface FlowDefinitionRecord {
 }
 
 export interface FlowVersionRecord {
+  DurableId?: string | null;
   VersionNumber?: number | null;
   Status?: string | null;
 }
@@ -70,6 +72,10 @@ export interface FlowLifecycleAdapter {
     activeVersionId?: string,
   ): Promise<FlowVersionRecord | undefined>;
   getScheduledJobs(session: SalesforceSession, flowName: string): Promise<FlowScheduledJob[]>;
+  getLatestVersion?(
+    session: SalesforceSession,
+    flowName: string,
+  ): Promise<FlowVersionRecord | undefined>;
   deploy(input: {
     session: SalesforceSession;
     component_type: "Flow" | "FlowDefinition";
@@ -86,11 +92,19 @@ export interface FlowLifecycleDependencies {
 }
 
 export function stageActiveFlowSource(source: string): string {
+  return stageFlowStatus(source, "Active");
+}
+
+export function stageDraftFlowSource(source: string): string {
+  return stageFlowStatus(source, "Draft");
+}
+
+function stageFlowStatus(source: string, status: "Active" | "Draft"): string {
   const matches = source.match(/<status>([^<]+)<\/status>/gu) ?? [];
   if (matches.length !== 1) {
     throw new Error(`Expected exactly one Flow status, found ${matches.length}.`);
   }
-  return source.replace(/<status>[^<]+<\/status>/u, "<status>Active</status>");
+  return source.replace(/<status>[^<]+<\/status>/u, `<status>${status}</status>`);
 }
 
 export function flowDefinitionSource(activeVersionNumber: number): string {
@@ -172,6 +186,184 @@ export async function deployAndActivateFlow(
     sourceChanged: false,
     kind: "local",
   });
+}
+
+/**
+ * Deploy one local Flow as a Draft version and verify the saved version status.
+ *
+ * A Draft deploy can succeed while Salesforce saves the version as InvalidDraft
+ * without returning a reason. When that happens, an Active-staged check-only pass
+ * recovers the concrete errors so the caller can repair them.
+ */
+export async function deployDraftFlow(
+  params: SfFlowParams,
+  cwd: string,
+  session: SalesforceSession,
+  dependencies: FlowLifecycleDependencies = {},
+  signal?: AbortSignal,
+): Promise<ToolResult> {
+  assertMutationAllowed(params);
+  if (!params.file) throw new Error("file is required for deploy.draft");
+  const workspace = await resolveFlowWorkspace(params.workspace, cwd);
+  const file = await resolveFlowFile(params.file, workspace);
+  const flowName = flowNameFromFile(file.absolute);
+  const source = await readFile(file.absolute, "utf8");
+  const analysis = analyzeFlowSource(source, file.display, { profile: "generation" });
+  if (analysis.status === "failed") {
+    return blockedLocalResult(params, session, flowName, analysis);
+  }
+  const adapter = dependencies.adapter ?? defaultFlowLifecycleAdapter;
+  const getLatest = adapter.getLatestVersion ?? latestFlowVersion;
+  const before = await getLatest(session, flowName);
+  const deployed = await adapter.deploy({
+    session,
+    component_type: "Flow",
+    full_name: flowName,
+    source: stageDraftFlowSource(source),
+    check_only: false,
+    signal,
+  });
+  if (!deployed.success) {
+    return deploymentFailureResult(params, session, flowName, deployed, true, analysis);
+  }
+
+  const version = await waitForSavedVersion(getLatest, session, flowName, before, signal);
+  const invalid = version?.Status === "InvalidDraft";
+  const activationCheck = invalid
+    ? await adapter.deploy({
+        session,
+        component_type: "Flow",
+        full_name: flowName,
+        source: stageActiveFlowSource(source),
+        check_only: true,
+        signal,
+      })
+    : undefined;
+  const failures = (activationCheck?.component_failures ?? []).map((failure) => ({
+    ...failure,
+    ...flowFailureHint(failure.problem),
+  }));
+  const builderUrl = builderUrlFor(session, version?.DurableId);
+  const artifact = await writeLifecycleArtifact(dependencies, flowName, "deploy-draft", {
+    deploy: deployed.raw,
+    version,
+    activation_check: activationCheck?.raw,
+  });
+  const status = !version ? "warning" : invalid ? "fail" : "pass";
+  const digest = buildFlowDigest({
+    action: "deploy.draft",
+    kind: "flow_lifecycle",
+    status,
+    icon: invalid ? "❌" : "📝",
+    title: `Flow Draft Deploy · ${version?.Status ?? "version unverified"}`,
+    org: orgDigest(params, session),
+    meta: [flowName, ...(version?.VersionNumber ? [`v${version.VersionNumber}`] : [])],
+    rail: [
+      {
+        kind: "POST",
+        target: "/metadata/deploy",
+        detail: `checkOnly=false · Draft · ${shortId(deployed.id)}`,
+      },
+      { kind: "REST", target: "FlowVersionView", detail: "saved version status" },
+      ...(activationCheck
+        ? [
+            {
+              kind: "POST",
+              target: "/metadata/deploy",
+              detail: `checkOnly=true · activation lane · ${shortId(activationCheck.id)}`,
+            },
+          ]
+        : []),
+    ],
+    sections: [
+      section("🌊", "Saved Version", [
+        row("🏷️", "API Name", flowName),
+        row("🔢", "Version", version?.VersionNumber),
+        row(invalid ? "❌" : version ? "✅" : "⚠️", "Status", version?.Status ?? "not observed"),
+        row("🔗", "Builder", builderUrl),
+      ]),
+      ...(invalid
+        ? [
+            section(
+              "🧯",
+              "Activation-Lane Errors",
+              failures.length
+                ? failures
+                    .slice(0, 10)
+                    .map((failure) =>
+                      row(
+                        "❌",
+                        "Flow",
+                        failure.hint
+                          ? `${failure.problem} · fix: ${failure.hint}`
+                          : failure.problem,
+                      ),
+                    )
+                : [
+                    row(
+                      "⚠️",
+                      "Detail",
+                      activationCheck?.success
+                        ? "Active check-only passed; the remaining errors are Builder-only. Inspect the Builder Errors panel."
+                        : "Salesforce returned no component detail.",
+                    ),
+                  ],
+            ),
+          ]
+        : []),
+      section("🛡️", "Mutation", [
+        row("✅", "Performed", "Draft deployment · no activation"),
+        row("📝", "Local Source", "unchanged"),
+      ]),
+    ],
+    artifacts: [artifact],
+    next_step: invalid
+      ? "Fix the first activation-lane error, run validate.check, then deploy.draft again."
+      : version
+        ? "Open the Builder URL to review, or use deploy.activate when activation is intended."
+        : "Run lifecycle.status to confirm the saved version before relying on it.",
+  });
+  return toolResultFromDigest(digest, {
+    flow_name: flowName,
+    deployment_performed: true,
+    activation_performed: false,
+    version_id: version?.DurableId ?? null,
+    version_number: version?.VersionNumber ?? null,
+    version_status: version?.Status ?? null,
+    builder_url: builderUrl ?? null,
+    activation_check: activationCheck
+      ? { success: activationCheck.success, job_id: activationCheck.id, failures }
+      : null,
+    job_id: deployed.id,
+    local_analysis: { status: analysis.status, summary: analysis.summary },
+    artifacts: [artifact],
+  });
+}
+
+async function waitForSavedVersion(
+  getLatest: NonNullable<FlowLifecycleAdapter["getLatestVersion"]>,
+  session: SalesforceSession,
+  flowName: string,
+  before: FlowVersionRecord | undefined,
+  signal?: AbortSignal,
+): Promise<FlowVersionRecord | undefined> {
+  // A Draft deploy may overwrite the latest Draft in place, so a same-number version is valid.
+  const deadline = Date.now() + STATE_POLL_TIMEOUT_MS;
+  let latest = await getLatest(session, flowName);
+  while (
+    (!latest?.Status || (latest.VersionNumber ?? 0) < (before?.VersionNumber ?? 0)) &&
+    Date.now() < deadline
+  ) {
+    await delay(STATE_POLL_FREQUENCY_MS, signal);
+    latest = await getLatest(session, flowName);
+  }
+  return latest?.Status ? latest : undefined;
+}
+
+function builderUrlFor(session: SalesforceSession, versionId?: string | null): string | undefined {
+  const instance = (session.connection as { instanceUrl?: string } | undefined)?.instanceUrl;
+  if (!instance || !versionId || !/^[A-Za-z0-9]{15,18}$/u.test(versionId)) return undefined;
+  return `${instance.replace(/\/$/u, "")}/builder_platform_interaction/flowBuilder.app?flowId=${versionId}`;
 }
 
 export async function activateFlowVersion(
@@ -606,12 +798,13 @@ function blockedLocalResult(
   analysis: ReturnType<typeof analyzeFlowSource>,
 ): ToolResult {
   const findings = analysis.findings.filter((finding) => finding.severity === "high").slice(0, 10);
+  const draft = params.action === "deploy.draft";
   const digest = buildFlowDigest({
-    action: "deploy.activate",
+    action: draft ? "deploy.draft" : "deploy.activate",
     kind: "flow_lifecycle",
     status: "fail",
     icon: "🛑",
-    title: "Flow Activation · blocked locally",
+    title: `Flow ${draft ? "Draft Deploy" : "Activation"} · blocked locally`,
     org: orgDigest(params, session),
     meta: [flowName],
     sections: [
@@ -624,7 +817,7 @@ function blockedLocalResult(
       ),
       section("🛡️", "Mutation", [row("✅", "Performed", "none")]),
     ],
-    next_step: "Fix the first high-severity local finding, then run deploy.activate again.",
+    next_step: `Fix the first high-severity local finding, then run ${draft ? "deploy.draft" : "deploy.activate"} again.`,
   });
   return toolResultFromDigest(digest, {
     flow_name: flowName,
@@ -784,6 +977,18 @@ function normalizeFailure(
   };
 }
 
+async function latestFlowVersion(
+  session: SalesforceSession,
+  flowName: string,
+): Promise<FlowVersionRecord | undefined> {
+  const result = await session.query<FlowVersionRecord>({
+    soql: `SELECT DurableId, VersionNumber, Status FROM FlowVersionView WHERE FlowDefinitionView.ApiName = '${flowName}' ORDER BY VersionNumber DESC LIMIT 1`,
+    api: "rest",
+    maxRows: 1,
+  });
+  return result.records[0];
+}
+
 const defaultFlowLifecycleAdapter: FlowLifecycleAdapter = {
   async getDefinition(session, flowName) {
     const result = await session.query<FlowDefinitionRecord>({
@@ -813,6 +1018,7 @@ const defaultFlowLifecycleAdapter: FlowLifecycleAdapter = {
     });
     return result.records[0];
   },
+  getLatestVersion: latestFlowVersion,
   async getScheduledJobs(session, flowName) {
     const result = await session.query<FlowScheduledJob>({
       soql: `SELECT Id, State, CronJobDetail.Name FROM CronTrigger WHERE CronJobDetail.Name LIKE '${flowName}%' LIMIT 20`,

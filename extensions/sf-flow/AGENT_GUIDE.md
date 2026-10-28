@@ -11,8 +11,8 @@ Use `sf_flow` for the Flow-specific lifecycle. Normal Pi file tools own `.flow-m
 5. Run `diagnose.file` explicitly with the `generation` profile during authoring and resolve High findings first. Use `review` for the broader implemented set. Treat skipped coverage as unknown, not clean.
 6. Use `quality.rules` when rule status, profile membership, provenance, or planned coverage matters.
 7. When diagnosis returns a safe quick fix, pass its exact `fix_id` and `source_version` to `fix.apply`. Re-diagnose after any normal business-logic edit instead of reusing a stale fix.
-8. Run `validate.check` against the intended org. It validates one exact Flow with Metadata API `checkOnly=true` and saves nothing.
-9. Use `lifecycle.status` for canonical REST state. Use `deploy.activate` to stage, check, deploy, and verify one local Flow without changing its checked-in status; use `lifecycle.activate` only with an exact existing version number; use `lifecycle.deactivate` for deterministic `activeVersionNumber=0` cleanup. Never invent `sf flow activate` or delegate lifecycle verification to generic Tooling SOQL.
+8. Run `validate.check` against the intended org. It validates one exact Flow with Metadata API `checkOnly=true` in two lanes, the exact source and an isolated Active-staged copy, and saves nothing. Treat it as green only when `activation_ready=true`: Salesforce applies few semantic checks to Draft versions, so a Draft-only pass can still save as `InvalidDraft` with Flow Builder errors. The platform usually reports one error per pass; fix the first reported failure, validate again, and stop when `repair_loop.status` is `stopped` (repeated failure or round limit).
+9. Use `lifecycle.status` for canonical REST state. Use `deploy.draft` to save one local Flow as an inactive Draft version instead of raw `sf project deploy`; it verifies the saved `FlowVersionView.Status`, returns the Flow Builder URL, and, when Salesforce saves `InvalidDraft`, runs the activation lane to return the concrete errors. Use `deploy.activate` to stage, check, deploy, and verify one local Flow without changing its checked-in status; use `lifecycle.activate` only with an exact existing version number; use `lifecycle.deactivate` for deterministic `activeVersionNumber=0` cleanup. Never invent `sf flow activate` or delegate lifecycle verification to generic Tooling SOQL.
 10. Use `test.plan` and `test.run` for the smallest relevant Flow or Flow test. Poll queued runs with `test.result`; use `test.rerun` only for the prior session-scoped target. Discovery is bounded and reads each selected FlowTest's Tooling API `Metadata` field in a separate single-row query. Runs submit asynchronously even when a wait is requested; SF Flow polls before fetching results. A skipped, aborted, failed, or zero-test terminal result is failed evidence, never a pass.
 
 ## Core Flow Family selection
@@ -108,7 +108,8 @@ Verify fixture records, logs, trace flags, and other temporary runtime state sep
 ## Evidence boundaries
 
 - `diagnose.file` proves only the small local deterministic rule set.
-- `validate.check` proves how the selected org validates the exact staged Flow at that time; it does not save the Flow.
+- `validate.check` proves how the selected org validates the exact staged Flow at that time, in the Draft and activation lanes; it does not save the Flow. Flow Builder can still report client-side errors that neither lane returns, such as unsupported cross-object field paths.
+- `deploy.draft` proves the saved Draft version status. `InvalidDraft` with a passing activation lane means the remaining errors are Builder-only.
 - `deploy.activate` and `lifecycle.activate` prove activation only after successful check-only, deployment, and REST resulting-state verification; they do not prove business behavior.
 - `lifecycle.deactivate` proves inactive Flow definition state and scheduled-job cleanup, not cleanup of business records or external side effects.
 - `test.run` proves only the explicitly selected org Flow tests. Do not assume a Flow test can reproduce service-channel routing context.

@@ -758,6 +758,7 @@ describe("Native production rule coverage", () => {
     ["sf_integrate", "setup.apply", "native-sf-integrate-prod"],
     ["sf_integrate", "secret.populate", "native-sf-integrate-prod"],
     ["sf_integrate", "oauth.authorize", "native-sf-integrate-prod"],
+    ["sf_flow", "deploy.draft", "native-sf-flow-prod"],
     ["sf_flow", "deploy.activate", "native-sf-flow-prod"],
     ["sf_flow", "lifecycle.activate", "native-sf-flow-prod"],
     ["sf_flow", "lifecycle.deactivate", "native-sf-flow-prod"],

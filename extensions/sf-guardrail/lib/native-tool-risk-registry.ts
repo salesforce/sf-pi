@@ -161,6 +161,7 @@ function classifySfFlowLifecycle(
   if (toolName !== "sf_flow") return undefined;
   const action = stringValue(input.action);
   if (
+    action !== "deploy.draft" &&
     action !== "deploy.activate" &&
     action !== "lifecycle.activate" &&
     action !== "lifecycle.deactivate"
@@ -188,7 +189,12 @@ function classifySfFlowLifecycle(
     ruleId: "native-sf-flow-lifecycle",
     subject: `sf_flow ${action} ${target}`,
     reason: `Flow lifecycle mutation requested for ${target}.`,
-    promptTitle: action === "lifecycle.deactivate" ? "⚠ Flow deactivation" : "⚠ Flow activation",
+    promptTitle:
+      action === "lifecycle.deactivate"
+        ? "⚠ Flow deactivation"
+        : action === "deploy.draft"
+          ? "⚠ Flow draft deployment"
+          : "⚠ Flow activation",
     operationFamily: "flow lifecycle",
     riskTier: "flow_lifecycle_mutation_exact",
     fingerprint: `sf_flow|${action}|${fingerprint}`,

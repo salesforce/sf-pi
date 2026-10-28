@@ -17,6 +17,7 @@ describe("sf-flow smoke", () => {
       "fix.apply",
       "validate.check",
       "lifecycle.status",
+      "deploy.draft",
       "deploy.activate",
       "lifecycle.activate",
       "lifecycle.deactivate",
@@ -47,6 +48,8 @@ describe("sf-flow smoke", () => {
     expect(toolDefinition?.promptGuidelines).toEqual(
       expect.arrayContaining([
         expect.stringContaining("sf_flow deploy.activate"),
+        expect.stringContaining("sf_flow deploy.draft"),
+        expect.stringContaining("activation_ready=true"),
         expect.stringContaining("sf_flow lifecycle.deactivate"),
         expect.stringContaining("Do not invent `sf flow activate`"),
       ]),

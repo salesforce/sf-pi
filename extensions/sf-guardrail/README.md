@@ -116,7 +116,7 @@ permission to mutate.
 In Manager settings → Salesforce org operation rules:
 
 - `native-sf-integrate-prod` covers setup, credential population, and OAuth authorization.
-- `native-sf-flow-prod` covers deploy/activate, exact-version activation, and deactivation.
+- `native-sf-flow-prod` covers Draft deployment, deploy/activate, exact-version activation, and deactivation.
 
 Both rules default to **Block** for production and unknown targets. **Ask me** uses
 the normal approval path. **Off** removes the additional org-sensitive restriction;
