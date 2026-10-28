@@ -5,15 +5,8 @@
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
-const TEMPORARY_NO_FIX_ADVISORIES = [
-  {
-    id: "GHSA-vfj7-8cjw-p6xm",
-    packageName: "braces",
-    expiresOn: "2026-11-02",
-    reason:
-      "No patched npm release exists; transitive through the unused CoverageReporter glob path in @salesforce/apex-node. SF Pi uses TestService report writers, not CoverageReporter. Remove when upstream issue micromatch/braces#70 is fixed.",
-  },
-];
+/** @type {Array<{id: string, packageName: string, expiresOn: string, reason: string}>} */
+const TEMPORARY_NO_FIX_ADVISORIES = [];
 
 const BLOCKING_SEVERITIES = new Set(["high", "critical"]);
 
