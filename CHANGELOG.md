@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.341.0](https://github.com/salesforce/sf-pi/compare/v0.340.3...v0.341.0) (2026-10-28)
+
+
+### Features
+
+* **sf-flow:** Builder-parity shape rules and builder_ready validation ([acffe49](https://github.com/salesforce/sf-pi/commit/acffe49e3546a63e033b243fcf548e3382aa4123))
+* **sf-flow:** two-lane activation-aware validation and verified deploy.draft ([81f0781](https://github.com/salesforce/sf-pi/commit/81f0781ee99e6e958b46e7ec4f1fe48b4cb54709))
+
+
+### Bug Fixes
+
+* **deps:** patch fast-uri, undici, and zod advisories ([7d096bc](https://github.com/salesforce/sf-pi/commit/7d096bc98c59d91f2d915d33645887036fe2fa9f))
+
 ## [0.340.3](https://github.com/salesforce/sf-pi/compare/v0.340.2...v0.340.3) (2026-10-22)
 
 
