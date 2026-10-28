@@ -29,19 +29,25 @@ const HINT_PATTERNS: HintPattern[] = [
   },
   {
     pattern: /assigned value must be a flow variable with the isCollection/i,
-    rule_id: "collection-input-type",
+    rule_id: "collection-scalar-mismatch",
     hint: "Pass a record collection variable or a Get Records collection of the mapped type; a Collection Sort has no output, so sort a collection variable in place and reference that variable.",
   },
   {
     pattern: /type for the input parameter .* doesn[’']t match/i,
-    rule_id: "collection-input-type",
+    rule_id: "collection-scalar-mismatch",
     hint: "Make the assigned resource the same object type as the component type mapping.",
   },
   {
     pattern:
       /mapping from .* isn[’']t supported\. Map to a target field that references an equal or greater number of collections/i,
     rule_id: "transform-scalar-into-collection",
-    hint: "A collection Transform can map only per-item ([$EachItem]) sources; set single values such as a parent Id in a Loop with an Assignment after the Transform.",
+    hint: "Make the first mapping of a collection Transform a per-item ([$EachItem]) source; a single value such as a parent Id can follow it.",
+  },
+  {
+    pattern:
+      /isn[’']t available to the flow|invalid reference to ".*\.(selectedRows|firstSelectedRow)/i,
+    rule_id: "component-output-binding",
+    hint: "Store the component outputs (storeOutputAutomatically) and read only selectedRows or firstSelectedRow.",
   },
   {
     pattern: /isn[’']t a valid reference/i,
@@ -55,11 +61,21 @@ const HINT_PATTERNS: HintPattern[] = [
   },
   {
     pattern: /condition doesn[’']t support/i,
-    rule_id: "incompatible-condition",
+    rule_id: "condition-operand-type",
     hint: "Compare compatible types. Cross-object paths such as Parent.Field are not supported in this element; query the parent records and filter by Id instead.",
   },
   {
-    pattern: /null__NotFound|field .* doesn[’']t exist/i,
+    pattern: /null__NotFound/i,
+    rule_id: "record-field-path",
+    hint: "Get Records reads only fields on its own object; query related records separately and filter by Id.",
+  },
+  {
+    pattern: /Enter a sort field for the/i,
+    rule_id: "record-field-path",
+    hint: "Sort Get Records by a field on its own object.",
+  },
+  {
+    pattern: /field .* doesn[’']t exist/i,
     rule_id: "unknown-field",
     hint: "Use a field that exists on the element's object; Get Records cannot query parent fields with dotted paths.",
   },

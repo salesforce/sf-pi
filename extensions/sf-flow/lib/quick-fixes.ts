@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Source-bound deterministic quick fixes for three low-risk Flow findings. */
+/** Source-bound deterministic quick fixes for low-risk Flow findings. */
 
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
@@ -13,7 +13,12 @@ import { childText, descendants, parseFlowXml } from "./xml.ts";
 
 export interface FlowQuickFix {
   id: string;
-  rule_id: "invalid-api-version" | "missing-auto-layout" | "unused-variable";
+  rule_id:
+    | "invalid-api-version"
+    | "missing-auto-layout"
+    | "unused-variable"
+    | "choice-set-datatype"
+    | "screen-field-dot-value";
   description: string;
   source_version: string;
   line: number;
@@ -51,6 +56,25 @@ export async function listFlowQuickFixes(
         source_version: version,
         line: finding.line,
         target_value: "AUTO_LAYOUT_CANVAS",
+      });
+    } else if (finding.rule_id === "choice-set-datatype" && finding.element) {
+      fixes.push({
+        id: quickFixId("choice-set-datatype", finding.element),
+        rule_id: "choice-set-datatype",
+        description: `Set ${finding.element} dataType to Picklist.`,
+        source_version: version,
+        line: finding.line,
+        element: finding.element,
+        target_value: "Picklist",
+      });
+    } else if (finding.rule_id === "screen-field-dot-value" && finding.element) {
+      fixes.push({
+        id: quickFixId("screen-field-dot-value", finding.element),
+        rule_id: "screen-field-dot-value",
+        description: `Replace ${finding.element}.value references with ${finding.element}.`,
+        source_version: version,
+        line: finding.line,
+        element: finding.element,
       });
     } else if (finding.rule_id === "unused-variable" && finding.element) {
       fixes.push({
@@ -168,7 +192,29 @@ function applyFixToSource(source: string, fix: FlowQuickFix): string {
     if (!variable) throw new Error(`Unused variable ${fix.element} no longer exists.`);
     return removeNodeAndLineWhitespace(source, variable.start, variable.end);
   }
+  if (fix.rule_id === "choice-set-datatype" && fix.element) {
+    const parsed = parseFlowXml(source);
+    const set = parsed.root?.children.find(
+      (node) => node.name === "dynamicChoiceSets" && childText(node, "name") === fix.element,
+    );
+    const dataType = set?.children.find((node) => node.name === "dataType");
+    if (!dataType) throw new Error(`Choice set ${fix.element} no longer has a dataType.`);
+    return `${source.slice(0, dataType.start)}<dataType>${fix.target_value ?? "Picklist"}</dataType>${source.slice(dataType.end)}`;
+  }
+  if (fix.rule_id === "screen-field-dot-value" && fix.element) {
+    const name = escapeRegExp(fix.element);
+    return source
+      .replace(
+        new RegExp(`(<elementReference>\\s*)${name}\\.value(\\s*</elementReference>)`, "gu"),
+        `$1${fix.element}$2`,
+      )
+      .replace(new RegExp(`\\{!\\s*${name}\\.value\\s*\\}`, "gu"), `{!${fix.element}}`);
+  }
   throw new Error(`Unsupported quick fix rule: ${fix.rule_id}`);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 function applyAutoLayout(source: string): string {

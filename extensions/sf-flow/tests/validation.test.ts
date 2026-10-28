@@ -184,13 +184,56 @@ describe("SF Flow check-only validation", () => {
   });
 });
 
+describe("SF Flow Builder readiness", () => {
+  const builderReadyFile = path.join(
+    import.meta.dirname,
+    "fixtures",
+    "shape",
+    "Catalog_Picker_Builder_Ready.flow-meta.xml",
+  );
+
+  it("reports builder-ready only when both lanes pass with no high local findings", async () => {
+    const run = vi.fn<FlowValidationAdapter["run"]>().mockResolvedValue(passing());
+    const result = await validateFlowCheck(
+      { action: "validate.check", file: builderReadyFile, target_org: "sandbox" },
+      process.cwd(),
+      {} as never,
+      { adapter: { run }, ...artifacts },
+    );
+    expect(result.details).toMatchObject({
+      ok: true,
+      activation_ready: true,
+      builder_ready: true,
+      local_high_findings: 0,
+    });
+    expect(result.content[0]?.text).toContain("builder-ready");
+  });
+
+  it("refuses green when only Builder-reported local findings remain", async () => {
+    const run = vi.fn<FlowValidationAdapter["run"]>().mockResolvedValue(passing());
+    const result = await validateFlowCheck(
+      { action: "validate.check", file: draftOnlyFile, target_org: "sandbox" },
+      process.cwd(),
+      {} as never,
+      { adapter: { run }, ...artifacts },
+    );
+    expect(result.details).toMatchObject({
+      ok: false,
+      activation_ready: true,
+      builder_ready: false,
+    });
+    expect(result.details.local_high_findings).toBeGreaterThan(0);
+    expect(result.content[0]?.text).toContain("activation-ready · local high findings");
+  });
+});
+
 describe("Flow failure hints", () => {
   it.each([
     ["Screen component 'Table' is missing a type mapping 'T'.", "screen-component-contract"],
     ['A required input parameter is missing: "selectionMode"', "screen-component-contract"],
     [
       'The input parameter "Data" can accept multiple values, so the assigned value must be a flow variable with the isCollection property set to true.',
-      "collection-input-type",
+      "collection-scalar-mismatch",
     ],
     [
       "The mapping from “recordId” to “OpportunityLineItem[$EachItem].OpportunityId” isn’t supported. Map to a target field that references an equal or greater number of collections as the source field.",
@@ -201,6 +244,12 @@ describe("Flow failure hints", () => {
       "invalid-reference",
     ],
     ['The data type of "Family_Choices" can\'t be "String".', "choice-set-datatype"],
+    [
+      'The field "null__NotFound" for the object "PricebookEntry" doesn\'t exist.',
+      "record-field-path",
+    ],
+    ['The field "Amount__x" for the object "PricebookEntry" doesn\'t exist.', "unknown-field"],
+    ['A condition doesn\'t support "X" Is null false.', "condition-operand-type"],
   ])("maps %s", (problem, ruleId) => {
     expect(flowFailureHint(problem)?.rule_id).toBe(ruleId);
   });

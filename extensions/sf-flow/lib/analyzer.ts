@@ -15,6 +15,7 @@ import type {
 } from "./types.ts";
 import { findFlowConfigurationIssues, FLOW_CONFIGURATION_RULE_IDS } from "./configuration.ts";
 import { omniActionInputValue, omniRoutingLabel, runOmniChannelChecks } from "./omni-analyzer.ts";
+import { findFlowShapeIssues, FLOW_SHAPE_RULE_IDS } from "./shape-rules.ts";
 import { child, childText, descendants, parseFlowXml, type XmlNode } from "./xml.ts";
 import { FLOW_QUALITY_RULES, type FlowQualityProfile } from "./quality/catalog.ts";
 import { buildFlowQualityFacts } from "./quality/facts.ts";
@@ -34,6 +35,7 @@ const RULES = [
   "unresolved-reference",
   "record-context",
   ...FLOW_CONFIGURATION_RULE_IDS,
+  ...FLOW_SHAPE_RULE_IDS,
   "dml-in-loop",
   "soql-in-loop",
   "missing-fault-path",
@@ -197,6 +199,10 @@ export function analyzeFlowSource(
     report(issue.rule_id, "high", issue.message, issue.node, issue.element);
   }
   ran.push(...FLOW_CONFIGURATION_RULE_IDS);
+  for (const issue of findFlowShapeIssues(root)) {
+    report(issue.rule_id, issue.severity ?? "high", issue.message, issue.node, issue.element);
+  }
+  ran.push(...FLOW_SHAPE_RULE_IDS);
   runLoopChecks(model, report);
   ran.push("dml-in-loop", "soql-in-loop");
   runFaultChecks(model, report);

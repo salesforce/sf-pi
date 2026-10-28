@@ -100,7 +100,33 @@ These rules are independent SF Flow lifecycle checks rather than Lightning Flow 
 - `invalid-async-path-configuration`
 - `missing-async-path-entry-guard`
 - `invalid-start-filter-logic`
-- `invalid-record-filter`
+- `invalid-record-filter` (accepts `In` and `NotIn` collection membership)
+
+## Builder-Parity Shape Rules
+
+Salesforce applies few semantic checks to Draft Flow versions, and some defects are
+reported only by the Flow Builder Errors panel. These rules catch that class from
+the Flow XML alone. Each one was calibrated by mutating a Builder-ready Flow and
+recording the activation-lane or Flow Builder verdict in a non-production org;
+accepted variants are kept as negative test cases.
+
+| Rule                               | Catches                                                                                                                                                                                                                     | Severity        | Quick fix |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | --------- |
+| `screen-component-contract`        | Data table without a `T` type mapping; missing `tableData`, `columns`, `selectionMode`, or `minRowSelection`; inputs the component does not support (for example `objectName`, `isRequired`, `preSelectedRows`, `keyField`) | High            | —         |
+| `sort-output-reference`            | References to a Collection Sort, which sorts in place and has no output                                                                                                                                                     | High            | —         |
+| `record-field-path`                | Dotted related-field paths in Get Records fields, filters, or sort (Builder-only error); related fields in Collection Filter conditions (moderate, empty at run time)                                                       | High / Moderate | —         |
+| `screen-field-dot-value`           | `ScreenInput.value` references to standard screen inputs                                                                                                                                                                    | High            | ✅        |
+| `transform-scalar-into-collection` | A collection Transform whose first mapping uses a single value                                                                                                                                                              | High            | —         |
+| `choice-set-datatype`              | A picklist choice set not typed `Picklist` or `Multipicklist`                                                                                                                                                               | High            | ✅        |
+| `collection-scalar-mismatch`       | Field reads on record collections, loops over single values, single records as data table data                                                                                                                              | High            | —         |
+| `component-output-binding`         | Undeclared data table outputs, or outputs read without stored component output                                                                                                                                              | High            | —         |
+| `condition-operand-type`           | `IsNull` conditions compared to a non-Boolean value                                                                                                                                                                         | High            | —         |
+| `record-page-input`                | A screen Flow `recordId` variable that is not a single input                                                                                                                                                                | Moderate        | —         |
+
+Related-field paths remain valid in Decisions, Assignments, and merge fields, and a
+single value may follow a per-item mapping in a collection Transform (it applies to
+every item). `validate.check` reports `builder_ready=true` only when both
+check-only lanes pass and no high local finding remains.
 
 ## Acknowledgement
 

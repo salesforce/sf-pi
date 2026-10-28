@@ -701,6 +701,138 @@ const nativeRules: FlowQualityRule[] = [
     authoring_constraint:
       "Use supported record-filter operators and values whose literal type is compatible with the operator.",
   }),
+  nativeRule({
+    id: "screen-component-contract",
+    label: "Screen Component Contract",
+    message:
+      "Give each screen component its required type mapping and inputs, and only inputs it declares.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Data table: set dataTypeMappings typeName T to the record object; set tableData, columns, selectionMode, and minRowSelection; use <isRequired> on the field, never as an inputParameter; do not set objectName.",
+  }),
+  nativeRule({
+    id: "sort-output-reference",
+    label: "Sort Output Reference",
+    message: "A Collection Sort sorts its input in place and has no referenceable output.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Sort a collection variable in place and reference that variable afterwards; never reference the Sort element by name.",
+  }),
+  nativeRule({
+    id: "record-field-path",
+    label: "Record Field Path",
+    message:
+      "Get Records reads only fields on its own object; related fields need a separate query.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Never use dotted parent paths such as Parent.Field in Get Records fields, filters, or sort; query the parent records, collect their Ids, and filter the child with In.",
+  }),
+  nativeRule({
+    id: "screen-field-dot-value",
+    label: "Screen Field Reference",
+    message: "Reference a standard screen input by its name, not name.value.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint: "Reference a standard screen input or picklist directly by its API name.",
+  }),
+  nativeRule({
+    id: "transform-scalar-into-collection",
+    label: "Transform Scalar Mapping",
+    message: "Collection Transforms map per-item sources only.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "In a collection Transform, make the first mapping a per-item [$EachItem] source; a single value such as a parent Id may follow and is applied to every item.",
+  }),
+  nativeRule({
+    id: "choice-set-datatype",
+    label: "Choice Set Data Type",
+    message: "A picklist choice set must use the Picklist or Multipicklist data type.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Set dataType Picklist on a dynamic choice set that reads a picklist field.",
+  }),
+  nativeRule({
+    id: "collection-scalar-mismatch",
+    label: "Collection and Single Value Shape",
+    message:
+      "Use collections where collections are required and single values where single values are required.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Read fields only from single records; loop over collections; pass record collections to data tables.",
+  }),
+  nativeRule({
+    id: "component-output-binding",
+    label: "Component Output Binding",
+    message: "Read only declared component outputs that are stored.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Read a data table selection through selectedRows or firstSelectedRow and set storeOutputAutomatically to true.",
+  }),
+  nativeRule({
+    id: "condition-operand-type",
+    label: "Condition Operand Type",
+    message: "Compare condition operands of compatible types.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint: "Compare IsNull to a Boolean value.",
+  }),
+  nativeRule({
+    id: "record-page-input",
+    label: "Record Page Input",
+    message:
+      "A record-page screen Flow receives the record Id only through an input-enabled recordId variable.",
+    category: "correctness",
+    default_severity: "moderate",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "For a record-page screen Flow, declare recordId as a single input variable (Text or the record type).",
+  }),
 ];
 
 export const FLOW_QUALITY_RULES: FlowQualityRule[] = [...nativeRules, ...scannerRules];

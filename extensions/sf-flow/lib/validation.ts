@@ -218,23 +218,32 @@ export async function validateFlowCheck(
     ? advanceRepairLoop(
         dependencies.repairState,
         `validate:${file.absolute}`,
-        laneFailureFindings(result.lanes),
+        [
+          ...laneFailureFindings(result.lanes),
+          ...analysis.findings.filter((finding) => finding.severity === "high"),
+        ],
         VALIDATION_REPAIR_MAX_ROUNDS,
       )
     : undefined;
   const draft = result.lanes.find((lane) => lane.lane === "draft");
   const activation = result.lanes.find((lane) => lane.lane === "activation");
   const failed = result.lanes.find((lane) => lane.status === "failed");
-  const outcome = result.activation_ready
-    ? "activation-ready"
-    : draft?.status === "passed"
-      ? "draft-ok · not activation-ready"
-      : "failed";
+  // Some defects are reported only by Flow Builder, never by either check-only lane.
+  // Builder parity therefore also requires zero high local findings.
+  const localHigh = analysis.findings.filter((finding) => finding.severity === "high");
+  const builderReady = result.activation_ready && localHigh.length === 0;
+  const outcome = builderReady
+    ? "builder-ready"
+    : result.activation_ready
+      ? "activation-ready · local high findings"
+      : draft?.status === "passed"
+        ? "draft-ok · not activation-ready"
+        : "failed";
   const topology = analysis.model ? buildTopologyEvidence(analysis.model).display : undefined;
   const digest = buildFlowDigest({
     action: "validate.check",
     kind: "flow_validation",
-    status: result.activation_ready ? "pass" : "fail",
+    status: builderReady ? "pass" : "fail",
     icon: "✅",
     title: `Flow Check-Only Validation · ${outcome}`,
     org: { alias: params.target_org, api_version: session.target?.apiVersion },
@@ -256,6 +265,13 @@ export async function validateFlowCheck(
           laneIcon(activation),
           "Activation check",
           activation ? laneLabel(activation) : "not run",
+        ),
+        row(
+          localHigh.length ? "❌" : "✅",
+          "Local rules",
+          localHigh.length
+            ? `${localHigh.length} high finding${localHigh.length === 1 ? "" : "s"}`
+            : "no high findings",
         ),
         row("🛡️", "Mutation", "none · check-only"),
         ...(repair && repair.status !== "clean"
@@ -279,17 +295,32 @@ export async function validateFlowCheck(
                   ),
                 )
             : [row("❌", failed.lane, "Salesforce rejected the validation without detail")]
-          : [row("✅", "None", "Salesforce accepted both validation lanes")],
+          : localHigh.length
+            ? localHigh
+                .slice(0, 10)
+                .map((finding) =>
+                  row(
+                    "❌",
+                    `${finding.line}:${finding.column}`,
+                    `${finding.rule_id} · ${finding.message}`,
+                  ),
+                )
+            : [row("✅", "None", "Salesforce accepted both validation lanes")],
       ),
     ],
     topology,
     artifacts: [artifact],
-    next_step: nextValidationStep(result, repair?.status),
+    next_step:
+      result.activation_ready && localHigh.length
+        ? "Both lanes passed, but Flow Builder reports the listed local findings as errors. Fix the first one and validate again."
+        : nextValidationStep(result, repair?.status),
   });
   return toolResultFromDigest(digest, {
     check_only: true,
     deployment_performed: false,
     activation_ready: result.activation_ready,
+    builder_ready: builderReady,
+    local_high_findings: localHigh.length,
     lanes: result.lanes,
     component_failures: failed?.failures ?? [],
     ...(repair ? { repair_loop: repair } : {}),
@@ -305,7 +336,7 @@ function laneIcon(lane: FlowValidationLane | undefined): string {
 
 function nextValidationStep(result: FlowValidationLanes, repair?: string): string {
   if (result.activation_ready) {
-    return "Both lanes passed. Builder-only checks still apply; run the smallest relevant Flow test or runtime proof.";
+    return "Builder-ready: both lanes passed with no high local findings. Run the smallest relevant Flow test or runtime proof.";
   }
   if (repair === "stopped") {
     return "Repair budget stopped: report the remaining failures to the user instead of editing further.";

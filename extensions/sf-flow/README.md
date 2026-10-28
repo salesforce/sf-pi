@@ -85,11 +85,15 @@ The data-first rule catalog includes independent evaluators for all 30 published
 
 After a successful Flow file write or edit, SF Flow runs the low-noise generation profile. High and Moderate findings can steer at most three agent repair rounds. The loop stops when source is clean, the finding signature repeats, or the round limit is reached. It never performs hidden business-logic mutations.
 
-`diagnose.file` can offer three deterministic fixes:
+`diagnose.file` can offer five deterministic fixes:
 
 - set `apiVersion` to the SFDX project source version;
 - add or correct `AUTO_LAYOUT_CANVAS` metadata;
-- remove an exact unused local variable.
+- remove an exact unused local variable;
+- set a picklist choice set's `dataType` to `Picklist`;
+- replace `ScreenInput.value` references with the screen input name.
+
+Builder-parity shape rules catch defects that Draft check-only validation accepts but Flow Builder or activation rejects, such as data table contracts, Collection Sort output references, and related-field paths in Get Records. See [`QUALITY_RULES.md`](./QUALITY_RULES.md#builder-parity-shape-rules).
 
 `fix.apply` requires the `fix_id` and SHA-256 `source_version` from the current diagnosis. It refuses stale source and re-diagnoses after writing.
 

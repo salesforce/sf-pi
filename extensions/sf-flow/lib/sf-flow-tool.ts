@@ -183,7 +183,7 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
       "Use sf_flow before generic XML reasoning for Flow metadata; normal Pi file tools own source edits.",
       "Pass target_org to sf_flow author.plan when custom fields, actions, or subflow contracts must be grounded before authoring; omitted targets keep planning local.",
       "Use sf_flow diagnose.file before validate.check; check-only validation never deploys or activates a Flow.",
-      "Treat validate.check as green only when activation_ready=true; a passing Draft lane alone does not prove Flow Builder or activation readiness. Repair one reported failure per round and stop when the repair loop reports stopped.",
+      "Treat validate.check as green only when builder_ready=true (activation_ready=true and zero high local findings); a passing Draft lane alone does not prove Flow Builder or activation readiness. Repair one reported failure per round and stop when the repair loop reports stopped.",
       "Use sf_flow deploy.draft to save one local Flow as an inactive Draft version instead of raw `sf project deploy`; it verifies the saved version status and returns activation-lane errors when Salesforce marks the version InvalidDraft.",
       "Use sf_flow fix.apply only with a current fix_id and source_version returned by diagnose.file; stale or unsupported fixes are refused.",
       "Use sf_flow lifecycle.status for canonical REST lifecycle evidence; do not delegate FlowDefinitionView lifecycle verification to generic SOQL guessing.",

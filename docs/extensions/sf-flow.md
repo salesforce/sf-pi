@@ -10,7 +10,7 @@ editLink: false
 
 ## What it does
 
-Owns the lean Flow lifecycle loop in pi: core-five plus Omni-Channel queue, direct-agent fallback, target-org skills rules, availability, and intentional no-route authoring with optional bounded org grounding for fields/actions/subflows and destination-relevant routing choices; preventive data-first quality rules; bounded progress-gated repair guidance; three source-bound safe quick fixes; SFDX project discovery; source-located diagnostics; Mermaid topology; API-native one-file Metadata API check-only validation in Draft and activation lanes; verified Draft deployment; explicit one-Flow activation/deactivation with resulting-state verification; targeted Flow test discovery/execution; compact Flow Result Cards; and persisted Flow Artifacts. Normal Pi file tools own business-logic edits; project-wide static analysis remains with Code Analyzer; general metadata deployment remains out of scope.
+Owns the lean Flow lifecycle loop in pi: core-five plus Omni-Channel queue, direct-agent fallback, target-org skills rules, availability, and intentional no-route authoring with optional bounded org grounding for fields/actions/subflows and destination-relevant routing choices; preventive data-first quality rules; bounded progress-gated repair guidance; Builder-parity shape rules; five source-bound safe quick fixes; SFDX project discovery; source-located diagnostics; Mermaid topology; API-native one-file Metadata API check-only validation in Draft and activation lanes; verified Draft deployment; explicit one-Flow activation/deactivation with resulting-state verification; targeted Flow test discovery/execution; compact Flow Result Cards; and persisted Flow Artifacts. Normal Pi file tools own business-logic edits; project-wide static analysis remains with Code Analyzer; general metadata deployment remains out of scope.
 
 ## Start
 
@@ -31,7 +31,7 @@ Open its Manager detail or change its package state with:
 ## Safety notes
 
 - No startup project scans, org probes, subprocesses, or network calls; the tool registers on session_start and performs work only for explicit actions or a successful Flow file edit.
-- Normal Pi read/write/edit tools own Flow business-logic changes; fix.apply is limited to source-bound API-version, Auto-Layout, and unused-variable transformations and refuses stale source.
+- Normal Pi read/write/edit tools own Flow business-logic changes; fix.apply is limited to source-bound API-version, Auto-Layout, unused-variable, picklist choice-set data type, and ScreenInput.value reference transformations and refuses stale source.
 - validate.check stages one exact Flow and an isolated Active-staged copy in temporary directories and uses Metadata API checkOnly=true for both lanes; it never deploys or activates metadata, and reports activation readiness only when the activation lane passes.
 - deploy.draft, deploy.activate, lifecycle.activate, and lifecycle.deactivate require explicit target_org plus allow_mutation=true, are Guardrail-mediated, delegate production/unknown-org policy to SF Guardrail, perform check-only before mutation, and verify resulting state through REST FlowDefinitionView/FlowVersionView evidence.
 - Local-file activation stages an isolated Active copy without changing the repository source; exact-version activation never guesses latest; deactivation deploys FlowDefinition activeVersionNumber=0 and verifies IsActive=false plus ActiveVersionId=null and no remaining scheduled job.

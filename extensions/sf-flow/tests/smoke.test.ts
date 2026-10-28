@@ -49,7 +49,7 @@ describe("sf-flow smoke", () => {
       expect.arrayContaining([
         expect.stringContaining("sf_flow deploy.activate"),
         expect.stringContaining("sf_flow deploy.draft"),
-        expect.stringContaining("activation_ready=true"),
+        expect.stringContaining("builder_ready=true"),
         expect.stringContaining("sf_flow lifecycle.deactivate"),
         expect.stringContaining("Do not invent `sf flow activate`"),
       ]),

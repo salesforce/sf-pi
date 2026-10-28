@@ -29,6 +29,9 @@ const VALID_RECORD_FILTER_OPERATORS = new Set([
   "EndsWith",
   "Contains",
   "IsNull",
+  // Collection membership operators; the value must be a collection reference.
+  "In",
+  "NotIn",
 ]);
 
 export function findFlowConfigurationIssues(root: XmlNode): FlowConfigurationIssue[] {
