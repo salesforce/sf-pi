@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.342.0](https://github.com/salesforce/sf-pi/compare/v0.341.0...v0.342.0) (2026-10-29)
+
+
+### Features
+
+* **sf-flow:** org-grounded schema rules via shared sf-schema module ([e0e83f4](https://github.com/salesforce/sf-pi/commit/e0e83f44bed8fd61546cacfcbeb2451f56559e24))
+
 ## [0.341.0](https://github.com/salesforce/sf-pi/compare/v0.340.3...v0.341.0) (2026-10-28)
 
 
