@@ -31,7 +31,7 @@ status, org.preflight
 project.scan, flow.inspect, author.plan, diagnose.file, quality.rules
 fix.apply
 validate.check
-lifecycle.status, deploy.draft, deploy.activate, lifecycle.activate, lifecycle.deactivate
+lifecycle.status, deploy.draft, deploy.activate, lifecycle.activate, lifecycle.deactivate, builder.verify
 test.discover, test.plan, test.run, test.result, test.rerun
 ```
 
@@ -127,6 +127,7 @@ The Result Card stays compact. SF Flow appends bounded topology as a top-level M
 - `fix.apply` is limited to source-bound API-version, Auto-Layout, and unused-variable fixes and participates in Pi's file mutation queue.
 - `validate.check` stages one Flow and an Active copy in temporary directories with `checkOnly=true`; it never deploys or activates.
 - `deploy.draft` is an exact one-Flow Draft deployment with Guardrail mediation, saved-status verification, and no activation.
+- `builder.verify` opens one deployed Flow version in the shared browser session and reads the Flow Builder Errors-panel count; it is read-only, clicks nothing, and catches Builder-only errors that no check-only lane reports.
 - `deploy.activate`, `lifecycle.activate`, and `lifecycle.deactivate` are exact, one-Flow, check-first operations with Guardrail mediation and resulting-state verification.
 - Test runs require explicit Flow API names or Flow test names and never default to all tests.
 - Complete evidence is persisted under `<globalAgentDir>/sf-pi/sf-flow/`; model-facing output stays compact.

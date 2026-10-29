@@ -16,6 +16,7 @@ export type SfFlowAction =
   | "deploy.activate"
   | "lifecycle.activate"
   | "lifecycle.deactivate"
+  | "builder.verify"
   | "test.discover"
   | "test.plan"
   | "test.run"

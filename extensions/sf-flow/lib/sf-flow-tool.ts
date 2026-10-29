@@ -22,6 +22,7 @@ import {
 import { resolveFlowWorkspace } from "./project.ts";
 import { applyFlowQuickFix } from "./quick-fixes.ts";
 import { renderFlowResult } from "./render.ts";
+import { verifyBuilder } from "./builder-verify.ts";
 import { createRepairLoopState } from "./repair-loop.ts";
 import { liveSchemaContext } from "./schema-grounding.ts";
 import type { SfFlowParams, SfFlowSessionState, ToolResult } from "./types.ts";
@@ -57,6 +58,7 @@ export const SF_FLOW_ACTIONS = [
   "deploy.activate",
   "lifecycle.activate",
   "lifecycle.deactivate",
+  "builder.verify",
   "test.discover",
   "test.plan",
   "test.run",
@@ -189,6 +191,7 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
       "Use sf_flow deploy.draft to save one local Flow as an inactive Draft version instead of raw `sf project deploy`; it verifies the saved version status and returns activation-lane errors when Salesforce marks the version InvalidDraft.",
       "Use sf_flow fix.apply only with a current fix_id and source_version returned by diagnose.file; stale or unsupported fixes are refused.",
       "Use sf_flow lifecycle.status for canonical REST lifecycle evidence; do not delegate FlowDefinitionView lifecycle verification to generic SOQL guessing.",
+      "Use sf_flow builder.verify to read the Flow Builder Errors panel for one deployed version; it is read-only and catches Builder-only errors that neither check-only lane reports. Requires a logged-in shared browser session.",
       "Use sf_flow deploy.activate for one exact local Flow file, sf_flow lifecycle.activate for one exact existing version, and sf_flow lifecycle.deactivate for deterministic deactivation. Mutations require explicit target_org and allow_mutation=true, remain Guardrail-mediated, with production and unknown-org policy owned by SF Guardrail.",
       "Do not invent `sf flow activate` or manually build temporary activation projects; SF CLI has no such Flow activation command.",
       "Use sf_flow targeted Flow tests only after an eligible Flow test exists in the org.",
@@ -260,6 +263,8 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
             return activateFlowVersion(params, session, {}, signal);
           case "lifecycle.deactivate":
             return deactivateFlow(params, session, {}, signal);
+          case "builder.verify":
+            return verifyBuilder(pi, params, ctx.cwd, session);
           case "test.discover":
             return discoverFlowTests(params, session);
           case "test.plan":

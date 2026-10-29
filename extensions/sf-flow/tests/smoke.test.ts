@@ -21,6 +21,7 @@ describe("sf-flow smoke", () => {
       "deploy.activate",
       "lifecycle.activate",
       "lifecycle.deactivate",
+      "builder.verify",
       "test.discover",
       "test.plan",
       "test.run",
@@ -52,6 +53,7 @@ describe("sf-flow smoke", () => {
         expect.stringContaining("builder_ready=true"),
         expect.stringContaining("sf_flow lifecycle.deactivate"),
         expect.stringContaining("Do not invent `sf flow activate`"),
+        expect.stringContaining("sf_flow builder.verify"),
       ]),
     );
     expect(pi.on).toHaveBeenCalledWith("tool_result", expect.any(Function));
