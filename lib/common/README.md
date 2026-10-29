@@ -17,6 +17,7 @@ This is a selected interface guide, not a hand-maintained complete file map:
 | Interface                     | Contract                                                                    |
 | ----------------------------- | --------------------------------------------------------------------------- |
 | `sf-conn/index.ts`            | Salesforce target, API version, authentication, request, and query boundary |
+| `sf-schema/index.ts`          | Shared sObject describe access and caller-owned describe cache              |
 | `sf-environment/`             | Cache-first Salesforce environment detection and display state              |
 | `state-store.ts`              | Versioned, atomic per-user/project SF Pi state                              |
 | `sf-pi-settings.ts`           | Tolerant global/project Pi settings access                                  |
@@ -84,6 +85,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `sf-pi-package-root.ts`        | module    |                     1 |               0 |
 | `sf-pi-package-state.ts`       | module    |                     1 |               0 |
 | `sf-pi-settings.ts`            | module    |                     1 |               0 |
+| `sf-schema/`                   | directory |                     1 |               1 |
 | `skill-detection/`             | directory |                     2 |               0 |
 | `skill-sources/`               | directory |                     2 |               0 |
 | `slack-status/`                | directory |                     1 |               0 |

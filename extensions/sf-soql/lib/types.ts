@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Shared types for the SF SOQL lifecycle tool. */
 
+import type {
+  SchemaChildRelationship,
+  SchemaFieldDescribe,
+  SchemaObjectDescribe,
+} from "../../../lib/common/sf-schema/index.ts";
+
 export type SfSoqlAction =
   | "status"
   | "org.preflight"
@@ -278,37 +284,11 @@ export interface SObjectCatalogEntry {
   searchable?: boolean;
 }
 
-export interface SObjectDescribe {
-  name: string;
-  label?: string;
-  queryable?: boolean;
-  searchable?: boolean;
-  fields: SObjectFieldDescribe[];
-  childRelationships?: SObjectChildRelationship[];
-}
-
-export interface SObjectFieldDescribe {
-  name: string;
-  label?: string;
-  type?: string;
-  relationshipName?: string | null;
-  referenceTo?: string[];
-  namePointing?: boolean;
-  polymorphicForeignKey?: boolean;
-  filterable?: boolean;
-  groupable?: boolean;
-  sortable?: boolean;
-  aggregatable?: boolean;
-  nillable?: boolean;
-  custom?: boolean;
-  picklistValues?: Array<{ active?: boolean; value?: string; label?: string }>;
-}
-
-export interface SObjectChildRelationship {
-  childSObject?: string;
-  field?: string;
-  relationshipName?: string | null;
-}
+// Describe shapes are owned by the shared schema module so every extension
+// grounds against one contract.
+export type SObjectDescribe = SchemaObjectDescribe;
+export type SObjectFieldDescribe = SchemaFieldDescribe;
+export type SObjectChildRelationship = SchemaChildRelationship;
 
 export interface SearchResultRecord {
   [key: string]: unknown;

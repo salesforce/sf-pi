@@ -1,0 +1,343 @@
+{
+  "name": "Product2",
+  "label": "Product",
+  "queryable": true,
+  "createable": true,
+  "updateable": true,
+  "fields": [
+    {
+      "name": "Id",
+      "type": "id",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "Name",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "ProductCode",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "Description",
+      "type": "textarea",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "IsActive",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "CreatedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "CreatedById",
+      "type": "reference",
+      "relationshipName": "CreatedBy",
+      "referenceTo": ["User"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "LastModifiedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "LastModifiedById",
+      "type": "reference",
+      "relationshipName": "LastModifiedBy",
+      "referenceTo": ["User"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "SystemModstamp",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "Family",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Hardware"
+        },
+        {
+          "active": true,
+          "value": "Software"
+        }
+      ]
+    },
+    {
+      "name": "ExternalDataSourceId",
+      "type": "reference",
+      "relationshipName": null,
+      "referenceTo": ["ExternalDataSource"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "ExternalId",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "DisplayUrl",
+      "type": "url",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "QuantityUnitOfMeasure",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Each"
+        }
+      ]
+    },
+    {
+      "name": "IsDeleted",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "IsArchived",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "LastViewedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "LastReferencedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "StockKeepingUnit",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "Type",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Base"
+        },
+        {
+          "active": true,
+          "value": "Bundle"
+        },
+        {
+          "active": true,
+          "value": "Set"
+        }
+      ]
+    },
+    {
+      "name": "ProductClass",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Simple"
+        },
+        {
+          "active": true,
+          "value": "VariationParent"
+        },
+        {
+          "active": true,
+          "value": "Variation"
+        },
+        {
+          "active": true,
+          "value": "Bundle"
+        },
+        {
+          "active": true,
+          "value": "Set"
+        }
+      ]
+    }
+  ]
+}

@@ -97,7 +97,7 @@ describe("SF Flow quality catalog", () => {
         implementation: "independent SF Pi white-room reimplementation",
       },
     });
-    expect(result.details.implemented).toBe(45);
+    expect(result.details.implemented).toBe(51);
     expect(result.details.rules).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "omni-channel-contract", engine: "core" }),

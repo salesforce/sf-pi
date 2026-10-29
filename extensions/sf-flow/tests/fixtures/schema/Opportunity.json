@@ -1,0 +1,758 @@
+{
+  "name": "Opportunity",
+  "label": "Opportunity",
+  "queryable": true,
+  "createable": true,
+  "updateable": true,
+  "fields": [
+    {
+      "name": "Id",
+      "type": "id",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "IsDeleted",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "AccountId",
+      "type": "reference",
+      "relationshipName": "Account",
+      "referenceTo": ["Account"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "IsPrivate",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "Name",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "Description",
+      "type": "textarea",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": false,
+      "sortable": false,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "StageName",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Prospecting"
+        },
+        {
+          "active": true,
+          "value": "Qualification"
+        },
+        {
+          "active": true,
+          "value": "Needs Analysis"
+        },
+        {
+          "active": true,
+          "value": "Value Proposition"
+        },
+        {
+          "active": true,
+          "value": "Id. Decision Makers"
+        },
+        {
+          "active": true,
+          "value": "Perception Analysis"
+        },
+        {
+          "active": true,
+          "value": "Proposal/Price Quote"
+        },
+        {
+          "active": true,
+          "value": "Negotiation/Review"
+        },
+        {
+          "active": true,
+          "value": "Closed Won"
+        },
+        {
+          "active": true,
+          "value": "Closed Lost"
+        }
+      ]
+    },
+    {
+      "name": "Amount",
+      "type": "currency",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "Probability",
+      "type": "percent",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "ExpectedRevenue",
+      "type": "currency",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "TotalOpportunityQuantity",
+      "type": "double",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "CloseDate",
+      "type": "date",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "Type",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Existing Customer - Upgrade"
+        },
+        {
+          "active": true,
+          "value": "Existing Customer - Replacement"
+        },
+        {
+          "active": true,
+          "value": "Existing Customer - Downgrade"
+        },
+        {
+          "active": true,
+          "value": "New Customer"
+        }
+      ]
+    },
+    {
+      "name": "NextStep",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "LeadSource",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Web"
+        },
+        {
+          "active": true,
+          "value": "Phone Inquiry"
+        },
+        {
+          "active": true,
+          "value": "Partner Referral"
+        },
+        {
+          "active": true,
+          "value": "Purchased List"
+        },
+        {
+          "active": true,
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "name": "IsClosed",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "IsWon",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "ForecastCategory",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Omitted"
+        },
+        {
+          "active": true,
+          "value": "Pipeline"
+        },
+        {
+          "active": true,
+          "value": "BestCase"
+        },
+        {
+          "active": true,
+          "value": "MostLikely"
+        },
+        {
+          "active": true,
+          "value": "Forecast"
+        },
+        {
+          "active": true,
+          "value": "Closed"
+        }
+      ]
+    },
+    {
+      "name": "ForecastCategoryName",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": true,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "Omitted"
+        },
+        {
+          "active": true,
+          "value": "Pipeline"
+        },
+        {
+          "active": true,
+          "value": "Best Case"
+        },
+        {
+          "active": true,
+          "value": "Commit"
+        },
+        {
+          "active": true,
+          "value": "Closed"
+        }
+      ]
+    },
+    {
+      "name": "CampaignId",
+      "type": "reference",
+      "relationshipName": "Campaign",
+      "referenceTo": ["Campaign"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "HasOpportunityLineItem",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "Pricebook2Id",
+      "type": "reference",
+      "relationshipName": "Pricebook2",
+      "referenceTo": ["Pricebook2"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "OwnerId",
+      "type": "reference",
+      "relationshipName": "Owner",
+      "referenceTo": ["User"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "CreatedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "CreatedById",
+      "type": "reference",
+      "relationshipName": "CreatedBy",
+      "referenceTo": ["User"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "LastModifiedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "LastModifiedById",
+      "type": "reference",
+      "relationshipName": "LastModifiedBy",
+      "referenceTo": ["User"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "SystemModstamp",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "LastActivityDate",
+      "type": "date",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "PushCount",
+      "type": "int",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "LastStageChangeDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "LastSyncTime",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "FiscalQuarter",
+      "type": "int",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "FiscalYear",
+      "type": "int",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "Fiscal",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "ContactId",
+      "type": "reference",
+      "relationshipName": null,
+      "referenceTo": ["Contact"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "LastViewedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "LastReferencedDate",
+      "type": "datetime",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "HasOpenActivity",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": false,
+      "sortable": false,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "HasOverdueTask",
+      "type": "boolean",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": false,
+      "sortable": false,
+      "nillable": false,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": true,
+      "picklistValues": []
+    },
+    {
+      "name": "LastAmountChangedHistoryId",
+      "type": "reference",
+      "relationshipName": "LastAmountChangedHistory",
+      "referenceTo": ["OpportunityHistory"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "LastCloseDateChangedHistoryId",
+      "type": "reference",
+      "relationshipName": "LastCloseDateChangedHistory",
+      "referenceTo": ["OpportunityHistory"],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": false,
+      "updateable": false,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "DeliveryInstallationStatus__c",
+      "type": "picklist",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": [
+        {
+          "active": true,
+          "value": "In progress"
+        },
+        {
+          "active": true,
+          "value": "Yet to begin"
+        },
+        {
+          "active": true,
+          "value": "Completed"
+        }
+      ]
+    },
+    {
+      "name": "TrackingNumber__c",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "OrderNumber__c",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "CurrentGenerators__c",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    },
+    {
+      "name": "MainCompetitors__c",
+      "type": "string",
+      "relationshipName": null,
+      "referenceTo": [],
+      "filterable": true,
+      "sortable": true,
+      "nillable": true,
+      "createable": true,
+      "updateable": true,
+      "defaultedOnCreate": false,
+      "picklistValues": []
+    }
+  ]
+}

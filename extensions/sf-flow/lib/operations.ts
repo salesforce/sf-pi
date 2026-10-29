@@ -21,6 +21,8 @@ import { buildTopologyEvidence } from "./topology.ts";
 import { listFlowQuickFixes, sourceVersion, type FlowQuickFix } from "./quick-fixes.ts";
 import { FLOW_QUALITY_RULES, type FlowQualityProfile } from "./quality/catalog.ts";
 import type { SfFlowParams, SfFlowSessionState, ToolResult } from "./types.ts";
+import { groundAnalysis } from "./schema-grounding.ts";
+import type { FlowSchemaContext, FlowSchemaResult } from "./schema-rules.ts";
 import { validateFlowCheck } from "./validation.ts";
 
 export {
@@ -233,16 +235,22 @@ export async function flowInspect(params: SfFlowParams, cwd: string): Promise<To
   });
 }
 
-export async function diagnoseFile(params: SfFlowParams, cwd: string): Promise<ToolResult> {
+export async function diagnoseFile(
+  params: SfFlowParams,
+  cwd: string,
+  schemaContext?: FlowSchemaContext,
+): Promise<ToolResult> {
   if (!params.file) throw new Error("file is required for diagnose.file");
   const workspace = await resolveFlowWorkspace(params.workspace, cwd);
   const resolved = await resolveFlowFile(params.file, workspace);
   const source = await readFile(resolved.absolute, "utf8");
-  const analysis = await analyzeFlowFile(params.file, workspace, {
+  const local = await analyzeFlowFile(params.file, workspace, {
     profile: params.quality_profile ?? "review",
   });
+  const grounded = schemaContext ? await groundAnalysis(local, source, schemaContext) : undefined;
+  const analysis = grounded?.analysis ?? local;
   const quickFixes = await listFlowQuickFixes(source, analysis, workspace);
-  return diagnosticResult(params, analysis, quickFixes, sourceVersion(source));
+  return diagnosticResult(params, analysis, quickFixes, sourceVersion(source), grounded?.schema);
 }
 
 async function diagnosticResult(
@@ -250,6 +258,7 @@ async function diagnosticResult(
   analysis: Awaited<ReturnType<typeof analyzeFlowFile>>,
   quickFixes: FlowQuickFix[] = [],
   currentSourceVersion?: string,
+  schema?: FlowSchemaResult,
 ): Promise<ToolResult> {
   const limit = Math.max(1, Math.min(Math.floor(params.limit ?? 25), 100));
   const topologyEvidence = analysis.model ? buildTopologyEvidence(analysis.model) : undefined;
@@ -273,6 +282,15 @@ async function diagnosticResult(
     meta: [analysis.file, analysis.family, `profile=${params.quality_profile ?? "review"}`],
     rail: [
       { kind: "Local", target: "fast Flow rules", detail: `${analysis.coverage.ran.length} ran` },
+      ...(schema
+        ? [
+            {
+              kind: "GET",
+              target: "/sobjects/{object}/describe",
+              detail: `${schema.objects.length} object${schema.objects.length === 1 ? "" : "s"} grounded`,
+            },
+          ]
+        : []),
     ],
     sections: [
       section("📊", "Summary", [
@@ -280,6 +298,13 @@ async function diagnosticResult(
         row("🟠", "Moderate", analysis.summary.moderate),
         row("🔵", "Low", analysis.summary.low),
         row("⚪", "Skipped", analysis.coverage.skipped.length),
+        row(
+          schema ? "☁️" : "⚪",
+          "Org schema",
+          schema
+            ? `${schema.objects.length} object(s) checked${schema.truncated ? " · limit reached" : ""}`
+            : "not checked · pass target_org",
+        ),
       ]),
       section(
         "🛠️",
@@ -321,6 +346,9 @@ async function diagnosticResult(
     quality_profile: params.quality_profile ?? "review",
     source_version: currentSourceVersion,
     quick_fixes: quickFixes,
+    schema_grounding: schema
+      ? { objects: schema.objects, unresolved: schema.unresolved, truncated: schema.truncated }
+      : null,
     artifacts,
   });
 }

@@ -2,6 +2,7 @@
 /** Bounded live-org grounding for Flow authoring plans. */
 
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
+import { describeSObject } from "../../../lib/common/sf-schema/index.ts";
 import type { SfFlowParams } from "./types.ts";
 
 const DEFAULT_LIMIT = 8;
@@ -154,22 +155,11 @@ export async function groundAuthoringContext(
 function createDefaultAdapter(session: SalesforceSession): AuthorGroundingAdapter {
   return {
     async describeObject(name) {
-      const response = await session.request<{
-        name?: string;
-        label?: string;
-        fields?: Array<{
-          name?: string;
-          label?: string;
-          type?: string;
-          referenceTo?: string[];
-        }>;
-      }>({ method: "GET", path: `/sobjects/${encodeURIComponent(name)}/describe` });
-      if (response.status >= 400)
-        throw new Error(`describe ${name} returned HTTP ${response.status}`);
+      const describe = await describeSObject(session, name);
       return {
-        api_name: response.body.name ?? name,
-        label: response.body.label,
-        fields: (response.body.fields ?? [])
+        api_name: describe.name ?? name,
+        label: describe.label,
+        fields: describe.fields
           .filter(
             (field): field is typeof field & { name: string } => typeof field.name === "string",
           )

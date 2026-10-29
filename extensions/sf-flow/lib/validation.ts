@@ -19,6 +19,8 @@ import { flowFailureHint } from "./failure-hints.ts";
 import { stageActiveFlowSource } from "./lifecycle.ts";
 import { resolveFlowWorkspace } from "./project.ts";
 import { advanceRepairLoop, type FlowRepairLoopState } from "./repair-loop.ts";
+import { groundAnalysis } from "./schema-grounding.ts";
+import type { FlowSchemaContext } from "./schema-rules.ts";
 import { buildTopologyEvidence } from "./topology.ts";
 import type { FlowArtifact, FlowFinding, SfFlowParams, ToolResult } from "./types.ts";
 
@@ -58,6 +60,8 @@ export interface FlowValidationDependencies {
   adapter?: FlowValidationAdapter;
   writeArtifact?: (kind: string, filename: string, content: unknown) => Promise<FlowArtifact>;
   repairState?: FlowRepairLoopState;
+  /** Org-schema grounding; when present, schema findings join the builder_ready gate. */
+  schemaContext?: FlowSchemaContext;
 }
 
 export type FlowValidationLaneName = "draft" | "activation";
@@ -169,7 +173,10 @@ export async function validateFlowCheck(
   const workspace = await resolveFlowWorkspace(params.workspace, cwd);
   const file = await resolveFlowFile(params.file, workspace);
   const source = await readFile(file.absolute, "utf8");
-  const analysis = analyzeFlowSource(source, file.display, { profile: "generation" });
+  const local = analyzeFlowSource(source, file.display, { profile: "generation" });
+  const analysis = dependencies.schemaContext
+    ? (await groundAnalysis(local, source, dependencies.schemaContext)).analysis
+    : local;
   if (analysis.status === "failed") {
     const digest = buildFlowDigest({
       action: "validate.check",

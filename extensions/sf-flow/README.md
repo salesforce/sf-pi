@@ -93,7 +93,7 @@ After a successful Flow file write or edit, SF Flow runs the low-noise generatio
 - set a picklist choice set's `dataType` to `Picklist`;
 - replace `ScreenInput.value` references with the screen input name.
 
-Builder-parity shape rules catch defects that Draft check-only validation accepts but Flow Builder or activation rejects, such as data table contracts, Collection Sort output references, and related-field paths in Get Records. See [`QUALITY_RULES.md`](./QUALITY_RULES.md#builder-parity-shape-rules).
+Builder-parity shape rules catch defects that Draft check-only validation accepts but Flow Builder or activation rejects, such as data table contracts, Collection Sort output references, and related-field paths in Get Records. With an explicit `target_org`, `diagnose.file` adds org-grounded schema rules (unknown objects and fields, field capabilities, picklist values, required create fields, and subflow contracts) through the shared `lib/common/sf-schema` module; `validate.check` always applies them. See [`QUALITY_RULES.md`](./QUALITY_RULES.md#builder-parity-shape-rules).
 
 `fix.apply` requires the `fix_id` and SHA-256 `source_version` from the current diagnosis. It refuses stale source and re-diagnoses after writing.
 

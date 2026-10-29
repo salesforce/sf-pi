@@ -128,6 +128,28 @@ single value may follow a per-item mapping in a collection Transform (it applies
 every item). `validate.check` reports `builder_ready=true` only when both
 check-only lanes pass and no high local finding remains.
 
+## Org-Grounded Schema Rules
+
+With an explicit `target_org`, `diagnose.file` resolves the objects and fields a
+Flow reads and writes against sObject describe through the shared schema module
+(`lib/common/sf-schema`). `validate.check` always applies these rules because it
+already holds a session. Describes are cached per run and capped at 25 objects.
+Severity follows the observed platform verdict.
+
+| Rule                                | Catches                                                                                                                                                                | Severity |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `unknown-object`                    | An element references an sObject that does not exist in the org                                                                                                        | High     |
+| `unknown-field`                     | A field that does not exist on its object, in Get Records fields/filters/sort, record writes, Transform outputs, choice sets, assignments, Decisions, and merge fields | High     |
+| `subflow-contract`                  | A called subflow that does not exist, or an input the subflow does not declare                                                                                         | High     |
+| `field-capability`                  | Filtering a non-filterable field, sorting a non-sortable field, or writing a read-only field                                                                           | Moderate |
+| `picklist-literal`                  | Comparing a picklist to a value not active in the org, or a choice set over a picklist with no usable values                                                           | Moderate |
+| `required-create-fields`            | A Create Records element whose required fields are never set on the path                                                                                               | Moderate |
+| `unknown-field` (data table column) | A data table column whose field does not exist; the column renders empty                                                                                               | Moderate |
+
+Relationship traversals such as `Account.Name` and case-insensitive API names are
+accepted. Non-filterable and read-only cases are Moderate because Flow Builder and
+the activation lane accept them; they fail only at run time.
+
 ## Acknowledgement
 
 Rule design is informed by [Lightning Flow Scanner](https://lightningflowscanner.org/) and its [MIT-licensed repository](https://github.com/Flow-Scanner/lightning-flow-scanner). See [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) for the license notice.

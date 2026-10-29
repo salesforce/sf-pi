@@ -7,6 +7,10 @@ import {
   type SalesforceSession,
   type SalesforceQueryResult as SharedQueryResult,
 } from "../../../lib/common/sf-conn/index.ts";
+import {
+  describeSObject as describeSharedSObject,
+  sobjectsPath as sharedSobjectsPath,
+} from "../../../lib/common/sf-schema/index.ts";
 import type {
   SalesforceQueryResult,
   SalesforceSearchResult,
@@ -129,11 +133,7 @@ export async function describeSObject(
   objectName: string,
   mode: SoqlApiMode = "rest",
 ): Promise<SObjectDescribe> {
-  return requestJson<SObjectDescribe>(
-    sf,
-    "GET",
-    `${sobjectsPath(mode)}/${encodeURIComponent(objectName)}/describe`,
-  );
+  return describeSharedSObject(sf, objectName, { mode, timeoutMs: SOQL_REQUEST_TIMEOUT_MS });
 }
 
 export async function soslSearch(
@@ -155,7 +155,7 @@ export async function listSObjects(
 }
 
 export function sobjectsPath(mode: SoqlApiMode): string {
-  return mode === "tooling" ? "/tooling/sobjects" : "/sobjects";
+  return sharedSobjectsPath(mode);
 }
 
 export function apiCall(method: string, path: string, detail?: string): SoqlApiCallRailItem {

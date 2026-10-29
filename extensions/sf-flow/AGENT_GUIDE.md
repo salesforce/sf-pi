@@ -107,7 +107,7 @@ Verify fixture records, logs, trace flags, and other temporary runtime state sep
 
 ## Evidence boundaries
 
-- `diagnose.file` proves only the local deterministic rule set, including Builder-parity shape rules calibrated against observed Flow Builder errors (see `QUALITY_RULES.md`).
+- `diagnose.file` proves the local deterministic rule set, including Builder-parity shape rules; with an explicit `target_org` it also grounds objects, fields, field capabilities, picklist values, required create fields, and subflow inputs against org schema (see `QUALITY_RULES.md`). `validate.check` always applies the schema rules.
 - `validate.check` proves how the selected org validates the exact staged Flow at that time, in the Draft and activation lanes; it does not save the Flow. Flow Builder can still report client-side errors that neither lane returns, such as unsupported cross-object field paths.
 - `deploy.draft` proves the saved Draft version status. `InvalidDraft` with a passing activation lane means the remaining errors are Builder-only.
 - `deploy.activate` and `lifecycle.activate` prove activation only after successful check-only, deployment, and REST resulting-state verification; they do not prove business behavior.

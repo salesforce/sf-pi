@@ -833,6 +833,83 @@ const nativeRules: FlowQualityRule[] = [
     authoring_constraint:
       "For a record-page screen Flow, declare recordId as a single input variable (Text or the record type).",
   }),
+  nativeRule({
+    id: "unknown-object",
+    label: "Unknown Object",
+    message: "An element references an sObject that does not exist in the target org.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint: "Reference only objects that exist in the target org.",
+  }),
+  nativeRule({
+    id: "unknown-field",
+    label: "Unknown Field",
+    message: "A field reference does not exist on its object in the target org.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Reference only fields that exist on the element's object in the target org.",
+  }),
+  nativeRule({
+    id: "field-capability",
+    label: "Field Capability",
+    message: "Respect field filterable, sortable, and write capabilities.",
+    category: "correctness",
+    default_severity: "moderate",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Filter and sort only on capable fields, and write only createable or updateable fields.",
+  }),
+  nativeRule({
+    id: "picklist-literal",
+    label: "Picklist Literal",
+    message: "Compare picklist fields to active values that exist in the target org.",
+    category: "correctness",
+    default_severity: "moderate",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Compare a picklist field only to values active on that field in the target org.",
+  }),
+  nativeRule({
+    id: "required-create-fields",
+    label: "Required Create Fields",
+    message: "Set every required field before creating a record.",
+    category: "correctness",
+    default_severity: "moderate",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Set all required, non-defaulted fields before a Create Records element runs.",
+  }),
+  nativeRule({
+    id: "subflow-contract",
+    label: "Subflow Contract",
+    message: "Call subflows that exist and pass only their declared inputs.",
+    category: "correctness",
+    default_severity: "high",
+    maturity: "beta",
+    implementation: "implemented",
+    engine: "core",
+    profiles: allProfiles,
+    authoring_constraint:
+      "Call only existing subflows and pass only their declared input variables.",
+  }),
 ];
 
 export const FLOW_QUALITY_RULES: FlowQualityRule[] = [...nativeRules, ...scannerRules];

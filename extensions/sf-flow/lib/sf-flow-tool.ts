@@ -23,6 +23,7 @@ import { resolveFlowWorkspace } from "./project.ts";
 import { applyFlowQuickFix } from "./quick-fixes.ts";
 import { renderFlowResult } from "./render.ts";
 import { createRepairLoopState } from "./repair-loop.ts";
+import { liveSchemaContext } from "./schema-grounding.ts";
 import type { SfFlowParams, SfFlowSessionState, ToolResult } from "./types.ts";
 import {
   buildAuthoringPlan,
@@ -182,6 +183,7 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
     promptGuidelines: [
       "Use sf_flow before generic XML reasoning for Flow metadata; normal Pi file tools own source edits.",
       "Pass target_org to sf_flow author.plan when custom fields, actions, or subflow contracts must be grounded before authoring; omitted targets keep planning local.",
+      "Pass target_org to sf_flow diagnose.file to check objects, fields, field capabilities, picklist values, required create fields, and subflow inputs against org schema; validate.check always applies these schema rules.",
       "Use sf_flow diagnose.file before validate.check; check-only validation never deploys or activates a Flow.",
       "Treat validate.check as green only when builder_ready=true (activation_ready=true and zero high local findings); a passing Draft lane alone does not prove Flow Builder or activation readiness. Repair one reported failure per round and stop when the repair loop reports stopped.",
       "Use sf_flow deploy.draft to save one local Flow as an inactive Draft version instead of raw `sf project deploy`; it verifies the saved version status and returns activation-lane errors when Salesforce marks the version InvalidDraft.",
@@ -204,7 +206,9 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
         if (params.action === "author.plan" && !params.target_org) {
           return buildAuthoringPlan(params, ctx.cwd);
         }
-        if (params.action === "diagnose.file") return diagnoseFile(params, ctx.cwd);
+        if (params.action === "diagnose.file" && !params.target_org) {
+          return diagnoseFile(params, ctx.cwd);
+        }
         if (params.action === "quality.rules") return qualityRules(params);
         if (params.action === "fix.apply") {
           if (!params.file) throw new Error("file is required for fix.apply");
@@ -236,12 +240,14 @@ export function registerSfFlowTool(pi: ExtensionAPI): void {
             return status(session, params);
           case "org.preflight":
             return orgPreflight(session, params);
+          case "diagnose.file":
+            return diagnoseFile(params, ctx.cwd, liveSchemaContext(session));
           case "validate.check":
             return validateFlowCheck(
               params,
               ctx.cwd,
               session,
-              { repairState: validationRepair },
+              { repairState: validationRepair, schemaContext: liveSchemaContext(session) },
               signal,
             );
           case "lifecycle.status":
