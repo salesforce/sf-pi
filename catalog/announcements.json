@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.343.2-2026-10-29",
-  "latestVersion": "0.343.2",
+  "revision": "release-0.343.3-2026-10-29",
+  "latestVersion": "0.343.3",
   "announcements": [
     {
-      "id": "release-0.343.2",
+      "id": "release-0.343.3",
       "kind": "update",
-      "title": "sf-pi v0.343.2 — deps: bump the prod-minor-and-patch group across 1 directory with 8 updates",
+      "title": "sf-pi v0.343.3 — deps: bump the actions-minor-and-patch group across 1 directory with 2 updates",
       "publishedAt": "2026-10-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.343.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.343.3",
       "severity": "info",
-      "body": "deps: bump the prod-minor-and-patch group across 1 directory with 8 updates — deps: update compatible dependencies to latest"
+      "body": "deps: bump the actions-minor-and-patch group across 1 directory with 2 updates"
     }
   ]
 }
