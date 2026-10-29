@@ -150,7 +150,7 @@
     "@earendil-works/pi-tui": "1.4.0",
     "@eslint/js": "^10.0.1",
     "@flow-scanner/lightning-flow-scanner-core": "6.19.7",
-    "@sf-agentscript/agentfabric-dialect": "1.2.36",
+    "@sf-agentscript/agentfabric-dialect": "1.5.0",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.13.0",
@@ -194,7 +194,8 @@
     "esbuild": "Force >= 0.28.1 to clear GHSA-gv7w-rqvm-qjhr. Vite uses esbuild as build/test tooling; remove once all Vite ranges in the tree naturally require a patched esbuild.",
     "vite": "Direct dev dependency used to satisfy Vite peer imports for VitePress/Vitest while pinning a patched Vite line. Keep aligned with the transitive Vite overrides and remove only if docs/test tooling no longer requires a root peer install.",
     "minimatch": "Force minimatch 10.2.5+ across the dependency tree and brace-expansion 5.0.12+ to clear GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, and GHSA-6j4f-fj2g-mc7p. Pi 1.0.1+ no longer publishes a shrinkwrap and directly pins brace-expansion 5.0.12; retain this override until the Salesforce matcher paths also resolve patched versions without it.",
-    "basic-ftp": "Force basic-ftp 6.2.1+ to clear GHSA-c475-qrg2-pj4r (quadratic-time CPU denial of service in Unix directory-list parsing). Reaches sf-pi through @salesforce/source-deploy-retrieve -> proxy-agent -> pac-proxy-agent -> get-uri; remove once get-uri requires a patched release."
+    "basic-ftp": "Force basic-ftp 6.2.1+ to clear GHSA-c475-qrg2-pj4r (quadratic-time CPU denial of service in Unix directory-list parsing). Reaches sf-pi through @salesforce/source-deploy-retrieve -> proxy-agent -> pac-proxy-agent -> get-uri; remove once get-uri requires a patched release.",
+    "@sf-agentscript/agentfabric-dialect": "agentfabric-dialect 1.4.0+ pins nested @sf-agentscript/language 2.20.0 and agentscript-dialect 2.23.0, below the aligned 3.x runtime toolchain (1.2.36 already used 3.x). Every symbol it imports is exported by language 3.x, so align its nested packages with the direct toolchain. Remove once an agentfabric release depends on language 3.x again."
   },
   "overrides": {
     "fast-xml-parser": "^5.11.2",
@@ -215,6 +216,10 @@
     "basic-ftp": "^6.2.1",
     "@earendil-works/pi-coding-agent": {
       "undici": "^8.12.2"
+    },
+    "@sf-agentscript/agentfabric-dialect": {
+      "@sf-agentscript/language": "$@sf-agentscript/language",
+      "@sf-agentscript/agentscript-dialect": "3.4.0"
     }
   },
   "allowScripts": {
