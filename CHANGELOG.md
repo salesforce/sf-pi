@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.343.4](https://github.com/salesforce/sf-pi/compare/v0.343.3...v0.343.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps-dev:** adopt agentfabric-dialect 1.5.0 on the aligned Agent Script toolchain ([ad00f4b](https://github.com/salesforce/sf-pi/commit/ad00f4ba8b17c041d38c5b6bec8de3d5f4de76ea))
+
 ## [0.343.3](https://github.com/salesforce/sf-pi/compare/v0.343.2...v0.343.3) (2026-10-29)
 
 
