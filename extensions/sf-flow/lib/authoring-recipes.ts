@@ -275,11 +275,16 @@ export function authoringGuidance(intent: string, family: string): AuthoringGuid
     (contract) =>
       contract.triggers.test(intent) &&
       (screen || !["data-table", "picklist-choice", "record-page-input"].includes(contract.id)),
-  ).map(({ triggers: _triggers, ...contract }) => contract);
-  const recipes = RECIPES.filter((recipe) => recipe.triggers.test(intent)).map(
-    ({ triggers: _triggers, ...recipe }) => recipe,
-  );
+  ).map(withoutTriggers);
+  const recipes = RECIPES.filter((recipe) => recipe.triggers.test(intent)).map(withoutTriggers);
   return { contracts, recipes };
+}
+
+/** Drop the internal intent matcher before returning public guidance. */
+function withoutTriggers<T extends { triggers: RegExp }>(entry: T): Omit<T, "triggers"> {
+  const copy: Partial<T> = { ...entry };
+  delete copy.triggers;
+  return copy as Omit<T, "triggers">;
 }
 
 export const AUTHORING_CONTRACT_IDS = CONTRACTS.map((contract) => contract.id);
