@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.343.0](https://github.com/salesforce/sf-pi/compare/v0.342.0...v0.343.0) (2026-10-29)
+
+
+### Features
+
+* **sf-flow:** author.plan element contracts, design recipes, and focused action ranking ([020576e](https://github.com/salesforce/sf-pi/commit/020576ef4d2e00dade07acb7712f64417ee8df38))
+* **sf-flow:** builder.verify reads the Flow Builder Errors panel ([768a0cc](https://github.com/salesforce/sf-pi/commit/768a0cc7d20cd2dd9482fdfb296f1ba437aaf3bc))
+
 ## [0.342.0](https://github.com/salesforce/sf-pi/compare/v0.341.0...v0.342.0) (2026-10-29)
 
 
