@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.343.1](https://github.com/salesforce/sf-pi/compare/v0.343.0...v0.343.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **sf-flow:** drop unused destructured trigger bindings in authoring guidance ([d1e6145](https://github.com/salesforce/sf-pi/commit/d1e6145fd4a5e4688209cca2ef07c8cb98c91a14))
+
 ## [0.343.0](https://github.com/salesforce/sf-pi/compare/v0.342.0...v0.343.0) (2026-10-29)
 
 
