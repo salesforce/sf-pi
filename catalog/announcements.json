@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.343.1-2026-10-29",
-  "latestVersion": "0.343.1",
+  "revision": "release-0.343.2-2026-10-29",
+  "latestVersion": "0.343.2",
   "announcements": [
     {
-      "id": "release-0.343.1",
+      "id": "release-0.343.2",
       "kind": "update",
-      "title": "sf-pi v0.343.1 — sf-flow: drop unused destructured trigger bindings in authoring guidance",
+      "title": "sf-pi v0.343.2 — deps: bump the prod-minor-and-patch group across 1 directory with 8 updates",
       "publishedAt": "2026-10-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.343.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.343.2",
       "severity": "info",
-      "body": "sf-flow: drop unused destructured trigger bindings in authoring guidance"
+      "body": "deps: bump the prod-minor-and-patch group across 1 directory with 8 updates — deps: update compatible dependencies to latest"
     }
   ]
 }

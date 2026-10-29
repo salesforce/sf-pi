@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.343.2](https://github.com/salesforce/sf-pi/compare/v0.343.1...v0.343.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** bump the prod-minor-and-patch group across 1 directory with 8 updates ([#846](https://github.com/salesforce/sf-pi/issues/846)) ([c5dc60a](https://github.com/salesforce/sf-pi/commit/c5dc60adc01ade07f5a7bea4ae80869ada032aa1))
+* **deps:** update compatible dependencies to latest ([9422741](https://github.com/salesforce/sf-pi/commit/9422741959fe81c06c585ccd0b0cd9d592bf8523))
+
 ## [0.343.1](https://github.com/salesforce/sf-pi/compare/v0.343.0...v0.343.1) (2026-10-29)
 
 
