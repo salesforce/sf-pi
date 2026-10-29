@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.341.0-2026-10-28",
-  "latestVersion": "0.341.0",
+  "revision": "release-0.342.0-2026-10-29",
+  "latestVersion": "0.342.0",
   "announcements": [
     {
-      "id": "release-0.341.0",
+      "id": "release-0.342.0",
       "kind": "update",
-      "title": "sf-pi v0.341.0 — sf-flow: Builder-parity shape rules and builder_ready validation",
-      "publishedAt": "2026-10-28T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.341.0",
+      "title": "sf-pi v0.342.0 — sf-flow: org-grounded schema rules via shared sf-schema module",
+      "publishedAt": "2026-10-29T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.342.0",
       "severity": "info",
-      "body": "sf-flow: Builder-parity shape rules and builder_ready validation — sf-flow: two-lane activation-aware validation and verified deploy.draft"
+      "body": "sf-flow: org-grounded schema rules via shared sf-schema module"
     }
   ]
 }
