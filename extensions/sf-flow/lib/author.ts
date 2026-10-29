@@ -3,6 +3,7 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { authoringGuidance } from "./authoring-recipes.ts";
 import { buildFlowDigest, row, section, toolResultFromDigest } from "./digest.ts";
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import { groundAuthoringContext, type AuthorGroundingAdapter } from "./grounding.ts";
@@ -153,6 +154,7 @@ export async function buildAuthoringPlan(
         }
       : undefined;
   const generationConstraints = generationConstraintsForFamily(family);
+  const guidance = authoringGuidance(intent, family);
   const grounding =
     session && family !== "omni-channel"
       ? await groundAuthoringContext(session, params, groundingDependencies)
@@ -294,19 +296,53 @@ export async function buildAuthoringPlan(
         "Authoring Contract",
         blueprint.contract.map((value) => row("•", "Rule", value)),
       ),
+      ...(guidance.recipes.length
+        ? [
+            section(
+              "🧭",
+              "Design Recipes",
+              guidance.recipes.map((recipe) =>
+                row(
+                  "🧭",
+                  recipe.label,
+                  `${recipe.steps.join(" → ")} (prevents ${recipe.prevents.join(", ")})`,
+                ),
+              ),
+            ),
+          ]
+        : []),
+      ...(guidance.contracts.length
+        ? [
+            section(
+              "🧩",
+              "Element Contracts",
+              guidance.contracts.map((contract) =>
+                row(
+                  "🧩",
+                  contract.label,
+                  `${contract.rules.join(" ")} Verified XML in details.element_contracts.`,
+                ),
+              ),
+            ),
+          ]
+        : []),
       section(
         "🧪",
         "Proof Plan",
         blueprint.tests.map((value) => row("✓", "Scenario", value)),
       ),
     ],
-    next_step: "Create or edit the Flow with normal file tools, then run diagnose.file.",
+    next_step: guidance.contracts.length
+      ? "Start from the verified element contracts, write the Flow with normal file tools, then run diagnose.file with target_org."
+      : "Create or edit the Flow with normal file tools, then run diagnose.file.",
   });
   return toolResultFromDigest(digest, {
     blueprint,
     skeleton,
     inference: inferred,
     generation_constraints: generationConstraints,
+    design_recipes: guidance.recipes,
+    element_contracts: guidance.contracts,
     grounding: grounding ?? omniGrounding,
   });
 }

@@ -92,6 +92,12 @@ export async function groundAuthoringContext(
   const adapter = dependencies.adapter ?? createDefaultAdapter(session);
   const limit = Math.max(1, Math.min(Math.floor(params.limit ?? DEFAULT_LIMIT), MAX_LIMIT));
   const terms = intentTerms(params.intent, params.object, params.event);
+  const contractTerms = intentTerms(
+    params.intent,
+    params.object,
+    params.event,
+    GENERIC_INTENT_TERMS,
+  );
   const result: AuthorGroundingResult = {
     target_org:
       params.target_org ?? session.target?.alias ?? session.target?.targetOrg ?? "configured org",
@@ -120,7 +126,7 @@ export async function groundAuthoringContext(
 
   try {
     const summaries = (await adapter.listActions())
-      .map((action) => ({ action, score: matchScore(action, terms) }))
+      .map((action) => ({ action, score: matchScore(action, contractTerms) }))
       .filter((candidate) => candidate.score > 0)
       .sort(
         (left, right) =>
@@ -137,7 +143,7 @@ export async function groundAuthoringContext(
 
   try {
     const summaries = (await adapter.listSubflows())
-      .map((flow) => ({ flow, score: matchScore(flow, terms) }))
+      .map((flow) => ({ flow, score: matchScore(flow, contractTerms) }))
       .filter((candidate) => candidate.score > 0)
       .sort(
         (left, right) =>
@@ -337,18 +343,71 @@ function selectObjectFields(
   };
 }
 
-function intentTerms(intent?: string, objectName?: string, eventName?: string): string[] {
-  const stop = new Set([
-    "when",
-    "then",
-    "with",
-    "from",
-    "into",
-    "after",
-    "before",
-    "record",
-    "flow",
-  ]);
+// Generic Flow-shape verbs and primitives match unrelated action/subflow labels
+// (for example "data table" and "transform" matching Data Cloud transforms), so
+// they never score action relevance. Object and custom nouns still do.
+const GENERIC_INTENT_TERMS = new Set([
+  "when",
+  "then",
+  "with",
+  "from",
+  "into",
+  "after",
+  "before",
+  "record",
+  "records",
+  "flow",
+  "screen",
+  "create",
+  "update",
+  "delete",
+  "get",
+  "data",
+  "table",
+  "transform",
+  "filter",
+  "sort",
+  "select",
+  "selection",
+  "map",
+  "list",
+  "collection",
+  "loop",
+  "assign",
+  "value",
+  "field",
+  "fields",
+  "active",
+  "page",
+  "summary",
+  "variable",
+  "picklist",
+  "choice",
+  "subflow",
+  "call",
+  "and",
+  "the",
+  "for",
+]);
+
+const FIELD_STOP_TERMS = new Set([
+  "when",
+  "then",
+  "with",
+  "from",
+  "into",
+  "after",
+  "before",
+  "record",
+  "flow",
+]);
+
+function intentTerms(
+  intent?: string,
+  objectName?: string,
+  eventName?: string,
+  stop: ReadonlySet<string> = FIELD_STOP_TERMS,
+): string[] {
   return [
     ...new Set(
       `${intent ?? ""} ${objectName ?? ""} ${eventName ?? ""}`

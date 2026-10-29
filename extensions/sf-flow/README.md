@@ -51,6 +51,8 @@ Lifecycle mutations require an explicit target org and `allow_mutation=true`, re
 
 ## Org-Grounded Authoring
 
+`author.plan` returns verified element contracts and design recipes selected from the request, each naming the shape rules it prevents, plus the matching Flow family blueprint. Element-contract XML comes from a Flow that saved with zero Flow Builder errors and ran in a non-production org. Action and subflow ranking ignores generic Flow-shape verbs, so grounding surfaces request-relevant actions instead of unrelated Data Cloud or Agentforce actions.
+
 `author.plan` remains local when `target_org` is omitted. With an explicit target, it performs bounded read-only grounding for:
 
 - the requested object or platform event and intent-relevant fields;
