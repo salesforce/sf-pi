@@ -143,15 +143,15 @@
     "typebox": "*"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.3",
-    "@commitlint/config-conventional": "^21.2.2",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "@earendil-works/pi-ai": "1.4.0",
     "@earendil-works/pi-coding-agent": "1.4.0",
     "@earendil-works/pi-tui": "1.4.0",
     "@eslint/js": "^10.0.1",
     "@flow-scanner/lightning-flow-scanner-core": "6.19.7",
     "@sf-agentscript/agentfabric-dialect": "1.2.36",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
@@ -159,9 +159,9 @@
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
     "string-argv": "^0.4.0",
-    "typebox": "^1.4.0",
+    "typebox": "^1.4.3",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.2",
+    "typescript-eslint": "^8.72.1",
     "vite": "7.3.7",
     "vitepress": "^1.6.4",
     "vitest": "^5.0.5",
@@ -169,18 +169,18 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "3.1.3",
-    "@lwc/compiler": "^9.5.2",
-    "@lwc/template-compiler": "^9.3.4",
+    "@lwc/compiler": "^9.5.3",
+    "@lwc/template-compiler": "^9.5.3",
     "@salesforce-ux/design-system": "2.264.3",
-    "@salesforce/apex-node": "^9.1.2",
-    "@salesforce/core": "^9.4.1",
+    "@salesforce/apex-node": "^9.1.12",
+    "@salesforce/core": "^9.4.3",
     "@salesforce/kit": "^4.0.8",
     "@salesforce/soql-common": "^2.0.0",
-    "@salesforce/source-deploy-retrieve": "^13.8.0",
+    "@salesforce/source-deploy-retrieve": "^13.8.3",
     "@sf-agentscript/agentforce": "2.10.38",
     "@sf-agentscript/language": "3.2.3",
     "@sf-agentscript/lsp": "2.6.33",
-    "fast-xml-parser": "^5.7.0",
+    "fast-xml-parser": "^5.11.2",
     "grok-mermaid": "0.2.3",
     "node-emoji": "^2.2.0",
     "vscode-languageserver-protocol": "^3.18.5"
@@ -197,7 +197,7 @@
     "basic-ftp": "Force basic-ftp 6.2.1+ to clear GHSA-c475-qrg2-pj4r (quadratic-time CPU denial of service in Unix directory-list parsing). Reaches sf-pi through @salesforce/source-deploy-retrieve -> proxy-agent -> pac-proxy-agent -> get-uri; remove once get-uri requires a patched release."
   },
   "overrides": {
-    "fast-xml-parser": "^5.7.0",
+    "fast-xml-parser": "^5.11.2",
     "form-data": "^4.0.6",
     "csv-parse": "^7.0.2",
     "vitepress": {
@@ -216,5 +216,11 @@
     "@earendil-works/pi-coding-agent": {
       "undici": "^8.12.2"
     }
+  },
+  "allowScripts": {
+    "@google/genai@2.21.0": true,
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true,
+    "protobufjs@7.6.6": true
   }
 }
