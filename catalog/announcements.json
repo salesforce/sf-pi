@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.343.0-2026-10-29",
-  "latestVersion": "0.343.0",
+  "revision": "release-0.343.1-2026-10-29",
+  "latestVersion": "0.343.1",
   "announcements": [
     {
-      "id": "release-0.343.0",
+      "id": "release-0.343.1",
       "kind": "update",
-      "title": "sf-pi v0.343.0 — sf-flow: author.plan element contracts, design recipes, and focused action ranking",
+      "title": "sf-pi v0.343.1 — sf-flow: drop unused destructured trigger bindings in authoring guidance",
       "publishedAt": "2026-10-29T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.343.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.343.1",
       "severity": "info",
-      "body": "sf-flow: author.plan element contracts, design recipes, and focused action ranking — sf-flow: builder.verify reads the Flow Builder Errors panel"
+      "body": "sf-flow: drop unused destructured trigger bindings in authoring guidance"
     }
   ]
 }
