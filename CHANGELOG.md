@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.343.5](https://github.com/salesforce/sf-pi/compare/v0.343.4...v0.343.5) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps-dev:** release the TypeScript 7, Vite 8, and VitePress 2 toolchain ([e2f00ee](https://github.com/salesforce/sf-pi/commit/e2f00eeb85c431d47a7a33c7988657e1de51ec4b))
+
 ## [0.343.4](https://github.com/salesforce/sf-pi/compare/v0.343.3...v0.343.4) (2026-10-29)
 
 
