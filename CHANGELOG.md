@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.344.0](https://github.com/salesforce/sf-pi/compare/v0.343.5...v0.344.0) (2026-10-30)
+
+
+### Features
+
+* **sf-llm-gateway:** never list or call xAI Grok models through the Gateway ([9cd1fa6](https://github.com/salesforce/sf-pi/commit/9cd1fa6b2d325ba290ee643c36d281071b751762))
+
 ## [0.343.5](https://github.com/salesforce/sf-pi/compare/v0.343.4...v0.343.5) (2026-10-30)
 
 
