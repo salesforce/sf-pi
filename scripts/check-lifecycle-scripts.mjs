@@ -19,7 +19,6 @@ const ALLOWED_INSTALL_SCRIPT_PACKAGES = new Map([
   ["", "sf-pi root prepare hook; guarded to no-op during pi git package installs."],
   ["node_modules/@google/genai", "dev dependency from pi-ai model tooling."],
   ["node_modules/protobufjs", "dev dependency from Google client tooling."],
-  ["node_modules/esbuild", "dev dependency from VitePress/Vite docs-site bundling."],
   ["node_modules/fsevents", "optional native watcher used by development tooling."],
 ]);
 

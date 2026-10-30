@@ -1,5 +1,5 @@
 import { defineConfig } from "vitepress";
-import { extensionSidebarItems } from "./generated-extension-sidebar";
+import { extensionSidebarItems } from "./generated-extension-sidebar.ts";
 
 const repoUrl = "https://github.com/salesforce/sf-pi";
 

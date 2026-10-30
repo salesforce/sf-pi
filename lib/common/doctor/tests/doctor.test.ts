@@ -81,20 +81,24 @@ describe("runDoctorDiagnostics", () => {
     DOCTOR_TEST_TIMEOUT_MS,
   );
 
-  it("accepts Pi's header-only startup mode without warning about the overlay", () => {
-    const home = makeHome();
-    const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
-    tempDirs.push(cwd);
-    writeSettings(home, {
-      quietStartup: "header",
-      sfPi: { welcome: { mode: "header" } },
-    });
+  it(
+    "accepts Pi's header-only startup mode without warning about the overlay",
+    () => {
+      const home = makeHome();
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+      tempDirs.push(cwd);
+      writeSettings(home, {
+        quietStartup: "header",
+        sfPi: { welcome: { mode: "header" } },
+      });
 
-    const report = runDoctorDiagnostics({ cwd, home });
+      const report = runDoctorDiagnostics({ cwd, home });
 
-    expect(report.quietStartup).toBe(true);
-    expect(report.issues.some((issue) => issue.id === "startup-overlay-enabled")).toBe(false);
-  });
+      expect(report.quietStartup).toBe(true);
+      expect(report.issues.some((issue) => issue.id === "startup-overlay-enabled")).toBe(false);
+    },
+    DOCTOR_TEST_TIMEOUT_MS,
+  );
 
   it(
     "errors when npm and git Herdr packages are both configured",

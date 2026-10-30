@@ -40,6 +40,11 @@ updates:
     # audit-edge change. Ignore every update type, not just majors.
     ignore:
       - dependency-name: "@earendil-works/*"
+      # typescript stays on 6.x for the typescript-eslint compiler API; the
+      # native TypeScript 7 checker is tracked through @typescript/native.
+      - dependency-name: "typescript"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: "/"

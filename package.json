@@ -86,7 +86,7 @@
     "spdx": "node scripts/add-spdx-headers.mjs",
     "spdx:check": "node scripts/add-spdx-headers.mjs --check",
     "audit:production": "node scripts/check-production-audit.mjs",
-    "check": "tsc --noEmit -p tsconfig.json",
+    "check": "node node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.json",
     "check:commands": "node scripts/check-command-contracts.mjs",
     "check:manager-first": "vitest run scripts/tests/manager-first-commands.test.ts",
     "check:boot-path": "node scripts/check-boot-path.mjs",
@@ -152,6 +152,7 @@
     "@flow-scanner/lightning-flow-scanner-core": "6.19.7",
     "@sf-agentscript/agentfabric-dialect": "1.5.0",
     "@types/node": "^26.6.6",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
@@ -162,8 +163,8 @@
     "typebox": "^1.4.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
-    "vite": "7.3.7",
-    "vitepress": "^1.6.4",
+    "vite": "^8.3.5",
+    "vitepress": "2.0.0-alpha.21",
     "vitest": "^5.0.5",
     "yaml": "^2.9.1"
   },
@@ -187,31 +188,18 @@
   },
   "overridesNotes": {
     "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
-    "vitepress": "VitePress 1.6.4 currently depends on Vite 5.x. Keep VitePress on the stable 1.x line for docs, but override its nested Vite/plugin-vue stack to patched versions that clear active Vite/esbuild advisories and still pass the docs build. Remove once VitePress 1.x or a stable 2.x release carries patched transitive dependencies.",
     "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "csv-parse": "Force >= 7.0.2 to clear GHSA-8cw4-87c7-c6xx (prototype replacement via duplicate __proto__ CSV headers). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
-    "vitest": "Vitest resolves Vite as a transitive test runner dependency. Force the patched Vite 7 line for tests until Vitest naturally resolves to a patched Vite release without overrides.",
-    "esbuild": "Force >= 0.28.1 to clear GHSA-gv7w-rqvm-qjhr. Vite uses esbuild as build/test tooling; remove once all Vite ranges in the tree naturally require a patched esbuild.",
-    "vite": "Direct dev dependency used to satisfy Vite peer imports for VitePress/Vitest while pinning a patched Vite line. Keep aligned with the transitive Vite overrides and remove only if docs/test tooling no longer requires a root peer install.",
+    "vite": "Direct dev dependency on the Vite 8 line so Vitest and VitePress resolve one shared, patched Vite. Remove only if docs/test tooling no longer requires a root peer install.",
     "minimatch": "Force minimatch 10.2.5+ across the dependency tree and brace-expansion 5.0.12+ to clear GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, and GHSA-6j4f-fj2g-mc7p. Pi 1.0.1+ no longer publishes a shrinkwrap and directly pins brace-expansion 5.0.12; retain this override until the Salesforce matcher paths also resolve patched versions without it.",
     "basic-ftp": "Force basic-ftp 6.2.1+ to clear GHSA-c475-qrg2-pj4r (quadratic-time CPU denial of service in Unix directory-list parsing). Reaches sf-pi through @salesforce/source-deploy-retrieve -> proxy-agent -> pac-proxy-agent -> get-uri; remove once get-uri requires a patched release.",
-    "@sf-agentscript/agentfabric-dialect": "agentfabric-dialect 1.4.0+ pins nested @sf-agentscript/language 2.20.0 and agentscript-dialect 2.23.0, below the aligned 3.x runtime toolchain (1.2.36 already used 3.x). Every symbol it imports is exported by language 3.x, so align its nested packages with the direct toolchain. Remove once an agentfabric release depends on language 3.x again."
+    "@sf-agentscript/agentfabric-dialect": "agentfabric-dialect 1.4.0+ pins nested @sf-agentscript/language 2.20.0 and agentscript-dialect 2.23.0, below the aligned 3.x runtime toolchain (1.2.36 already used 3.x). Every symbol it imports is exported by language 3.x, so align its nested packages with the direct toolchain. Remove once an agentfabric release depends on language 3.x again.",
+    "typescript": "Not an override: typescript stays on 6.x because typescript-eslint and test-only compiler-API callers need the JS API that TypeScript 7 does not ship. Type checking uses the native TypeScript 7 compiler through the @typescript/native alias (npm run check). Move typescript to 7.x once typescript-eslint supports the TypeScript 7.1 API."
   },
   "overrides": {
     "fast-xml-parser": "^5.11.2",
     "form-data": "^4.0.6",
     "csv-parse": "^7.0.2",
-    "vitepress": {
-      "vite": "7.3.7",
-      "@vitejs/plugin-vue": "^6.0.7"
-    },
-    "vitest": {
-      "vite": "7.3.7"
-    },
-    "@vitest/mocker": {
-      "vite": "7.3.7"
-    },
-    "esbuild": "^0.28.1",
     "minimatch": "^10.2.5",
     "basic-ftp": "^6.2.1",
     "@earendil-works/pi-coding-agent": {
@@ -224,7 +212,6 @@
   },
   "allowScripts": {
     "@google/genai@2.21.0": true,
-    "esbuild@0.28.1": true,
     "fsevents@2.3.3": true,
     "protobufjs@7.6.6": true
   }

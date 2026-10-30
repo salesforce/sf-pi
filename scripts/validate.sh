@@ -51,7 +51,7 @@ banner "Format check"
 npx prettier --check --log-level=warn .
 
 banner "Type check"
-npx tsc --noEmit -p tsconfig.json
+npm run check
 
 banner "Command source contracts"
 node scripts/check-command-contracts.mjs

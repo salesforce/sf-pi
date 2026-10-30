@@ -10,7 +10,6 @@
 import { describe, expect, it } from "vitest";
 import {
   type SfPiCommandAction,
-  formatHelpFromActions,
   completeArgumentTail,
   formatHelpFromActions,
   formatReadmeTableFromActions,
