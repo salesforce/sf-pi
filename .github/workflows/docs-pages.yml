@@ -19,14 +19,19 @@ permissions:
   pages: write
   id-token: write
 
+# Docs deploys are idempotent snapshots of main, so a newer push may replace
+# an older run. Cancelling in progress also clears a deploy job that GitHub
+# leaves queued without a runner, which otherwise blocks every later run in
+# this group.
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build docs
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,6 +67,7 @@ jobs:
     name: Deploy docs
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
