@@ -909,6 +909,110 @@ describe("complete native Gateway Provider", () => {
     });
   });
 
+  it("never publishes xAI Grok models from Gateway discovery", async () => {
+    const network = fetchers({
+      ids: ["example-responses-model", "grok-4.7", "xai/grok-4.6"],
+      filteredIds: [],
+    });
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: network,
+      now: () => new Date("2026-10-30T12:00:00.000Z"),
+    });
+    const { models, modelsStore } = await configuredModels(runtime);
+
+    const result = await models.refresh({ allowNetwork: true });
+
+    expect(result.errors.size).toBe(0);
+    expect(models.getModels(PROVIDER_NAME).map((model) => model.id)).toEqual([
+      "example-responses-model",
+    ]);
+    expect((await modelsStore.read(PROVIDER_NAME))?.models.map((model) => model.id)).toEqual([
+      "example-responses-model",
+    ]);
+    expect(runtime.getLastDiscovery().filteredModelIds).toEqual(
+      expect.arrayContaining(["grok-4.7", "xai/grok-4.6"]),
+    );
+  });
+
+  it("hides xAI Grok models restored from the offline provider cache", async () => {
+    const runtime = createTestGatewayProviderRuntime({ authController: authController() });
+    const { models, modelsStore } = await configuredModels(runtime);
+    await modelsStore.write(PROVIDER_NAME, {
+      models: [cachedModel("example-cached-model"), cachedModel("grok-4.6")],
+      checkedAt: 1,
+    });
+
+    await models.refresh({ allowNetwork: false });
+
+    expect(models.getModels(PROVIDER_NAME).map((model) => model.id)).toEqual([
+      "example-cached-model",
+    ]);
+    expect(runtime.provider.getModels().map((model) => model.id)).toEqual(["example-cached-model"]);
+  });
+
+  it("refuses to stream an xAI Grok model without calling the Gateway", async () => {
+    const calls: StreamCall[] = [];
+    const runtime = createTestGatewayProviderRuntime({
+      authController: authController(),
+      fetchers: fetchers(),
+      streams: streams(calls),
+    });
+    const { models } = await configuredModels(runtime);
+    const grok = cachedModel("grok-4.7");
+
+    for (const result of [
+      await models.completeSimple(grok, EMPTY_CONTEXT),
+      await models.complete(grok, EMPTY_CONTEXT),
+    ]) {
+      expect(result).toMatchObject({ stopReason: "error" });
+      expect(result.errorMessage).toContain("grok-4.7");
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it("keeps xAI Grok models out when models.json overlays the Gateway provider", async () => {
+    const gateway = createTestGatewayProviderRuntime({ authController: authController() });
+    const modelsStore = new InMemoryModelsStore();
+    await modelsStore.write(PROVIDER_NAME, {
+      models: [cachedModel("example-cached-model"), cachedModel("grok-4.7")],
+      checkedAt: 1,
+    });
+    const credentials = new InMemoryCredentialStore();
+    await credentials.modify(PROVIDER_NAME, async () => ({ type: "api_key", key: "native-key" }));
+    const dir = mkdtempSync(path.join(tmpdir(), "sf-pi-gateway-grok-policy-"));
+    const modelsPath = path.join(dir, "models.json");
+    writeFileSync(
+      modelsPath,
+      JSON.stringify({
+        providers: {
+          [PROVIDER_NAME]: {
+            modelOverrides: { "example-cached-model": { name: "Overlay" } },
+          },
+        },
+      }),
+    );
+    try {
+      const runtime = await ModelRuntime.create({
+        credentials,
+        modelsStore,
+        modelsPath,
+        allowModelNetwork: false,
+      });
+      runtime.registerNativeProvider(gateway.provider);
+      await runtime.refresh({ allowNetwork: false });
+
+      const ids = runtime
+        .getAllModels()
+        .filter((model) => model.provider === PROVIDER_NAME)
+        .map((model) => model.id);
+      expect(ids).toEqual(["example-cached-model"]);
+      expect(runtime.getModel(PROVIDER_NAME, "grok-4.7")).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("returns a stream error for an unmapped API instead of guessing from the model id", async () => {
     const runtime = createTestGatewayProviderRuntime({
       authController: authController(),

@@ -235,6 +235,10 @@ numbers look surprising.
   usage probe, or update beyond the explicitly chosen action.
 - Discovery publishes only exact IDs backed by a reusable public Pi catalog API;
   unmatched deployment IDs are excluded without model-specific routing rules.
+- xAI Grok models are never listed or callable through this provider. Discovery
+  never publishes or caches them, restored catalogs drop them, and every request
+  path refuses them before contacting the Gateway. This rule has no setting or
+  override, and it does not change other Pi providers.
 - Recognized access, unsupported-image, transient-stream, and configuration failures are replaced
   with bounded, protocol-neutral guidance; raw provider response bodies are not repeated.
   Transient-stream guidance retains a fixed transport cause so Pi agent retries still apply.

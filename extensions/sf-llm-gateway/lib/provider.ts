@@ -2,6 +2,9 @@
 /** Complete Pi Provider runtime for SF LLM Gateway. */
 import {
   createProvider,
+  lazyStream,
+  type Api,
+  type AssistantMessageEventStream,
   type Model,
   type Provider,
   type ProviderStreams,
@@ -27,6 +30,7 @@ import {
   type GatewayModelInfoMap,
   type TaggedGatewayModel,
 } from "./models.ts";
+import { gatewayModelPolicyRefusal, isGatewayModelIdAllowed } from "./model-policy.ts";
 export type { GatewayApi } from "./models.ts";
 import {
   filterCallableDiscoveredModelIds,
@@ -151,10 +155,43 @@ function withEndpoint<TApi extends GatewayApi>(
   };
 }
 
+// Refuse policy-blocked models before routing so no request reaches the Gateway.
+function refusedStream(model: Model<Api>): AssistantMessageEventStream {
+  return lazyStream(model, async () => {
+    throw new Error(gatewayModelPolicyRefusal(model.id));
+  });
+}
+
+function guardStreams(streams: ProviderStreams): ProviderStreams {
+  return {
+    ...streams,
+    stream(model, context, options) {
+      return isGatewayModelIdAllowed(model.id)
+        ? streams.stream(model, context, options)
+        : refusedStream(model);
+    },
+    streamSimple(model, context, options) {
+      return isGatewayModelIdAllowed(model.id)
+        ? streams.streamSimple(model, context, options)
+        : refusedStream(model);
+    },
+  };
+}
+
 function createApiMap(
   streams: GatewayStreamImplementations,
   priorityEnabled: () => boolean,
 ): Partial<Record<GatewayApi, ProviderStreams>> {
+  const map = createRoutedApiMap(streams, priorityEnabled);
+  return Object.fromEntries(
+    Object.entries(map).map(([api, apiStreams]) => [api, guardStreams(apiStreams)]),
+  ) as Partial<Record<GatewayApi, ProviderStreams>>;
+}
+
+function createRoutedApiMap(
+  streams: GatewayStreamImplementations,
+  priorityEnabled: () => boolean,
+): Record<GatewayApi, ProviderStreams> {
   return {
     "anthropic-messages": {
       stream(model, context, options) {
@@ -245,7 +282,9 @@ export function createGatewayProviderRuntime(
       if (context.signal?.aborted) throw new Error("Gateway model refresh aborted.");
       const modelInfo = mergeGatewayModelInfoMaps(modelIdDiscovery.modelInfo, detailedModelInfo);
       const callableIds = filterCallableDiscoveredModelIds(modelIdDiscovery.ids);
-      const catalogBackedIds = callableIds.filter(isCatalogBackedModelId);
+      const catalogBackedIds = callableIds.filter(
+        (id) => isGatewayModelIdAllowed(id) && isCatalogBackedModelId(id),
+      );
       const filteredIds = [
         ...new Set([
           ...modelIdDiscovery.filteredIds,
@@ -323,21 +362,29 @@ export function createGatewayProviderRuntime(
     fetchModels,
     api: createApiMap(streams, priorityEnabled),
   });
+  const admitted = <TModel extends { id: string; api: string; compat?: object }>(
+    models: readonly TModel[],
+  ): TModel[] =>
+    models
+      .filter((model) => isGatewayModelIdAllowed(model.id) && isCatalogBackedModelId(model.id))
+      .map((model) => {
+        const portableCompat = getPortableGatewayModelCompat(model.id, model.api as GatewayApi);
+        return portableCompat
+          ? { ...model, compat: { ...model.compat, ...portableCompat } }
+          : model;
+      });
   const provider: Provider<GatewayApi> = {
     ...nativeProvider,
     // Pi restores the last persisted dynamic catalog before network refresh.
     // Apply the same admission policy to restored entries so retired or
     // deployment-only IDs disappear immediately, including offline startup.
+    // Pi composes a models.json overlay from getAllModels(), so both views
+    // must apply the policy.
     getModels() {
-      return nativeProvider
-        .getModels()
-        .filter((model) => isCatalogBackedModelId(model.id))
-        .map((model) => {
-          const portableCompat = getPortableGatewayModelCompat(model.id, model.api);
-          return portableCompat
-            ? { ...model, compat: { ...model.compat, ...portableCompat } }
-            : model;
-        });
+      return admitted(nativeProvider.getModels());
+    },
+    getAllModels() {
+      return admitted(nativeProvider.getAllModels?.() ?? nativeProvider.getModels());
     },
   };
 
