@@ -174,7 +174,7 @@
     "@lwc/template-compiler": "^9.5.3",
     "@salesforce-ux/design-system": "2.264.3",
     "@salesforce/apex-node": "^9.1.12",
-    "@salesforce/core": "^9.4.3",
+    "@salesforce/core": "^9.4.4",
     "@salesforce/kit": "^4.0.8",
     "@salesforce/soql-common": "^2.0.0",
     "@salesforce/source-deploy-retrieve": "^13.8.3",
