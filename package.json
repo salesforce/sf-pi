@@ -191,7 +191,7 @@
     "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "csv-parse": "Force >= 7.0.2 to clear GHSA-8cw4-87c7-c6xx (prototype replacement via duplicate __proto__ CSV headers). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "vite": "Direct dev dependency on the Vite 8 line so Vitest and VitePress resolve one shared, patched Vite. Remove only if docs/test tooling no longer requires a root peer install.",
-    "minimatch": "Force minimatch 10.2.5+ across the dependency tree and brace-expansion 5.0.12+ to clear GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, and GHSA-6j4f-fj2g-mc7p. Pi 1.0.1+ no longer publishes a shrinkwrap and directly pins brace-expansion 5.0.12; retain this override until the Salesforce matcher paths also resolve patched versions without it.",
+    "minimatch": "Force minimatch 11.0.3+ across the dependency tree to clear GHSA-g3hv-75wg-m249 (globparts amplification DoS, fixed only in 11.x) and earlier 10.x advisories. Every consumer uses only the minimatch()/Minimatch#match API that 11.x keeps. Remove once Salesforce, ESLint, and typescript-eslint ranges resolve 11.0.1+ on their own.",
     "basic-ftp": "Force basic-ftp 6.2.1+ to clear GHSA-c475-qrg2-pj4r (quadratic-time CPU denial of service in Unix directory-list parsing). Reaches sf-pi through @salesforce/source-deploy-retrieve -> proxy-agent -> pac-proxy-agent -> get-uri; remove once get-uri requires a patched release.",
     "@sf-agentscript/agentfabric-dialect": "agentfabric-dialect 1.4.0+ pins nested @sf-agentscript/language 2.20.0 and agentscript-dialect 2.23.0, below the aligned 3.x runtime toolchain (1.2.36 already used 3.x). Every symbol it imports is exported by language 3.x, so align its nested packages with the direct toolchain. Remove once an agentfabric release depends on language 3.x again.",
     "typescript": "Not an override: typescript stays on 6.x because typescript-eslint and test-only compiler-API callers need the JS API that TypeScript 7 does not ship. Type checking uses the native TypeScript 7 compiler through the @typescript/native alias (npm run check). Move typescript to 7.x once typescript-eslint supports the TypeScript 7.1 API."
@@ -200,7 +200,7 @@
     "fast-xml-parser": "^5.11.2",
     "form-data": "^4.0.6",
     "csv-parse": "^7.0.2",
-    "minimatch": "^10.2.5",
+    "minimatch": "^11.0.3",
     "basic-ftp": "^6.2.1",
     "@earendil-works/pi-coding-agent": {
       "undici": "^8.12.2"
