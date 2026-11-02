@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.344.2-2026-11-02",
-  "latestVersion": "0.344.2",
+  "revision": "release-0.344.3-2026-11-02",
+  "latestVersion": "0.344.3",
   "announcements": [
     {
-      "id": "release-0.344.2",
+      "id": "release-0.344.3",
       "kind": "update",
-      "title": "sf-pi v0.344.2 — sf-agentscript: stop treating native standard invocables as missing",
+      "title": "sf-pi v0.344.3 — deps: patch minimatch globparts DoS advisory",
       "publishedAt": "2026-11-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.344.2",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.344.3",
       "severity": "info",
-      "body": "sf-agentscript: stop treating native standard invocables as missing"
+      "body": "deps: patch minimatch globparts DoS advisory"
     }
   ]
 }
