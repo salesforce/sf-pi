@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.344.1-2026-11-02",
-  "latestVersion": "0.344.1",
+  "revision": "release-0.344.2-2026-11-02",
+  "latestVersion": "0.344.2",
   "announcements": [
     {
-      "id": "release-0.344.1",
+      "id": "release-0.344.2",
       "kind": "update",
-      "title": "sf-pi v0.344.1 — sf-llm-gateway: keep Claude models on Anthropic Messages for prompt caching",
+      "title": "sf-pi v0.344.2 — sf-agentscript: stop treating native standard invocables as missing",
       "publishedAt": "2026-11-02T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.344.1",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.344.2",
       "severity": "info",
-      "body": "sf-llm-gateway: keep Claude models on Anthropic Messages for prompt caching"
+      "body": "sf-agentscript: stop treating native standard invocables as missing"
     }
   ]
 }
