@@ -148,7 +148,9 @@ function fakeConnection(opts: {
   };
 }
 
-async function setupBundleDir(): Promise<{ bundleDir: string; metaPath: string }> {
+async function setupBundleDir(
+  source = CLEAN_SOURCE,
+): Promise<{ bundleDir: string; metaPath: string }> {
   // Place the bundle under `aiAuthoringBundles/<name>` so SDR's path-based
   // metadata resolver classifies it natively. Tests for the
   // `ensureSdrFriendlyLayout` synth path live in lifecycle-sdr-layout.test.ts.
@@ -159,9 +161,44 @@ async function setupBundleDir(): Promise<{ bundleDir: string; metaPath: string }
   await mkdir(bundleDir, { recursive: true });
   const metaPath = path.join(bundleDir, "My_Agent.bundle-meta.xml");
   await writeFile(metaPath, INITIAL_META, "utf8");
-  await writeFile(path.join(bundleDir, "My_Agent.agent"), CLEAN_SOURCE, "utf8");
+  await writeFile(path.join(bundleDir, "My_Agent.agent"), source, "utf8");
   return { bundleDir, metaPath };
 }
+
+describe("publishAgent action-target preflight", () => {
+  test("native standardInvocableAction targets reach Salesforce validation instead of a local block", async () => {
+    const nativeSource = CLEAN_SOURCE.replace(
+      '    description: "Primary topic."\n',
+      [
+        '    description: "Primary topic."',
+        "    actions:",
+        "        AnalyzeSemanticData:",
+        '            description: "Analyze semantic data."',
+        '            target: "standardInvocableAction://analyzeSemanticData"',
+        "",
+      ].join("\n"),
+    );
+    const { bundleDir } = await setupBundleDir(nativeSource);
+    const conn = fakeConnection({
+      publishResp: { status: 200, body: { botId: "0Xx", botVersionId: "0X9" } },
+      versionRow: { DeveloperName: "v1", VersionNumber: 1 },
+    });
+
+    const result = await publishAgent({
+      conn: conn as never,
+      agentApiName: "My_Agent",
+      agentSource: nativeSource,
+      bundleDir,
+      localCompileChecked: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.preflight).toMatchObject({ actions_inspected: 1 });
+    expect(result.preflight).not.toHaveProperty("missing_action_targets");
+    const urls = conn.request.mock.calls.map(([req]) => (req as { url: string }).url);
+    expect(urls.some((url) => url.endsWith("/authoring/scripts"))).toBe(true);
+  });
+});
 
 describe("publishAgent deploys AiAuthoringBundle via SDR", () => {
   test("happy path: <target> is injected, deploy is called with bundleDir, success is reported, original meta is restored", async () => {

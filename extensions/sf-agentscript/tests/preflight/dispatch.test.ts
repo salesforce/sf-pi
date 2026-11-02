@@ -81,17 +81,26 @@ describe("checkActionTargets dispatch", () => {
     expect(byName.get("miss_apex")?.metadata_label).toBe("ApexClass");
   });
 
-  it("standardInvocableAction:// blocks until a precise resolver is available", async () => {
+  it("standardInvocableAction:// is unverifiable, never missing, without an org request", async () => {
     const conn = fakeConn({});
     const result = await checkActionTargets(conn, [
-      { name: "x", target: "standardInvocableAction://emailSimple" },
+      { name: "x", target: "standardInvocableAction://analyzeSemanticData" },
+      { name: "x2", target: "standardInvocableAction://analyzeSemanticData" },
       { name: "y", target: "https://example.com/webhook" },
       { name: "z", target: "mcp://server-ping" },
     ] as ComponentSummary[]);
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
     expect(result.resolved).toBe(2);
-    expect(result.missing).toBe(1);
-    expect(result.targets.find((t) => t.name === "x")?.detail).toMatch(/cannot be verified/);
+    expect(result.missing).toBe(0);
+    expect(result.unverifiable).toBe(2);
+    for (const name of ["x", "x2"]) {
+      const target = result.targets.find((t) => t.name === name);
+      expect(target?.status).toBe("unverifiable");
+      expect(target?.detail).toMatch(/Salesforce validates/);
+    }
+    expect(
+      (conn as unknown as { request: { mock: { calls: unknown[] } } }).request.mock.calls,
+    ).toHaveLength(0);
   });
 
   it("placeholder:// always counts as missing (matches compiler warning)", async () => {

@@ -537,7 +537,7 @@ export async function publishAgent(opts: PublishOptions): Promise<PublishResult>
             if (missing.length > 10) lines.push(`  …and ${missing.length - 10} more`);
             lines.push("");
             lines.push(
-              "Deploy the missing flows / classes (sf project deploy start -m Flow:<X> -m ApexClass:<Y>), then retry. Pass skipPreflight=true to bypass this check.",
+              "Deploy the missing flows / classes (sf project deploy start -m Flow:<X> -m ApexClass:<Y>), then retry.",
             );
             throw new PreflightFailureError(lines.join("\n"));
           }
