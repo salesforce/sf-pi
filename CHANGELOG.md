@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.344.3](https://github.com/salesforce/sf-pi/compare/v0.344.2...v0.344.3) (2026-11-02)
+
+
+### Bug Fixes
+
+* **deps:** patch minimatch globparts DoS advisory ([04699e8](https://github.com/salesforce/sf-pi/commit/04699e85a38d0c04492e8efde6020a7e0722a7bc))
+
 ## [0.344.2](https://github.com/salesforce/sf-pi/compare/v0.344.1...v0.344.2) (2026-11-02)
 
 
