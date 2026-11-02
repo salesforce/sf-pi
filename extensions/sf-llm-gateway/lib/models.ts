@@ -292,14 +292,16 @@ export function toProviderModelConfig(
   const api =
     catalogBackedGptResponses || info?.mode === "responses"
       ? "openai-responses"
-      : info?.mode === "chat"
-        ? "openai-completions"
-        : def.family === "xai"
+      : // Claude stays on Messages even when discovery reports `chat`: the gateway's
+        // Chat Completions route does not return Anthropic prompt-cache reads.
+        def.family === "anthropic"
+        ? "anthropic-messages"
+        : info?.mode === "chat"
           ? "openai-completions"
-          : apiReference && isGatewayApi(apiReference.api)
-            ? apiReference.api
-            : def.family === "anthropic"
-              ? "anthropic-messages"
+          : def.family === "xai"
+            ? "openai-completions"
+            : apiReference && isGatewayApi(apiReference.api)
+              ? apiReference.api
               : "openai-completions";
 
   const thinkingLevelMap = def.reasoning ? reference?.thinkingLevelMap : undefined;

@@ -157,6 +157,17 @@ describe("conservative model inference", () => {
     ).toBe("openai-completions");
   });
 
+  it("keeps Claude models on Anthropic Messages when discovery declares chat", () => {
+    // LiteLLM labels most models `chat`; Claude only receives prompt caching on Messages.
+    expect(
+      toProviderModelConfig(
+        "example-claude-model",
+        { id: "example-claude-model", mode: "chat" },
+        [],
+      ).api,
+    ).toBe("anthropic-messages");
+  });
+
   it("uses Chat Completions for xAI models instead of inheriting Responses transport", () => {
     const reference: PiModelReference = {
       id: "example-grok-model",
