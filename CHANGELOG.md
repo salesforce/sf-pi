@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.344.1](https://github.com/salesforce/sf-pi/compare/v0.344.0...v0.344.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** keep Claude models on Anthropic Messages for prompt caching ([91c339c](https://github.com/salesforce/sf-pi/commit/91c339cc2bd73d9e1e3457d60c1af73aa613efce))
+
 ## [0.344.0](https://github.com/salesforce/sf-pi/compare/v0.343.5...v0.344.0) (2026-10-30)
 
 
