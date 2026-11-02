@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.344.2](https://github.com/salesforce/sf-pi/compare/v0.344.1...v0.344.2) (2026-11-02)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** stop treating native standard invocables as missing ([5383c0d](https://github.com/salesforce/sf-pi/commit/5383c0ddba2f0039da4b1c6d188cd9050dd5adcf))
+
 ## [0.344.1](https://github.com/salesforce/sf-pi/compare/v0.344.0...v0.344.1) (2026-11-02)
 
 
