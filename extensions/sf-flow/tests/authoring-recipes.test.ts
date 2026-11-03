@@ -44,8 +44,9 @@ describe("author.plan guidance", () => {
   it("every element contract snippet is well-formed and free of high findings", () => {
     const guidance = authoringGuidance(CATALOG_INTENT, "screen");
     for (const contract of guidance.contracts) {
-      const snippet = contract.xml.replace(/<!--.*?-->/gs, "");
-      const wrapped = `<?xml version="1.0" encoding="UTF-8"?>\n<Flow xmlns="http://soap.sforce.com/2006/04/metadata">\n${snippet}\n</Flow>`;
+      // Keep snippet comments: the XML validator and Flow tokenizer skip them,
+      // so this also proves commented contracts parse as published.
+      const wrapped = `<?xml version="1.0" encoding="UTF-8"?>\n<Flow xmlns="http://soap.sforce.com/2006/04/metadata">\n${contract.xml}\n</Flow>`;
       const analysis = analyzeFlowSource(wrapped, `${contract.id}.flow-meta.xml`);
       const parseErrors = analysis.findings.filter((finding) => finding.rule_id === "xml-syntax");
       expect(parseErrors, contract.id).toEqual([]);
