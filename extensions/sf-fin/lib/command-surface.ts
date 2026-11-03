@@ -2,7 +2,16 @@
 import type { SfPiCommandAction } from "../../../lib/common/command-actions.ts";
 import { COMMAND_NAME, ENV_REGION, ENV_TOKEN, PROVIDER_NAME } from "./types.ts";
 
-export type SfFinCommandAction = "connect" | "disconnect" | "status" | "doctor" | "help";
+export type SfFinCommandAction =
+  | "connect"
+  | "disconnect"
+  | "status"
+  | "doctor"
+  | "install"
+  | "debug"
+  | "debug-on"
+  | "debug-off"
+  | "help";
 
 export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
   {
@@ -21,13 +30,39 @@ export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
   {
     value: "status",
     label: "Show status",
-    description: "Show cached credential, region, and last doctor result (no network).",
+    description: "Show cached credential, region, CLI, and last doctor result (no network).",
     group: "Connection",
+  },
+  {
+    value: "install",
+    label: "Install or update Fin CLI",
+    description:
+      "Plan, confirm, then run `npm install -g @intercom/cli@<exact version>` and verify the result.",
+    group: "Setup",
   },
   {
     value: "doctor",
     label: "Run doctor",
-    description: "Read-only check: Fin CLI version and `intercom me` with the saved credential.",
+    description: "Live read-only checks: Node, Fin CLI, version, credential, and workspace.",
+    group: "Diagnostics",
+  },
+  {
+    value: "debug",
+    label: "Show debug bundle",
+    description: "Redacted support bundle: versions, paths, env names, last CLI error.",
+    group: "Diagnostics",
+  },
+  {
+    value: "debug-on",
+    label: "Arm verbose trace",
+    description:
+      "Trace the next doctor run with the CLI's --verbose output, scrubbed to a private file.",
+    group: "Diagnostics",
+  },
+  {
+    value: "debug-off",
+    label: "Disarm verbose trace",
+    description: "Turn verbose tracing off before it runs.",
     group: "Diagnostics",
   },
   {
@@ -42,20 +77,22 @@ export function renderHelp(): string {
   return [
     "# SF Fin",
     "",
-    "SF Fin connects SF Pi to a Fin (formerly Intercom) workspace through the user's installed Fin CLI.",
+    "SF Fin connects SF Pi to a Fin (formerly Intercom) workspace through the Fin CLI.",
     "",
     "Commands:",
     `- \`/${COMMAND_NAME}\` — open the SF Pi Manager detail page.`,
-    `- \`/${COMMAND_NAME} connect\` — prepare native \`/login ${PROVIDER_NAME}\`.`,
-    `- \`/${COMMAND_NAME} disconnect\` — prefill native logout for the saved credential.`,
+    `- \`/${COMMAND_NAME} connect\` / \`disconnect\` — prepare native \`/login\` / \`/logout ${PROVIDER_NAME}\`.`,
     `- \`/${COMMAND_NAME} status\` — cached status; no network.`,
-    `- \`/${COMMAND_NAME} doctor\` — read-only check of the CLI and credential.`,
+    `- \`/${COMMAND_NAME} install [version]\` — install or update the Fin CLI with global npm after confirmation.`,
+    `- \`/${COMMAND_NAME} doctor\` — live read-only checks.`,
+    `- \`/${COMMAND_NAME} debug\` — redacted support bundle.`,
+    `- \`/${COMMAND_NAME} debug on [runs]\` / \`debug off\` — arm or disarm a one-shot verbose trace.`,
     "",
     "Setup:",
-    "1. Install the Fin CLI: `npm install -g @intercom/cli`.",
+    `1. \`/${COMMAND_NAME} install\` (or \`npm install -g @intercom/cli\`).`,
     "2. In Fin, open Settings → Personal → API tokens and create a token.",
-    `3. Run \`/login ${PROVIDER_NAME}\`, choose the region from your workspace URL, and paste the token into the masked prompt.`,
-    `4. Run \`/${COMMAND_NAME} doctor\`.`,
+    `3. \`/login ${PROVIDER_NAME}\`: choose the region from your workspace URL, then paste the token into the masked prompt.`,
+    `4. \`/${COMMAND_NAME} doctor\`.`,
     "",
     "Credential boundary:",
     `- Pi owns persistence; \`/logout ${PROVIDER_NAME}\` removes the saved credential.`,

@@ -35,6 +35,7 @@ export function classifyNativeToolRisk(
     classifySfIntegrate(toolName, input) ??
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
+    classifySfFinInstall(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
     classifySfSoql(toolName, input) ??
@@ -210,6 +211,36 @@ function classifySfFlowLifecycle(
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
+/**
+ * `sf_fin install` with `allow_mutation=true` runs a global npm install of the
+ * Fin CLI on the user's machine. Planning (no allow_mutation) stays prompt-free.
+ * The version is part of the fingerprint so a session approval covers exactly
+ * one install target. No Salesforce org is involved.
+ */
+function classifySfFinInstall(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "install" || input.allow_mutation !== true) {
+    return undefined;
+  }
+  const version = stringValue(input.version) ?? "latest-allowed";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "install",
+    ruleId: "native-sf-fin-cli-install",
+    subject: `sf_fin install @intercom/cli@${version}`,
+    reason: `Global npm install of the Fin CLI (@intercom/cli@${version}) requested.`,
+    promptTitle: "⚠ Fin CLI global npm install",
+    operationFamily: "fin cli install",
+    riskTier: "local_package_install_exact",
+    fingerprint: `sf_fin|install|${fingerprintText(version)}`,
+    approvalLabel: `npm install -g @intercom/cli@${version}`,
+    approvalDetail: `package=@intercom/cli; version=${version}; scope=global npm`,
   };
 }
 

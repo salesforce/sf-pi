@@ -1,42 +1,52 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * sf-fin — connect SF Pi to a Fin (formerly Intercom) workspace.
+ * sf-fin — connect, install, diagnose, and debug a Fin (formerly Intercom)
+ * workspace connection.
  *
  * Behavior matrix:
  *
- *   Event/Trigger          | Result
- *   -----------------------|---------------------------------------------------------
- *   extension load         | Register auth-only Provider, `sf_fin`, `/sf-fin`
- *   session_start/shutdown | Bind/clear the masked credential prompt (no network)
- *   /sf-fin (no args)      | Open SF Pi Manager detail page when UI is available
- *   /sf-fin connect        | Prepare native `/login sf-fin` (region + masked token)
- *   /sf-fin disconnect     | Prefill native `/logout sf-fin`
- *   /sf-fin status         | Print cached credential/region/doctor status
- *   /sf-fin doctor         | Read-only `intercom --version` + `intercom me`
- *   sf_fin status/doctor   | Same as the commands, for the agent
+ *   Event/Trigger            | Result
+ *   -------------------------|---------------------------------------------------------
+ *   extension load           | Register auth-only Provider, `sf_fin`, `/sf-fin`, doctor
+ *   session_start/shutdown   | Bind/clear the masked credential prompt (no network)
+ *   /sf-fin (no args)        | Open SF Pi Manager detail page when UI is available
+ *   /sf-fin connect          | Prepare native `/login sf-fin` (region + masked token)
+ *   /sf-fin disconnect       | Prefill native `/logout sf-fin`
+ *   /sf-fin status           | Print cached credential/region/CLI/doctor status
+ *   /sf-fin install [ver]    | Plan → confirm → `npm install -g @intercom/cli@<ver>` → verify
+ *   /sf-fin doctor           | Live read-only checks (Node, CLI, version, credential, workspace)
+ *   /sf-fin debug [on|off]   | Redacted bundle, or arm/disarm a one-shot verbose trace
+ *   /sf-pi doctor            | Cached sf-fin checks (no network, no credential)
+ *   sf_fin <action>          | Same actions for the agent; install execution is Guardrail-mediated
  */
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import {
   getFirstTokenCompletionsFromActions,
   resolveAction,
 } from "../../lib/common/command-actions.ts";
+import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
+import { buildExecFn } from "../../lib/common/exec-adapter.ts";
 import { openInfoPanel, type InfoPanelSeverity } from "../../lib/common/info-panel.ts";
 import {
   registerManagerDetailActions,
   type ManagerDetailAction,
 } from "../../lib/common/manager-actions.ts";
 import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
-import { requirePiVersion } from "../../lib/common/pi-compat.ts";
+import { getInstalledPiVersion, requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import { detectTokenSource, hasStoredFinCredential, sfFinAuthController } from "./lib/auth.ts";
 import { SF_FIN_ACTIONS, renderHelp } from "./lib/command-surface.ts";
-import { runDoctor } from "./lib/doctor.ts";
+import { createFinConfirmPanel } from "./lib/manager-action-panels.ts";
+import { createFinService, statusText, type FinService } from "./lib/service.ts";
 import { registerSfFinTool } from "./lib/sf_fin-tool.ts";
-import { buildStatusText, createFinStatusStore } from "./lib/status.ts";
 import { COMMAND_NAME, ENV_REGION, ENV_TOKEN, PROVIDER_NAME } from "./lib/types.ts";
 
 export default function sfFin(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-fin")) return;
+
+  const service = createFinService({ exec: buildExecFn(pi) });
 
   pi.registerProvider(sfFinAuthController.provider);
 
@@ -47,12 +57,16 @@ export default function sfFin(pi: ExtensionAPI) {
     sfFinAuthController.clear();
   });
 
-  registerSfFinTool(pi);
+  registerSfFinTool(pi, service, runtimeMeta);
+  // Cached-only contribution to `/sf-pi doctor`: no network, no credential.
+  registerExtensionDoctor("sf-fin", async () => service.cachedDoctorReport());
 
   pi.registerCommand(COMMAND_NAME, {
-    description: "Connect and check the Fin (formerly Intercom) workspace",
+    description: "Connect, install, diagnose, and debug the Fin (formerly Intercom) workspace",
     getArgumentCompletions: (prefix: string) =>
-      getFirstTokenCompletionsFromActions(SF_FIN_ACTIONS, prefix),
+      getFirstTokenCompletionsFromActions(SF_FIN_ACTIONS, prefix, {
+        excludeValues: ["debug-on", "debug-off"],
+      }),
     handler: async (args, ctx) => {
       await withSafeCommandHandler(ctx, COMMAND_NAME, async () => {
         const trimmed = (args ?? "").trim();
@@ -60,62 +74,157 @@ export default function sfFin(pi: ExtensionAPI) {
           const opened = await openExtensionInManager(pi, ctx, {
             extensionId: COMMAND_NAME,
             view: "detail",
-            actions: buildManagerActions(),
+            actions: buildManagerActions(service),
           });
           if (!opened)
             ctx.ui.notify("SF Pi Manager is unavailable. Try /sf-pi open sf-fin.", "warning");
           return;
         }
-        await handleCommand(ctx, trimmed, false);
+        await handleCommand(service, ctx, trimmed, false);
       });
     },
   });
 
-  registerManagerDetailActions(pi, COMMAND_NAME, buildManagerActions());
+  registerManagerDetailActions(pi, COMMAND_NAME, buildManagerActions(service));
 }
 
-function buildManagerActions(): ManagerDetailAction[] {
+function buildManagerActions(service: FinService): ManagerDetailAction[] {
   return SF_FIN_ACTIONS.map((action) => ({
     id: action.value,
     label: action.label,
     description: action.description,
     group: action.group,
-    run: (ctx) => handleCommand(ctx, action.value, true),
+    run: (ctx) => handleCommand(service, ctx, actionArgs(action.value), true),
+    ...(action.value === "install"
+      ? {
+          // Same plan → confirm → run → verify path as `/sf-fin install`, inside the Manager.
+          createPanel: (theme, _cwd, _scope, done) =>
+            createFinConfirmPanel({
+              theme,
+              title: "Install or update Fin CLI",
+              loadDetail: async () => {
+                const plan = await service.planInstall();
+                if (plan.kind === "install" || plan.kind === "update") {
+                  return {
+                    detail: `${plan.reason}\n\nThis runs:\n${plan.command}\n\nIt changes your global npm packages.`,
+                    canConfirm: true,
+                    confirm: async () => (await service.install(plan)).text,
+                  };
+                }
+                return {
+                  detail: [plan.reason, plan.kind === "refused" ? plan.manual : undefined]
+                    .filter(Boolean)
+                    .join("\n"),
+                  canConfirm: false,
+                };
+              },
+              confirmLabel: "Install",
+              done,
+            }),
+        }
+      : {}),
   }));
 }
 
+function actionArgs(value: string): string {
+  if (value === "debug-on") return "debug on";
+  if (value === "debug-off") return "debug off";
+  return value;
+}
+
 async function handleCommand(
+  service: FinService,
   ctx: ExtensionCommandContext,
   rawArgs: string,
   fromPanel: boolean,
 ): Promise<void> {
-  const first = rawArgs.trim().split(/\s+/).filter(Boolean)[0];
-  const sub = first ? (resolveAction(SF_FIN_ACTIONS, first) ?? first) : "status";
-  const store = createFinStatusStore();
+  const parts = rawArgs.trim().split(/\s+/).filter(Boolean);
+  const sub = parts[0] ? (resolveAction(SF_FIN_ACTIONS, parts[0]) ?? parts[0]) : "status";
 
-  if (sub === "status")
-    return emit(ctx, "SF Fin status", buildStatusText(store.read()), "info", fromPanel);
+  if (sub === "status") return emit(ctx, "SF Fin status", statusText(), "info", fromPanel);
   if (sub === "help") return emit(ctx, "SF Fin help", renderHelp(), "info", fromPanel);
   if (sub === "connect") return connect(ctx, fromPanel);
   if (sub === "disconnect") return disconnect(ctx, fromPanel);
   if (sub === "doctor") {
-    const report = await runDoctor(ctx);
-    store.write(report.snapshot);
+    const result = await service.doctor(ctx);
     return emit(
       ctx,
-      report.outcome === "ok" ? "SF Fin connected" : "SF Fin doctor",
-      `${report.message}\n\n${buildStatusText(report.snapshot)}`,
-      report.outcome === "ok" ? "info" : "warning",
+      result.outcome === "ok" ? "SF Fin connected" : "SF Fin doctor",
+      result.text,
+      result.outcome === "ok" ? "info" : "warning",
       fromPanel,
     );
+  }
+  if (sub === "install") return install(service, ctx, parts[1], fromPanel);
+  if (sub === "debug" || sub === "debug-on" || sub === "debug-off") {
+    const mode = sub === "debug-on" ? "on" : sub === "debug-off" ? "off" : parts[1];
+    if (mode === "on" || mode === "off") {
+      const runs = parts[2] ? Number(parts[2]) : undefined;
+      return emit(
+        ctx,
+        "SF Fin verbose trace",
+        service.setVerbose(mode === "on", runs),
+        "info",
+        fromPanel,
+      );
+    }
+    return emit(ctx, "SF Fin debug bundle", service.debugBundle(runtimeMeta()), "info", fromPanel);
   }
   return emit(
     ctx,
     "SF Fin — unknown subcommand",
-    `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use connect, disconnect, status, doctor, or help.`,
+    `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use connect, disconnect, status, install, doctor, debug, or help.`,
     "warning",
     fromPanel,
   );
+}
+
+async function install(
+  service: FinService,
+  ctx: ExtensionCommandContext,
+  version: string | undefined,
+  fromPanel: boolean,
+): Promise<void> {
+  const plan = await service.planInstall(version);
+  if (plan.kind === "noop" || plan.kind === "refused") {
+    const result = await service.install(plan);
+    return emit(
+      ctx,
+      "SF Fin install",
+      result.text,
+      plan.kind === "noop" ? "info" : "warning",
+      fromPanel,
+    );
+  }
+  if (!ctx.hasUI) {
+    return emit(
+      ctx,
+      "SF Fin install",
+      `${plan.reason}\nRun manually:\n${plan.command}\nor use sf_fin action='install' with allow_mutation=true.`,
+      "info",
+      fromPanel,
+    );
+  }
+  const confirmed = await ctx.ui.confirm(
+    "Install or update the Fin CLI?",
+    `${plan.reason}\n\nThis runs:\n${plan.command}\n\nIt changes your global npm packages. Continue?`,
+  );
+  if (!confirmed)
+    return emit(ctx, "SF Fin install cancelled", "No changes were made.", "info", fromPanel);
+
+  ctx.ui.setStatus?.("sf-fin", `Installing ${plan.command.split(" ")[3] ?? "Fin CLI"}…`);
+  try {
+    const result = await service.install(plan);
+    return emit(
+      ctx,
+      result.ok ? "SF Fin install complete" : "SF Fin install failed",
+      result.text,
+      result.ok ? "success" : "warning",
+      fromPanel,
+    );
+  } finally {
+    ctx.ui.setStatus?.("sf-fin", undefined);
+  }
 }
 
 async function connect(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
@@ -166,6 +275,19 @@ async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Pro
     "info",
     fromPanel,
   );
+}
+
+function runtimeMeta(): { sfPiVersion?: string; piVersion?: string } {
+  let sfPiVersion: string | undefined;
+  try {
+    const pkg = JSON.parse(
+      readFileSync(path.resolve(import.meta.dirname, "..", "..", "package.json"), "utf8"),
+    ) as { version?: string };
+    sfPiVersion = pkg.version;
+  } catch {
+    sfPiVersion = undefined;
+  }
+  return { sfPiVersion, piVersion: getInstalledPiVersion() };
 }
 
 async function emit(

@@ -162,6 +162,8 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Symptom
 - Symptom
 - Symptom
+- Symptom
+- Symptom
 
 **[SF Herdr](./extensions/sf-herdr.md#troubleshooting)**
 

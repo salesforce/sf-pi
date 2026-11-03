@@ -41,7 +41,17 @@ export function buildStatusText(snapshot: FinStatusSnapshot): string {
   } else {
     lines.push("- Last doctor: never run");
   }
-  if (snapshot.cliVersion) lines.push(`- Fin CLI: ${snapshot.cliVersion}`);
+  if (snapshot.cliVersion) {
+    const update =
+      snapshot.latestVersion && snapshot.latestVersion !== snapshot.cliVersion
+        ? ` (latest ${snapshot.latestVersion})`
+        : "";
+    lines.push(
+      `- Fin CLI: ${snapshot.cliVersion}${update}${snapshot.installSource ? ` · ${snapshot.installSource}` : ""}`,
+    );
+  } else if (snapshot.lastOutcome === "cli_missing") {
+    lines.push("- Fin CLI: not installed (run /sf-fin install)");
+  }
   const id = snapshot.identity;
   if (id?.workspaceName || id?.appId) {
     lines.push(

@@ -91,7 +91,7 @@ _Salesforce documentation lookup for agents and humans, with Pi-native bearer au
 
 ### [SF Fin](./extensions/sf-fin)
 
-_Connect SF Pi to a Fin (formerly Intercom) workspace with a Pi-owned, masked personal API token and a read-only doctor check through the installed Fin CLI._
+_Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked personal API token, Guardrail-mediated Fin CLI install through global npm, live and cached doctor, and redacted debug traces._
 
 - Default: **on**
 - Commands: `/sf-fin`

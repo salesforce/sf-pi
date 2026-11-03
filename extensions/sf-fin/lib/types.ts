@@ -49,4 +49,19 @@ export interface FinStatusSnapshot {
   lastMessage?: string;
   cliVersion?: string;
   identity?: FinVerifiedIdentity;
+  /** Install readiness from the last explicit doctor or install run. */
+  cliPath?: string;
+  installSource?: "npm-global" | "other" | "missing";
+  latestVersion?: string;
+  /** Redacted `{ code, message }` from the last failed CLI call, for debug bundles. */
+  lastCliError?: { code?: string; message?: string };
+  /** Pattern-based recovery id from failure-diagnostics.ts. */
+  lastDiagnosis?: string;
+}
+
+/** Non-secret debug preference. `verboseRuns` counts remaining verbose doctor runs. */
+export interface FinDebugState {
+  verboseRuns?: number;
+  enabledAt?: string;
+  lastTracePath?: string;
 }

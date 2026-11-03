@@ -636,6 +636,48 @@ describe("Safety Kernel", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("confirms only executed sf_fin installs, with version-bound fingerprints", async () => {
+    const plan = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "install" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const doctor = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "doctor" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const execute = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "install", version: "0.14.1", allow_mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const other = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "install", version: "0.15.0", allow_mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(plan).toBeUndefined();
+    expect(doctor).toBeUndefined();
+    expect(execute).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-fin-cli-install",
+      approvalScope: { operationFamily: "fin cli install", allowSession: true },
+    });
+    expect(execute?.orgType).toBeUndefined();
+    expect(execute?.approvalScope?.fingerprint).not.toBe(other?.approvalScope?.fingerprint);
+    expect(shouldPowerToolAutoApprove(execute!, { mode: "native", nativeFamilies: ["fin"] })).toBe(
+      true,
+    );
+    expect(shouldPowerToolAutoApprove(execute!, { mode: "off" })).toBe(false);
+  });
+
   it("confirms mutating sf_flow lifecycle actions with exact action fingerprints", async () => {
     mockedEnv = env("FlowLifecycleDev", "developer");
     lookupOrg("FlowLifecycleDev", "developer");

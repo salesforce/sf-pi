@@ -105,6 +105,15 @@ operator control and retain the audit output; hard blocks remain active.
 **Audit is empty after resume:** Decisions belong to the active session file.
 Confirm that the resumed branch is the one that recorded the decision.
 
+## Fin CLI install
+
+`sf_fin action='install'` with `allow_mutation=true` is a native mutation
+(`native-sf-fin-cli-install`) that runs a global npm install of the Fin CLI.
+Planning without `allow_mutation` is prompt-free. No Salesforce org is
+involved, so it asks for approval by default and Power Tool Mode auto-approves
+it when the **Fin CLI install** family is selected (or mode is all
+confirm-class decisions) without the production/unknown-org opt-in.
+
 ## Integration and Flow production controls
 
 SF Guardrail owns org-sensitive safety policy for `sf_integrate` mutations and

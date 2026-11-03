@@ -4,7 +4,7 @@ import type { ClassifiedDecision } from "./types.ts";
 
 export type GuardrailPowerToolMode = "off" | "native" | "all";
 export type GuardrailNativeToolFamily =
-  "apex" | "agentscript" | "data360" | "browser" | "slack" | "soql" | "integrate" | "flow";
+  "apex" | "agentscript" | "data360" | "browser" | "slack" | "soql" | "integrate" | "flow" | "fin";
 
 export interface GuardrailPowerToolSettings {
   mode?: GuardrailPowerToolMode;
@@ -32,6 +32,7 @@ export const NATIVE_TOOL_FAMILIES: Array<{
     description: "setup, credential population, OAuth authorization",
   },
   { id: "flow", label: "Flow lifecycle", description: "deploy, activate, deactivate" },
+  { id: "fin", label: "Fin CLI install", description: "sf_fin global npm install/update" },
   { id: "soql", label: "SOQL disclosures", description: "export, queryAll, unbounded reads" },
 ];
 
@@ -99,6 +100,7 @@ export function nativeToolFamilyForDecision(
   if (family === "browser commit") return "browser";
   if (family === "slack canvas write") return "slack";
   if (family.startsWith("soql ")) return "soql";
+  if (family === "fin cli install") return "fin";
   return undefined;
 }
 

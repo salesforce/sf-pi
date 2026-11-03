@@ -199,20 +199,59 @@ export function classifyCliResult(result: CliRunResult): FinOutcomeKind {
   }
 }
 
-/** Extract the CLI's `{ error: { message } }` JSON envelope when present. */
-export function readCliErrorMessage(result: CliRunResult): string | undefined {
+/**
+ * Find the CLI's `{ "error": { ... } }` envelope. With `--verbose` the CLI
+ * prints HTTP trace lines before it, so scan for the last top-level JSON block.
+ */
+function findErrorEnvelope(
+  result: CliRunResult,
+): { code?: unknown; message?: unknown } | undefined {
   for (const stream of [result.stderr, result.stdout]) {
-    const trimmed = stream.trim();
-    if (!trimmed.startsWith("{")) continue;
-    try {
-      const parsed = JSON.parse(trimmed) as { error?: { message?: unknown } };
-      if (typeof parsed.error?.message === "string") return parsed.error.message;
-    } catch {
-      // Not a JSON envelope.
+    const lines = stream.split("\n");
+    for (let start = lines.length - 1; start >= 0; start--) {
+      if (!lines[start]?.startsWith("{")) continue;
+      try {
+        const parsed = JSON.parse(lines.slice(start).join("\n")) as {
+          error?: Record<string, unknown>;
+        };
+        if (parsed.error && typeof parsed.error === "object") return parsed.error;
+      } catch {
+        // Not a complete JSON block from here; keep scanning upward.
+      }
     }
   }
+  return undefined;
+}
+
+/** Extract the CLI's error message, falling back to the first stderr line. */
+export function readCliErrorMessage(result: CliRunResult): string | undefined {
+  const envelope = findErrorEnvelope(result);
+  if (typeof envelope?.message === "string") return envelope.message;
   const fallback = (result.stderr || result.spawnError || "").trim();
   return fallback ? fallback.split("\n")[0] : undefined;
+}
+
+/** Extract the CLI's error code (`auth_error`, `permission_denied`, …) when present. */
+export function readCliErrorCode(result: CliRunResult): string | undefined {
+  const envelope = findErrorEnvelope(result);
+  return typeof envelope?.code === "string" ? envelope.code : undefined;
+}
+
+/**
+ * Defense in depth for verbose traces: drop credential-bearing header and
+ * cookie lines and mask bearer/basic values even when the exact secret is
+ * not known (for example, a token echoed in a different form).
+ */
+export function scrubTrace(text: string, secret: string | undefined): string {
+  return redactSecret(text, secret)
+    .split("\n")
+    .map((line) =>
+      /^\s*[<>]?\s*(authorization|cookie|set-cookie|x-intercom-token)\s*:/i.test(line)
+        ? line.replace(/:.*/, ": [redacted]")
+        : line,
+    )
+    .join("\n")
+    .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/g, "$1 [redacted]");
 }
 
 export function parseCliVersion(stdout: string): string | undefined {

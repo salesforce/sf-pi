@@ -1,10 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Registration smoke test: factory registers its surfaces without network or credentials. */
-import { describe, expect, it, vi } from "vitest";
+/** Registration smoke test: factory registers its surfaces without network, exec, or credentials. */
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  getRegisteredDoctors,
+  resetExtensionDoctorRegistry,
+} from "../../../lib/common/doctor/registry.ts";
 
 function fakePi() {
   return {
     on: vi.fn(),
+    exec: vi.fn(),
     registerProvider: vi.fn(),
     registerTool: vi.fn(),
     registerCommand: vi.fn(),
@@ -12,8 +17,12 @@ function fakePi() {
   };
 }
 
+afterEach(() => {
+  resetExtensionDoctorRegistry();
+});
+
 describe("sf-fin", () => {
-  it("registers the auth-only provider, sf_fin tool, /sf-fin command, and lifecycle hooks", async () => {
+  it("registers provider, tool, command, lifecycle hooks, and a /sf-pi doctor provider", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const mod = await import("../index.ts");
     const pi = fakePi();
@@ -27,25 +36,48 @@ describe("sf-fin", () => {
       "session_shutdown",
       "session_start",
     ]);
+    expect(getRegisteredDoctors().map((entry) => entry.extensionId)).toContain("sf-fin");
     expect(fetchSpy).not.toHaveBeenCalled();
+    expect(pi.exec).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
 
-  it("offers flat subcommand completions", async () => {
+  it("offers flat subcommand completions including install and debug", async () => {
     const mod = await import("../index.ts");
     const pi = fakePi();
     mod.default(pi as never);
     const command = pi.registerCommand.mock.calls[0]?.[1];
-    expect(
-      command.getArgumentCompletions("doc").map((item: { value: string }) => item.value),
-    ).toEqual(["doctor"]);
+    const values = (prefix: string) =>
+      command.getArgumentCompletions(prefix).map((item: { value: string }) => item.value);
+    expect(values("ins")).toEqual(["install"]);
+    expect(values("deb")).toEqual(["debug"]);
   });
 
-  it("exposes only read-only tool actions in v1", async () => {
+  it("exposes status, doctor, install, and debug tool actions", async () => {
     const mod = await import("../index.ts");
     const pi = fakePi();
     mod.default(pi as never);
     const tool = pi.registerTool.mock.calls[0]?.[0];
-    expect(tool.parameters.properties.action.enum).toEqual(["status", "doctor"]);
+    expect(tool.parameters.properties.action.enum).toEqual([
+      "status",
+      "doctor",
+      "install",
+      "debug",
+    ]);
+  });
+
+  it("aggregate doctor makes no exec or network call", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const mod = await import("../index.ts");
+    const pi = fakePi();
+    mod.default(pi as never);
+    const provider = getRegisteredDoctors().find(
+      (entry) => entry.extensionId === "sf-fin",
+    )?.provider;
+    const report = await provider?.("/tmp");
+    expect(report?.checks.map((check) => check.id)).toContain("fin.cli");
+    expect(pi.exec).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });

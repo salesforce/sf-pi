@@ -212,3 +212,32 @@ describe("Power Tool Mode integration and Flow controls", () => {
     ).toBe(false);
   });
 });
+
+describe("Power Tool Mode Fin CLI install", () => {
+  const finInstall = decision({
+    ruleId: "native-sf-fin-cli-install",
+    subject: "sf_fin install @intercom/cli@0.14.1",
+    approvalScope: {
+      fingerprint: "fin",
+      label: "npm install -g @intercom/cli@0.14.1",
+      operationFamily: "fin cli install",
+      riskTier: "local_package_install_exact",
+      allowSession: true,
+    },
+  });
+
+  it("auto-approves only when the fin family is selected; no org opt-in needed", () => {
+    expect(
+      shouldPowerToolAutoApprove(finInstall, { mode: "native", nativeFamilies: ["fin"] }),
+    ).toBe(true);
+    expect(
+      shouldPowerToolAutoApprove(finInstall, { mode: "native", nativeFamilies: ["flow"] }),
+    ).toBe(false);
+    expect(shouldPowerToolAutoApprove(finInstall, { mode: "all" })).toBe(true);
+    expect(shouldPowerToolAutoApprove(finInstall, undefined)).toBe(false);
+  });
+
+  it("is in the default native family set", () => {
+    expect(defaultNativeFamilies()).toContain("fin");
+  });
+});

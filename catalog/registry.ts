@@ -165,7 +165,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-fin",
     name: "SF Fin",
-    description: "Connect SF Pi to a Fin (formerly Intercom) workspace with a Pi-owned, masked personal API token and a read-only doctor check through the installed Fin CLI.",
+    description: "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked personal API token, Guardrail-mediated Fin CLI install through global npm, live and cached doctor, and redacted debug traces.",
     file: "extensions/sf-fin/index.ts",
     category: "agent-tool",
     maturity: "experimental",
