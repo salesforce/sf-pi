@@ -157,6 +157,12 @@ Jump to an extension's Troubleshooting section to see the full fix. This index i
 - Collections look stale
 - Fetch returns the wrong locale or version
 
+**[SF Fin](./extensions/sf-fin.md#troubleshooting)**
+
+- Symptom
+- Symptom
+- Symptom
+
 **[SF Herdr](./extensions/sf-herdr.md#troubleshooting)**
 
 - `sf_herdr_plan` is unavailable

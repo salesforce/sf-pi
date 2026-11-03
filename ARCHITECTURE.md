@@ -32,6 +32,7 @@ sf-pi/
 │   ├── sf-devbar/
 │   ├── sf-docs/
 │   ├── sf-feedback/
+│   ├── sf-fin/
 │   ├── sf-flow/
 │   ├── sf-guardrail/
 │   ├── sf-herdr/

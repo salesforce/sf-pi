@@ -89,6 +89,15 @@ _Salesforce documentation lookup for agents and humans, with Pi-native bearer au
 - Tools: `sf_docs`
 - Providers: `sf-docs`
 
+### [SF Fin](./extensions/sf-fin)
+
+_Connect SF Pi to a Fin (formerly Intercom) workspace with a Pi-owned, masked personal API token and a read-only doctor check through the installed Fin CLI._
+
+- Default: **on**
+- Commands: `/sf-fin`
+- Tools: `sf_fin`
+- Providers: `sf-fin`
+
 ### [SF Flow](./extensions/sf-flow)
 
 _Lean Salesforce Flow lifecycle workflows for pi: core-five plus queue, direct-agent, skills, availability, and no-route Omni-Channel authoring; org grounding; preventive quality; bounded repair; Mermaid topology; check-only validation; guarded lifecycle; and targeted Flow tests._
