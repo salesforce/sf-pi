@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.344.6](https://github.com/salesforce/sf-pi/compare/v0.344.5...v0.344.6) (2026-11-03)
+
+
+### Bug Fixes
+
+* **sf-flow:** resolve CodeQL incomplete-sanitization alert in recipe test ([7c90df3](https://github.com/salesforce/sf-pi/commit/7c90df33519d306dc9cdf42010436326985328fe))
+
 ## [0.344.5](https://github.com/salesforce/sf-pi/compare/v0.344.4...v0.344.5) (2026-11-03)
 
 
