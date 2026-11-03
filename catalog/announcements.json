@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.344.4-2026-11-03",
-  "latestVersion": "0.344.4",
+  "revision": "release-0.344.5-2026-11-03",
+  "latestVersion": "0.344.5",
   "announcements": [
     {
-      "id": "release-0.344.4",
+      "id": "release-0.344.5",
       "kind": "update",
-      "title": "sf-pi v0.344.4 — runtime: audit Pi 1.5.0 compatibility",
+      "title": "sf-pi v0.344.5 — deps: bump the prod-minor-and-patch group across 1 directory with 2 updates",
       "publishedAt": "2026-11-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.344.4",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.344.5",
       "severity": "info",
-      "body": "runtime: audit Pi 1.5.0 compatibility"
+      "body": "deps: bump the prod-minor-and-patch group across 1 directory with 2 updates"
     }
   ]
 }
