@@ -11,7 +11,7 @@
  * The only module state is a process-local cache of Pi's immutable built-in catalog.
  */
 
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { Api, Model, ModelThinkingLevel } from "@earendil-works/pi-ai";
 import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
 
 export type GatewayApi = "anthropic-messages" | "openai-completions" | "openai-responses";
@@ -304,7 +304,12 @@ export function toProviderModelConfig(
               ? apiReference.api
               : "openai-completions";
 
-  const thinkingLevelMap = def.reasoning ? reference?.thinkingLevelMap : undefined;
+  // Pi 1.5 derives ThinkingLevelMap from a pi-schema type that resolves to
+  // `unknown` without strict mode; name its shape so the copy type-checks.
+  const thinkingLevelMap = def.reasoning
+    ? (reference?.thinkingLevelMap as
+        Partial<Record<ModelThinkingLevel, string | null>> | undefined)
+    : undefined;
   const compat =
     getPortableGatewayModelCompat(id, api, references) ??
     (api === "openai-completions" || api === "openai-responses" ? COMMON_OPENAI_COMPAT : undefined);

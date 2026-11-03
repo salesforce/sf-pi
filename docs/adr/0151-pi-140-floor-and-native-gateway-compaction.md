@@ -26,6 +26,8 @@ stable `>=1.4.0 <2.0.0`; the **Pi Runtime Audit Edge** and recommended runtime
 remain 1.4.0, with an audited ceiling of `<1.4.1`. Required compatibility CI
 covers exact 1.4.0 and retains a non-blocking `latest` canary. The Node.js floor
 remains 22.19.0. There is no older-runtime implementation or version branch.
+[ADR 0152](./0152-pi-150-audit-edge-and-extension-type-view.md) later advances
+the audit edge to Pi 1.5.0 without changing this floor.
 
 Gateway compaction calls Pi's public `compact()` with its existing preparation
 and an adapter through `ctx.modelRegistry.streamSimple()`. Pi owns prompt

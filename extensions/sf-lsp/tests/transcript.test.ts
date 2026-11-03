@@ -44,6 +44,12 @@ describe("emitTranscriptRow", () => {
 describe("createTranscriptRenderer", () => {
   it("renders the persisted human-only entry", () => {
     const renderer = createTranscriptRenderer();
+    // Pi 1.5 adds keybinding hints to entry render options; Pi 1.4 has only `expanded`.
+    const renderOptions = {
+      expanded: true,
+      keyText: () => "",
+      keyHint: (_key: string, description: string) => description,
+    };
     const component = renderer(
       {
         type: "custom",
@@ -62,7 +68,7 @@ describe("createTranscriptRenderer", () => {
           },
         } satisfies LspTranscriptEntry,
       },
-      { expanded: true },
+      renderOptions,
       passthroughTheme,
     );
 
