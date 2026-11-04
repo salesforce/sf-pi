@@ -116,7 +116,12 @@ describe("debug bundle", () => {
     });
 
     expect(bundle).not.toContain(SENTINEL);
-    expect(bundle).not.toContain(`${SENTINEL.length}`);
+    // The token length must never be reported. Match it as a labelled value, not a bare
+    // number, so unrelated numbers (Node versions, timestamps) cannot collide with it.
+    expect(bundle).not.toMatch(
+      new RegExp(`(length|chars?|characters)\\D{0,3}${SENTINEL.length}\\b`, "i"),
+    );
+    expect(bundle).not.toMatch(/token[^\n]*\d+\s*(chars?|characters)/i);
     expect(bundle).toContain("INTERCOM_REGION, INTERCOM_TOKEN");
     expect(bundle).not.toMatch(/INTERCOM_REGION=|\beu\b.*INTERCOM/);
     expect(bundle).toContain("- Source: pi-auth");
