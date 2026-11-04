@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.349.0-2026-11-04",
-  "latestVersion": "0.349.0",
+  "revision": "release-0.349.1-2026-11-04",
+  "latestVersion": "0.349.1",
   "announcements": [
     {
-      "id": "release-0.349.0",
+      "id": "release-0.349.1",
       "kind": "update",
-      "title": "sf-pi v0.349.0 — sf-fin: add Fin Agent API key safety checks",
+      "title": "sf-pi v0.349.1 — sf-fin: load in git installs (typebox/schema and yaml imports)",
       "publishedAt": "2026-11-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.349.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.349.1",
       "severity": "info",
-      "body": "sf-fin: add Fin Agent API key safety checks"
+      "body": "sf-fin: load in git installs (typebox/schema and yaml imports)"
     }
   ]
 }
