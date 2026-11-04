@@ -36,6 +36,7 @@ Open its Manager detail or change its package state with:
 - Doctor runs `intercom --version` and `intercom me` only; Fin SDK actions enable the SDK by default on first use through an explicit probe → POST /fin-sdk/enable → verify sequence before any `fin …` CLI call, so the CLI's silent auto-enable never fires; the `/sf-pi doctor` provider reads cached state only.
 - Install runs exactly `npm install -g @intercom/cli@&lt;exact version&gt;` without sudo or `@latest`, honors npm release-age policy, and refuses CLIs not installed by global npm; agent execution (`allow_mutation=true`) is an SF Guardrail native mutation in the `fin` Power Tool family.
 - Verbose traces drop Authorization, Cookie, and bearer/basic values, are written as 0600 files with ten-file retention, self-disarm after the armed runs, and expose only the file path to the model.
+- Procedure upload validates against the workspace schema first, never sets state (cannot publish), and verifies the saved copy semantically; simulation sets are validated per test; upload, upload_simulations, and simulate are SF Guardrail native writes in the fin Power Tool family, and validate is local.
 
 ## Exact reference
 

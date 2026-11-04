@@ -116,6 +116,46 @@ export async function enableFinSdk(
       };
 }
 
+/**
+ * Procedure version history is gated separately from the rest of the Fin SDK:
+ * a workspace can serve every other `/fin-sdk/*` endpoint while
+ * `/fin-sdk/procedures/{id}/versions` still returns `fin_sdk_not_enabled`, which
+ * would make the CLI attempt its silent auto-enable. SF Fin reads it directly
+ * and never through the CLI.
+ */
+export async function readProcedureVersions(
+  credential: FinCredential,
+  procedureId: string,
+  options: { fetch?: FetchFn; signal?: AbortSignal } = {},
+): Promise<
+  | { state: "ok"; versions: unknown }
+  | { state: "gated"; message: string }
+  | { state: "error"; message: string }
+> {
+  if (!/^[A-Za-z0-9_-]+$/.test(procedureId))
+    return { state: "error", message: "Invalid procedure id." };
+  const res = await request(
+    "GET",
+    `/fin-sdk/procedures/${procedureId}/versions`,
+    credential,
+    options,
+  );
+  if (res.ok === false) return { state: "error", message: res.message };
+  if (res.status === 200) return { state: "ok", versions: res.json };
+  const error = firstError(res.json);
+  if (res.status === 403 && error?.code === FIN_SDK_GATE_CODE) {
+    return {
+      state: "gated",
+      message:
+        "Procedure version history needs an additional Fin feature that is not enabled for this workspace; other SDK operations are unaffected. SF Fin will not ask the CLI to enable it.",
+    };
+  }
+  return {
+    state: "error",
+    message: redactSecret(error?.message ?? `HTTP ${res.status}`, credential.token),
+  };
+}
+
 async function request(
   method: "GET" | "POST",
   path: string,

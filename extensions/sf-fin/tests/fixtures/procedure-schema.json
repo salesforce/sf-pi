@@ -1,0 +1,68 @@
+{
+  "$comment": "Synthetic, minimal procedure schema for SF Fin tests. Mirrors the structural rules SF Fin relies on; not a copy of any workspace schema.",
+  "type": "object",
+  "required": ["name", "targeting", "procedure"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "oneOf": [{ "const": "new" }, { "type": "integer" }] },
+    "version": { "type": ["integer", "null"] },
+    "state": { "enum": ["draft", "live", "paused"] },
+    "name": { "type": "string", "minLength": 1 },
+    "trigger_description": { "type": "string" },
+    "positive_triggers": { "type": "array", "items": { "type": "string" } },
+    "negative_triggers": { "type": "array", "items": { "type": "string" } },
+    "targeting": {
+      "type": "object",
+      "properties": {
+        "channels": { "type": "array", "items": { "enum": ["web", "ios", "android", "email"] } }
+      }
+    },
+    "guidance": { "type": "string" },
+    "procedure": {
+      "type": "object",
+      "required": ["main"],
+      "additionalProperties": { "$ref": "#/$defs/steps" }
+    }
+  },
+  "$defs": {
+    "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } },
+    "step": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["type", "if", "then"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "decide" },
+            "condition_type": { "enum": ["natural_language", "code"] },
+            "if": { "type": "string" },
+            "then": { "$ref": "#/$defs/branch" },
+            "else": { "$ref": "#/$defs/branch" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "escalate"],
+          "additionalProperties": false,
+          "properties": { "type": { "const": "escalate" }, "escalate": { "type": "string" } }
+        }
+      ]
+    },
+    "branch": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1 },
+          {
+            "type": "object",
+            "required": ["type", "escalate"],
+            "additionalProperties": false,
+            "properties": { "type": { "const": "escalate" }, "escalate": { "type": "string" } }
+          }
+        ]
+      }
+    }
+  }
+}

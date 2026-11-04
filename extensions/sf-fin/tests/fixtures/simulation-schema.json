@@ -1,0 +1,39 @@
+{
+  "$comment": "Synthetic, minimal simulation schema for SF Fin tests.",
+  "type": "object",
+  "required": ["type"],
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "simulation_test" },
+    "id": { "type": "integer" },
+    "procedure_id": { "oneOf": [{ "type": "integer" }, { "type": "string" }] },
+    "name": { "type": "string" },
+    "opening_message": { "type": "string" },
+    "customer_context": { "type": "string" },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["outcome"],
+            "additionalProperties": false,
+            "properties": { "outcome": { "enum": ["finished", "ticket_handoff"] } }
+          },
+          {
+            "type": "object",
+            "required": ["escalated_to"],
+            "additionalProperties": false,
+            "properties": { "escalated_to": { "type": "string", "minLength": 1 } }
+          },
+          {
+            "type": "object",
+            "required": ["agent_response"],
+            "additionalProperties": false,
+            "properties": { "agent_response": { "type": "string" } }
+          }
+        ]
+      }
+    }
+  }
+}

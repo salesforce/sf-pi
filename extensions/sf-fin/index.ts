@@ -17,6 +17,7 @@
  *   /sf-fin doctor           | Live read-only checks (Node, CLI, version, credential, workspace)
  *   /sf-fin debug [on|off]   | Redacted bundle, or arm/disarm a one-shot verbose trace
  *   /sf-fin sdk [manifest|download] | Fin-as-code reads; enables the Fin SDK on first use
+ *   /sf-fin sdk validate|upload|simulate | Procedure draft lifecycle (never publishes)
  *   /sf-pi doctor            | Cached sf-fin checks (no network, no credential)
  *   sf_fin <action>          | Same actions for the agent; install execution is Guardrail-mediated
  */
@@ -157,6 +158,27 @@ async function handleCommand(
     );
   }
   if (sub === "install") return install(service, ctx, parts[1], fromPanel);
+  if (
+    sub === "sdk" &&
+    (parts[1] === "validate" ||
+      parts[1] === "upload" ||
+      parts[1] === "upload_simulations" ||
+      parts[1] === "simulate")
+  ) {
+    const op = parts[1];
+    const arg = parts.slice(2).join(" ") || undefined;
+    const result = await service.procedure(
+      ctx,
+      op === "simulate"
+        ? { operation: "simulate", procedureId: arg }
+        : op === "upload"
+          ? { operation: "upload", file: arg }
+          : op === "upload_simulations"
+            ? { operation: "upload_simulations", file: arg }
+            : { operation: "validate", file: arg },
+    );
+    return emit(ctx, `SF Fin SDK ${op}`, result.text, result.ok ? "info" : "warning", fromPanel);
+  }
   if (sub === "sdk") {
     const operation = parts[1] === "download" ? "download" : "manifest";
     const result = await service.sdk(ctx, operation);

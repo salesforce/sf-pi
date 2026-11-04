@@ -15,6 +15,16 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 - `sf_fin action='sdk' operation='download'` downloads and extracts all Fin SDK resources (editable `src/`, read-only `.fin/` reference data and JSON schemas, docs, and bundled agent skills). The result lists the extraction path; read the workspace `AGENTS.md` there before editing.
 - The first SDK call on a workspace enables the Fin SDK (Guardrail-mediated). Never run `intercom fin …` through `bash`.
 
+### Procedure draft loop
+
+1. Write `procedure.yaml` following the downloaded workspace `AGENTS.md`, `docs/PROCEDURES.md`, and the procedure-generator skill.
+2. `sf_fin action='sdk' operation='validate' file=…`, and fix every issue it reports.
+3. `operation='upload' file=…`. New files use `id: new`; after the first upload, set `id` and the returned `version` before editing again. Never add `state`. Upload saves a draft only, and the result reports whether the saved copy is semantically identical.
+4. Write a `simulation_set` (`type: simulation_set`, `procedure_id`, `tests:` of `type: simulation_test`). Assert on `outcome`, `agent_response`, or `escalated_to` (use `DEFAULT` for the default inbox), never on `temporary.*` attributes. Then `operation='upload_simulations' file=…`.
+5. `operation='simulate' procedure_id=…`. Read each failed assertion's reasoning, fix the procedure or the test, and repeat from step 2.
+
+- Publishing is out of scope for `sf_fin`; tell the user it is a separate decision.
+
 ## Recovery
 
 | Outcome             | Next step                                                                             |

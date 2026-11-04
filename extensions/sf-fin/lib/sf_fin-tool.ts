@@ -22,9 +22,29 @@ const Params = Type.Object({
       "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads (enables the Fin SDK on first use).",
   }),
   operation: Type.Optional(
-    StringEnum(["manifest", "download"] as const, {
+    StringEnum(
+      ["manifest", "download", "validate", "upload", "upload_simulations", "simulate"] as const,
+      {
+        description:
+          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id.",
+      },
+    ),
+  ),
+  file: Type.Optional(
+    Type.String({
       description:
-        "sdk only: manifest summarizes procedures, workflows, guidance, and connectors; download fetches and extracts all Fin SDK resources locally.",
+        "sdk validate/upload: path to a procedure.yaml; upload_simulations: path to a simulation_set YAML (relative to cwd or absolute).",
+    }),
+  ),
+  note: Type.Optional(
+    Type.String({ description: "sdk upload: version note recorded with the save." }),
+  ),
+  procedure_id: Type.Optional(
+    Type.String({ description: "sdk simulate: Fin procedure id returned by upload." }),
+  ),
+  generate: Type.Optional(
+    Type.Boolean({
+      description: "sdk simulate: generate simulations before running them. Default true.",
     }),
   ),
   version: Type.Optional(
@@ -51,7 +71,11 @@ const Params = Type.Object({
 
 type Params = {
   action: "status" | "doctor" | "install" | "debug" | "sdk";
-  operation?: "manifest" | "download";
+  operation?: "manifest" | "download" | "validate" | "upload" | "upload_simulations" | "simulate";
+  file?: string;
+  note?: string;
+  procedure_id?: string;
+  generate?: boolean;
   version?: string;
   allow_mutation?: boolean;
   verbose?: "on" | "off";
@@ -75,6 +99,7 @@ export function registerSfFinTool(
       `Never ask the user to paste a Fin token into chat; direct them to /login ${PROVIDER_NAME}, which masks the token.`,
       "Use sf_fin action='debug' for a redacted support bundle; arm verbose='on' only when a doctor failure needs the CLI's HTTP trace.",
       "Use sf_fin action='sdk' operation='manifest' or 'download' for Fin-as-code reads; SF Fin enables the Fin SDK on first use (Guardrail-mediated) and never runs `intercom fin …` through bash.",
+      "For a procedure, run sf_fin sdk operation='validate' file=…, then operation='upload' (unpublished draft, round-trip verified), then operation='simulate' procedure_id=…; uploads never set state, and publishing is separate.",
     ],
     parameters: Params,
     renderCall: (args, theme) => {
@@ -139,13 +164,38 @@ export function registerSfFinTool(
         };
       }
 
+      if (
+        input.action === "sdk" &&
+        (input.operation === "validate" ||
+          input.operation === "upload" ||
+          input.operation === "upload_simulations" ||
+          input.operation === "simulate")
+      ) {
+        const result = await service.procedure(
+          ctx,
+          input.operation === "simulate"
+            ? { operation: "simulate", procedureId: input.procedure_id, generate: input.generate }
+            : input.operation === "upload"
+              ? { operation: "upload", file: input.file, note: input.note }
+              : input.operation === "upload_simulations"
+                ? { operation: "upload_simulations", file: input.file }
+                : { operation: "validate", file: input.file },
+        );
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: { action: "sdk", operation: input.operation, ok: result.ok, ...result.details },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
+
       if (input.action === "sdk") {
-        const result = await service.sdk(ctx, input.operation ?? "manifest");
+        const operation = input.operation === "download" ? "download" : "manifest";
+        const result = await service.sdk(ctx, operation);
         return {
           content: [{ type: "text", text: result.text }],
           details: {
             action: "sdk",
-            operation: input.operation ?? "manifest",
+            operation,
             ok: result.ok,
             enabledNow: result.enabledNow,
             ...result.details,

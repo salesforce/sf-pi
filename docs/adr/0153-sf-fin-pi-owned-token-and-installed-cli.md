@@ -33,3 +33,21 @@ Fin-as-code CLI commands (`intercom fin …`) call the Fin SDK endpoints. On a w
 `sf_fin action='sdk'` (`/sf-fin sdk manifest|download`) first probes `GET /fin-sdk/manifest` directly, without retry. When the probe reports `not_enabled`, SF Fin performs the single `POST /fin-sdk/enable`, verifies it with a second probe, and records the result in a shared credential-free state file (`lib/common/fin-sdk-state.ts`, holding state, app id, and timestamps). Only then does it run the CLI, so the CLI's silent auto-enable path can never fire. If enabling fails, the CLI is not run.
 
 SF Guardrail reads that shared state. An `sf_fin sdk` call on a workspace not recorded as enabled is the native mutation `native-sf-fin-sdk-enable` (family `fin sdk enable`, Power Tool family `fin`, no Salesforce org). Once the workspace is recorded as enabled, SDK reads are prompt-free. `download` writes the ZIP and its extraction under the owner-only per-workspace directory `<globalAgentDir>/sf-pi/sf-fin/sdk/<app id>/`. Doctor and `me` remain free of SDK calls.
+
+## Addendum: procedure draft lifecycle
+
+`sf_fin action='sdk'` adds `validate`, `upload`, `upload_simulations`, and `simulate`:
+
+- **`validate`** is local. It parses the YAML and checks it against the workspace's downloaded `.fin/schema/procedure.json` using TypeBox, which validates raw JSON Schema, so SF Fin adds no validator dependency. It also enforces SF Fin draft rules: no `state`, and a `version` when editing an existing procedure.
+- **`upload`** validates first, then runs `intercom fin procedures upload`. It never sets `state`, so an upload cannot publish; publishing remains a separate explicit step. SF Fin verifies the round-trip semantically rather than with the CLI's raw `--verify`. Fin canonicalizes on save:
+  - it drops redundant `type:` keys and the default `condition_type: natural_language`;
+  - it collapses one-element `then` / `else` lists;
+  - it rewrites `{ type: escalate, escalate: reason }` as `reason <escalate />`;
+  - it re-chomps block scalars and adds server fields.
+
+  Comparing raw fields would therefore report false drift. `procedure-normalize.ts` normalizes both documents to that canonical form, so only real changes surface.
+
+- **`upload_simulations`** uploads a `simulation_set` (`type`, `procedure_id`, `tests[]`) through `intercom fin simulations upload`. Uploads are additive: a test with an `id` updates that test, a test without one is added, and nothing is deleted, so SF Fin warns about duplicate names. The public Fin CLI rejects single `simulation_test` resources. Each test is checked against the workspace `simulation.json`, plus rules observed from the live API: attribute assertions on `temporary.*` are rejected, and a default escalation is asserted with `escalated_to: DEFAULT`.
+- **`simulate`** optionally generates tests, then waits a bounded number of polls for them to appear, because generation completes asynchronously and can produce none. It then runs the tests, polls each result a bounded number of times, and summarizes `assertions_results`, including the evaluator's reasoning for each failed assertion.
+
+SF Guardrail classifies `upload`, `upload_simulations`, and `simulate` as `native-sf-fin-procedure-write` (family `fin procedure write`, Power Tool family `fin`, no Salesforce org); `validate` is prompt-free. Procedure version history (`/fin-sdk/procedures/{id}/versions`) is gated by a separate Fin feature even after the SDK is enabled, and the CLI's `procedures versions` command would try its silent auto-enable on that 403. SF Fin therefore reads version history only through a direct request and reports the separate gate.

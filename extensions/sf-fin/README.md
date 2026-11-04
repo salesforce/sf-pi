@@ -22,18 +22,24 @@ This version does not author, publish, or change any Fin workspace configuration
 
 ## Commands
 
-| Command                     | Purpose                                                 |
-| --------------------------- | ------------------------------------------------------- |
-| `/sf-fin`                   | Open SF Fin in the SF Pi Manager                        |
-| `/sf-fin connect`           | Prefill native `/login sf-fin`                          |
-| `/sf-fin disconnect`        | Prefill native `/logout sf-fin`                         |
-| `/sf-fin status`            | Print cached credential, region, CLI, and doctor result |
-| `/sf-fin install [version]` | Install or update the Fin CLI after confirmation        |
-| `/sf-fin doctor`            | Live read-only checks                                   |
-| `/sf-fin debug`             | Redacted support bundle                                 |
-| `/sf-fin debug on [runs]`   | Trace the next doctor run(s) with the CLI's `--verbose` |
-| `/sf-fin debug off`         | Disarm verbose tracing                                  |
-| `/sf-fin help`              | Print setup guidance                                    |
+| Command                                 | Purpose                                                 |
+| --------------------------------------- | ------------------------------------------------------- |
+| `/sf-fin`                               | Open SF Fin in the SF Pi Manager                        |
+| `/sf-fin connect`                       | Prefill native `/login sf-fin`                          |
+| `/sf-fin disconnect`                    | Prefill native `/logout sf-fin`                         |
+| `/sf-fin status`                        | Print cached credential, region, CLI, and doctor result |
+| `/sf-fin install [version]`             | Install or update the Fin CLI after confirmation        |
+| `/sf-fin doctor`                        | Live read-only checks                                   |
+| `/sf-fin debug`                         | Redacted support bundle                                 |
+| `/sf-fin debug on [runs]`               | Trace the next doctor run(s) with the CLI's `--verbose` |
+| `/sf-fin debug off`                     | Disarm verbose tracing                                  |
+| `/sf-fin sdk [manifest]`                | Summarize Fin-as-code resources (enables the SDK once)  |
+| `/sf-fin sdk download`                  | Download and extract all Fin SDK resources locally      |
+| `/sf-fin sdk validate <file>`           | Check a procedure.yaml against the workspace schema     |
+| `/sf-fin sdk upload <file>`             | Upload an unpublished draft; verify the saved copy      |
+| `/sf-fin sdk upload_simulations <file>` | Upload a simulation set for a procedure                 |
+| `/sf-fin sdk simulate <id>`             | Generate (optional) and run simulations, with results   |
+| `/sf-fin help`                          | Print setup guidance                                    |
 
 The agent uses the same operations through `sf_fin`. `sf_fin action='install'`
 returns a plan; executing it requires `allow_mutation=true` and is mediated by
