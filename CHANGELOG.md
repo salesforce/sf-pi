@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.347.0](https://github.com/salesforce/sf-pi/compare/v0.346.0...v0.347.0) (2026-11-04)
+
+
+### Features
+
+* **sf-fin:** add Guardrail-mediated procedure publish and pause ([#867](https://github.com/salesforce/sf-pi/issues/867)) ([408b898](https://github.com/salesforce/sf-pi/commit/408b89851768c26a18f3659d94c5c40aba8c68eb))
+
 ## [0.346.0](https://github.com/salesforce/sf-pi/compare/v0.345.0...v0.346.0) (2026-11-04)
 
 
