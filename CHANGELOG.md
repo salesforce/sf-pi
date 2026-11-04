@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.346.0](https://github.com/salesforce/sf-pi/compare/v0.345.0...v0.346.0) (2026-11-04)
+
+
+### Features
+
+* **sf-fin:** add Fin procedure draft lifecycle with semantic verify and simulations ([#865](https://github.com/salesforce/sf-pi/issues/865)) ([5aacaa3](https://github.com/salesforce/sf-pi/commit/5aacaa3fdbe08dc6198308d077aded27f5a8784f))
+
 ## [0.345.0](https://github.com/salesforce/sf-pi/compare/v0.344.6...v0.345.0) (2026-11-04)
 
 
