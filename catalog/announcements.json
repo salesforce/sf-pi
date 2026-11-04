@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.344.6-2026-11-03",
-  "latestVersion": "0.344.6",
+  "revision": "release-0.345.0-2026-11-04",
+  "latestVersion": "0.345.0",
   "announcements": [
     {
-      "id": "release-0.344.6",
+      "id": "release-0.345.0",
       "kind": "update",
-      "title": "sf-pi v0.344.6 — sf-flow: resolve CodeQL incomplete-sanitization alert in recipe test",
-      "publishedAt": "2026-11-03T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.344.6",
+      "title": "sf-pi v0.345.0 — sf-fin: add Fin workspace extension, Intercom MCP preset, and Guardrail mediation",
+      "publishedAt": "2026-11-04T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.345.0",
       "severity": "info",
-      "body": "sf-flow: resolve CodeQL incomplete-sanitization alert in recipe test"
+      "body": "sf-fin: add Fin workspace extension, Intercom MCP preset, and Guardrail mediation"
     }
   ]
 }
