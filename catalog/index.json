@@ -741,7 +741,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6475
+    "srcLoc": 6560
   },
   {
     "id": "sf-herdr",
@@ -1074,13 +1074,14 @@
         "Legacy SObject MCP entries are not managed by SF MCP; if manually configured, their mutation tools remain Guardrail-mediated and fail closed.",
         "Agentforce Sales, Slack, and MuleSoft secrets are referenced through environment variables and are never stored in SF MCP managed state.",
         "Slack and Informatica connections start quarantined because their public references do not publish stable exact tool-name contracts; observed tools remain Hidden pending a reviewed preset revision.",
-        "B2C Commerce uses the GA @salesforce/b2c-dx-mcp package with a versioned reviewed tool contract and hidden-by-default exposure."
+        "B2C Commerce uses the GA @salesforce/b2c-dx-mcp package with a versioned reviewed tool contract and hidden-by-default exposure.",
+        "Intercom MCP (Fin) uses Pi-native OAuth with dynamic client registration and the mcp and operator scopes; Fin Operator apply_proposals requires exact non-session SF Guardrail approval and Operator turns are Guardrail-confirmed."
       ]
     },
     "entry": "extensions/sf-mcp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9995
+    "srcLoc": 10227
   },
   {
     "id": "sf-ohana-spinner",

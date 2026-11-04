@@ -67,6 +67,22 @@ const CLAIMS: Partial<Record<McpPresetId, Readonly<Record<string, ToolConflictCl
       recommendedExposure: "hidden",
     },
   },
+  intercom: {
+    apply_proposals: {
+      owners: ["sf-fin"],
+      relationship: "partial",
+      reason:
+        "SF Fin owns Fin CLI configuration lifecycle; applying Operator proposals writes the same live workspace configuration outside that lifecycle.",
+      recommendedExposure: "hidden",
+    },
+    send_operator_message: {
+      owners: ["sf-fin"],
+      relationship: "partial",
+      reason:
+        "Operator turns act on the Fin workspace SF Fin manages and consume Operator usage; expose them on demand rather than every turn.",
+      recommendedExposure: "deferred",
+    },
+  },
   "headless-360": {
     dispatch: {
       owners: ["sf-soql", "sf-apex", "sf-flow"],

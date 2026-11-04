@@ -3,6 +3,7 @@
 import { SF_MCP_HEADLESS_360_REQUIREMENT } from "../../../lib/common/sf-mcp-oauth-requirements.ts";
 import type { McpExposure, McpServerConfig } from "./mcp-config.ts";
 import { B2C_COMMERCE_TOOLS } from "./tool-contracts-b2c.ts";
+import { INTERCOM_MCP_TOOLS } from "./tool-contracts-intercom.ts";
 import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
 import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
 import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
@@ -25,6 +26,7 @@ export type McpPresetId =
   | "informatica-catalog"
   | "informatica-data-exploration"
   | "b2c-commerce"
+  | "intercom"
   | "custom-salesforce"
   | "trailhead";
 
@@ -38,6 +40,7 @@ export type McpPresetCategory =
   | "Slack"
   | "Informatica"
   | "Commerce"
+  | "Fin"
   | "Custom"
   | "Trailhead";
 
@@ -67,6 +70,7 @@ export interface McpPreset {
     | "agentforce-sales-oauth"
     | "slack-oauth"
     | "informatica-oauth"
+    | "intercom-oauth"
     | "custom-url";
   risk: "read" | "write" | "delete" | "mixed";
   support: "ga" | "beta" | "alpha";
@@ -538,6 +542,33 @@ const PRESETS: readonly McpPreset[] = [
     overlaps: [],
   },
   {
+    id: "intercom",
+    serverName: "intercom",
+    category: "Fin",
+    label: "Intercom MCP (Fin)",
+    icon: "F",
+    description:
+      "Fin (formerly Intercom) workspace conversations, contacts, companies, Help Center articles, and Fin Operator proposals.",
+    transport: "http",
+    setup: "intercom-oauth",
+    risk: "mixed",
+    support: "ga",
+    revision: 1,
+    supportNote:
+      "Uses Pi-native OAuth with dynamic client registration against the US or EU endpoint. Fin Operator tools appear only for teammates with Operator access.",
+    docsUrl: "https://developers.intercom.com/docs/guides/mcp",
+    approvedTools: INTERCOM_MCP_TOOLS.map((tool) => tool.name),
+    overlaps: [
+      {
+        nativeExtensionId: "sf-fin",
+        relationship: "partial",
+        capabilities: ["fin.workspace"],
+        reason:
+          "SF Fin owns the Fin CLI credential, install, and doctor; Intercom MCP adds workspace data and Fin Operator with its own OAuth sign-in.",
+      },
+    ],
+  },
+  {
     id: "custom-salesforce",
     serverName: "salesforce-custom",
     category: "Custom",
@@ -727,6 +758,22 @@ export function buildServerConfig(
       exposure: "hidden",
       timeout: 120,
     };
+  }
+
+  if (preset.id === "intercom") {
+    // Dynamic client registration (no clientId); Pi owns consent, tokens, and refresh.
+    // Request both advertised scopes so Fin Operator tools can appear for eligible teammates.
+    return withReviewedToolExposure(
+      preset,
+      resolution,
+      {
+        url: intercomMcpUrl(setup.region),
+        oauth: { scope: INTERCOM_MCP_SCOPE },
+        description: preset.description,
+        timeout: 120,
+      },
+      toolExposure,
+    );
   }
 
   if (preset.id === "informatica-catalog" || preset.id === "informatica-data-exploration") {
@@ -1000,6 +1047,24 @@ export function isPresetConfigCompatible(
       ? { compatible: true }
       : { compatible: false, reason: "The entry is not the reviewed Slack MCP connection." };
   }
+  if (preset.id === "intercom") {
+    if (!("url" in config) || !INTERCOM_MCP_URLS.includes(config.url)) {
+      return { compatible: false, reason: "The entry is not a documented Intercom MCP endpoint." };
+    }
+    if (config.oauth?.clientId || config.headers) {
+      return {
+        compatible: false,
+        reason:
+          "The Intercom entry must use Pi-native OAuth; bearer headers and fixed clients do not receive Fin Operator tools.",
+      };
+    }
+    return hasApprovedToolExposure(preset, config)
+      ? { compatible: true }
+      : {
+          compatible: false,
+          reason: "The Intercom entry does not use its reviewed per-tool exposure contract.",
+        };
+  }
   if (preset.id === "informatica-catalog" || preset.id === "informatica-data-exploration") {
     try {
       if (!("url" in config) || !config.url || !config.oauth?.clientId) {
@@ -1058,6 +1123,19 @@ function hasApprovedToolExposure(
     approved.length === configured.length &&
     approved.every((name, index) => name === configured[index])
   );
+}
+
+const INTERCOM_MCP_SCOPE = "mcp operator";
+const INTERCOM_MCP_URLS: readonly string[] = [
+  "https://mcp.intercom.com/mcp",
+  "https://mcp.eu.intercom.com/mcp",
+];
+
+/** Intercom MCP is available for US and EU hosted workspaces; AU is not supported. */
+export function intercomMcpUrl(region: PresetSetup["region"]): string {
+  if (region === undefined || region === "US") return "https://mcp.intercom.com/mcp";
+  if (region === "EU") return "https://mcp.eu.intercom.com/mcp";
+  throw new Error("Intercom MCP supports only US and EU hosted workspaces.");
 }
 
 function validatedInformaticaUrl(

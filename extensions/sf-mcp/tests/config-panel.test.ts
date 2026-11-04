@@ -611,6 +611,21 @@ describe("SF MCP Manager catalog", () => {
     expect(informaticaSetup).toContain("cdgccatalogdiscovery");
   });
 
+  it("opens Intercom MCP setup with a US/EU region choice and no client secret", () => {
+    const intercom = fixture().panel;
+    moveToPreset(intercom, "intercom");
+    const overview = intercom.renderContent(110).join("\n");
+    intercom.handleInput("\r");
+    intercom.handleInput("\r");
+    intercom.handleInput("\r");
+    const setup = intercom.renderContent(110).join("\n");
+    expect(setup).toContain("Workspace region");
+    expect(setup).toContain("United States");
+    expect(setup).toContain("/mcp login");
+    expect(setup).not.toMatch(/client secret|CLIENT_SECRET/i);
+    expect(overview.length).toBeGreaterThan(0);
+  });
+
   it("opens B2C Commerce connection review with reviewed tools quarantined", () => {
     const { panel } = fixture();
 

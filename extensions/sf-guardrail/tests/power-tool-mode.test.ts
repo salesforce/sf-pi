@@ -241,3 +241,27 @@ describe("Power Tool Mode Fin CLI install", () => {
     expect(defaultNativeFamilies()).toContain("fin");
   });
 });
+
+describe("Power Tool Mode Fin Operator", () => {
+  it.each(["mcp fin operator apply", "mcp fin operator turn"])(
+    "maps %s to the fin family without the production opt-in",
+    (operationFamily) => {
+      const operator = decision({
+        ruleId: "native-sf-mcp-fin-operator-apply",
+        approvalScope: {
+          fingerprint: "op",
+          label: "apply",
+          operationFamily,
+          riskTier: "mcp_fin_operator_apply_exact",
+          allowSession: false,
+        },
+      });
+      expect(
+        shouldPowerToolAutoApprove(operator, { mode: "native", nativeFamilies: ["fin"] }),
+      ).toBe(true);
+      expect(
+        shouldPowerToolAutoApprove(operator, { mode: "native", nativeFamilies: ["slack"] }),
+      ).toBe(false);
+    },
+  );
+});

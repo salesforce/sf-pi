@@ -27,6 +27,13 @@ const EXTERNAL_SERVERS = new Set([
   "salesforce_custom",
 ]);
 const HEADLESS_360_SERVER = "salesforce_headless_360";
+const INTERCOM_SERVER = "intercom";
+/**
+ * Intercom MCP tools that act on live Fin workspace configuration or start an
+ * Operator turn. Reads, rejects, notes, and article drafts stay prompt-free;
+ * the reviewed SF MCP tool policy governs their exposure.
+ */
+const INTERCOM_OPERATOR_MUTATIONS = new Set(["apply_proposals", "send_operator_message"]);
 const DX_MUTATION_PATTERN =
   /^(deploy|create|delete|update|assign|unassign|publish|activate|deactivate|execute)[_-]/i;
 
@@ -99,6 +106,13 @@ export function classifySfMcpRisk(
       operationFamily: "mcp headless dispatch",
       promptTitle: "⚠ Salesforce MCP Headless 360 dispatch",
     });
+  }
+
+  if (
+    (serverName === INTERCOM_SERVER || serverName.startsWith(`${INTERCOM_SERVER}_`)) &&
+    INTERCOM_OPERATOR_MUTATIONS.has(mcpTool)
+  ) {
+    return intercomOperatorSubject(toolName, serverName, mcpTool, input, payloadFingerprint);
   }
 
   if (serverName === "salesforce_data360" && mcpTool === "execute") {
@@ -183,6 +197,75 @@ export function classifySfMcpRisk(
   }
 
   return undefined;
+}
+
+/**
+ * Fin Operator mutations involve no Salesforce org. apply_proposals is an
+ * exact, per-proposal-set approval (no session grant) because some changes
+ * cannot be undone. send_operator_message may be session-approved per chat
+ * because it only starts work; its proposals still need apply approval.
+ */
+function intercomOperatorSubject(
+  toolName: string,
+  serverName: string,
+  mcpTool: string,
+  input: Record<string, unknown>,
+  payloadFingerprint: string,
+): NativeToolSafetySubject {
+  const chatId = stringValue(input.chat_id) ?? "new chat";
+  if (mcpTool === "apply_proposals") {
+    const proposals = Array.isArray(input.proposals) ? input.proposals : [];
+    const ids = proposals
+      .map((entry) =>
+        entry && typeof entry === "object"
+          ? stringValue((entry as Record<string, unknown>).proposal_id)
+          : undefined,
+      )
+      .filter((id): id is string => Boolean(id));
+    const modes = proposals
+      .map((entry) =>
+        entry && typeof entry === "object"
+          ? stringValue((entry as Record<string, unknown>).apply_mode)
+          : undefined,
+      )
+      .filter((mode): mode is string => Boolean(mode));
+    return {
+      kind: "nativeTool",
+      toolName,
+      action: mcpTool,
+      ruleId: "native-sf-mcp-fin-operator-apply",
+      subject: `${serverName} apply_proposals ${ids.length} proposal${ids.length === 1 ? "" : "s"}`,
+      reason: `Fin Operator proposals will be applied to live workspace configuration (chat ${chatId}). Some changes cannot be undone.`,
+      promptTitle: "⚠ Apply Fin Operator proposals",
+      operationFamily: "mcp fin operator apply",
+      riskTier: "mcp_fin_operator_apply_exact",
+      fingerprint: `sf-mcp|${serverName}|${mcpTool}|${payloadFingerprint}`,
+      approvalLabel: `apply ${ids.length} Fin Operator proposal${ids.length === 1 ? "" : "s"}`,
+      approvalDetail: [
+        `chat=${chatId}`,
+        `proposals=${ids.join(",") || "none"}`,
+        modes.length ? `modes=${[...new Set(modes)].join(",")}` : "modes=default",
+      ].join("; "),
+      allowSession: false,
+    };
+  }
+  const kind = input.approval ? "approval answer" : input.answers ? "answers" : "message";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: mcpTool,
+    ruleId: "native-sf-mcp-fin-operator-turn",
+    subject: `${serverName} send_operator_message ${kind}`,
+    reason: `A Fin Operator turn (${kind}) will run in the workspace and consume Operator usage (chat ${chatId}).`,
+    promptTitle: "⚠ Fin Operator turn",
+    operationFamily: "mcp fin operator turn",
+    riskTier: "mcp_fin_operator_turn",
+    fingerprint: `sf-mcp|${serverName}|${mcpTool}|${fingerprintText(JSON.stringify({ chatId, kind }))}`,
+    approvalLabel: `Fin Operator ${kind} in ${chatId}`,
+    approvalDetail: `chat=${chatId}; kind=${kind}`,
+    // An approval answer approves an Operator action, so it is never session-scoped.
+    allowSession: kind !== "approval answer",
+  };
 }
 
 function hostedOperationSubject(input: {

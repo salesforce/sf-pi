@@ -32,7 +32,11 @@ export const NATIVE_TOOL_FAMILIES: Array<{
     description: "setup, credential population, OAuth authorization",
   },
   { id: "flow", label: "Flow lifecycle", description: "deploy, activate, deactivate" },
-  { id: "fin", label: "Fin CLI install", description: "sf_fin global npm install/update" },
+  {
+    id: "fin",
+    label: "Fin CLI and Operator",
+    description: "sf_fin install; Fin Operator turns/apply",
+  },
   { id: "soql", label: "SOQL disclosures", description: "export, queryAll, unbounded reads" },
 ];
 
@@ -100,7 +104,7 @@ export function nativeToolFamilyForDecision(
   if (family === "browser commit") return "browser";
   if (family === "slack canvas write") return "slack";
   if (family.startsWith("soql ")) return "soql";
-  if (family === "fin cli install") return "fin";
+  if (family === "fin cli install" || family.startsWith("mcp fin operator ")) return "fin";
   return undefined;
 }
 

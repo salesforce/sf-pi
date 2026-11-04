@@ -342,4 +342,70 @@ describe("Salesforce MCP tool safety subjects", () => {
       allowSession: false,
     });
   });
+
+  it("leaves Intercom MCP reads, rejects, notes, and drafts prompt-free", () => {
+    for (const tool of [
+      "search",
+      "get_conversation",
+      "get_operator_response",
+      "get_proposal_details",
+      "reject_proposals",
+      "add_internal_note",
+      "create_article",
+    ]) {
+      expect(
+        classifyNativeToolRisk(`mcp__intercom__${tool}`, { chat_id: "c1" }),
+        tool,
+      ).toBeUndefined();
+    }
+  });
+
+  it("requires exact, non-session approval to apply Fin Operator proposals", () => {
+    const subject = classifyNativeToolRisk("mcp__intercom__apply_proposals", {
+      chat_id: "chat-1",
+      proposals: [{ proposal_id: "p_1" }, { proposal_id: "p_2", apply_mode: "publish" }],
+    });
+    expect(subject).toMatchObject({
+      ruleId: "native-sf-mcp-fin-operator-apply",
+      operationFamily: "mcp fin operator apply",
+      allowSession: false,
+      approvalDetail: "chat=chat-1; proposals=p_1,p_2; modes=publish",
+    });
+    expect(subject?.usesSalesforceOrg).toBeUndefined();
+    const other = classifyNativeToolRisk("mcp__intercom__apply_proposals", {
+      chat_id: "chat-1",
+      proposals: [{ proposal_id: "p_3" }],
+    });
+    expect(other?.fingerprint).not.toBe(subject?.fingerprint);
+  });
+
+  it("confirms Operator turns, never session-approving an approval answer", () => {
+    const message = classifyNativeToolRisk("mcp__intercom__send_operator_message", {
+      message: "Why did resolutions drop last week?",
+    });
+    const approval = classifyNativeToolRisk("mcp__intercom__send_operator_message", {
+      chat_id: "chat-1",
+      approval: { approval_id: "a_1", decision: "approve" },
+    });
+    expect(message).toMatchObject({
+      ruleId: "native-sf-mcp-fin-operator-turn",
+      operationFamily: "mcp fin operator turn",
+      allowSession: true,
+    });
+    expect(approval).toMatchObject({
+      allowSession: false,
+      subject: "intercom send_operator_message approval answer",
+    });
+  });
+
+  it("matches org-pinned or renamed Intercom connections by server-name prefix", () => {
+    expect(
+      classifyNativeToolRisk("mcp__intercom_eu__apply_proposals", { proposals: [] }),
+    ).toMatchObject({
+      ruleId: "native-sf-mcp-fin-operator-apply",
+    });
+    expect(
+      classifyNativeToolRisk("mcp__intercomx__apply_proposals", { proposals: [] }),
+    ).toBeUndefined();
+  });
 });

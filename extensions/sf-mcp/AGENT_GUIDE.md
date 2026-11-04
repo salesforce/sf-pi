@@ -17,7 +17,7 @@ Use `sf_mcp` to inspect and author reviewed Salesforce MCP entries in Pi's nativ
 
 `configure.plan` and `configure.apply` remain available as a combined compatibility workflow.
 
-For Headless 360, pass the public External Client App consumer key as `oauth_client_id` plus an explicit `target_org`. The proved org-pinned endpoint is preferred over the generic environment family. One preset can have several org-bound connection instances; pass `connection_name` for tool access, disable, or login actions when more than one exists. For Slack, pass the approved app client ID and set `SLACK_MCP_CLIENT_SECRET` outside the tool call. For Informatica, pass the IDMC Public OAuth 2.1 client ID plus the pod-specific `server_url`. Never pass a client secret or OAuth token.
+For Headless 360, pass the public External Client App consumer key as `oauth_client_id` plus an explicit `target_org`. The proved org-pinned endpoint is preferred over the generic environment family. One preset can have several org-bound connection instances; pass `connection_name` for tool access, disable, or login actions when more than one exists. For Slack, pass the approved app client ID and set `SLACK_MCP_CLIENT_SECRET` outside the tool call. For Informatica, pass the IDMC Public OAuth 2.1 client ID plus the pod-specific `server_url`. Never pass a client secret or OAuth token. For Intercom MCP (Fin), pass `region` `US` (default) or `EU`; no client id is needed because Pi registers its own OAuth client during `/mcp login intercom`.
 
 ## Actions
 

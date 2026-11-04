@@ -105,6 +105,7 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - New custom servers start with `hidden` exposure and no callable tools.
 - OAuth tokens, including standalone Tableau OAuth, remain in Pi's native MCP credential store.
 - Trailhead MCP requires no authentication and is restricted to its two documented read-only public-content tools.
+- Intercom MCP (Fin) uses Pi-native OAuth with dynamic client registration and requests the `mcp` and `operator` scopes; bearer-header or fixed-client entries are not adopted because they don't receive Fin Operator tools. Applying Fin Operator proposals is an exact, non-session SF Guardrail approval, and Operator turns are Guardrail-confirmed; both belong to the Power Tool **Fin CLI and Operator** family.
 - External Client App consumer keys are public client identifiers. Standard hosted presets don't request client secrets.
 - Agentforce Sales references `AGENTFORCE_SALES_CLIENT_SECRET`, Slack references `SLACK_MCP_CLIENT_SECRET`, and MuleSoft references `ANYPOINT_CLIENT_ID` and `ANYPOINT_CLIENT_SECRET`. Secret values are never copied into SF MCP state.
 - Slack and Informatica connections start with server exposure Hidden because their public references don't provide stable exact tool-name contracts. Session observation never promotes those tools.
@@ -175,6 +176,10 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 
 - B2C Commerce MCP (GA `@salesforce/b2c-dx-mcp` package with a reviewed exact tool contract)
 
+### Fin
+
+- Intercom MCP (Fin) — US or EU hosted workspaces; 14 reviewed data tools plus 5 Fin Operator tools that appear only for teammates with Operator access. With SF Fin enabled, the recommendation hides `apply_proposals` and defers `send_operator_message`.
+
 ### Custom
 
 - Custom Salesforce MCP quarantine entry
@@ -198,6 +203,8 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 - [Slack MCP server](https://docs.slack.dev/ai/slack-mcp-server)
 - [Informatica MCP OAuth and connector setup](https://www.informatica.com/blogs/powering-your-enterprise-ai-with-informatica-plugin-for-claude.html)
 - [B2C Commerce MCP](https://salesforcecommercecloud.github.io/b2c-developer-tooling/mcp/)
+- [Intercom MCP](https://developers.intercom.com/docs/guides/mcp)
+- [Fin Operator MCP tools](https://developers.intercom.com/docs/guides/fin-operator-mcp)
 
 ## File Structure
 
