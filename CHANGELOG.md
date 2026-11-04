@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.345.0](https://github.com/salesforce/sf-pi/compare/v0.344.6...v0.345.0) (2026-11-04)
+
+
+### Features
+
+* **sf-fin:** add Fin workspace extension, Intercom MCP preset, and Guardrail mediation ([#863](https://github.com/salesforce/sf-pi/issues/863)) ([33b2c70](https://github.com/salesforce/sf-pi/commit/33b2c70f01a2215445ce0106c832e63ab4b1a3ad))
+
 ## [0.344.6](https://github.com/salesforce/sf-pi/compare/v0.344.5...v0.344.6) (2026-11-03)
 
 
