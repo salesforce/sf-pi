@@ -44,42 +44,104 @@ function writeAuthFile(body: unknown): void {
 }
 
 describe("sf-fin Pi-owned credential", () => {
-  it("stores the masked token and selected region through native login", async () => {
+  /** `/me` on the fixed regional hosts: 200 for `home`, 401 elsewhere (or a network error). */
+  function meFetch(home: "us" | "eu" | "au" | "none" | "offline") {
+    const hosts = {
+      us: "https://api.intercom.io",
+      eu: "https://api.eu.intercom.io",
+      au: "https://api.au.intercom.io",
+    };
+    return vi.fn(async (url: string, init: RequestInit) => {
+      if (home === "offline") throw new Error("ENOTFOUND");
+      expect(init.redirect).toBe("error");
+      expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${SENTINEL}`);
+      if (home !== "none" && url === `${hosts[home]}/me`) {
+        return new Response(
+          JSON.stringify({
+            type: "admin",
+            app: { id_code: "app1", name: "Example", region: home.toUpperCase() },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ errors: [{ code: "unauthorized" }] }), { status: 401 });
+    });
+  }
+
+  it("stores the masked token and the region detected from /me, with no region question", async () => {
     const promptBridge = bridge();
-    const controller = createSfFinAuthController(promptBridge);
+    const fetch = meFetch("eu");
+    const controller = createSfFinAuthController(promptBridge, {
+      fetch: fetch as unknown as typeof globalThis.fetch,
+    });
+    controller.bind(UNUSED_UI, "tui");
+    const models = createModels({ credentials: new InMemoryCredentialStore() });
+    models.setProvider(controller.provider);
+    const prompt = vi.fn(async (_prompt: AuthPrompt) => "us");
+    const notify = vi.fn();
+
+    const credential = await models.login("sf-fin", "api_key", { prompt, notify });
+
+    expect(credential).toEqual({ type: "api_key", key: SENTINEL, env: { INTERCOM_REGION: "eu" } });
+    await expect(models.getAuth("sf-fin")).resolves.toEqual({
+      auth: { apiKey: SENTINEL },
+      env: { INTERCOM_REGION: "eu" },
+      source: "Pi saved credential",
+    });
+    expect(prompt).not.toHaveBeenCalled();
+    expect(promptBridge.prompt).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls.map((c) => c[0])).toEqual([
+      "https://api.intercom.io/me",
+      "https://api.eu.intercom.io/me",
+    ]);
+    expect(JSON.stringify(notify.mock.calls)).not.toContain(SENTINEL);
+  });
+
+  it("falls back to the region question only when the Fin API cannot be reached", async () => {
+    const controller = createSfFinAuthController(bridge(), {
+      fetch: meFetch("offline") as unknown as typeof globalThis.fetch,
+    });
+    controller.bind(UNUSED_UI, "tui");
+    const models = createModels({ credentials: new InMemoryCredentialStore() });
+    models.setProvider(controller.provider);
+    const prompt = vi.fn(async (_prompt: AuthPrompt) => "au");
+
+    const credential = await models.login("sf-fin", "api_key", { prompt, notify: vi.fn() });
+
+    expect(credential).toMatchObject({ env: { INTERCOM_REGION: "au" } });
+    const regionPrompt = prompt.mock.calls[0]?.[0];
+    if (regionPrompt?.type !== "select") throw new Error("expected a select prompt");
+    expect(regionPrompt.options.map((option) => option.id)).toEqual(["us", "eu", "au"]);
+    expect(JSON.stringify(prompt.mock.calls)).not.toContain(SENTINEL);
+  });
+
+  it("rejects a token every region refuses, before Pi persists anything", async () => {
+    const controller = createSfFinAuthController(bridge(), {
+      fetch: meFetch("none") as unknown as typeof globalThis.fetch,
+    });
     controller.bind(UNUSED_UI, "tui");
     const models = createModels({ credentials: new InMemoryCredentialStore() });
     models.setProvider(controller.provider);
     const prompt = vi.fn(async (_prompt: AuthPrompt) => "us");
 
-    const credential = await models.login("sf-fin", "api_key", { prompt, notify: vi.fn() });
-
-    expect(credential).toEqual({ type: "api_key", key: SENTINEL, env: { INTERCOM_REGION: "us" } });
-    await expect(models.getAuth("sf-fin")).resolves.toEqual({
-      auth: { apiKey: SENTINEL },
-      env: { INTERCOM_REGION: "us" },
-      source: "Pi saved credential",
-    });
-    // The region is a select prompt; the token goes only through the masked bridge.
-    expect(prompt).toHaveBeenCalledTimes(1);
-    expect(prompt.mock.calls[0]?.[0]).toMatchObject({ type: "select" });
-    expect(promptBridge.prompt).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(prompt.mock.calls)).not.toContain(SENTINEL);
+    await expect(models.login("sf-fin", "api_key", { prompt, notify: vi.fn() })).rejects.toThrow(
+      /rejected by the US, EU, and AU/,
+    );
+    await expect(models.getAuth("sf-fin")).resolves.toBeUndefined();
+    expect(prompt).not.toHaveBeenCalled();
   });
 
-  it("offers US first by default and rejects unknown regions", async () => {
-    const controller = createSfFinAuthController(bridge());
+  it("uses per-workspace sign-in names; env fallbacks apply only to the default workspace", async () => {
+    const controller = createSfFinAuthController(bridge(), {
+      workspace: "test",
+      fetch: meFetch("us") as unknown as typeof globalThis.fetch,
+    });
+    expect(controller.provider.id).toBe("sf-fin-test");
     const models = createModels({ credentials: new InMemoryCredentialStore() });
     models.setProvider(controller.provider);
-    const prompt = vi.fn(async (_prompt: AuthPrompt) => "mars");
-
-    await expect(models.login("sf-fin", "api_key", { prompt, notify: vi.fn() })).rejects.toThrow(
-      /Unsupported Fin region/,
-    );
-    const regionPrompt = prompt.mock.calls[0]?.[0];
-    if (regionPrompt?.type !== "select") throw new Error("expected a select prompt");
-    const options = regionPrompt.options;
-    expect(options.map((option) => option.id)).toEqual(["us", "eu", "au"]);
+    await expect(
+      models.getAuth("sf-fin-test", { env: { INTERCOM_TOKEN: "env-token-1234" } }),
+    ).resolves.toBeUndefined();
   });
 
   it("falls back to INTERCOM_TOKEN / INTERCOM_REGION for automation", async () => {

@@ -54,6 +54,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `exec-adapter.ts`              | module    |                     1 |               0 |
 | `extension-toggle.ts`          | module    |                     1 |               0 |
 | `fin-sdk-state.ts`             | module    |                     1 |               0 |
+| `fin-workspaces-state.ts`      | module    |                     1 |               0 |
 | `glyph-policy.ts`              | module    |                     1 |               0 |
 | `herdr-package-sources.ts`     | module    |                     1 |               0 |
 | `herdr-runtime.ts`             | module    |                     1 |               0 |

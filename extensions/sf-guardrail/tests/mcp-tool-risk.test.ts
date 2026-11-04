@@ -369,7 +369,7 @@ describe("Salesforce MCP tool safety subjects", () => {
       ruleId: "native-sf-mcp-fin-operator-apply",
       operationFamily: "mcp fin operator apply",
       allowSession: false,
-      approvalDetail: "chat=chat-1; proposals=p_1,p_2; modes=publish",
+      approvalDetail: "chat=chat-1; proposals=p_1,p_2; modes=publish; workspace=default (test)",
     });
     expect(subject?.usesSalesforceOrg).toBeUndefined();
     const other = classifyNativeToolRisk("mcp__intercom__apply_proposals", {
@@ -377,6 +377,74 @@ describe("Salesforce MCP tool safety subjects", () => {
       proposals: [{ proposal_id: "p_3" }],
     });
     expect(other?.fingerprint).not.toBe(subject?.fingerprint);
+  });
+
+  it("binds Operator calls to the Fin workspace from the MCP server name; prod never session-approves", () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-intercom-ws-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      const state = path.join(agentDir, "sf-pi", "sf-fin");
+      mkdirSync(state, { recursive: true });
+      writeFileSync(
+        path.join(state, "workspaces.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          state: { active: "default", workspaces: { prod: { name: "prod", kind: "prod" } } },
+        }),
+      );
+      const prod = classifyNativeToolRisk("mcp__intercom_prod__send_operator_message", {
+        message: "Summarize setup gaps",
+      });
+      expect(prod).toMatchObject({
+        finWorkspace: { name: "prod", kind: "prod" },
+        allowSession: false,
+      });
+      expect(prod?.reason).toContain("production workspace");
+      const test = classifyNativeToolRisk("mcp__intercom__send_operator_message", {
+        message: "Summarize setup gaps",
+      });
+      expect(test).toMatchObject({
+        finWorkspace: { name: "default", kind: "test" },
+        allowSession: true,
+      });
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
+  it("never session-approves a prod Fin workspace subject, even if a classifier allowed it", () => {
+    const base: NativeToolSafetySubject = {
+      kind: "nativeTool",
+      toolName: "sf_fin",
+      action: "sdk.upload",
+      ruleId: "native-sf-fin-procedure-write",
+      subject: "sf_fin sdk upload p.yaml",
+      reason: "upload",
+      operationFamily: "fin procedure write",
+      riskTier: "fin_procedure_draft_write",
+      fingerprint: "fp",
+      approvalLabel: "upload",
+      allowSession: true,
+    };
+    const config = readBundledConfig();
+    for (const kind of ["prod", "unknown"] as const) {
+      const decision = evaluateNativeToolRisk(
+        { ...base, finWorkspace: { name: "w", kind } },
+        "/p",
+        config,
+      );
+      expect(decision.approvalScope?.allowSession).toBe(false);
+      expect(decision.finWorkspaceKind).toBe(kind);
+    }
+    const test = evaluateNativeToolRisk(
+      { ...base, finWorkspace: { name: "w", kind: "test" } },
+      "/p",
+      config,
+    );
+    expect(test.approvalScope?.allowSession).toBe(true);
   });
 
   it("confirms Operator turns, never session-approving an approval answer", () => {

@@ -41,6 +41,7 @@ Open its Manager detail or change its package state with:
 - Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.
 - Guidance uploads are always paused and data connectors only as drafts; sdk guidance_state plans by default and executes as the exact SF Guardrail mutation native-sf-fin-procedure-state. The Fin Agent API key is a separate Pi provider (sf-fin-agent), sent only as an HTTPS Authorization header; agent run is native-sf-fin-agent-run because resolved conversations are billable. surfaces runs only local --help commands.
 - The Fin Agent API key is rejected at login when it is malformed or equals the personal token, and every Agent API request refuses a key equal to the active personal token (constant-time digest comparison); it is sent only as an HTTPS Authorization header to the fixed regional host with redirects refused.
+- Personal-token login detects the region from /me on the fixed regional hosts and refuses a token every region rejects. Named workspaces have their own Pi sign-ins; environment fallbacks apply only to the default workspace. Setup binds a workspace to the app id its token proves and refuses a different app. SF Guardrail treats a prod (or unknown) Fin workspace like a production org: no session approvals, and Power Tool Mode needs the production opt-in.
 
 ## Exact reference
 

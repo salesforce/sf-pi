@@ -4,7 +4,10 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 
 ## Workflow
 
-1. Call `sf_fin action='status'` first. It reads the cached result and makes no network call.
+1. Call `sf_fin action='status'` first. It reads the cached result and makes no network call. For "what do I still need?", call `sf_fin action='setup'` (read-only). Pass `wants` to limit it to `build`, `operator`, or `test`. It proves each credential's workspace where possible and lists only the missing steps.
+
+- Every action accepts `workspace=<name>` (default: the active workspace). Never assume a workspace: when the user names test or prod, pass it. `prod` workspaces need the user's explicit intent for each change; SF Guardrail never session-approves them.
+
 2. Call `sf_fin action='doctor'` when you need verified workspace identity, install readiness, or the cached status is missing, stale, or failed.
 3. For `cli_missing`, `cli_outdated`, or an available update the user wants, call `sf_fin action='install'` without `allow_mutation` to show the plan. Then call it again with `allow_mutation=true`, passing the planned `version`. SF Guardrail asks the user to approve unless Power Tool Mode covers the Fin CLI install family. Rerun `doctor` afterwards.
 4. For an unexplained doctor failure, call `sf_fin action='debug'` for the redacted bundle. If the HTTP exchange matters, call `sf_fin action='debug' verbose='on'`, then `doctor` once, and read the trace file path it returns.

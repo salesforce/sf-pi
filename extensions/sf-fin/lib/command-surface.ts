@@ -14,13 +14,15 @@ export type SfFinCommandAction =
   | "sdk"
   | "surfaces"
   | "agent"
+  | "setup"
+  | "workspace"
   | "help";
 
 export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
   {
     value: "connect",
     label: "Connect",
-    description: `Prepare native /login ${PROVIDER_NAME} to save the region and a masked personal API token.`,
+    description: `Prepare native /login ${PROVIDER_NAME} to save a masked personal API token (region detected automatically).`,
     group: "Connection",
   },
   {
@@ -76,6 +78,20 @@ export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
     group: "Fin as code",
   },
   {
+    value: "setup",
+    label: "Check setup",
+    description:
+      "Show which Fin credentials are present, what they unlock, whether they agree on one workspace, and what is missing (read-only).",
+    group: "Connection",
+  },
+  {
+    value: "workspace",
+    label: "Workspaces",
+    description:
+      "List, add, use, or remove named Fin workspace profiles (for example test and prod).",
+    group: "Connection",
+  },
+  {
     value: "surfaces",
     label: "Compare Fin surfaces",
     description:
@@ -106,6 +122,8 @@ export function renderHelp(): string {
     "Commands:",
     `- \`/${COMMAND_NAME}\` — open the SF Pi Manager detail page.`,
     `- \`/${COMMAND_NAME} connect\` / \`disconnect\` — prepare native \`/login\` / \`/logout ${PROVIDER_NAME}\`.`,
+    `- \`/${COMMAND_NAME} setup [workspace] [build|operator|test]\` — what is set up, what it unlocks, and only what is missing.`,
+    `- \`/${COMMAND_NAME} workspace [list|add <name> [test|prod]|use <name>|remove <name>]\` — named workspaces, each with its own sign-ins.`,
     `- \`/${COMMAND_NAME} status\` — cached status; no network.`,
     `- \`/${COMMAND_NAME} install [version]\` — install or update the Fin CLI with global npm after confirmation.`,
     `- \`/${COMMAND_NAME} doctor\` — live read-only checks.`,
@@ -127,7 +145,7 @@ export function renderHelp(): string {
     "Setup:",
     `1. \`/${COMMAND_NAME} install\` (or \`npm install -g @intercom/cli\`).`,
     "2. In Fin, open Settings → Personal → API tokens and create a token.",
-    `3. \`/login ${PROVIDER_NAME}\`: choose the region from your workspace URL, then paste the token into the masked prompt.`,
+    `3. \`/login ${PROVIDER_NAME}\`: paste the token into the masked prompt; SF Fin detects the region.`,
     `4. \`/${COMMAND_NAME} doctor\`.`,
     "",
     "Credential boundary:",

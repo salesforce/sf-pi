@@ -13,6 +13,7 @@ import {
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { inferNonProductionOrgTypeFromUrl } from "../../../lib/common/sf-environment/org-type.ts";
 import { readFinSdkState } from "../../../lib/common/fin-sdk-state.ts";
+import { finWorkspaceKind } from "../../../lib/common/fin-workspaces-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
 import { classifySfMcpConfiguration } from "./sf-mcp-config-risk.ts";
 import { classifySfMcpRisk } from "./mcp-tool-risk.ts";
@@ -37,11 +38,14 @@ export function classifyNativeToolRisk(
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifySfFinInstall(toolName, input) ??
-    classifySfFinProcedureState(toolName, input) ??
-    classifySfFinGuidanceState(toolName, input) ??
-    classifySfFinAgentRun(toolName, input) ??
-    classifySfFinProcedureWrite(toolName, input) ??
-    classifySfFinSdkEnable(toolName, input) ??
+    withFinWorkspace(
+      input,
+      classifySfFinProcedureState(toolName, input) ??
+        classifySfFinGuidanceState(toolName, input) ??
+        classifySfFinAgentRun(toolName, input) ??
+        classifySfFinProcedureWrite(toolName, input) ??
+        classifySfFinSdkEnable(toolName, input),
+    ) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
     classifySfSoql(toolName, input) ??
@@ -226,6 +230,31 @@ function classifySfFlowLifecycle(
  * The version is part of the fingerprint so a session approval covers exactly
  * one install target. No Salesforce org is involved.
  */
+/**
+ * Bind an SF Fin workspace mutation to its workspace kind. A `prod` (or an
+ * unknown named) Fin workspace is treated like a production Salesforce org:
+ * no session approvals, and Power Tool Mode needs the production opt-in.
+ */
+export function withFinWorkspace(
+  input: Record<string, unknown>,
+  subject: NativeToolSafetySubject | undefined,
+): NativeToolSafetySubject | undefined {
+  if (!subject) return undefined;
+  const { name, kind } = finWorkspaceKind(stringValue(input.workspace));
+  const production = kind !== "test";
+  return {
+    ...subject,
+    subject: `${subject.subject} [workspace ${name}]`,
+    reason: production
+      ? `${subject.reason}\n\nFin workspace "${name}" is ${kind === "prod" ? "a production workspace" : "not a known workspace"}; treated like a production org.`
+      : subject.reason,
+    fingerprint: `fin-workspace=${name}|${subject.fingerprint}`,
+    approvalDetail: `${subject.approvalDetail ?? ""}; workspace=${name} (${kind})`,
+    finWorkspace: { name, kind },
+    ...(production ? { allowSession: false } : {}),
+  };
+}
+
 function classifySfFinInstall(
   toolName: string,
   input: Record<string, unknown>,

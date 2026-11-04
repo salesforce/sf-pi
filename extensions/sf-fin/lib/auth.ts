@@ -1,16 +1,25 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * Pi-owned Fin workspace credential.
+ * Pi-owned Fin workspace credentials, one pair per named workspace.
  *
- * `/login sf-fin` asks for the hosting region, then collects the personal API
- * token through SF Pi's shared fixed-mask input. Pi alone persists the result
- * (API key plus non-secret `credential.env.INTERCOM_REGION`) and `/logout
- * sf-fin` owns removal. `INTERCOM_TOKEN` / `INTERCOM_REGION` remain automation
- * fallbacks. SF Fin never reads or writes the Fin CLI's own keychain or
- * `~/.intercom` files.
+ * - `default` workspace: `/login sf-fin` (personal API token) and
+ *   `/login sf-fin-agent` (Fin Agent API key), unchanged for existing users.
+ * - Named workspace `<name>`: `/login sf-fin-<name>` and
+ *   `/login sf-fin-agent-<name>`.
+ *
+ * Personal-token login collects the token through SF Pi's shared fixed-mask
+ * input, then detects the region by calling `/me` on the fixed regional hosts
+ * and stores it as non-secret `credential.env.INTERCOM_REGION`. The region
+ * question appears only when detection cannot reach the Fin API. Pi alone
+ * persists credentials and `/logout` owns removal. `INTERCOM_TOKEN` /
+ * `INTERCOM_REGION` / `FIN_AGENT_API_KEY` remain automation fallbacks for the
+ * default workspace only. SF Fin never reads or writes the Fin CLI's own
+ * keychain or `~/.intercom` files.
  */
 import type { AuthInteraction } from "@earendil-works/pi-ai";
 import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import { readStoredCredential } from "@earendil-works/pi-coding-agent";
+import { existsSync } from "node:fs";
 import { createAuthOnlyProvider } from "../../../lib/common/auth-only-provider.ts";
 import {
   getPiAuthStorePath,
@@ -22,19 +31,18 @@ import {
   loginWithSecureCredentialPrompt,
   type SecureCredentialPromptBridge,
 } from "../../../lib/common/secure-credential-prompt.ts";
-import { existsSync } from "node:fs";
-import { readStoredCredential } from "@earendil-works/pi-coding-agent";
-import { AGENT_API_ENV_KEY, AGENT_API_PROVIDER } from "./agent-api.ts";
+import { AGENT_API_ENV_KEY } from "./agent-api.ts";
 import { agentKeyShapeIssue, sameSecret } from "./agent-key.ts";
+import { discoverRegion } from "./region.ts";
 import {
   DEFAULT_REGION,
   ENV_REGION,
   ENV_TOKEN,
   FIN_REGIONS,
-  PROVIDER_NAME,
   type FinRegion,
   type FinTokenSource,
 } from "./types.ts";
+import { DEFAULT_WORKSPACE, workspaceProviders } from "./workspaces.ts";
 
 type ExtensionMode = ExtensionContext["mode"];
 
@@ -65,9 +73,10 @@ export function normalizeRegion(value: string | undefined | null): FinRegion | u
   return FIN_REGIONS.find((region) => region === normalized);
 }
 
-async function promptRegion(interaction: AuthInteraction): Promise<FinRegion> {
-  const current =
-    normalizeRegion(readPiAuthProviderEnv(PROVIDER_NAME, ENV_REGION)) ?? DEFAULT_REGION;
+const isDefault = (workspace: string) => workspace === DEFAULT_WORKSPACE;
+
+async function promptRegion(interaction: AuthInteraction, provider: string): Promise<FinRegion> {
+  const current = normalizeRegion(readPiAuthProviderEnv(provider, ENV_REGION)) ?? DEFAULT_REGION;
   // Put the current (or default) region first so Enter keeps it.
   const ordered = [current, ...FIN_REGIONS.filter((region) => region !== current)];
   const selected = await interaction.prompt({
@@ -80,32 +89,60 @@ async function promptRegion(interaction: AuthInteraction): Promise<FinRegion> {
   return region;
 }
 
+export interface PersonalAuthOptions {
+  workspace?: string;
+  /** Test seam for region discovery. */
+  fetch?: typeof fetch;
+}
+
 export function createSfFinAuthController(
   promptBridge: SecureCredentialPromptBridge = createSecureCredentialPromptBridge({
     title: "SF Fin personal API token",
     description:
       "Create it in Fin under Settings → Personal → API tokens. The value is masked and is not added to the session.",
   }),
+  options: PersonalAuthOptions = {},
 ): SfFinAuthController {
+  const workspace = options.workspace ?? DEFAULT_WORKSPACE;
+  const id = workspaceProviders(workspace).personal;
   const provider = createAuthOnlyProvider({
-    id: PROVIDER_NAME,
-    name: "SF Fin",
+    id,
+    name: isDefault(workspace) ? "SF Fin" : `SF Fin (${workspace})`,
     auth: {
       apiKey: {
-        name: "Fin personal API token",
+        name: isDefault(workspace)
+          ? "Fin personal API token"
+          : `Fin personal API token (${workspace})`,
         login: async (interaction) => {
-          const region = await promptRegion(interaction);
           const credential = await loginWithSecureCredentialPrompt(promptBridge, interaction);
-          return { ...credential, env: { [ENV_REGION]: region } };
+          const token = credential.key.trim();
+          if (!token) throw new Error("The personal API token is empty.");
+          const discovered = await discoverRegion(token, {
+            fetch: options.fetch,
+            signal: interaction.signal,
+          });
+          if (discovered.ok === false && discovered.reason === "rejected_everywhere") {
+            throw new Error(discovered.message);
+          }
+          const region = discovered.ok
+            ? discovered.identity.region
+            : await promptRegion(interaction, id);
+          if (discovered.ok) {
+            interaction.notify({
+              type: "info",
+              message: `Detected ${region.toUpperCase()} workspace${discovered.identity.workspaceName ? ` "${discovered.identity.workspaceName}"` : ""}.`,
+            });
+          }
+          return { ...credential, key: token, env: { [ENV_REGION]: region } };
         },
         resolve: async ({ ctx, credential }) => {
           const saved = credential?.key?.trim();
-          const envToken = (await ctx.env(ENV_TOKEN))?.trim();
+          const envToken = isDefault(workspace) ? (await ctx.env(ENV_TOKEN))?.trim() : undefined;
           const token = saved || envToken;
           if (!token) return undefined;
           const region =
             normalizeRegion(credential?.env?.[ENV_REGION]) ??
-            normalizeRegion(await ctx.env(ENV_REGION)) ??
+            (isDefault(workspace) ? normalizeRegion(await ctx.env(ENV_REGION)) : undefined) ??
             DEFAULT_REGION;
           return {
             auth: { apiKey: token },
@@ -132,42 +169,57 @@ function getEnv(name: string): string | undefined {
 }
 
 /** Status-only source detection. Never returns token values. */
-export function detectTokenSource(): FinTokenSource {
-  if (hasPiAuthProviderApiKey(PROVIDER_NAME)) return "pi-auth";
-  return getEnv(ENV_TOKEN) ? "env" : "none";
+export function detectTokenSource(workspace: string = DEFAULT_WORKSPACE): FinTokenSource {
+  if (hasPiAuthProviderApiKey(workspaceProviders(workspace).personal)) return "pi-auth";
+  return isDefault(workspace) && getEnv(ENV_TOKEN) ? "env" : "none";
 }
 
 /** Status-only region detection: saved credential env, then automation env, then default. */
-export function detectRegion(): { region: FinRegion; source: "pi-auth" | "env" | "default" } {
-  const saved = normalizeRegion(readPiAuthProviderEnv(PROVIDER_NAME, ENV_REGION));
+export function detectRegion(workspace: string = DEFAULT_WORKSPACE): {
+  region: FinRegion;
+  source: "pi-auth" | "env" | "default";
+} {
+  const saved = normalizeRegion(
+    readPiAuthProviderEnv(workspaceProviders(workspace).personal, ENV_REGION),
+  );
   if (saved) return { region: saved, source: "pi-auth" };
-  const env = normalizeRegion(getEnv(ENV_REGION));
+  const env = isDefault(workspace) ? normalizeRegion(getEnv(ENV_REGION)) : undefined;
   if (env) return { region: env, source: "env" };
   return { region: DEFAULT_REGION, source: "default" };
 }
 
-export function hasStoredFinCredential(): boolean {
-  return hasPiAuthProviderApiKey(PROVIDER_NAME);
+export function hasStoredFinCredential(workspace: string = DEFAULT_WORKSPACE): boolean {
+  return hasPiAuthProviderApiKey(workspaceProviders(workspace).personal);
 }
 
-export function notConnectedMessage(): string {
+export function notConnectedMessage(workspace: string = DEFAULT_WORKSPACE): string {
+  const login = `/login ${workspaceProviders(workspace).personal}`;
   return [
-    "SF Fin is not connected.",
-    `Run /login ${PROVIDER_NAME} in interactive TUI mode; SF Pi asks for the region, then masks the personal API token.`,
-    `For automation, set ${ENV_TOKEN} (and optionally ${ENV_REGION}) before starting Pi.`,
+    isDefault(workspace)
+      ? "SF Fin is not connected."
+      : `Fin workspace "${workspace}" is not connected.`,
+    `Run ${login} in interactive TUI mode; SF Pi masks the personal API token and detects the region.`,
+    ...(isDefault(workspace)
+      ? [`For automation, set ${ENV_TOKEN} (and optionally ${ENV_REGION}) before starting Pi.`]
+      : []),
   ].join("\n");
 }
 
 /** Execution-path resolution: Pi provider auth first, then the automation env fallback. */
-export async function getFinCredential(ctx: ExtensionContext): Promise<FinCredentialResult> {
+export async function getFinCredential(
+  ctx: ExtensionContext,
+  workspace: string = DEFAULT_WORKSPACE,
+): Promise<FinCredentialResult> {
+  const provider = workspaceProviders(workspace).personal;
   const getProviderAuth = ctx.modelRegistry.getProviderAuth;
   if (typeof getProviderAuth === "function") {
     try {
-      const resolved = await getProviderAuth.call(ctx.modelRegistry, PROVIDER_NAME);
+      const resolved = await getProviderAuth.call(ctx.modelRegistry, provider);
       const token = resolved?.auth?.apiKey?.trim();
       if (token) {
         const source = resolved?.source === ENV_TOKEN ? "env" : "pi-auth";
-        const region = normalizeRegion(resolved?.env?.[ENV_REGION]) ?? detectRegion().region;
+        const region =
+          normalizeRegion(resolved?.env?.[ENV_REGION]) ?? detectRegion(workspace).region;
         return { ok: true, credential: { token, source, region } };
       }
     } catch {
@@ -175,21 +227,21 @@ export async function getFinCredential(ctx: ExtensionContext): Promise<FinCreden
     }
   }
 
-  const envToken = getEnv(ENV_TOKEN);
+  const envToken = isDefault(workspace) ? getEnv(ENV_TOKEN) : undefined;
   if (envToken) {
     return {
       ok: true,
-      credential: { token: envToken, source: "env", region: detectRegion().region },
+      credential: { token: envToken, source: "env", region: detectRegion(workspace).region },
     };
   }
-  return { ok: false, message: notConnectedMessage() };
+  return { ok: false, message: notConnectedMessage(workspace) };
 }
 
 /**
- * Fin Agent API key: a second, separate Pi provider (`/login sf-fin-agent`).
- * The Fin Agent API uses its own workspace key, distinct from the personal
- * token the Fin CLI uses, so the two are stored and revoked independently.
- * It is sent only as an HTTPS Authorization header, never to the CLI.
+ * Fin Agent API key: a separate Pi provider per workspace. The Fin Agent API
+ * uses its own workspace key, distinct from the personal token the Fin CLI
+ * uses, so the two are stored and revoked independently. It is sent only as
+ * an HTTPS Authorization header, never to the CLI.
  */
 export function createSfFinAgentAuthController(
   promptBridge: SecureCredentialPromptBridge = createSecureCredentialPromptBridge({
@@ -197,29 +249,34 @@ export function createSfFinAgentAuthController(
     description:
       "Generate it in Fin under Fin AI Agent → Deploy → Fin Agent API (after access is granted). It is separate from the personal API token. The value is masked and is not added to the session.",
   }),
+  options: { workspace?: string } = {},
 ): SfFinAuthController {
+  const workspace = options.workspace ?? DEFAULT_WORKSPACE;
+  const providers = workspaceProviders(workspace);
   const provider = createAuthOnlyProvider({
-    id: AGENT_API_PROVIDER,
-    name: "SF Fin Agent API",
+    id: providers.agent,
+    name: isDefault(workspace) ? "SF Fin Agent API" : `SF Fin Agent API (${workspace})`,
     auth: {
       apiKey: {
-        name: "Fin Agent API key",
+        name: isDefault(workspace) ? "Fin Agent API key" : `Fin Agent API key (${workspace})`,
         login: async (interaction) => {
           const credential = await loginWithSecureCredentialPrompt(promptBridge, interaction);
           // Fail before Pi persists anything: malformed keys and the personal
           // token pasted into the wrong slot are rejected at login.
           const issue = agentKeyShapeIssue(credential.key);
           if (issue) throw new Error(issue);
-          if (sameSecret(credential.key, readSavedPersonalToken())) {
+          if (sameSecret(credential.key, readSavedPersonalToken(providers.personal))) {
             throw new Error(
-              `That is the personal API token used by /login ${PROVIDER_NAME}. Paste the separate Fin Agent API key from Fin AI Agent → Deploy → Fin Agent API.`,
+              `That is the personal API token used by /login ${providers.personal}. Paste the separate Fin Agent API key from Fin AI Agent → Deploy → Fin Agent API.`,
             );
           }
           return { ...credential, key: credential.key.trim() };
         },
         resolve: async ({ ctx, credential }) => {
           const saved = credential?.key?.trim();
-          const envKey = (await ctx.env(AGENT_API_ENV_KEY))?.trim();
+          const envKey = isDefault(workspace)
+            ? (await ctx.env(AGENT_API_ENV_KEY))?.trim()
+            : undefined;
           const key = saved || envKey;
           if (!key) return undefined;
           return {
@@ -243,11 +300,11 @@ export const sfFinAgentAuthController = createSfFinAgentAuthController();
  * The saved personal token, read only for the login-time separation check and
  * compared in constant time; it is never returned to callers outside this file.
  */
-function readSavedPersonalToken(): string | undefined {
+function readSavedPersonalToken(provider: string): string | undefined {
   try {
     const path = getPiAuthStorePath();
     if (!existsSync(path)) return undefined;
-    const credential = readStoredCredential(PROVIDER_NAME, path) as { key?: unknown } | undefined;
+    const credential = readStoredCredential(provider, path) as { key?: unknown } | undefined;
     return typeof credential?.key === "string" ? credential.key : undefined;
   } catch {
     return undefined;
@@ -256,26 +313,30 @@ function readSavedPersonalToken(): string | undefined {
 
 export async function getFinAgentApiKey(
   ctx: ExtensionContext,
+  workspace: string = DEFAULT_WORKSPACE,
 ): Promise<{ ok: true; key: string; region: FinRegion } | { ok: false; message: string }> {
-  const region = detectRegion().region;
+  const region = detectRegion(workspace).region;
+  const provider = workspaceProviders(workspace).agent;
   const getProviderAuth = ctx.modelRegistry.getProviderAuth;
   if (typeof getProviderAuth === "function") {
     try {
-      const resolved = await getProviderAuth.call(ctx.modelRegistry, AGENT_API_PROVIDER);
+      const resolved = await getProviderAuth.call(ctx.modelRegistry, provider);
       const key = resolved?.auth?.apiKey?.trim();
       if (key) return { ok: true, key, region };
     } catch {
       // Fall through to the automation fallback below.
     }
   }
-  const envKey = getEnv(AGENT_API_ENV_KEY);
+  const envKey = isDefault(workspace) ? getEnv(AGENT_API_ENV_KEY) : undefined;
   if (envKey) return { ok: true, key: envKey, region };
   return {
     ok: false,
     message: [
-      "No Fin Agent API key is saved.",
+      isDefault(workspace)
+        ? "No Fin Agent API key is saved."
+        : `No Fin Agent API key is saved for workspace "${workspace}".`,
       "The Fin Agent API is granted per workspace on request (Settings → Integrations → Fin Agent API). Once granted, generate the key under Fin AI Agent → Deploy → Fin Agent API.",
-      `Then run /login ${AGENT_API_PROVIDER} in interactive TUI mode (masked), or set ${AGENT_API_ENV_KEY} for automation.`,
+      `Then run /login ${provider} in interactive TUI mode (masked)${isDefault(workspace) ? `, or set ${AGENT_API_ENV_KEY} for automation` : ""}.`,
     ].join("\n"),
   };
 }

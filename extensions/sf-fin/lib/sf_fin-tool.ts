@@ -18,10 +18,20 @@ import { COMMAND_NAME, PROVIDER_NAME, TOOL_NAME } from "./types.ts";
 
 const Params = Type.Object({
   action: StringEnum(
-    ["status", "doctor", "install", "debug", "sdk", "surfaces", "agent"] as const,
+    [
+      "status",
+      "doctor",
+      "install",
+      "debug",
+      "sdk",
+      "surfaces",
+      "agent",
+      "setup",
+      "workspace",
+    ] as const,
     {
       description:
-        "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads and authoring (enables the Fin SDK on first use). surfaces: compare the installed Fin CLI, Intercom MCP, and Fin Agent API, and say which SF Fin uses per capability (local, read-only). agent: Fin Agent API test harness (needs granted access and /login sf-fin-agent).",
+        "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads and authoring (enables the Fin SDK on first use). surfaces: compare the installed Fin CLI, Intercom MCP, and Fin Agent API, and say which SF Fin uses per capability (local, read-only). agent: Fin Agent API test harness (needs granted access and /login sf-fin-agent). setup: read-only check of one workspace's credentials, what they unlock, and what is missing. workspace: list, add, use, or remove named Fin workspace profiles (no credentials).",
     },
   ),
   operation: Type.Optional(
@@ -40,10 +50,14 @@ const Params = Type.Object({
         "access",
         "capabilities",
         "run",
+        "list",
+        "add",
+        "use",
+        "remove",
       ] as const,
       {
         description:
-          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation).",
+          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name).",
       },
     ),
   ),
@@ -67,7 +81,28 @@ const Params = Type.Object({
     }),
   ),
   name: Type.Optional(
-    Type.String({ description: "sdk create_data_connector: name for the new connector." }),
+    Type.String({
+      description:
+        "sdk create_data_connector: connector name. workspace add/use/remove: workspace name (lowercase, for example test).",
+    }),
+  ),
+  workspace: Type.Optional(
+    Type.String({
+      description:
+        "Fin workspace profile to act on (default: the active workspace). Each workspace has its own sign-ins.",
+    }),
+  ),
+  kind: Type.Optional(
+    StringEnum(["test", "prod"] as const, {
+      description:
+        "workspace add: test (default) or prod. SF Guardrail treats prod like a production org.",
+    }),
+  ),
+  wants: Type.Optional(
+    Type.Array(StringEnum(["build", "operator", "test"] as const), {
+      description:
+        "setup: capabilities you need (build in Fin, Intercom MCP/Operator, Fin Agent API testing). Default: all.",
+    }),
   ),
   guidance_id: Type.Optional(
     Type.String({ description: "sdk guidance_state: numeric Fin guidance id." }),
@@ -118,7 +153,16 @@ const Params = Type.Object({
 });
 
 type Params = {
-  action: "status" | "doctor" | "install" | "debug" | "sdk" | "surfaces" | "agent";
+  action:
+    | "status"
+    | "doctor"
+    | "install"
+    | "debug"
+    | "sdk"
+    | "surfaces"
+    | "agent"
+    | "setup"
+    | "workspace";
   operation?:
     | "manifest"
     | "download"
@@ -132,7 +176,14 @@ type Params = {
     | "guidance_state"
     | "access"
     | "capabilities"
-    | "run";
+    | "run"
+    | "list"
+    | "add"
+    | "use"
+    | "remove";
+  workspace?: string;
+  kind?: "test" | "prod";
+  wants?: Array<"build" | "operator" | "test">;
   file?: string;
   name?: string;
   guidance_id?: string;
@@ -157,6 +208,15 @@ export function registerSfFinTool(
   pi.registerTool<typeof Params>({
     name: TOOL_NAME,
     label: "SF Fin",
+    // setup reads the workspace's Intercom MCP connection (read-only
+    // list_articles) to prove its workspace id; declare it so Pi finishes
+    // registering that server's tools before the call runs.
+    reachesTools: (input) => {
+      const params = input as Params;
+      if (params.action !== "setup") return [];
+      const name = params.workspace?.trim();
+      return [name && name !== "default" ? `intercom_${name.replace(/-/g, "_")}` : "intercom"];
+    },
     description:
       "Manage the Fin (formerly Intercom) workspace connection used by SF Fin: cached status, live read-only doctor, Fin CLI install/update through global npm (planned by default, Guardrail-mediated when executed), redacted debug bundles or one-shot verbose tracing, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness.",
     promptSnippet: "Check, install, and debug the Fin workspace CLI connection.",
@@ -187,6 +247,38 @@ export function registerSfFinTool(
     },
     async execute(_id, params, _signal, _onUpdate, ctx) {
       const input = params as Params;
+      const workspace = input.workspace?.trim() || undefined;
+
+      if (input.action === "workspace") {
+        const operation =
+          input.operation === "add" || input.operation === "use" || input.operation === "remove"
+            ? input.operation
+            : "list";
+        const result = service.workspace(
+          operation === "list"
+            ? { operation }
+            : operation === "add"
+              ? { operation, name: input.name, kind: input.kind }
+              : { operation, name: input.name },
+        );
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: { action: "workspace", operation, ok: result.ok, ...result.details },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
+
+      if (input.action === "setup") {
+        const result = await service.setup(
+          { ...ctx, executeTool: (name, args) => ctx.executeTool(name, args) },
+          { workspace, wants: input.wants },
+        );
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: { action: "setup", ok: result.ok, ...result.details },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
 
       if (input.action === "doctor") {
         const result = await service.doctor(ctx);
@@ -264,6 +356,7 @@ export function registerSfFinTool(
             : operation === "capabilities"
               ? { operation, userId: input.user_id }
               : { operation },
+          workspace,
         );
         return {
           content: [{ type: "text", text: result.text }],
@@ -286,6 +379,7 @@ export function registerSfFinTool(
                 state: input.state,
                 execute: input.allow_mutation === true,
               },
+          workspace,
         );
         return {
           content: [{ type: "text", text: result.text }],
@@ -319,6 +413,7 @@ export function registerSfFinTool(
                 : input.operation === "upload_simulations"
                   ? { operation: "upload_simulations", file: input.file }
                   : { operation: "validate", file: input.file },
+          workspace,
         );
         return {
           content: [{ type: "text", text: result.text }],
@@ -329,7 +424,7 @@ export function registerSfFinTool(
 
       if (input.action === "sdk") {
         const operation = input.operation === "download" ? "download" : "manifest";
-        const result = await service.sdk(ctx, operation);
+        const result = await service.sdk(ctx, operation, workspace);
         return {
           content: [{ type: "text", text: result.text }],
           details: {
