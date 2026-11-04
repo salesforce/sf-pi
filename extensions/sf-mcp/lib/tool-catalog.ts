@@ -4,6 +4,7 @@ import { getObservedMcpTools, type ObservedMcpTool } from "./observed-tools.ts";
 import type { McpPreset, McpPresetId } from "./presets.ts";
 import { defineTools, type DocumentedMcpTool, type McpToolRisk } from "./tool-contract-types.ts";
 import { B2C_COMMERCE_TOOLS } from "./tool-contracts-b2c.ts";
+import { INTERCOM_MCP_TOOLS } from "./tool-contracts-intercom.ts";
 import { SALESFORCE_DX_TOOLS } from "./tool-contracts-dx.ts";
 import { MARKETING_CLOUD_TOOLS } from "./tool-contracts-mce.ts";
 import { MULESOFT_DX_TOOLS } from "./tool-contracts-mulesoft.ts";
@@ -699,6 +700,16 @@ const CATALOGS: Record<McpPresetId, PresetToolCatalog> = {
     ],
     tools: B2C_COMMERCE_TOOLS,
     note: "This reviewed contract follows the GA @salesforce/b2c-dx-mcp package. Tool availability still depends on local project configuration and B2C Commerce credentials.",
+  },
+  intercom: {
+    capabilities: [
+      "Conversation and contact search",
+      "Companies and Help Center articles",
+      "Internal notes and article authoring",
+      "Fin Operator analysis and configuration proposals",
+    ],
+    tools: INTERCOM_MCP_TOOLS,
+    note: "The five Fin Operator tools are advertised only for OAuth connections whose teammate has Operator access; otherwise they stay hidden as unavailable. Operator turns consume Operator usage and apply_proposals writes live workspace configuration.",
   },
   "custom-salesforce": {
     capabilities: ["Runtime-declared custom capabilities"],

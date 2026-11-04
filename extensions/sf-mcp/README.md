@@ -103,8 +103,10 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - Native-preferred conflict recommendations alter only MCP exposure. They never disable `sf-soql`, `sf-apex`, `sf-flow`, `sf-data360`, or another SF Pi owner.
 - Runtime observation never approves a new tool. Additions require a reviewed preset revision; removed tools remain unavailable and repair only changes their native exposure to Hidden.
 - New custom servers start with `hidden` exposure and no callable tools.
+- `status` and `login.handoff` warn when a managed, enabled connection exposes zero reviewed tools, because sign-in alone makes nothing callable.
 - OAuth tokens, including standalone Tableau OAuth, remain in Pi's native MCP credential store.
 - Trailhead MCP requires no authentication and is restricted to its two documented read-only public-content tools.
+- Intercom MCP (Fin) uses Pi-native OAuth with dynamic client registration and requests the `mcp` and `operator` scopes; bearer-header or fixed-client entries are not adopted because they don't receive Fin Operator tools. Applying Fin Operator proposals is an exact, non-session SF Guardrail approval, and Operator turns are Guardrail-confirmed; both belong to the Power Tool **Fin CLI and Operator** family.
 - External Client App consumer keys are public client identifiers. Standard hosted presets don't request client secrets.
 - Agentforce Sales references `AGENTFORCE_SALES_CLIENT_SECRET`, Slack references `SLACK_MCP_CLIENT_SECRET`, and MuleSoft references `ANYPOINT_CLIENT_ID` and `ANYPOINT_CLIENT_SECRET`. Secret values are never copied into SF MCP state.
 - Slack and Informatica connections start with server exposure Hidden because their public references don't provide stable exact tool-name contracts. Session observation never promotes those tools.
@@ -175,6 +177,10 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 
 - B2C Commerce MCP (GA `@salesforce/b2c-dx-mcp` package with a reviewed exact tool contract)
 
+### Fin
+
+- Intercom MCP (Fin) — US or EU hosted workspaces; 14 reviewed data tools plus 5 Fin Operator tools that appear only for teammates with Operator access. Unlike other presets, new connections start with every reviewed tool in Code Mode because SF Guardrail mediates Operator turns and applies (ADR 0154).
+
 ### Custom
 
 - Custom Salesforce MCP quarantine entry
@@ -198,6 +204,8 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 - [Slack MCP server](https://docs.slack.dev/ai/slack-mcp-server)
 - [Informatica MCP OAuth and connector setup](https://www.informatica.com/blogs/powering-your-enterprise-ai-with-informatica-plugin-for-claude.html)
 - [B2C Commerce MCP](https://salesforcecommercecloud.github.io/b2c-developer-tooling/mcp/)
+- [Intercom MCP](https://developers.intercom.com/docs/guides/mcp)
+- [Fin Operator MCP tools](https://developers.intercom.com/docs/guides/fin-operator-mcp)
 
 ## File Structure
 

@@ -1,0 +1,46 @@
+{
+  "id": "sf-fin",
+  "name": "SF Fin",
+  "description": "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked personal API token, Guardrail-mediated Fin CLI install through global npm, live and cached doctor, and redacted debug traces.",
+  "category": "agent-tool",
+  "maturity": "experimental",
+  "defaultEnabled": true,
+  "commands": ["/sf-fin"],
+  "providers": ["sf-fin"],
+  "tools": ["sf_fin"],
+  "events": ["session_start", "session_shutdown"],
+  "docs": {
+    "intentGroup": "Build agents",
+    "editingRules": "AGENTS.md",
+    "agentGuide": "AGENT_GUIDE.md",
+    "summary": "Provides Pi-native `/login sf-fin`, which asks for the workspace hosting region and collects a Fin personal API token through SF Pi's shared fixed-mask input. Pi alone persists it. The `sf_fin` family tool and `/sf-fin` command expose cached status; a live read-only doctor (Node, Fin CLI presence and version freshness, credential, workspace identity through `intercom me`); Fin CLI install/update through exactly pinned global npm (TUI confirmation for humans, SF Guardrail mediation in the `fin` Power Tool family for the agent); and a redacted debug bundle with optional one-shot verbose traces. The CLI always runs with the token in the child-process environment only and an SF Pi-private CLI config directory. `/sf-pi doctor` receives cached-only checks.",
+    "primaryFiles": [
+      "index.ts",
+      "lib/service.ts",
+      "lib/auth.ts",
+      "lib/cli-runner.ts",
+      "lib/doctor.ts",
+      "lib/install/installer.ts",
+      "lib/debug.ts",
+      "lib/sf_fin-tool.ts"
+    ],
+    "stateFiles": [
+      "~/.pi/agent/auth.json entry: sf-fin (Pi-owned API key plus credential.env.INTERCOM_REGION)",
+      "<globalAgentDir>/sf-pi/sf-fin/status.json",
+      "<globalAgentDir>/sf-pi/sf-fin/debug.json",
+      "<globalAgentDir>/sf-pi/sf-fin/debug/trace-*.log",
+      "<globalAgentDir>/sf-pi/sf-fin/cli-config/",
+      "<globalAgentDir>/sf-pi/sf-fin/sdk-state.json (shared with SF Guardrail; no credentials)",
+      "<globalAgentDir>/sf-pi/sf-fin/sdk/<app id>/ (owner-only Fin SDK download and extraction)"
+    ],
+    "env": ["INTERCOM_TOKEN", "INTERCOM_REGION", "INTERCOM_APP_ID"],
+    "safety": [
+      "Interactive `/login sf-fin` masks the personal API token through SF Pi's shared credential input and returns it to Pi under provider id `sf-fin`; SF Fin writes no second secret store.",
+      "The token reaches the Fin CLI only through an allowlisted child-process environment, never argv, and the child uses an SF Pi-private `INTERCOM_CONFIG_DIR`, so the user's own CLI keychain entry and `~/.intercom` files are never read or written.",
+      "CLI output is scrubbed of the token before it reaches status, tool results, or logs; status files store only non-secret workspace identity and install readiness.",
+      "Doctor runs `intercom --version` and `intercom me` only; Fin SDK actions enable the SDK by default on first use through an explicit probe \u2192 POST /fin-sdk/enable \u2192 verify sequence before any `fin \u2026` CLI call, so the CLI's silent auto-enable never fires; the `/sf-pi doctor` provider reads cached state only.",
+      "Install runs exactly `npm install -g @intercom/cli@<exact version>` without sudo or `@latest`, honors npm release-age policy, and refuses CLIs not installed by global npm; agent execution (`allow_mutation=true`) is an SF Guardrail native mutation in the `fin` Power Tool family.",
+      "Verbose traces drop Authorization, Cookie, and bearer/basic values, are written as 0600 files with ten-file retention, self-disarm after the armed runs, and expose only the file path to the model."
+    ]
+  }
+}

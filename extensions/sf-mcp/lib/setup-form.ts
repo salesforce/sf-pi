@@ -263,6 +263,17 @@ function setupControls(theme: Theme, preset: McpPreset): Control[] {
         "Slack client ID",
       ),
     );
+  } else if (preset.setup === "intercom-oauth") {
+    controls.push({
+      kind: "choice",
+      key: "region",
+      label: "Workspace region",
+      help: "app.intercom.com is US; app.eu.intercom.com is EU. AU-hosted workspaces are not supported by Intercom MCP. Sign in afterwards with /mcp login; Pi registers its own OAuth client.",
+      options: [
+        { label: "United States", value: "US" },
+        { label: "European Union", value: "EU" },
+      ],
+    });
   } else if (preset.setup === "informatica-oauth") {
     controls.push(
       textControl(

@@ -46,6 +46,7 @@ vi.mock("node:fs", async () => {
 import { readBundledConfig } from "../lib/config.ts";
 import { shouldPowerToolAutoApprove } from "../lib/power-tool-mode.ts";
 import { evaluateSafety } from "../lib/safety-kernel.ts";
+import { writeFinSdkState } from "../../../lib/common/fin-sdk-state.ts";
 
 function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvironment {
   return {
@@ -634,6 +635,114 @@ describe("Safety Kernel", () => {
         config: readBundledConfig(),
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it("confirms only executed sf_fin installs, with version-bound fingerprints", async () => {
+    const plan = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "install" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const doctor = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "doctor" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const execute = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "install", version: "0.14.1", allow_mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const other = await evaluateSafety({
+      toolName: "sf_fin",
+      input: { action: "install", version: "0.15.0", allow_mutation: true },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(plan).toBeUndefined();
+    expect(doctor).toBeUndefined();
+    expect(execute).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-fin-cli-install",
+      approvalScope: { operationFamily: "fin cli install", allowSession: true },
+    });
+    expect(execute?.orgType).toBeUndefined();
+    expect(execute?.approvalScope?.fingerprint).not.toBe(other?.approvalScope?.fingerprint);
+    expect(shouldPowerToolAutoApprove(execute!, { mode: "native", nativeFamilies: ["fin"] })).toBe(
+      true,
+    );
+    expect(shouldPowerToolAutoApprove(execute!, { mode: "off" })).toBe(false);
+  });
+
+  it("Power Tool Mode auto-approves Fin Operator apply and turns without an org opt-in", async () => {
+    const apply = await evaluateSafety({
+      toolName: "mcp__intercom__apply_proposals",
+      input: { chat_id: "chat-1", proposals: [{ proposal_id: "p_1" }] },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const turn = await evaluateSafety({
+      toolName: "mcp__intercom__send_operator_message",
+      input: { message: "Review Fin setup gaps" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    for (const decision of [apply, turn]) {
+      expect(decision).toMatchObject({ action: "confirm", feature: "nativeToolGate" });
+      expect(decision?.orgType).toBeUndefined();
+      expect(decision?.orgResolutionGuessed).toBeUndefined();
+      // "all" with no production opt-in, and "native" + fin: both skip the prompt.
+      expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(true);
+      expect(
+        shouldPowerToolAutoApprove(decision!, { mode: "native", nativeFamilies: ["fin"] }),
+      ).toBe(true);
+      // Off (the default) still asks.
+      expect(shouldPowerToolAutoApprove(decision!, undefined)).toBe(false);
+    }
+    expect(apply?.approvalScope?.allowSession).toBe(false);
+  });
+
+  it("treats the first sf_fin sdk call as a Fin SDK enable; enabled workspaces stay prompt-free", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-sdk-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      const first = await evaluateSafety({
+        toolName: "sf_fin",
+        input: { action: "sdk", operation: "manifest" },
+        cwd: "/project",
+        config: readBundledConfig(),
+      });
+      expect(first).toMatchObject({
+        action: "confirm",
+        feature: "nativeToolGate",
+        ruleId: "native-sf-fin-sdk-enable",
+        approvalScope: { operationFamily: "fin sdk enable" },
+      });
+      expect(first?.orgType).toBeUndefined();
+      expect(shouldPowerToolAutoApprove(first!, { mode: "native", nativeFamilies: ["fin"] })).toBe(
+        true,
+      );
+      expect(shouldPowerToolAutoApprove(first!, { mode: "all" })).toBe(true);
+
+      writeFinSdkState({ state: "enabled", appId: "example" });
+      const later = await evaluateSafety({
+        toolName: "sf_fin",
+        input: { action: "sdk", operation: "download" },
+        cwd: "/project",
+        config: readBundledConfig(),
+      });
+      expect(later).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
   });
 
   it("confirms mutating sf_flow lifecycle actions with exact action fingerprints", async () => {

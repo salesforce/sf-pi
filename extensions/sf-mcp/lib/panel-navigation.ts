@@ -138,7 +138,7 @@ export function connectionToolPolicy(state: PresetRuntimeState): ToolExposurePol
   if (!hasReviewedToolPolicy(state.preset)) return undefined;
   return state.managed.config
     ? buildToolExposurePolicy(state.preset, "custom", state.managed.config)
-    : buildToolExposurePolicy(state.preset, "quarantine");
+    : buildToolExposurePolicy(state.preset, state.preset.initialToolProfile ?? "quarantine");
 }
 
 export function reconcileOptions(state: PresetRuntimeState): ReconcileChoice[] {

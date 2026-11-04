@@ -12,6 +12,7 @@ import {
   type BrowserSnapshotRefLookup,
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { inferNonProductionOrgTypeFromUrl } from "../../../lib/common/sf-environment/org-type.ts";
+import { readFinSdkState } from "../../../lib/common/fin-sdk-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
 import { classifySfMcpConfiguration } from "./sf-mcp-config-risk.ts";
 import { classifySfMcpRisk } from "./mcp-tool-risk.ts";
@@ -35,6 +36,8 @@ export function classifyNativeToolRisk(
     classifySfIntegrate(toolName, input) ??
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
+    classifySfFinInstall(toolName, input) ??
+    classifySfFinSdkEnable(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
     classifySfSoql(toolName, input) ??
@@ -210,6 +213,67 @@ function classifySfFlowLifecycle(
     usesSalesforceOrg: true,
     targetOrg,
     targetOrgExplicit: targetOrg !== undefined,
+  };
+}
+
+/**
+ * `sf_fin install` with `allow_mutation=true` runs a global npm install of the
+ * Fin CLI on the user's machine. Planning (no allow_mutation) stays prompt-free.
+ * The version is part of the fingerprint so a session approval covers exactly
+ * one install target. No Salesforce org is involved.
+ */
+function classifySfFinInstall(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "install" || input.allow_mutation !== true) {
+    return undefined;
+  }
+  const version = stringValue(input.version) ?? "latest-allowed";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "install",
+    ruleId: "native-sf-fin-cli-install",
+    subject: `sf_fin install @intercom/cli@${version}`,
+    reason: `Global npm install of the Fin CLI (@intercom/cli@${version}) requested.`,
+    promptTitle: "⚠ Fin CLI global npm install",
+    operationFamily: "fin cli install",
+    riskTier: "local_package_install_exact",
+    fingerprint: `sf_fin|install|${fingerprintText(version)}`,
+    approvalLabel: `npm install -g @intercom/cli@${version}`,
+    approvalDetail: `package=@intercom/cli; version=${version}; scope=global npm`,
+  };
+}
+
+/**
+ * `sf_fin sdk` enables the Fin SDK on first use. Once SF Fin has recorded the
+ * workspace as enabled, SDK reads are prompt-free; otherwise the call is a
+ * workspace-feature mutation (`POST /fin-sdk/enable`). No Salesforce org is
+ * involved; Power Tool Mode's `fin` family auto-approves it.
+ */
+function classifySfFinSdkEnable(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "sdk") return undefined;
+  const sdk = readFinSdkState();
+  if (sdk.state === "enabled") return undefined;
+  const workspace = sdk.appId ?? "connected workspace";
+  const operation = stringValue(input.operation) ?? "manifest";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "sdk",
+    ruleId: "native-sf-fin-sdk-enable",
+    subject: `sf_fin sdk ${operation} (enable Fin SDK)`,
+    reason: `Fin SDK is not recorded as enabled for ${workspace}; SF Fin will enable it (POST /fin-sdk/enable) before running ${operation}.`,
+    promptTitle: "⚠ Enable Fin SDK for this workspace",
+    operationFamily: "fin sdk enable",
+    riskTier: "workspace_feature_enable",
+    fingerprint: `sf_fin|sdk-enable|${fingerprintText(workspace)}`,
+    approvalLabel: `enable Fin SDK for ${workspace}`,
+    approvalDetail: `workspace=${workspace}; operation=${operation}; observed=${sdk.state}`,
   };
 }
 

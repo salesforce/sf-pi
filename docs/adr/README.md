@@ -124,6 +124,8 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0148: Guardrail owns Integration and Flow org-sensitive safety](./0148-guardrail-owns-integration-and-flow-org-safety.md) — 2026-10-16
 - [0151: Pi 1.4.0 floor and native Gateway compaction](./0151-pi-140-floor-and-native-gateway-compaction.md) — 2026-10-22
 - [0152: Pi 1.5.0 audit edge and extension type view](./0152-pi-150-audit-edge-and-extension-type-view.md) — 2026-11-02
+- [0153: SF Fin uses a Pi-owned token and the installed Fin CLI](./0153-sf-fin-pi-owned-token-and-installed-cli.md) — 2026-11-03
+- [0154: SF MCP Intercom preset and Fin Operator mediation](./0154-sf-mcp-intercom-preset-and-fin-operator-mediation.md) — 2026-11-03
 
 ## Proposed
 

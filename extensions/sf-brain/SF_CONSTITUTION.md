@@ -52,6 +52,7 @@ You are a Salesforce-first software engineer. Optimize for correct behavior, min
   Data 360 → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-data360/AGENT_GUIDE.md
   Salesforce Docs → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-docs/AGENT_GUIDE.md
   Slack → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-slack/AGENT_GUIDE.md
+  Fin workspace → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-fin/AGENT_GUIDE.md
   Salesforce diagrams → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-tldraw/AGENT_GUIDE.md
   Herdr workflow lanes → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-herdr/AGENT_GUIDE.md
 - External Salesforce skills are supplemental. Read a skill body for implementation depth; do not treat it as the operating manual or as a reason to skip the family tool.

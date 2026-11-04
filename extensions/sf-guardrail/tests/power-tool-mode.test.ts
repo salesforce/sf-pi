@@ -212,3 +212,56 @@ describe("Power Tool Mode integration and Flow controls", () => {
     ).toBe(false);
   });
 });
+
+describe("Power Tool Mode Fin CLI install", () => {
+  const finInstall = decision({
+    ruleId: "native-sf-fin-cli-install",
+    subject: "sf_fin install @intercom/cli@0.14.1",
+    approvalScope: {
+      fingerprint: "fin",
+      label: "npm install -g @intercom/cli@0.14.1",
+      operationFamily: "fin cli install",
+      riskTier: "local_package_install_exact",
+      allowSession: true,
+    },
+  });
+
+  it("auto-approves only when the fin family is selected; no org opt-in needed", () => {
+    expect(
+      shouldPowerToolAutoApprove(finInstall, { mode: "native", nativeFamilies: ["fin"] }),
+    ).toBe(true);
+    expect(
+      shouldPowerToolAutoApprove(finInstall, { mode: "native", nativeFamilies: ["flow"] }),
+    ).toBe(false);
+    expect(shouldPowerToolAutoApprove(finInstall, { mode: "all" })).toBe(true);
+    expect(shouldPowerToolAutoApprove(finInstall, undefined)).toBe(false);
+  });
+
+  it("is in the default native family set", () => {
+    expect(defaultNativeFamilies()).toContain("fin");
+  });
+});
+
+describe("Power Tool Mode Fin Operator", () => {
+  it.each(["mcp fin operator apply", "mcp fin operator turn"])(
+    "maps %s to the fin family without the production opt-in",
+    (operationFamily) => {
+      const operator = decision({
+        ruleId: "native-sf-mcp-fin-operator-apply",
+        approvalScope: {
+          fingerprint: "op",
+          label: "apply",
+          operationFamily,
+          riskTier: "mcp_fin_operator_apply_exact",
+          allowSession: false,
+        },
+      });
+      expect(
+        shouldPowerToolAutoApprove(operator, { mode: "native", nativeFamilies: ["fin"] }),
+      ).toBe(true);
+      expect(
+        shouldPowerToolAutoApprove(operator, { mode: "native", nativeFamilies: ["slack"] }),
+      ).toBe(false);
+    },
+  );
+});

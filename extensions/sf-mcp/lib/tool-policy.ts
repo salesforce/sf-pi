@@ -54,6 +54,19 @@ export const TOOL_POLICY_PROFILES: readonly ToolPolicyProfileOption[] = [
 
 const EXPOSURE_ORDER: readonly ToolExposureMode[] = ["hidden", "codemode", "deferred", "direct"];
 
+/**
+ * Number of reviewed tools a native entry exposes, or undefined when the entry
+ * exposes the whole server (no per-tool policy). Used to warn about connections
+ * that are signed in but still fully quarantined.
+ */
+export function exposedToolCount(config: McpServerConfig | undefined): number | undefined {
+  if (!config) return 0;
+  if (config.toolExposure) {
+    return Object.values(config.toolExposure).filter((exposure) => exposure !== "hidden").length;
+  }
+  return config.exposure === "hidden" ? 0 : undefined;
+}
+
 export function hasReviewedToolPolicy(preset: McpPreset): boolean {
   return getPresetToolCatalog(preset).tools.length > 0;
 }
