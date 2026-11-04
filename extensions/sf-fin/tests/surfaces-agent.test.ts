@@ -143,11 +143,6 @@ function rpcFetch(handler: (method: string, params: any) => { status?: number; b
     });
   });
 }
-const toolResult = (value: unknown) => ({
-  jsonrpc: "2.0",
-  id: 1,
-  result: { content: [{ type: "text", text: JSON.stringify(value) }] },
-});
 const deps = (f: ReturnType<typeof vi.fn>): AgentApiDeps => ({
   fetch: f as unknown as typeof fetch,
   sleep: async () => undefined,
@@ -207,47 +202,78 @@ describe("Fin Agent API harness", () => {
     expect(await probeAgentApiAccess(granted)).toEqual({ state: "granted", tools: ["ask_fin"] });
   });
 
-  it("drives a scripted procedure run through awaiting replies to completion", async () => {
-    // Fin asks for an email, waits; after the reply it answers and completes.
-    let replied = false;
+  // Shapes observed from the live Fin Agent API MCP server: tool results are
+  // plain text; get_fin_response says "has not replied yet" while thinking and
+  // returns isError "Conversation not found" just after start.
+  const text = (value: string, isError = false) => ({
+    jsonrpc: "2.0",
+    id: 1,
+    result: { content: [{ type: "text", text: value }], ...(isError ? { isError: true } : {}) },
+  });
+
+  it("asks Fin once, polls through not-found and not-yet, and stops after the answer", async () => {
     const calls: string[] = [];
-    const f = rpcFetch((method, params) => {
-      calls.push(params?.name ?? method);
-      if (params?.name === "reply_to_fin_conversation") replied = true;
-      if (params?.name === "get_fin_response") {
+    let polls = 0;
+    const f = rpcFetch((_method, params) => {
+      calls.push(params?.name);
+      if (params?.name === "ask_fin") return { body: text("Message sent to Fin.") };
+      polls += 1;
+      if (polls === 1)
         return {
-          body: toolResult(
-            replied
-              ? { status: "complete", messages: [{ body: "Done." }] }
-              : {
-                  status: "awaiting_user_reply",
-                  messages: [{ body: "<p>What is your email?</p>" }],
-                },
+          body: text(
+            "Conversation not found for id: c. If it was just created, try again in a moment.",
+            true,
           ),
         };
+      if (polls === 2) return { body: text("Fin has not replied yet.") };
+      return { body: text("<p>Go to the sign-in page.</p><p>Select Forgot password.</p>") };
+    });
+    const client = createAgentApiClient({ key: KEY, region: "us", deps: deps(f) });
+    const result = await runScriptedConversation(
+      client,
+      deps(f),
+      { message: "How do I reset my password?", replies: ["ignored for ask"] },
+      { conversationId: "c", userId: "u" },
+    );
+    expect(result).toMatchObject({ ok: true, status: "answered" });
+    expect(calls).toEqual(["ask_fin", "get_fin_response", "get_fin_response", "get_fin_response"]);
+    expect(result.transcript).toEqual([
+      { role: "user", text: "How do I reset my password?" },
+      { role: "fin", text: "Go to the sign-in page.\nSelect Forgot password." },
+    ]);
+    expect(result.text).not.toContain("has not replied yet");
+  });
+
+  it("uses a reply returned inline, and sends user_id with each scripted procedure reply", async () => {
+    const replyArgs: Array<Record<string, unknown>> = [];
+    const f = rpcFetch((_method, params) => {
+      if (params?.name === "run_fin_procedure")
+        return { body: text("What email do you sign in with?") };
+      if (params?.name === "reply_to_fin_conversation") {
+        replyArgs.push(params.arguments);
+        return { body: text("Thanks. Check your inbox for the reset link.") };
       }
-      return { body: toolResult({ status: "thinking" }) };
+      return { body: text("unexpected poll") };
     });
     const client = createAgentApiClient({ key: KEY, region: "us", deps: deps(f) });
     const result = await runScriptedConversation(
       client,
       deps(f),
       { procedureId: "4242", replies: ["customer@example.com"] },
-      { conversationId: "sf-pi-x", userId: "sf-pi-test-x" },
+      { conversationId: "c", userId: "u" },
     );
-    expect(calls[0]).toBe("run_fin_procedure");
-    expect(calls).toContain("reply_to_fin_conversation");
-    expect(result.status).toBe("complete");
-    expect(result.ok).toBe(true);
+    expect(result.status).toBe("answered");
     expect(result.transcript.map((t) => t.role)).toEqual(["fin", "user", "fin"]);
-    expect(result.transcript[0]?.text).toBe("What is your email?");
+    expect(replyArgs).toEqual([
+      { conversation_id: "c", message: "customer@example.com", user_id: "u" },
+    ]);
   });
 
   it("ends a stuck conversation after a bounded number of polls", async () => {
     const f = rpcFetch((_m, params) =>
-      params?.name === "get_fin_response"
-        ? { body: toolResult({ status: "thinking" }) }
-        : { body: toolResult({ status: "thinking" }) },
+      params?.name === "ask_fin"
+        ? { body: text("Message sent to Fin.") }
+        : { body: text("Fin has not replied yet.") },
     );
     const client = createAgentApiClient({ key: KEY, region: "us", deps: deps(f) });
     const result = await runScriptedConversation(
@@ -256,8 +282,24 @@ describe("Fin Agent API harness", () => {
       { message: "Hello" },
       { conversationId: "c", userId: "u" },
     );
-    expect(result.status).toBe("timed_out");
-    expect(result.ok).toBe(false);
-    expect(f.mock.calls.length).toBeLessThanOrEqual(1 + 30);
+    expect(result).toMatchObject({ ok: false, status: "timed_out" });
+    expect(f.mock.calls.length).toBe(1 + 30);
+  });
+
+  it("surfaces a real tool error instead of polling forever", async () => {
+    const f = rpcFetch((_m, params) =>
+      params?.name === "ask_fin"
+        ? { body: text("Message sent to Fin.") }
+        : { body: text("Rate limit exceeded", true) },
+    );
+    const client = createAgentApiClient({ key: KEY, region: "us", deps: deps(f) });
+    await expect(
+      runScriptedConversation(
+        client,
+        deps(f),
+        { message: "Hi" },
+        { conversationId: "c", userId: "u" },
+      ),
+    ).rejects.toThrow(/Rate limit/);
   });
 });

@@ -57,3 +57,32 @@ describe("/sf-fin sdk publish|pause", () => {
     expect(calls).toEqual([{ operation: "publish", procedureId: "4242", execute: false }]);
   });
 });
+
+describe("/sf-fin connect|disconnect agent", () => {
+  it("prefills /login sf-fin-agent in TUI and refuses outside TUI", async () => {
+    const setEditorText = vi.fn();
+    const notify = vi.fn();
+    const ctx = { mode: "tui", hasUI: true, ui: { setEditorText, notify } };
+    await handleCommand({} as FinService, ctx as never, "connect agent", false);
+    expect(setEditorText).toHaveBeenCalledWith("/login sf-fin-agent");
+    const rpc = { mode: "rpc", hasUI: true, ui: { setEditorText: vi.fn(), notify: vi.fn() } };
+    await handleCommand({} as FinService, rpc as never, "connect agent", false);
+    expect(rpc.ui.setEditorText).not.toHaveBeenCalled();
+  });
+
+  it("does not prefill a logout when no key is saved", async () => {
+    const setEditorText = vi.fn();
+    const notify = vi.fn();
+    vi.stubEnv("PI_CODING_AGENT_DIR", "/nonexistent-sf-fin-test-dir");
+    vi.stubEnv("FIN_AGENT_API_KEY", "");
+    await handleCommand(
+      {} as FinService,
+      { mode: "tui", hasUI: true, ui: { setEditorText, notify } } as never,
+      "disconnect agent",
+      false,
+    );
+    vi.unstubAllEnvs();
+    expect(setEditorText).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith("No Fin Agent API key is saved.", "info");
+  });
+});

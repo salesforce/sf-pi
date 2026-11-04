@@ -595,6 +595,7 @@
       "stateFiles": [
         "~/.pi/agent/auth.json entries: sf-fin (Pi-owned API key plus credential.env.INTERCOM_REGION) and sf-fin-agent (Fin Agent API key)",
         "<globalAgentDir>/sf-pi/sf-fin/status.json",
+        "<globalAgentDir>/sf-pi/sf-fin/agent-api-status.json (last Fin Agent API access outcome; no key material)",
         "<globalAgentDir>/sf-pi/sf-fin/debug.json",
         "<globalAgentDir>/sf-pi/sf-fin/debug/trace-*.log",
         "<globalAgentDir>/sf-pi/sf-fin/cli-config/",
@@ -617,13 +618,14 @@
         "Procedure upload validates against the workspace schema first, never sets state (cannot publish), and verifies the saved copy semantically; simulation sets are validated per test; upload, upload_simulations, and simulate are SF Guardrail native writes in the fin Power Tool family, and validate is local.",
         "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.",
         "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.",
-        "Guidance uploads are always paused and data connectors only as drafts; sdk guidance_state plans by default and executes as the exact SF Guardrail mutation native-sf-fin-procedure-state. The Fin Agent API key is a separate Pi provider (sf-fin-agent), sent only as an HTTPS Authorization header; agent run is native-sf-fin-agent-run because resolved conversations are billable. surfaces runs only local --help commands."
+        "Guidance uploads are always paused and data connectors only as drafts; sdk guidance_state plans by default and executes as the exact SF Guardrail mutation native-sf-fin-procedure-state. The Fin Agent API key is a separate Pi provider (sf-fin-agent), sent only as an HTTPS Authorization header; agent run is native-sf-fin-agent-run because resolved conversations are billable. surfaces runs only local --help commands.",
+        "The Fin Agent API key is rejected at login when it is malformed or equals the personal token, and every Agent API request refuses a key equal to the active personal token (constant-time digest comparison); it is sent only as an HTTPS Authorization header to the fixed regional host with redirects refused."
       ]
     },
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 5715
+    "srcLoc": 6017
   },
   {
     "id": "sf-flow",

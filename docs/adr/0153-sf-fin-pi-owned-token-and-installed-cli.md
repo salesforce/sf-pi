@@ -81,5 +81,14 @@ Procedure version history (`/fin-sdk/procedures/{id}/versions`) is gated by a se
 
 - **The Fin Agent API** is granted per workspace on request and uses its own workspace key. The personal token is rejected with `forbidden`. SF Fin stores the key as a second Pi-owned provider (`/login sf-fin-agent`) and sends it only as an HTTPS `Authorization` header. Replies arrive by webhook, so the harness uses the Fin Agent API MCP server's `get_fin_response` instead of hosting a receiver:
   - `access` probes `tools/list` and reports when access isn't granted, when the wrong key was sent, or when the key was rejected;
-  - `run` drives a scripted conversation with bounded polls and turns;
+  - `run` drives a scripted conversation with bounded polls and turns. Live verification showed that the MCP tools return plain text: Fin's reply, a "has not replied yet" notice, or an `isError` "Conversation not found" immediately after start. They return no status objects. A turn therefore ends when reply text arrives. `ask_fin` is one-shot, and `reply_to_fin_conversation` requires `user_id`;
   - `run` is classified `native-sf-fin-agent-run`, because a resolved conversation is a billable outcome.
+
+## Addendum: Fin Agent API key safety
+
+The Fin Agent API key follows the same rules as the personal token: a masked Pi-native login, Pi as the only store, an environment fallback (`FIN_AGENT_API_KEY`), and status-only detection that never returns the value. It adds four rules of its own:
+
+- **Separation.** The key and the personal token have different scopes. The Agent API key has `write_conversations` and `read_write_users` only. They also have different lifecycles. Login therefore rejects a key equal to the saved personal token, and every Agent API request first refuses a key equal to the active personal token from any source. Both checks compare SHA-256 digests in constant time.
+- **Shape.** Login trims the pasted key and rejects empty, multi-line, `Bearer`-prefixed, or too-short values before Pi persists anything.
+- **Transport.** The key is sent only as an HTTPS `Authorization` header to the region's fixed Fin Agent API host, with `redirect: "error"` and a per-request timeout. It never reaches the CLI, argv, child environments, logs, or tool output, and responses are scrubbed of it.
+- **Observability without material.** `agent-api-status.json` (mode `0600`) stores only the last access outcome, time, and tool count. `/sf-pi doctor` (cached only), `/sf-fin status`, and the debug bundle report the source and outcome. Results that point at the wrong credential are errors whose fix is `/login sf-fin-agent`.
