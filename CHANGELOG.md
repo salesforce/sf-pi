@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.349.0](https://github.com/salesforce/sf-pi/compare/v0.348.0...v0.349.0) (2026-11-04)
+
+
+### Features
+
+* **sf-fin:** add Fin Agent API key safety checks ([#871](https://github.com/salesforce/sf-pi/issues/871)) ([887a265](https://github.com/salesforce/sf-pi/commit/887a265c5cb80454f6efa1d35b2c60b3cd6edfe6))
+
 ## [0.348.0](https://github.com/salesforce/sf-pi/compare/v0.347.0...v0.348.0) (2026-11-04)
 
 
