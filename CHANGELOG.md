@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.349.1](https://github.com/salesforce/sf-pi/compare/v0.349.0...v0.349.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **sf-fin:** load in git installs (typebox/schema and yaml imports) ([#873](https://github.com/salesforce/sf-pi/issues/873)) ([82b2488](https://github.com/salesforce/sf-pi/commit/82b2488596cbd2147aad21392e79d7f9f12a5c2f))
+
 ## [0.349.0](https://github.com/salesforce/sf-pi/compare/v0.348.0...v0.349.0) (2026-11-04)
 
 
