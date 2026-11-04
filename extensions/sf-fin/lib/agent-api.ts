@@ -14,7 +14,7 @@
  *   conversation, not billable).
  * - `run` drives one scripted conversation: start (procedure run or ask), then
  *   reply with each scripted user message when Fin awaits one, polling with a
- *   bounded attempt count, and reports the transcript and final status.
+ *   bounded attempt count, and reports the transcript and whether Fin answered.
  *   Conversations Fin resolves are billed as outcomes.
  */
 import type { FinRegion } from "./types.ts";
@@ -178,8 +178,18 @@ export interface RunResult {
 }
 
 /**
- * Drive one scripted conversation. Bounded by MAX_TURNS replies and
- * MAX_POLLS polls per turn, so a stuck conversation always ends.
+ * Drive one scripted conversation through the Fin Agent API MCP server.
+ *
+ * The server's tools return plain text, not status objects:
+ * - `ask_fin`, `run_fin_procedure`, and `reply_to_fin_conversation` return
+ *   Fin's reply when it is ready, or a "sent / started" acknowledgement;
+ * - `get_fin_response` returns the reply text, or a "has not replied yet"
+ *   notice while Fin is thinking, or an isError "not found" right after start.
+ *
+ * A turn ends when a reply arrives. `ask_fin` is one-shot by contract (no
+ * follow-up), so an ask completes after its first reply. A procedure run
+ * continues with the next scripted reply after each Fin turn. Bounded by
+ * MAX_TURNS and MAX_POLLS, so a stuck conversation always ends.
  */
 export async function runScriptedConversation(
   client: ReturnType<typeof createAgentApiClient>,
@@ -191,37 +201,48 @@ export async function runScriptedConversation(
   const conversationId = ids.conversationId;
   const userId = run.userId ?? ids.userId;
   if (run.message) transcript.push({ role: "user", text: run.message });
-  if (run.procedureId) {
-    await client.callTool("run_fin_procedure", {
-      procedure_id: run.procedureId,
-      user_id: userId,
-      conversation_id: conversationId,
-      ...(run.message ? { message: run.message } : {}),
-    });
-  } else {
-    await client.callTool("ask_fin", {
-      user_id: userId,
-      conversation_id: conversationId,
-      message: run.message ?? "",
-    });
-  }
+  const started = run.procedureId
+    ? await client.callTool("run_fin_procedure", {
+        procedure_id: run.procedureId,
+        user_id: userId,
+        conversation_id: conversationId,
+        ...(run.message ? { message: run.message } : {}),
+      })
+    : await client.callTool("ask_fin", {
+        user_id: userId,
+        conversation_id: conversationId,
+        message: run.message ?? "",
+      });
 
   const replies = [...(run.replies ?? [])];
-  let status = "thinking";
+  let pending: unknown = started;
+  let status: RunStatus = "timed_out";
   for (let turn = 0; turn <= MAX_TURNS; turn++) {
-    status = await pollTurn(client, deps, conversationId, transcript);
-    if (status !== "awaiting_user_reply") break;
+    const reply = replyText(pending) ?? (await pollReply(client, deps, conversationId));
+    if (reply === undefined) {
+      status = "timed_out";
+      break;
+    }
+    transcript.push({ role: "fin", text: reply });
+    if (!run.procedureId) {
+      // ask_fin is one-shot: one answer, no follow-up.
+      status = "answered";
+      break;
+    }
     const next = replies.shift();
-    if (next === undefined) break;
+    if (next === undefined) {
+      status = "answered";
+      break;
+    }
     transcript.push({ role: "user", text: next });
-    await client.callTool("reply_to_fin_conversation", {
+    pending = await client.callTool("reply_to_fin_conversation", {
       conversation_id: conversationId,
       message: next,
+      user_id: userId,
     });
   }
-  const done = ["complete", "resolved", "escalated"].includes(status);
   return {
-    ok: done || (status === "awaiting_user_reply" && replies.length === 0),
+    ok: status === "answered",
     conversationId,
     status,
     transcript,
@@ -229,68 +250,73 @@ export async function runScriptedConversation(
   };
 }
 
-async function pollTurn(
+export type RunStatus = "answered" | "timed_out";
+
+/** Fin's reply text from a tool result, or undefined for an acknowledgement or "not yet". */
+export function replyText(result: unknown): string | undefined {
+  if (result === undefined || result === null) return undefined;
+  if (typeof result === "object") {
+    const record = result as Record<string, unknown>;
+    const body =
+      typeof record.message === "string"
+        ? record.message
+        : typeof (record.message as Record<string, unknown> | undefined)?.body === "string"
+          ? ((record.message as Record<string, unknown>).body as string)
+          : typeof record.reply === "string"
+            ? record.reply
+            : undefined;
+    return body ? replyText(body) : undefined;
+  }
+  const text = stripHtml(String(result));
+  if (!text || isNotYet(text)) return undefined;
+  return text;
+}
+
+function isNotYet(text: string): boolean {
+  return /^(fin has not replied yet|fin is (still )?thinking|message sent|procedure started|conversation not found)/i.test(
+    text.trim(),
+  );
+}
+
+async function pollReply(
   client: ReturnType<typeof createAgentApiClient>,
   deps: AgentApiDeps,
   conversationId: string,
-  transcript: RunTranscriptTurn[],
-): Promise<string> {
-  const seen = new Set(transcript.filter((t) => t.role === "fin").map((t) => t.text));
+): Promise<string | undefined> {
   for (let poll = 0; poll < MAX_POLLS; poll++) {
-    const response = (await client.callTool("get_fin_response", {
-      conversation_id: conversationId,
-    })) as Record<string, unknown> | string;
-    const record = typeof response === "string" ? { message: response } : response;
-    for (const text of finMessages(record)) {
-      if (!seen.has(text)) {
-        seen.add(text);
-        transcript.push({ role: "fin", text });
-      }
+    try {
+      const reply = replyText(
+        await client.callTool("get_fin_response", { conversation_id: conversationId }),
+      );
+      if (reply !== undefined) return reply;
+    } catch (error) {
+      // Right after start the conversation may not be visible yet; keep polling.
+      if (!(error instanceof AgentApiError) || !/not found/i.test(error.message)) throw error;
     }
-    const status = typeof record.status === "string" ? record.status : "unknown";
-    if (status !== "thinking" && status !== "replying" && status !== "unknown") return status;
     await deps.sleep(POLL_MS);
   }
-  return "timed_out";
-}
-
-function finMessages(record: Record<string, unknown>): string[] {
-  const out: string[] = [];
-  const push = (value: unknown) => {
-    if (typeof value === "string" && value.trim()) out.push(stripHtml(value));
-    else if (value && typeof value === "object") {
-      const body = (value as Record<string, unknown>).body;
-      if (typeof body === "string" && body.trim()) out.push(stripHtml(body));
-    }
-  };
-  if (Array.isArray(record.messages)) record.messages.forEach(push);
-  push(record.message);
-  return out;
+  return undefined;
 }
 
 function formatRun(
   conversationId: string,
-  status: string,
+  status: RunStatus,
   transcript: RunTranscriptTurn[],
 ): string {
-  const icon = ["complete", "resolved"].includes(status)
-    ? "✅"
-    : status === "escalated"
-      ? "↗"
-      : status === "awaiting_user_reply"
-        ? "💬"
-        : "⚠";
   return [
-    `${icon} Fin Agent API run ${conversationId} — final status: ${status}`,
-    ...transcript.map((t) => `${t.role === "user" ? "User" : "Fin"}: ${t.text.slice(0, 400)}`),
+    `${status === "answered" ? "✅" : "⚠"} Fin Agent API run ${conversationId} — ${status === "answered" ? "Fin answered" : "no reply within the poll limit"}`,
+    ...transcript.map((t) => `${t.role === "user" ? "User" : "Fin"}: ${t.text.slice(0, 600)}`),
   ].join("\n");
 }
 
 function stripHtml(text: string): string {
   return text
+    .replace(/<\/(p|li|div|h\d)>|<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{2,}/g, "\n")
     .trim();
 }
 

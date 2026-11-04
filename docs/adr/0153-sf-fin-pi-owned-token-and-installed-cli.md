@@ -81,7 +81,7 @@ Procedure version history (`/fin-sdk/procedures/{id}/versions`) is gated by a se
 
 - **The Fin Agent API** is granted per workspace on request and uses its own workspace key. The personal token is rejected with `forbidden`. SF Fin stores the key as a second Pi-owned provider (`/login sf-fin-agent`) and sends it only as an HTTPS `Authorization` header. Replies arrive by webhook, so the harness uses the Fin Agent API MCP server's `get_fin_response` instead of hosting a receiver:
   - `access` probes `tools/list` and reports when access isn't granted, when the wrong key was sent, or when the key was rejected;
-  - `run` drives a scripted conversation with bounded polls and turns;
+  - `run` drives a scripted conversation with bounded polls and turns. Live verification showed that the MCP tools return plain text: Fin's reply, a "has not replied yet" notice, or an `isError` "Conversation not found" immediately after start. They return no status objects. A turn therefore ends when reply text arrives. `ask_fin` is one-shot, and `reply_to_fin_conversation` requires `user_id`;
   - `run` is classified `native-sf-fin-agent-run`, because a resolved conversation is a billable outcome.
 
 ## Addendum: Fin Agent API key safety
