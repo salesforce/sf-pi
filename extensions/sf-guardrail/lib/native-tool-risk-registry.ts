@@ -37,6 +37,7 @@ export function classifyNativeToolRisk(
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifySfFinInstall(toolName, input) ??
+    classifySfFinProcedureState(toolName, input) ??
     classifySfFinProcedureWrite(toolName, input) ??
     classifySfFinSdkEnable(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
@@ -286,6 +287,44 @@ function classifySfFinProcedureWrite(
     fingerprint: `sf_fin|sdk-${operation}|${fingerprintText(JSON.stringify({ target, generate }))}`,
     approvalLabel: `${operation} ${target}`,
     approvalDetail: `operation=${operation}; target=${target}${operation === "simulate" ? `; generate=${generate}` : ""}`,
+  };
+}
+
+/**
+ * `sf_fin sdk publish|pause` with `allow_mutation=true` changes whether Fin
+ * uses a procedure for live customer conversations. Planning is prompt-free.
+ * Each call is an exact approval (no session grant) because publishing puts
+ * the procedure in front of customers. No Salesforce org is involved; Power
+ * Tool Mode's `fin` family auto-approves it.
+ */
+function classifySfFinProcedureState(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "sdk" || input.allow_mutation !== true) {
+    return undefined;
+  }
+  const operation = stringValue(input.operation);
+  if (operation !== "publish" && operation !== "pause") return undefined;
+  const procedureId = stringValue(input.procedure_id) ?? "unspecified procedure";
+  const target = operation === "publish" ? "live" : "paused";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: `sdk.${operation}`,
+    ruleId: "native-sf-fin-procedure-state",
+    subject: `sf_fin sdk ${operation} ${procedureId}`,
+    reason:
+      operation === "publish"
+        ? `Publish Fin procedure ${procedureId}: Fin will use it for matching live customer conversations.`
+        : `Pause Fin procedure ${procedureId}: Fin will stop using it for customer conversations.`,
+    promptTitle: operation === "publish" ? "⚠ Publish Fin procedure" : "⚠ Pause Fin procedure",
+    operationFamily: "fin procedure state",
+    riskTier: "fin_procedure_state_exact",
+    fingerprint: `sf_fin|sdk-${operation}|${fingerprintText(procedureId)}`,
+    approvalLabel: `${operation} Fin procedure ${procedureId}`,
+    approvalDetail: `procedure=${procedureId}; state→${target}`,
+    allowSession: false,
   };
 }
 

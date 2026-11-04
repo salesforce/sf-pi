@@ -18,7 +18,7 @@ credential, the workspace **personal API token**, and manages the Fin CLI
 - `/sf-pi doctor` includes SF Fin's cached checks without network or
   credential use.
 
-This version does not author, publish, or change any Fin workspace configuration.
+For Fin-as-code procedures, SF Fin validates, uploads drafts, runs simulations, and publishes or pauses procedures. Each step that changes the workspace goes through SF Guardrail. It does not change any other Fin workspace configuration.
 
 ## Commands
 
@@ -39,6 +39,8 @@ This version does not author, publish, or change any Fin workspace configuration
 | `/sf-fin sdk upload <file>`             | Upload an unpublished draft; verify the saved copy      |
 | `/sf-fin sdk upload_simulations <file>` | Upload a simulation set for a procedure                 |
 | `/sf-fin sdk simulate <id>`             | Generate (optional) and run simulations, with results   |
+| `/sf-fin sdk publish <id>`              | Set a procedure live after confirmation                 |
+| `/sf-fin sdk pause <id>`                | Take a live procedure offline after confirmation        |
 | `/sf-fin help`                          | Print setup guidance                                    |
 
 The agent uses the same operations through `sf_fin`. `sf_fin action='install'`
@@ -77,6 +79,18 @@ SF Guardrail (see below).
 - Install runs exactly `npm install -g @intercom/cli@<exact version>`, never
   `sudo` or `@latest`, honors npm's `before` / `min-release-age` policy, and
   refuses to modify a CLI that global npm did not install.
+- Procedure upload validates against the workspace schema first and never sets
+  `state`, so it keeps a procedure's current state. Upload, simulation-set
+  upload, and simulate are SF Guardrail mutations
+  (`native-sf-fin-procedure-write`); `validate` is local.
+- Fin simulates **live** procedures only. A draft runs without its steps, and
+  `sdk simulate` warns about it. Publish the procedure to test it, then pause it
+  again. A procedure never returns to draft.
+- `sdk publish|pause` only plans unless you pass `allow_mutation=true`. Executing
+  it is an exact SF Guardrail mutation (`native-sf-fin-procedure-state`, Power
+  Tool family **Fin CLI and Operator**) that is never session-approved, because
+  publishing puts the procedure in front of customers. SF Fin then checks the
+  state Fin reports.
 - Agent-initiated installs are SF Guardrail native mutations in the
   **Fin CLI install** family. They ask for approval by default and are
   auto-approved only when Guardrail Power Tool Mode includes that family (or

@@ -742,6 +742,43 @@ describe("Safety Kernel", () => {
     }
   });
 
+  it("mediates sf_fin publish/pause as exact, never session-approved; planning stays prompt-free", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-state-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      writeFinSdkState({ state: "enabled", appId: "example" });
+      const evaluate = (input: Record<string, unknown>) =>
+        evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+      for (const operation of ["publish", "pause"]) {
+        const plan = await evaluate({ action: "sdk", operation, procedure_id: "4242" });
+        expect(plan).toBeUndefined();
+        const execute = await evaluate({
+          action: "sdk",
+          operation,
+          procedure_id: "4242",
+          allow_mutation: true,
+        });
+        expect(execute).toMatchObject({
+          action: "confirm",
+          feature: "nativeToolGate",
+          ruleId: "native-sf-fin-procedure-state",
+          approvalScope: { operationFamily: "fin procedure state", allowSession: false },
+        });
+        expect(execute?.orgType).toBeUndefined();
+        expect(shouldPowerToolAutoApprove(execute!, { mode: "all" })).toBe(true);
+        expect(
+          shouldPowerToolAutoApprove(execute!, { mode: "native", nativeFamilies: ["fin"] }),
+        ).toBe(true);
+        expect(shouldPowerToolAutoApprove(execute!, undefined)).toBe(false);
+      }
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
   it("treats the first sf_fin sdk call as a Fin SDK enable; enabled workspaces stay prompt-free", async () => {
     const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-sdk-"));
     const previous = process.env.PI_CODING_AGENT_DIR;

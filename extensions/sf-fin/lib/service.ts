@@ -38,6 +38,7 @@ import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
 import {
   formatValidation,
   procedureSchemaPath,
+  setProcedureState,
   simulateProcedure,
   simulationSchemaPath,
   uploadSimulationSet,
@@ -66,7 +67,7 @@ export interface FinService {
   cachedDoctorReport(): ExtensionDoctorReport;
   /** Fin-as-code reads. Enables the Fin SDK by default on first use. */
   sdk(ctx: ExtensionContext, operation: "manifest" | "download"): Promise<SdkReadResult>;
-  /** Fin-as-code procedure lifecycle: local validate, draft upload, simulate. */
+  /** Fin-as-code procedure lifecycle: validate, draft upload, simulate, publish/pause. */
   procedure(ctx: ExtensionContext, request: ProcedureRequest): Promise<ProcedureResponse>;
 }
 
@@ -201,6 +202,19 @@ export function createFinService(deps: FinServiceDeps): FinService {
         return { ok: false, text: credential.message, details: { phase: "credential" } };
       }
       const sdkDeps = deps.sdkDeps ?? createSdkReadDeps(deps.exec, appId);
+      if (request.operation === "publish" || request.operation === "pause") {
+        return setProcedureState(
+          credential.credential,
+          sdkDeps,
+          {
+            procedureId: request.procedureId ?? "",
+            target: request.operation === "publish" ? "live" : "paused",
+            execute: request.execute === true,
+            note: request.note,
+          },
+          ctx.signal,
+        );
+      }
       if (request.operation === "upload_simulations") {
         return uploadSimulationSet(
           credential.credential,
@@ -252,7 +266,9 @@ export type ProcedureRequest =
   | { operation: "validate"; file?: string }
   | { operation: "upload"; file?: string; note?: string }
   | { operation: "upload_simulations"; file?: string }
-  | { operation: "simulate"; procedureId?: string; generate?: boolean };
+  | { operation: "simulate"; procedureId?: string; generate?: boolean }
+  | { operation: "publish"; procedureId?: string; execute?: boolean; note?: string }
+  | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string };
 
 export interface ProcedureResponse {
   ok: boolean;

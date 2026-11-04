@@ -21,9 +21,10 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 2. `sf_fin action='sdk' operation='validate' file=…`, and fix every issue it reports.
 3. `operation='upload' file=…`. New files use `id: new`; after the first upload, set `id` and the returned `version` before editing again. Never add `state`. Upload saves a draft only, and the result reports whether the saved copy is semantically identical.
 4. Write a `simulation_set` (`type: simulation_set`, `procedure_id`, `tests:` of `type: simulation_test`). Assert on `outcome`, `agent_response`, or `escalated_to` (use `DEFAULT` for the default inbox), never on `temporary.*` attributes. Then `operation='upload_simulations' file=…`.
-5. `operation='simulate' procedure_id=…`. Read each failed assertion's reasoning, fix the procedure or the test, and repeat from step 2.
+5. `operation='simulate' procedure_id=…`. Fin simulates **live** procedures only; on a draft, runs ignore the procedure's steps and SF Fin warns. Read each failed assertion's reasoning, fix the procedure or the test, and repeat from step 2.
+6. To test or release, `operation='publish' procedure_id=…` returns a plan; ask the user, then repeat with `allow_mutation=true`. `operation='pause'` takes it offline again. A procedure never returns to draft, so after testing, pause it unless the user wants it live.
 
-- Publishing is out of scope for `sf_fin`; tell the user it is a separate decision.
+- Publishing puts the procedure in front of customers. Never publish without the user's explicit request for that procedure.
 
 ## Recovery
 
@@ -47,4 +48,4 @@ Install plan outcomes:
 - Never ask the user to paste a token into chat, and never run `intercom auth login` yourself. `/login sf-fin` is the only credential entry path.
 - Do not run the Fin CLI or `npm install -g @intercom/cli` directly through `bash`. Use `sf_fin`, which keeps the token out of argv and the user's own CLI config, pins exact versions, and routes installs through SF Guardrail.
 - `allow_mutation=true` states intent; it is not approval. Never claim an install was approved unless the tool result shows it ran.
-- `sf_fin` does not author, publish, or change Fin workspace configuration in this version.
+- `sf_fin` changes only Fin-as-code procedures and their simulations: draft uploads, simulation sets, simulation runs, and publish/pause. It changes no other workspace configuration.

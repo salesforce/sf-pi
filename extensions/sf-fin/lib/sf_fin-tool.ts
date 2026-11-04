@@ -23,10 +23,19 @@ const Params = Type.Object({
   }),
   operation: Type.Optional(
     StringEnum(
-      ["manifest", "download", "validate", "upload", "upload_simulations", "simulate"] as const,
+      [
+        "manifest",
+        "download",
+        "validate",
+        "upload",
+        "upload_simulations",
+        "simulate",
+        "publish",
+        "pause",
+      ] as const,
       {
         description:
-          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id.",
+          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft.",
       },
     ),
   ),
@@ -37,10 +46,12 @@ const Params = Type.Object({
     }),
   ),
   note: Type.Optional(
-    Type.String({ description: "sdk upload: version note recorded with the save." }),
+    Type.String({ description: "sdk upload/publish/pause: version note recorded with the save." }),
   ),
   procedure_id: Type.Optional(
-    Type.String({ description: "sdk simulate: Fin procedure id returned by upload." }),
+    Type.String({
+      description: "sdk simulate/publish/pause: Fin procedure id returned by upload.",
+    }),
   ),
   generate: Type.Optional(
     Type.Boolean({
@@ -56,7 +67,7 @@ const Params = Type.Object({
   allow_mutation: Type.Optional(
     Type.Boolean({
       description:
-        "install only: execute the planned install. Execution intent, not approval; SF Guardrail mediates it.",
+        "install, sdk publish/pause: execute the planned change. Execution intent, not approval; SF Guardrail mediates it.",
     }),
   ),
   verbose: Type.Optional(
@@ -71,7 +82,15 @@ const Params = Type.Object({
 
 type Params = {
   action: "status" | "doctor" | "install" | "debug" | "sdk";
-  operation?: "manifest" | "download" | "validate" | "upload" | "upload_simulations" | "simulate";
+  operation?:
+    | "manifest"
+    | "download"
+    | "validate"
+    | "upload"
+    | "upload_simulations"
+    | "simulate"
+    | "publish"
+    | "pause";
   file?: string;
   note?: string;
   procedure_id?: string;
@@ -169,17 +188,26 @@ export function registerSfFinTool(
         (input.operation === "validate" ||
           input.operation === "upload" ||
           input.operation === "upload_simulations" ||
-          input.operation === "simulate")
+          input.operation === "simulate" ||
+          input.operation === "publish" ||
+          input.operation === "pause")
       ) {
         const result = await service.procedure(
           ctx,
-          input.operation === "simulate"
-            ? { operation: "simulate", procedureId: input.procedure_id, generate: input.generate }
-            : input.operation === "upload"
-              ? { operation: "upload", file: input.file, note: input.note }
-              : input.operation === "upload_simulations"
-                ? { operation: "upload_simulations", file: input.file }
-                : { operation: "validate", file: input.file },
+          input.operation === "publish" || input.operation === "pause"
+            ? {
+                operation: input.operation,
+                procedureId: input.procedure_id,
+                execute: input.allow_mutation === true,
+                note: input.note,
+              }
+            : input.operation === "simulate"
+              ? { operation: "simulate", procedureId: input.procedure_id, generate: input.generate }
+              : input.operation === "upload"
+                ? { operation: "upload", file: input.file, note: input.note }
+                : input.operation === "upload_simulations"
+                  ? { operation: "upload_simulations", file: input.file }
+                  : { operation: "validate", file: input.file },
         );
         return {
           content: [{ type: "text", text: result.text }],

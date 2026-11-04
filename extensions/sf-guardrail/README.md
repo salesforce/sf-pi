@@ -114,6 +114,20 @@ involved, so it asks for approval by default and Power Tool Mode auto-approves
 it when the **Fin CLI install** family is selected (or mode is all
 confirm-class decisions) without the production/unknown-org opt-in.
 
+## Fin procedure writes and state
+
+`sf_fin` procedure operations involve no Salesforce org:
+
+- `sdk upload`, `upload_simulations`, and `simulate` are
+  `native-sf-fin-procedure-write`.
+- `sdk publish` / `pause` with `allow_mutation=true` are
+  `native-sf-fin-procedure-state`. They are exact approvals with no session
+  grant, because publishing puts a procedure in front of customers. Planning
+  without `allow_mutation` is prompt-free.
+
+Both ask for approval by default. Power Tool Mode auto-approves them when the
+**Fin CLI and Operator** family is selected.
+
 ## Integration and Flow production controls
 
 SF Guardrail owns org-sensitive safety policy for `sf_integrate` mutations and
