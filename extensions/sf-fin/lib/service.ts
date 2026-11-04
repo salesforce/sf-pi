@@ -34,6 +34,29 @@ import { planCliInstall, runCliInstall, type InstallPlan } from "./install/insta
 import { buildStatusText, createFinStatusStore } from "./status.ts";
 import { COMMAND_NAME, type FinOutcomeKind, type FinStatusSnapshot } from "./types.ts";
 import { getFinAgentApiKey, getFinCredential } from "./auth.ts";
+import type { StateStore } from "../../../lib/common/state-store.ts";
+import { discoverRegion } from "./region.ts";
+import {
+  evaluateSetup,
+  workspaceIdFromMcpText,
+  type Capability,
+  type McpIdentity,
+  type SetupFacts,
+} from "./setup.ts";
+import {
+  addWorkspace,
+  bindWorkspaceIdentity,
+  createWorkspaceStore,
+  DEFAULT_WORKSPACE,
+  readWorkspaces,
+  removeWorkspace,
+  resolveWorkspace,
+  useWorkspace,
+  workspaceProviders,
+  type WorkspaceKind,
+  type WorkspaceProfile,
+  type WorkspaceState,
+} from "./workspaces.ts";
 import {
   agentKeyCachedCheck,
   agentKeyStatusLines,
@@ -97,13 +120,34 @@ export interface FinService {
   setVerbose(on: boolean, runs?: number): string;
   cachedDoctorReport(): ExtensionDoctorReport;
   /** Fin-as-code reads. Enables the Fin SDK by default on first use. */
-  sdk(ctx: ExtensionContext, operation: "manifest" | "download"): Promise<SdkReadResult>;
+  sdk(
+    ctx: ExtensionContext,
+    operation: "manifest" | "download",
+    workspace?: string,
+  ): Promise<SdkReadResult>;
   /** Fin-as-code procedure lifecycle: validate, draft upload, simulate, publish/pause. */
-  procedure(ctx: ExtensionContext, request: ProcedureRequest): Promise<ProcedureResponse>;
+  procedure(
+    ctx: ExtensionContext,
+    request: ProcedureRequest,
+    workspace?: string,
+  ): Promise<ProcedureResponse>;
   /** Compare Fin CLI, Intercom MCP, and Fin Agent API surfaces (local, read-only). */
   surfaces(): Promise<ProcedureResponse>;
   /** Fin Agent API harness: access check, capabilities, scripted runs. */
-  agent(ctx: ExtensionContext, request: AgentRequest): Promise<ProcedureResponse>;
+  agent(
+    ctx: ExtensionContext,
+    request: AgentRequest,
+    workspace?: string,
+  ): Promise<ProcedureResponse>;
+  /** Named workspace profiles: list, add, use, remove (no credentials). */
+  workspace(request: WorkspaceRequest): ProcedureResponse;
+  /** Unified, read-only setup check for one workspace. */
+  setup(
+    ctx: ExtensionContext & {
+      executeTool?: (name: string, args: unknown) => Promise<unknown>;
+    },
+    request: { workspace?: string; wants?: Capability[] },
+  ): Promise<ProcedureResponse>;
 }
 
 export interface FinServiceDeps {
@@ -116,11 +160,24 @@ export interface FinServiceDeps {
   helpRunner?: Parameters<typeof crawlCliCommands>[0];
   /** Test seam: Agent API status store. */
   agentStatusStore?: ReturnType<typeof createAgentKeyStatusStore>;
+  /** Test seam: workspace profile store. */
+  workspaceStore?: StateStore<WorkspaceState>;
+  /** Test seam: region discovery fetch. */
+  fetch?: typeof fetch;
+  /** Called after a workspace is added, so its Pi sign-ins can be registered. */
+  onWorkspaceAdded?: (name: string) => void;
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
   const statusStore = createFinStatusStore();
   const debugStore = createFinDebugStore();
+  const workspaceStore = deps.workspaceStore ?? createWorkspaceStore();
+  /** Resolve a workspace name, or explain why it is unknown. */
+  const ws = (requested?: string) => resolveWorkspace(workspaceStore, requested);
+  /** App id bound to the workspace, falling back to the last doctor identity for default. */
+  const appIdFor = (profile: WorkspaceProfile) =>
+    profile.appId ??
+    (profile.name === DEFAULT_WORKSPACE ? statusStore.read().identity?.appId : undefined);
   const fetchRegistry = deps.fetchRegistry ?? fetchCliRegistryMetadata;
   const doctorDeps = deps.doctorDeps ?? { ...createDoctorDeps(deps.exec), fetchRegistry };
 
@@ -210,8 +267,17 @@ export function createFinService(deps: FinServiceDeps): FinService {
       ].join("\n");
     },
 
-    async sdk(ctx, operation) {
-      const credential = await getFinCredential(ctx);
+    async sdk(ctx, operation, workspace) {
+      const target = ws(workspace);
+      if (target.ok === false) {
+        return {
+          ok: false,
+          enabledNow: false,
+          text: target.message,
+          details: { phase: "workspace" },
+        };
+      }
+      const credential = await getFinCredential(ctx, target.profile.name);
       if (credential.ok === false) {
         return {
           ok: false,
@@ -220,14 +286,18 @@ export function createFinService(deps: FinServiceDeps): FinService {
           details: { phase: "credential" },
         };
       }
-      const appId = statusStore.read().identity?.appId;
+      const appId = appIdFor(target.profile);
       const sdkDeps = deps.sdkDeps ?? createSdkReadDeps(deps.exec, appId);
       if (operation === "manifest") return readManifest(credential.credential, sdkDeps, ctx.signal);
       return downloadResources(credential.credential, sdkDeps, sdkDownloadDir(appId), ctx.signal);
     },
 
-    async procedure(ctx, request) {
-      const appId = statusStore.read().identity?.appId;
+    async procedure(ctx, request, workspace) {
+      const target = ws(workspace);
+      if (target.ok === false) {
+        return { ok: false, text: target.message, details: { phase: "workspace" } };
+      }
+      const appId = appIdFor(target.profile);
       const schemaPath = procedureSchemaPath(sdkDownloadDir(appId));
       const sdkDir = sdkDownloadDir(appId);
       const filePath =
@@ -251,7 +321,7 @@ export function createFinService(deps: FinServiceDeps): FinService {
           details: { phase: "validate", issues: result.issues },
         };
       }
-      const credential = await getFinCredential(ctx);
+      const credential = await getFinCredential(ctx, target.profile.name);
       if (credential.ok === false) {
         return { ok: false, text: credential.message, details: { phase: "credential" } };
       }
@@ -377,20 +447,25 @@ export function createFinService(deps: FinServiceDeps): FinService {
       };
     },
 
-    async agent(ctx, request) {
-      const agentStatus = deps.agentStatusStore ?? createAgentKeyStatusStore();
-      const key = await getFinAgentApiKey(ctx);
+    async agent(ctx, request, workspace) {
+      const target = ws(workspace);
+      if (target.ok === false) {
+        return { ok: false, text: target.message, details: { phase: "workspace" } };
+      }
+      const name = target.profile.name;
+      const agentStatus = deps.agentStatusStore ?? createAgentKeyStatusStore(name);
+      const key = await getFinAgentApiKey(ctx, name);
       if (key.ok === false) {
         return { ok: false, text: key.message, details: { phase: "credential", access: "no_key" } };
       }
       // Separation check before anything is sent: the personal token must
       // never be used on the Agent API path, whatever its source.
-      const personal = await getFinCredential(ctx);
+      const personal = await getFinCredential(ctx, name);
       if (personal.ok && sameSecret(key.key, personal.credential.token)) {
         recordAgentStatus(agentStatus, { lastAccess: "same_as_personal_token" });
         return {
           ok: false,
-          text: `❌ The Fin Agent API key is the same as the personal API token. Save the separate Fin Agent API key (Fin AI Agent → Deploy → Fin Agent API) with /login sf-fin-agent; nothing was sent.`,
+          text: `❌ The Fin Agent API key is the same as the personal API token. Save the separate Fin Agent API key (Fin AI Agent → Deploy → Fin Agent API) with /login ${workspaceProviders(name).agent}; nothing was sent.`,
           details: { phase: "credential", access: "same_as_personal_token" },
         };
       }
@@ -400,7 +475,7 @@ export function createFinService(deps: FinServiceDeps): FinService {
       };
       const client = createAgentApiClient({
         key: key.key,
-        region: key.region,
+        region: target.profile.region ?? key.region,
         deps: agentDeps,
         signal: ctx.signal,
       });
@@ -465,12 +540,180 @@ export function createFinService(deps: FinServiceDeps): FinService {
       }
     },
 
+    workspace(request) {
+      if (request.operation === "list") {
+        const state = readWorkspaces(workspaceStore);
+        const rows = Object.values(state.workspaces).map((w) => {
+          const p = workspaceProviders(w.name);
+          return `${w.name === state.active ? "▶" : " "} ${w.name} (${w.kind})${w.appId ? ` · app ${w.appId}` : " · not verified"}${w.region ? ` · ${w.region.toUpperCase()}` : ""} · /login ${p.personal} · /login ${p.agent} · MCP ${p.mcpConnection}`;
+        });
+        return {
+          ok: true,
+          text: ["Fin workspaces (▶ active):", ...rows].join("\n"),
+          details: { phase: "list", active: state.active, workspaces: state.workspaces },
+        };
+      }
+      if (request.operation === "add") {
+        const result = addWorkspace(workspaceStore, request.name ?? "", request.kind ?? "test");
+        if (result.ok === false)
+          return { ok: false, text: result.message, details: { phase: "add" } };
+        deps.onWorkspaceAdded?.(result.profile.name);
+        const p = workspaceProviders(result.profile.name);
+        return {
+          ok: true,
+          text: [
+            `✅ Added Fin workspace "${result.profile.name}" (${result.profile.kind}).`,
+            `Sign-ins: /login ${p.personal} (personal token) · /login ${p.agent} (Fin Agent API key) · MCP connection ${p.mcpConnection}.`,
+            result.profile.kind === "prod"
+              ? "🔒 Production: SF Guardrail never session-approves its changes, and Power Tool Mode needs the production opt-in."
+              : undefined,
+            `Then run /sf-fin setup ${result.profile.name}.`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          details: { phase: "add", profile: result.profile },
+        };
+      }
+      if (request.operation === "use") {
+        const result = useWorkspace(workspaceStore, request.name ?? "");
+        if (result.ok === false)
+          return { ok: false, text: result.message, details: { phase: "use" } };
+        return {
+          ok: true,
+          text: `✅ Active Fin workspace: ${result.profile.name} (${result.profile.kind}).`,
+          details: { phase: "use", profile: result.profile },
+        };
+      }
+      const result = removeWorkspace(workspaceStore, request.name ?? "");
+      if (result.ok === false)
+        return { ok: false, text: result.message, details: { phase: "remove" } };
+      const p = workspaceProviders(request.name ?? "");
+      return {
+        ok: true,
+        text: `Removed workspace profile "${request.name}". Its saved credentials are untouched; remove them with /logout ${p.personal} and /logout ${p.agent}.`,
+        details: { phase: "remove" },
+      };
+    },
+
+    async setup(ctx, request) {
+      const target = ws(request.workspace);
+      if (target.ok === false)
+        return { ok: false, text: target.message, details: { phase: "workspace" } };
+      const name = target.profile.name;
+      const wants: Capability[] = request.wants?.length
+        ? request.wants
+        : ["build", "operator", "test"];
+
+      // Personal token: prove the workspace and region from /me.
+      let personal: SetupFacts["personal"] = { state: "missing" };
+      const credential = await getFinCredential(ctx, name);
+      if (credential.ok) {
+        const found = await discoverRegion(credential.credential.token, {
+          fetch: deps.fetch,
+          signal: ctx.signal,
+          prefer: credential.credential.region,
+        });
+        personal =
+          found.ok === true
+            ? { state: "ok", identity: found.identity }
+            : { state: "rejected", message: found.message };
+      }
+
+      // Bind the verified identity to the workspace profile (refuses another app).
+      let profile = target.profile;
+      const mismatches: string[] = [];
+      if (personal.state === "ok") {
+        const bound = bindWorkspaceIdentity(workspaceStore, name, {
+          appId: personal.identity.appId,
+          region: personal.identity.region,
+          workspaceName: personal.identity.workspaceName,
+          at: new Date().toISOString(),
+        });
+        if (bound.ok === true) profile = bound.profile;
+        else mismatches.push(bound.message);
+      }
+
+      // Fin Agent API: access probe only (no conversation).
+      let agent: SetupFacts["agent"] = { state: "missing" };
+      const key = await getFinAgentApiKey(ctx, name);
+      if (key.ok) {
+        if (credential.ok && sameSecret(key.key, credential.credential.token)) {
+          agent = {
+            state: "checked",
+            access: { state: "wrong_key", message: "same as the personal token" },
+          };
+        } else {
+          const agentDeps = deps.agentDeps ?? {
+            fetch: globalThis.fetch.bind(globalThis),
+            sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
+          };
+          const access = await probeAgentApiAccess(
+            createAgentApiClient({
+              key: key.key,
+              region: profile.region ?? key.region,
+              deps: agentDeps,
+              signal: ctx.signal,
+            }),
+          );
+          recordAgentStatus(deps.agentStatusStore ?? createAgentKeyStatusStore(name), {
+            lastAccess: access.state,
+            toolCount: access.state === "granted" ? access.tools.length : undefined,
+          });
+          agent = { state: "checked", access };
+        }
+      }
+
+      // Intercom MCP: read-only identity probe through the configured connection.
+      const mcp = await probeMcpIdentity(ctx, workspaceProviders(name).mcpConnection);
+
+      const report = evaluateSetup(
+        {
+          workspace: profile,
+          cliInstalled: (await detectCli(deps.exec)).installed,
+          personal,
+          agent,
+          mcp,
+        },
+        wants,
+      );
+      const allMismatches = [...mismatches, ...report.mismatches];
+      const lines = mismatches.length
+        ? [...report.lines, "", ...mismatches.map((m) => `❌ ${m}`)]
+        : report.lines;
+      return {
+        ok: allMismatches.length === 0 && wants.every((w) => report.ready[w]),
+        text: lines.join("\n"),
+        details: {
+          phase: "setup",
+          workspace: name,
+          kind: profile.kind,
+          appId: report.appId,
+          ready: report.ready,
+          mismatches: allMismatches,
+          steps: report.steps,
+        },
+      };
+    },
+
     cachedDoctorReport() {
       const snapshot = statusStore.read();
       const checks = buildCachedChecks(snapshot, existsSync(path.join(homedir(), ".intercom")));
       checks.push(
         agentKeyCachedCheck((deps.agentStatusStore ?? createAgentKeyStatusStore()).read()),
       );
+      const state = readWorkspaces(workspaceStore);
+      const named = Object.values(state.workspaces).filter((w) => w.name !== DEFAULT_WORKSPACE);
+      if (named.length) {
+        checks.push({
+          id: "fin.workspaces",
+          severity: "info",
+          title: `Fin workspaces: ${Object.keys(state.workspaces).join(", ")} (active ${state.active})`,
+          detail: named
+            .map((w) => `${w.name} (${w.kind})${w.appId ? ` app ${w.appId}` : " not verified"}`)
+            .join("; "),
+          ...(named.some((w) => !w.appId) ? { fix: "/sf-fin setup <workspace>" } : {}),
+        });
+      }
       const worst = checks.some((c) => c.severity === "error")
         ? "✗ errors"
         : checks.some((c) => c.severity === "warn")
@@ -496,6 +739,12 @@ export type ProcedureRequest =
   | { operation: "publish"; procedureId?: string; execute?: boolean; note?: string }
   | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string };
 
+export type WorkspaceRequest =
+  | { operation: "list" }
+  | { operation: "add"; name?: string; kind?: WorkspaceKind }
+  | { operation: "use"; name?: string }
+  | { operation: "remove"; name?: string };
+
 export type AgentRequest =
   | { operation: "access" }
   | { operation: "capabilities"; userId?: string }
@@ -505,6 +754,36 @@ export interface ProcedureResponse {
   ok: boolean;
   text: string;
   details: Record<string, unknown>;
+}
+
+/**
+ * Read-only identity probe through the workspace's Intercom MCP connection:
+ * `list_articles` with one row carries `workspace_id`. Unknown tool means the
+ * connection is not configured; an error result means it is signed out.
+ */
+async function probeMcpIdentity(
+  ctx: { executeTool?: (name: string, args: unknown) => Promise<unknown> },
+  connection: string,
+): Promise<McpIdentity> {
+  if (typeof ctx.executeTool !== "function") return { state: "not_configured" };
+  const tool = `mcp__${connection.replace(/-/g, "_")}__list_articles`;
+  try {
+    const outcome = (await ctx.executeTool(tool, { per_page: 1 })) as {
+      isError?: boolean;
+      result?: { content?: Array<{ type?: string; text?: string }> };
+    };
+    const text = (outcome?.result?.content ?? [])
+      .map((c) => (c.type === "text" ? (c.text ?? "") : ""))
+      .join("\n");
+    if (outcome?.isError) {
+      return /not found|unknown tool|not available/i.test(text)
+        ? { state: "not_configured" }
+        : { state: "signed_out" };
+    }
+    return { state: "signed_in", appId: workspaceIdFromMcpText(text) };
+  } catch {
+    return { state: "not_configured" };
+  }
 }
 
 function resolveFile(cwd: string, file: string | undefined): string {

@@ -88,6 +88,7 @@ function buildNativeToolDecision(
     orgResolutionGuessed: org?.guessed,
     orgResolutionSource: org?.source,
     orgTargetExplicit: org?.explicit,
+    ...(subject.finWorkspace ? { finWorkspaceKind: subject.finWorkspace.kind } : {}),
   };
 }
 
@@ -124,6 +125,10 @@ function nativeToolSafetyEnvelope(subject: NativeToolSafetySubject, org: OrgCont
     detail: subject.approvalDetail,
     riskTier: subject.riskTier,
     operationFamily: subject.operationFamily,
-    allowSession: subject.allowSession !== false && org?.type !== "production" && !org?.guessed,
+    allowSession:
+      subject.allowSession !== false &&
+      org?.type !== "production" &&
+      !org?.guessed &&
+      (subject.finWorkspace === undefined || subject.finWorkspace.kind === "test"),
   };
 }

@@ -25,7 +25,8 @@
       "lib/sf_fin-tool.ts"
     ],
     "stateFiles": [
-      "~/.pi/agent/auth.json entries: sf-fin (Pi-owned API key plus credential.env.INTERCOM_REGION) and sf-fin-agent (Fin Agent API key)",
+      "~/.pi/agent/auth.json entries: sf-fin / sf-fin-<workspace> (personal API token plus credential.env.INTERCOM_REGION) and sf-fin-agent / sf-fin-agent-<workspace> (Fin Agent API key)",
+      "<globalAgentDir>/sf-pi/sf-fin/workspaces.json (named workspace profiles: kind, verified app id and region; shared read-only with SF Guardrail; no credentials)",
       "<globalAgentDir>/sf-pi/sf-fin/status.json",
       "<globalAgentDir>/sf-pi/sf-fin/agent-api-status.json (last Fin Agent API access outcome; no key material)",
       "<globalAgentDir>/sf-pi/sf-fin/debug.json",
@@ -39,14 +40,15 @@
       "Interactive `/login sf-fin` masks the personal API token through SF Pi's shared credential input and returns it to Pi under provider id `sf-fin`; SF Fin writes no second secret store.",
       "The token reaches the Fin CLI only through an allowlisted child-process environment, never argv, and the child uses an SF Pi-private `INTERCOM_CONFIG_DIR`, so the user's own CLI keychain entry and `~/.intercom` files are never read or written.",
       "CLI output is scrubbed of the token before it reaches status, tool results, or logs; status files store only non-secret workspace identity and install readiness.",
-      "Doctor runs `intercom --version` and `intercom me` only; Fin SDK actions enable the SDK by default on first use through an explicit probe \u2192 POST /fin-sdk/enable \u2192 verify sequence before any `fin \u2026` CLI call, so the CLI's silent auto-enable never fires; the `/sf-pi doctor` provider reads cached state only.",
+      "Doctor runs `intercom --version` and `intercom me` only; Fin SDK actions enable the SDK by default on first use through an explicit probe → POST /fin-sdk/enable → verify sequence before any `fin …` CLI call, so the CLI's silent auto-enable never fires; the `/sf-pi doctor` provider reads cached state only.",
       "Install runs exactly `npm install -g @intercom/cli@<exact version>` without sudo or `@latest`, honors npm release-age policy, and refuses CLIs not installed by global npm; agent execution (`allow_mutation=true`) is an SF Guardrail native mutation in the `fin` Power Tool family.",
       "Verbose traces drop Authorization, Cookie, and bearer/basic values, are written as 0600 files with ten-file retention, self-disarm after the armed runs, and expose only the file path to the model.",
       "Procedure upload validates against the workspace schema first, never sets state (cannot publish), and verifies the saved copy semantically; simulation sets are validated per test; upload, upload_simulations, and simulate are SF Guardrail native writes in the fin Power Tool family, and validate is local.",
       "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.",
       "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.",
       "Guidance uploads are always paused and data connectors only as drafts; sdk guidance_state plans by default and executes as the exact SF Guardrail mutation native-sf-fin-procedure-state. The Fin Agent API key is a separate Pi provider (sf-fin-agent), sent only as an HTTPS Authorization header; agent run is native-sf-fin-agent-run because resolved conversations are billable. surfaces runs only local --help commands.",
-      "The Fin Agent API key is rejected at login when it is malformed or equals the personal token, and every Agent API request refuses a key equal to the active personal token (constant-time digest comparison); it is sent only as an HTTPS Authorization header to the fixed regional host with redirects refused."
+      "The Fin Agent API key is rejected at login when it is malformed or equals the personal token, and every Agent API request refuses a key equal to the active personal token (constant-time digest comparison); it is sent only as an HTTPS Authorization header to the fixed regional host with redirects refused.",
+      "Personal-token login detects the region from /me on the fixed regional hosts and refuses a token every region rejects. Named workspaces have their own Pi sign-ins; environment fallbacks apply only to the default workspace. Setup binds a workspace to the app id its token proves and refuses a different app. SF Guardrail treats a prod (or unknown) Fin workspace like a production org: no session approvals, and Power Tool Mode needs the production opt-in."
     ]
   }
 }

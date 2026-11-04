@@ -119,6 +119,8 @@ export function nativeToolFamilyForDecision(
 
 function isProductionLikeDecision(decision: ClassifiedDecision): boolean {
   if (decision.orgType === "production" || decision.orgResolutionGuessed === true) return true;
+  // Production (or unknown named) Fin workspaces need the same production opt-in.
+  if (decision.finWorkspaceKind === "prod" || decision.finWorkspaceKind === "unknown") return true;
   if (decision.orgType !== undefined) return false;
   if (decision.feature === "commandGate" && decision.ruleId === "agent-browser-direct") {
     return true;

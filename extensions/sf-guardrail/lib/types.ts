@@ -159,6 +159,8 @@ export interface NativeToolSafetySubject {
   allowSession?: boolean;
   /** Fail closed before HITL when this native operation resolves to production or unknown. */
   blockProductionOrUnknown?: boolean;
+  /** Fin workspace a Fin mutation targets; `prod`/`unknown` is production-like. */
+  finWorkspace?: { name: string; kind: "test" | "prod" | "unknown" };
 }
 
 // ─── Decision model ─────────────────────────────────────────────────────────────
@@ -226,6 +228,8 @@ export interface ClassifiedDecision {
   orgResolutionSource?: GuardrailOrgResolutionSource;
   orgTargetExplicit?: boolean;
   orgCommand?: string;
+  /** Fin workspace kind for SF Fin / Intercom MCP mutations (`prod`/`unknown` are production-like). */
+  finWorkspaceKind?: "test" | "prod" | "unknown";
 }
 
 // ─── Persisted entries (pi.appendEntry customType values) ───────────────────────

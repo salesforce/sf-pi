@@ -33,10 +33,21 @@ export interface AgentKeyStatus {
   toolCount?: number;
 }
 
-export function createAgentKeyStatusStore(pathOverride?: string): StateStore<AgentKeyStatus> {
+/**
+ * Per-workspace Agent API status. The default workspace keeps the original
+ * `agent-api-status.json`; a named workspace uses `agent-api-status-<name>.json`.
+ * A value containing a path separator is a test path override.
+ */
+export function createAgentKeyStatusStore(workspaceOrPath?: string): StateStore<AgentKeyStatus> {
+  const isPath = workspaceOrPath?.includes("/") || workspaceOrPath?.includes("\\");
+  const pathOverride = isPath ? workspaceOrPath : undefined;
+  const workspace = isPath ? undefined : workspaceOrPath;
   return createStateStore<AgentKeyStatus>({
     namespace: "sf-fin",
-    filename: "agent-api-status.json",
+    filename:
+      !workspace || workspace === "default"
+        ? "agent-api-status.json"
+        : `agent-api-status-${workspace}.json`,
     schemaVersion: 1,
     defaults: {},
     mode: 0o600,

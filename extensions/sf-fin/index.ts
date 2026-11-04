@@ -22,7 +22,12 @@
  *   /sf-pi doctor            | Cached sf-fin checks (no network, no credential)
  *   sf_fin <action>          | Same actions for the agent; install execution is Guardrail-mediated
  */
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  ExtensionContext,
+  ExtensionUIContext,
+} from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
@@ -40,11 +45,15 @@ import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
 import { getInstalledPiVersion, requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
 import {
+  createSfFinAgentAuthController,
+  createSfFinAuthController,
   detectTokenSource,
   hasStoredFinCredential,
   sfFinAgentAuthController,
   sfFinAuthController,
+  type SfFinAuthController,
 } from "./lib/auth.ts";
+import { createWorkspaceStore, DEFAULT_WORKSPACE, readWorkspaces } from "./lib/workspaces.ts";
 import { SF_FIN_ACTIONS, renderHelp } from "./lib/command-surface.ts";
 import { createFinConfirmPanel } from "./lib/manager-action-panels.ts";
 import { AGENT_API_ENV_KEY, AGENT_API_PROVIDER } from "./lib/agent-api.ts";
@@ -56,18 +65,42 @@ import { COMMAND_NAME, ENV_REGION, ENV_TOKEN, PROVIDER_NAME } from "./lib/types.
 export default function sfFin(pi: ExtensionAPI) {
   if (!requirePiVersion(pi, "sf-fin")) return;
 
-  const service = createFinService({ exec: buildExecFn(pi) });
+  // One personal-token and one Agent API sign-in per workspace. The default
+  // workspace keeps `sf-fin` / `sf-fin-agent`; named workspaces are registered
+  // at startup and when added, without a /reload.
+  const controllers = new Map<string, SfFinAuthController[]>();
+  let binding: { ui: ExtensionUIContext; mode: ExtensionContext["mode"] } | undefined;
+  const registerWorkspace = (name: string) => {
+    if (controllers.has(name)) return;
+    const pair =
+      name === DEFAULT_WORKSPACE
+        ? [sfFinAuthController, sfFinAgentAuthController]
+        : [
+            createSfFinAuthController(undefined, { workspace: name }),
+            createSfFinAgentAuthController(undefined, { workspace: name }),
+          ];
+    controllers.set(name, pair);
+    for (const controller of pair) {
+      pi.registerProvider(controller.provider);
+      if (binding) controller.bind(binding.ui, binding.mode);
+    }
+  };
+  for (const name of Object.keys(readWorkspaces(createWorkspaceStore()).workspaces)) {
+    registerWorkspace(name);
+  }
 
-  pi.registerProvider(sfFinAuthController.provider);
-  pi.registerProvider(sfFinAgentAuthController.provider);
+  const service = createFinService({
+    exec: buildExecFn(pi),
+    onWorkspaceAdded: registerWorkspace,
+  });
 
   pi.on("session_start", async (_event, ctx) => {
-    sfFinAuthController.bind(ctx.ui, ctx.mode);
-    sfFinAgentAuthController.bind(ctx.ui, ctx.mode);
+    binding = { ui: ctx.ui, mode: ctx.mode };
+    for (const pair of controllers.values()) for (const c of pair) c.bind(ctx.ui, ctx.mode);
   });
   pi.on("session_shutdown", async () => {
-    sfFinAuthController.clear();
-    sfFinAgentAuthController.clear();
+    binding = undefined;
+    for (const pair of controllers.values()) for (const c of pair) c.clear();
   });
 
   registerSfFinTool(pi, service, runtimeMeta);
@@ -157,6 +190,33 @@ export async function handleCommand(
 
   if (sub === "status") return emit(ctx, "SF Fin status", statusText(), "info", fromPanel);
   if (sub === "help") return emit(ctx, "SF Fin help", renderHelp(), "info", fromPanel);
+  if (sub === "setup") {
+    const wants = parts
+      .slice(1)
+      .filter((p): p is "build" | "operator" | "test" => ["build", "operator", "test"].includes(p));
+    const workspace = parts.slice(1).find((p) => !["build", "operator", "test"].includes(p));
+    ctx.ui?.setStatus?.("sf-fin", "Checking Fin setup…");
+    try {
+      const result = await service.setup(ctx, { workspace, wants });
+      return emit(ctx, "SF Fin setup", result.text, result.ok ? "success" : "info", fromPanel);
+    } finally {
+      ctx.ui?.setStatus?.("sf-fin", undefined);
+    }
+  }
+  if (sub === "workspace") {
+    const op = parts[1];
+    const result =
+      op === "add"
+        ? service.workspace({
+            operation: "add",
+            name: parts[2],
+            kind: parts[3] === "prod" ? "prod" : "test",
+          })
+        : op === "use" || op === "remove"
+          ? service.workspace({ operation: op, name: parts[2] })
+          : service.workspace({ operation: "list" });
+    return emit(ctx, "SF Fin workspaces", result.text, result.ok ? "info" : "warning", fromPanel);
+  }
   if (sub === "connect" && parts[1] === "agent") return connectAgent(ctx, fromPanel);
   if (sub === "disconnect" && parts[1] === "agent") return disconnectAgent(ctx, fromPanel);
   if (sub === "connect") return connect(ctx, fromPanel);
@@ -364,7 +424,7 @@ async function connect(ctx: ExtensionCommandContext, fromPanel: boolean): Promis
     ctx,
     "SF Fin native login prepared",
     [
-      `Prefilled /login ${PROVIDER_NAME}. Submit it, choose your region, then paste the personal API token into the masked prompt.`,
+      `Prefilled /login ${PROVIDER_NAME}. Submit it and paste the personal API token into the masked prompt; SF Fin detects the region.`,
       "Create the token in Fin under Settings → Personal → API tokens. Pi owns persistence.",
     ].join("\n"),
     "info",

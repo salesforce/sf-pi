@@ -38,8 +38,13 @@ if (!existsSync(loaderPath)) {
 const work = mkdtempSync(path.join(tmpdir(), "sf-pi-git-install-"));
 const keep = process.argv.includes("--keep");
 try {
-  // Tracked files only, as a git install sees them (includes uncommitted edits to tracked files).
-  const files = execFileSync("git", ["ls-files", "-z"], { cwd: repoRoot })
+  // Files a commit of this tree would contain: tracked plus untracked files
+  // that are not gitignored (so a local run before `git add` matches CI).
+  const files = execFileSync(
+    "git",
+    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+    { cwd: repoRoot },
+  )
     .toString("utf8")
     .split("\0")
     .filter(Boolean);

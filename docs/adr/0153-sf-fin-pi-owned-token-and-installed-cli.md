@@ -92,3 +92,21 @@ The Fin Agent API key follows the same rules as the personal token: a masked Pi-
 - **Shape.** Login trims the pasted key and rejects empty, multi-line, `Bearer`-prefixed, or too-short values before Pi persists anything.
 - **Transport.** The key is sent only as an HTTPS `Authorization` header to the region's fixed Fin Agent API host, with `redirect: "error"` and a per-request timeout. It never reaches the CLI, argv, child environments, logs, or tool output, and responses are scrubbed of it.
 - **Observability without material.** `agent-api-status.json` (mode `0600`) stores only the last access outcome, time, and tool count. `/sf-pi doctor` (cached only), `/sf-fin status`, and the debug bundle report the source and outcome. Results that point at the wrong credential are errors whose fix is `/login sf-fin-agent`.
+
+## Addendum: named workspaces, automatic region, and unified setup
+
+- **Workspaces:** credentials belong to named profiles. `default` keeps the original sign-in names, so existing users see no change. A named workspace `<name>` uses `sf-fin-<name>`, `sf-fin-agent-<name>`, and MCP connection `intercom-<name>`.
+  - Pi still stores every credential. `workspaces.json` (mode `0600`) holds only the name, kind, verified app id and region, and the verification time.
+  - Named workspaces register their Pi sign-ins at startup and when added, with no reload needed.
+  - Environment fallbacks apply to `default` only, so an automation token can never silently stand in for a named workspace.
+- **Automatic region:** personal-token login calls `GET /me` on the fixed US, EU, and AU hosts (HTTPS, redirects refused, short timeout) and stores the region the first 200 reports.
+  - A token every region rejects is refused before Pi persists it.
+  - The region question appears only when no host can be reached.
+- **Unified setup** (read-only):
+  - It reports each credential's state and what it unlocks.
+  - It binds the workspace to the app id the personal token proves, and refuses a later credential from a different app.
+  - It names only the steps for the capabilities requested.
+  - Workspace identity is claimed only where it can be proven: the personal token through `/me`, and the MCP sign-in through `workspace_id` in a read-only `list_articles`. The Fin Agent API exposes no workspace id, so it is reported as "access verified, workspace not provable".
+- **Production workspaces:** SF Guardrail binds every SF Fin and Intercom MCP mutation to its workspace (`fin-workspace=<name>` in the fingerprint).
+  - A `prod` or unknown workspace is production-like: no session approval, and Power Tool Mode needs the `productionUnknown` opt-in, the same rule as production Salesforce orgs.
+  - Guardrail reads only workspace kinds, from a credential-free shared view (`lib/common/fin-workspaces-state.ts`).

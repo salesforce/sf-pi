@@ -56,7 +56,7 @@ describe("sf-fin", () => {
     expect(values("deb")).toEqual(["debug"]);
   });
 
-  it("exposes status, doctor, install, debug, sdk, surfaces, and agent tool actions", async () => {
+  it("exposes every sf_fin tool action, including setup and workspace", async () => {
     const mod = await import("../index.ts");
     const pi = fakePi();
     mod.default(pi as never);
@@ -69,6 +69,8 @@ describe("sf-fin", () => {
       "sdk",
       "surfaces",
       "agent",
+      "setup",
+      "workspace",
     ]);
   });
 

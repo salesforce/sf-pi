@@ -1,5 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Normalize SF MCP managed tool calls into Guardrail native-tool subjects. */
+import {
+  finWorkspaceForMcpServer,
+  finWorkspaceKind,
+} from "../../../lib/common/fin-workspaces-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
 import { parseMcpToolIdentity } from "./mcp-tool-identity.ts";
 import type { SafetySubjectContext } from "./safety-subject.ts";
@@ -112,7 +116,27 @@ export function classifySfMcpRisk(
     (serverName === INTERCOM_SERVER || serverName.startsWith(`${INTERCOM_SERVER}_`)) &&
     INTERCOM_OPERATOR_MUTATIONS.has(mcpTool)
   ) {
-    return intercomOperatorSubject(toolName, serverName, mcpTool, input, payloadFingerprint);
+    const subject = intercomOperatorSubject(
+      toolName,
+      serverName,
+      mcpTool,
+      input,
+      payloadFingerprint,
+    );
+    const { name, kind } = finWorkspaceKind(finWorkspaceForMcpServer(serverName));
+    const production = kind !== "test";
+    return {
+      ...subject,
+      fingerprint: `fin-workspace=${name}|${subject.fingerprint}`,
+      approvalDetail: `${subject.approvalDetail ?? ""}; workspace=${name} (${kind})`,
+      finWorkspace: { name, kind },
+      ...(production
+        ? {
+            allowSession: false,
+            reason: `${subject.reason}\n\nFin workspace "${name}" is ${kind === "prod" ? "a production workspace" : "not a known workspace"}; treated like a production org.`,
+          }
+        : {}),
+    };
   }
 
   if (serverName === "salesforce_data360" && mcpTool === "execute") {

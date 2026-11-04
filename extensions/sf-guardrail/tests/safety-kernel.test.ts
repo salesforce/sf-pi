@@ -47,6 +47,7 @@ import { readBundledConfig } from "../lib/config.ts";
 import { shouldPowerToolAutoApprove } from "../lib/power-tool-mode.ts";
 import { evaluateSafety } from "../lib/safety-kernel.ts";
 import { writeFinSdkState } from "../../../lib/common/fin-sdk-state.ts";
+import { writeFileSync } from "node:fs";
 
 function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvironment {
   return {
@@ -842,6 +843,63 @@ describe("Safety Kernel", () => {
       ]) {
         expect(await evaluate(input)).toBeUndefined();
       }
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
+  it("treats a prod Fin workspace like a production org; test stays as before", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-ws-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      writeFinSdkState({ state: "enabled", appId: "example" });
+      const state = path.join(agentDir, "sf-pi", "sf-fin");
+      const { mkdirSync } = await import("node:fs");
+      mkdirSync(state, { recursive: true });
+      writeFileSync(
+        path.join(state, "workspaces.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          state: {
+            active: "default",
+            workspaces: {
+              default: { name: "default", kind: "test" },
+              prod: { name: "prod", kind: "prod" },
+            },
+          },
+        }),
+      );
+      const evaluate = (input: Record<string, unknown>) =>
+        evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+      const native = { mode: "native" as const, nativeFamilies: ["fin" as const] };
+
+      const test = await evaluate({ action: "sdk", operation: "upload", file: "p.yaml" });
+      expect(test?.finWorkspaceKind).toBe("test");
+      expect(test?.approvalScope?.allowSession).toBe(true);
+      expect(shouldPowerToolAutoApprove(test!, native)).toBe(true);
+
+      for (const workspace of ["prod", "missing-workspace"]) {
+        const decision = await evaluate({
+          action: "sdk",
+          operation: "upload",
+          file: "p.yaml",
+          workspace,
+        });
+        expect(decision?.action).toBe("confirm");
+        expect(decision?.approvalScope?.allowSession).toBe(false);
+        expect(shouldPowerToolAutoApprove(decision!, native)).toBe(false);
+        expect(shouldPowerToolAutoApprove(decision!, { ...native, productionUnknown: true })).toBe(
+          true,
+        );
+        expect(decision?.approvalScope?.fingerprint).toContain(`fin-workspace=${workspace}`);
+      }
+      expect(
+        (await evaluate({ action: "sdk", operation: "upload", file: "p.yaml", workspace: "prod" }))
+          ?.reason,
+      ).toContain("production workspace");
     } finally {
       if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
       else process.env.PI_CODING_AGENT_DIR = previous;
