@@ -21,7 +21,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import * as JsonSchema from "typebox/schema";
+// typebox/value is aliased by Pi's extension loader; typebox/schema is not.
+import * as JsonSchema from "typebox/value";
 import { parse, parseDocument, stringify } from "yaml";
 import type { FinCredential } from "./auth.ts";
 import { classifyCliResult, readCliErrorMessage } from "./cli-runner.ts";
@@ -129,10 +130,11 @@ export function validateResourceFile(
   >[0];
   const issues: ValidationIssue[] = [];
   if (!JsonSchema.Check(schema, doc.value)) {
-    const [, errors] = JsonSchema.Errors(schema, doc.value) as unknown as [
-      boolean,
-      Array<{ instancePath: string; message?: string; keyword: string }>,
-    ];
+    const errors = JsonSchema.Errors(schema, doc.value) as unknown as Array<{
+      instancePath: string;
+      message?: string;
+      keyword: string;
+    }>;
     const seen = new Set<string>();
     for (const e of errors ?? []) {
       if (e.keyword === "boolean") continue;

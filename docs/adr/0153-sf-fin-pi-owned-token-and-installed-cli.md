@@ -38,7 +38,7 @@ SF Guardrail reads that shared state. An `sf_fin sdk` call on a workspace not re
 
 `sf_fin action='sdk'` adds `validate`, `upload`, `upload_simulations`, and `simulate`:
 
-- **`validate`** is local. It parses the YAML and checks it against the workspace's downloaded `.fin/schema/procedure.json` using TypeBox, which validates raw JSON Schema, so SF Fin adds no validator dependency. It also enforces SF Fin draft rules: no `state`, and a `version` when editing an existing procedure.
+- **`validate`** is local. It parses the YAML and checks it against the workspace's downloaded `.fin/schema/procedure.json` using TypeBox's `typebox/value` module, which validates raw JSON Schema. That module is one of the modules Pi's extension loader aliases to its bundled TypeBox, so SF Fin adds no validator dependency. (`typebox/schema` is not aliased, and importing it broke git installs in v0.348.0.) The YAML parser is the `yaml` production dependency. It also enforces SF Fin draft rules: no `state`, and a `version` when editing an existing procedure.
 - **`upload`** validates first, then runs `intercom fin procedures upload`. It never sets `state`, so an upload cannot publish; publishing remains a separate explicit step. SF Fin verifies the round-trip semantically rather than with the CLI's raw `--verify`. Fin canonicalizes on save:
   - it drops redundant `type:` keys and the default `condition_type: natural_language`;
   - it collapses one-element `then` / `else` lists;

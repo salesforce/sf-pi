@@ -62,6 +62,9 @@ npx vitest run scripts/tests/manager-first-commands.test.ts --reporter=dot
 banner "Boot-path import check"
 node scripts/check-boot-path.mjs
 
+banner "Runtime import check"
+node scripts/check-runtime-imports.mjs
+
 banner "Salesforce Connection Module check"
 node scripts/check-salesforce-connection-module.mjs
 
