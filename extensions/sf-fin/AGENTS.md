@@ -15,6 +15,8 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 | Install planning and the single npm install execution              | `lib/install/installer.ts`     |
 | Debug bundle, verbose arming, trace artifacts                      | `lib/debug.ts`                 |
 | Pattern-based failure advice                                       | `lib/failure-diagnostics.ts`   |
+| Direct Fin SDK probe and explicit enable                           | `lib/sdk-gate.ts`              |
+| Fin-as-code reads (manifest, download) that enable on first use    | `lib/sdk-reads.ts`             |
 | Manager install confirm page                                       | `lib/manager-action-panels.ts` |
 | One `sf_fin` family tool                                           | `lib/sf_fin-tool.ts`           |
 | Cache-first status file and text                                   | `lib/status.ts`                |
@@ -29,7 +31,7 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 4. **No shell, bounded runs.** `spawn`/`pi.exec` without a shell, with timeouts and output caps.
 5. **Install is exact and unelevated.** Install args are built only by `buildInstallArgs(exactVersion)`. Never add `sudo`, `@latest`, or a retry with elevation; refuse unmanaged (non–global npm) CLIs; honor npm release-age policy.
 6. **Install is Guardrail-mediated.** `sf_fin install` with `allow_mutation=true` is classified by `sf-guardrail` as `native-sf-fin-cli-install` (family `fin`). The tool must not ask the user itself or treat `allow_mutation` as approval. The human command path confirms in the TUI.
-7. **No hidden enablement.** Any Fin CLI `fin …` command can trigger `POST /fin-sdk/enable` on a `fin_sdk_not_enabled` response. Treat every `fin …` command as potentially mutating and route it through SF Guardrail before adding it.
+7. **Explicit SDK enablement.** Any Fin CLI `fin …` command can trigger `POST /fin-sdk/enable` on a `fin_sdk_not_enabled` response. Every SDK command must go through `sdk-reads.ts` `ensureFinSdkEnabled` (probe → explicit enable → verify → record shared state) before the CLI runs. Never run a `fin …` command on a workspace not verified as enabled.
 8. **Cache-first boot and aggregate doctor.** Factory and `session_start` do no network, subprocess, or credential work. The `/sf-pi doctor` provider reads only cached state.
 9. **Verbose traces are one-shot artifacts.** Arming is bounded (1–5 runs) and self-disarming; traces are `0600` files with retention; only paths reach the model.
 10. **Public-safe.** Tests and docs use synthetic workspace ids, names, emails, and token sentinels only.

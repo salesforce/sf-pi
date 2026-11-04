@@ -17,10 +17,16 @@ import { statusText } from "./service.ts";
 import { COMMAND_NAME, PROVIDER_NAME, TOOL_NAME } from "./types.ts";
 
 const Params = Type.Object({
-  action: StringEnum(["status", "doctor", "install", "debug"] as const, {
+  action: StringEnum(["status", "doctor", "install", "debug", "sdk"] as const, {
     description:
-      "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing.",
+      "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads (enables the Fin SDK on first use).",
   }),
+  operation: Type.Optional(
+    StringEnum(["manifest", "download"] as const, {
+      description:
+        "sdk only: manifest summarizes procedures, workflows, guidance, and connectors; download fetches and extracts all Fin SDK resources locally.",
+    }),
+  ),
   version: Type.Optional(
     Type.String({
       description:
@@ -44,7 +50,8 @@ const Params = Type.Object({
 });
 
 type Params = {
-  action: "status" | "doctor" | "install" | "debug";
+  action: "status" | "doctor" | "install" | "debug" | "sdk";
+  operation?: "manifest" | "download";
   version?: string;
   allow_mutation?: boolean;
   verbose?: "on" | "off";
@@ -67,6 +74,7 @@ export function registerSfFinTool(
       "For a missing or outdated Fin CLI, call sf_fin action='install' without allow_mutation to show the plan, then with allow_mutation=true to execute; SF Guardrail mediates execution.",
       `Never ask the user to paste a Fin token into chat; direct them to /login ${PROVIDER_NAME}, which masks the token.`,
       "Use sf_fin action='debug' for a redacted support bundle; arm verbose='on' only when a doctor failure needs the CLI's HTTP trace.",
+      "Use sf_fin action='sdk' operation='manifest' or 'download' for Fin-as-code reads; SF Fin enables the Fin SDK on first use (Guardrail-mediated) and never runs `intercom fin …` through bash.",
     ],
     parameters: Params,
     renderCall: (args, theme) => {
@@ -75,6 +83,7 @@ export function registerSfFinTool(
       if (input.action === "install") bits.push(input.allow_mutation ? "execute" : "plan");
       if (input.version) bits.push(input.version);
       if (input.verbose) bits.push(`verbose ${input.verbose}`);
+      if (input.operation) bits.push(input.operation);
       return new Text(
         theme.fg("toolTitle", theme.bold("🐟 SF Fin ")) + theme.fg("muted", bits.join(" · ")),
         0,
@@ -125,6 +134,21 @@ export function registerSfFinTool(
             plan,
             ok: result.ok,
             cliVersion: result.snapshot?.cliVersion,
+          },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
+
+      if (input.action === "sdk") {
+        const result = await service.sdk(ctx, input.operation ?? "manifest");
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: {
+            action: "sdk",
+            operation: input.operation ?? "manifest",
+            ok: result.ok,
+            enabledNow: result.enabledNow,
+            ...result.details,
           },
           ...(result.ok ? {} : { isError: true }),
         };

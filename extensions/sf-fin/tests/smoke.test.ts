@@ -53,7 +53,7 @@ describe("sf-fin", () => {
     expect(values("deb")).toEqual(["debug"]);
   });
 
-  it("exposes status, doctor, install, and debug tool actions", async () => {
+  it("exposes status, doctor, install, debug, and sdk tool actions", async () => {
     const mod = await import("../index.ts");
     const pi = fakePi();
     mod.default(pi as never);
@@ -63,6 +63,7 @@ describe("sf-fin", () => {
       "doctor",
       "install",
       "debug",
+      "sdk",
     ]);
   });
 

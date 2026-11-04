@@ -25,3 +25,11 @@ The agent may install through `sf_fin action='install'`. Without `allow_mutation
 The live doctor reports Node, CLI presence and source, CLI version freshness against the npm registry, credential source and region, workspace identity, and whether a separate personal CLI login exists. SF Fin registers a cached-only provider with `/sf-pi doctor` that makes no network or credentialed call. There is no startup reminder.
 
 `/sf-fin debug` returns a redacted support bundle containing versions, paths, the names (never values) of set `INTERCOM_*` variables, the credential source, the private config directory state, and the last redacted CLI error. `debug on` arms the next one to five live doctor runs to add the CLI's own `--verbose` flag. Traces are scrubbed of the token, `Authorization`, `Cookie`, and bearer/basic values, written as `0600` files with a ten-file retention, and disarmed automatically after use. Only the file path reaches the model.
+
+## Addendum: Fin SDK enabled by default on first use
+
+Fin-as-code CLI commands (`intercom fin …`) call the Fin SDK endpoints. On a workspace without the SDK, those endpoints return `403 fin_sdk_not_enabled`, and the CLI responds by silently calling `POST /fin-sdk/enable` and retrying. SF Fin keeps the default — using SF Fin's SDK actions enables the SDK — but makes it explicit and observable.
+
+`sf_fin action='sdk'` (`/sf-fin sdk manifest|download`) first probes `GET /fin-sdk/manifest` directly, without retry. When the probe reports `not_enabled`, SF Fin performs the single `POST /fin-sdk/enable`, verifies it with a second probe, and records the result in a shared credential-free state file (`lib/common/fin-sdk-state.ts`, holding state, app id, and timestamps). Only then does it run the CLI, so the CLI's silent auto-enable path can never fire. If enabling fails, the CLI is not run.
+
+SF Guardrail reads that shared state. An `sf_fin sdk` call on a workspace not recorded as enabled is the native mutation `native-sf-fin-sdk-enable` (family `fin sdk enable`, Power Tool family `fin`, no Salesforce org). Once the workspace is recorded as enabled, SDK reads are prompt-free. `download` writes the ZIP and its extraction under the owner-only per-workspace directory `<globalAgentDir>/sf-pi/sf-fin/sdk/<app id>/`. Doctor and `me` remain free of SDK calls.

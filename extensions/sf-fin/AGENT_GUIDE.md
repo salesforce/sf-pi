@@ -9,6 +9,12 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 3. For `cli_missing`, `cli_outdated`, or an available update the user wants, call `sf_fin action='install'` without `allow_mutation` to show the plan. Then call it again with `allow_mutation=true`, passing the planned `version`. SF Guardrail asks the user to approve unless Power Tool Mode covers the Fin CLI install family. Rerun `doctor` afterwards.
 4. For an unexplained doctor failure, call `sf_fin action='debug'` for the redacted bundle. If the HTTP exchange matters, call `sf_fin action='debug' verbose='on'`, then `doctor` once, and read the trace file path it returns.
 
+## Fin as code
+
+- `sf_fin action='sdk' operation='manifest'` summarizes procedures, workflows, guidance, data connectors, and tasks.
+- `sf_fin action='sdk' operation='download'` downloads and extracts all Fin SDK resources (editable `src/`, read-only `.fin/` reference data and JSON schemas, docs, and bundled agent skills). The result lists the extraction path; read the workspace `AGENTS.md` there before editing.
+- The first SDK call on a workspace enables the Fin SDK (Guardrail-mediated). Never run `intercom fin …` through `bash`.
+
 ## Recovery
 
 | Outcome             | Next step                                                                             |

@@ -16,6 +16,7 @@
  *   /sf-fin install [ver]    | Plan → confirm → `npm install -g @intercom/cli@<ver>` → verify
  *   /sf-fin doctor           | Live read-only checks (Node, CLI, version, credential, workspace)
  *   /sf-fin debug [on|off]   | Redacted bundle, or arm/disarm a one-shot verbose trace
+ *   /sf-fin sdk [manifest|download] | Fin-as-code reads; enables the Fin SDK on first use
  *   /sf-pi doctor            | Cached sf-fin checks (no network, no credential)
  *   sf_fin <action>          | Same actions for the agent; install execution is Guardrail-mediated
  */
@@ -156,6 +157,17 @@ async function handleCommand(
     );
   }
   if (sub === "install") return install(service, ctx, parts[1], fromPanel);
+  if (sub === "sdk") {
+    const operation = parts[1] === "download" ? "download" : "manifest";
+    const result = await service.sdk(ctx, operation);
+    return emit(
+      ctx,
+      operation === "download" ? "SF Fin SDK download" : "SF Fin SDK manifest",
+      result.text,
+      result.ok ? "info" : "warning",
+      fromPanel,
+    );
+  }
   if (sub === "debug" || sub === "debug-on" || sub === "debug-off") {
     const mode = sub === "debug-on" ? "on" : sub === "debug-off" ? "off" : parts[1];
     if (mode === "on" || mode === "off") {
@@ -173,7 +185,7 @@ async function handleCommand(
   return emit(
     ctx,
     "SF Fin — unknown subcommand",
-    `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use connect, disconnect, status, install, doctor, debug, or help.`,
+    `Unknown /${COMMAND_NAME} subcommand: ${sub}. Use connect, disconnect, status, install, doctor, debug, sdk, or help.`,
     "warning",
     fromPanel,
   );

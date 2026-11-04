@@ -33,7 +33,7 @@ Open its Manager detail or change its package state with:
 - Interactive `/login sf-fin` masks the personal API token through SF Pi's shared credential input and returns it to Pi under provider id `sf-fin`; SF Fin writes no second secret store.
 - The token reaches the Fin CLI only through an allowlisted child-process environment, never argv, and the child uses an SF Pi-private `INTERCOM_CONFIG_DIR`, so the user's own CLI keychain entry and `~/.intercom` files are never read or written.
 - CLI output is scrubbed of the token before it reaches status, tool results, or logs; status files store only non-secret workspace identity and install readiness.
-- Doctor runs `intercom --version` and `intercom me` only, which are read-only and do not trigger the CLI's automatic Fin SDK enablement; the `/sf-pi doctor` provider reads cached state only.
+- Doctor runs `intercom --version` and `intercom me` only; Fin SDK actions enable the SDK by default on first use through an explicit probe → POST /fin-sdk/enable → verify sequence before any `fin …` CLI call, so the CLI's silent auto-enable never fires; the `/sf-pi doctor` provider reads cached state only.
 - Install runs exactly `npm install -g @intercom/cli@&lt;exact version&gt;` without sudo or `@latest`, honors npm release-age policy, and refuses CLIs not installed by global npm; agent execution (`allow_mutation=true`) is an SF Guardrail native mutation in the `fin` Power Tool family.
 - Verbose traces drop Authorization, Cookie, and bearer/basic values, are written as 0600 files with ten-file retention, self-disarm after the armed runs, and expose only the file path to the model.
 

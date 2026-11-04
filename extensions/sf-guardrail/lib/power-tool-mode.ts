@@ -35,7 +35,7 @@ export const NATIVE_TOOL_FAMILIES: Array<{
   {
     id: "fin",
     label: "Fin CLI and Operator",
-    description: "sf_fin install; Fin Operator turns/apply",
+    description: "sf_fin install and SDK enable; Fin Operator turns/apply",
   },
   { id: "soql", label: "SOQL disclosures", description: "export, queryAll, unbounded reads" },
 ];
@@ -104,7 +104,12 @@ export function nativeToolFamilyForDecision(
   if (family === "browser commit") return "browser";
   if (family === "slack canvas write") return "slack";
   if (family.startsWith("soql ")) return "soql";
-  if (family === "fin cli install" || family.startsWith("mcp fin operator ")) return "fin";
+  if (
+    family === "fin cli install" ||
+    family === "fin sdk enable" ||
+    family.startsWith("mcp fin operator ")
+  )
+    return "fin";
   return undefined;
 }
 

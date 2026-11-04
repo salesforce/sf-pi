@@ -62,8 +62,12 @@ SF Guardrail (see below).
   login (keychain or `~/.intercom`) is neither read nor modified.
 - CLI output is scrubbed of the token. The status file keeps only non-secret
   workspace identity and install readiness.
-- `doctor` never calls Fin SDK endpoints, so it cannot trigger the CLI's
-  automatic Fin SDK enablement.
+- `doctor` never calls Fin SDK endpoints. Fin SDK actions (`sdk manifest`,
+  `sdk download`) enable the Fin SDK by default on first use: SF Fin probes,
+  performs one explicit `POST /fin-sdk/enable`, verifies it, and only then runs
+  the CLI, so the CLI's silent auto-enable never fires. The first call on a
+  not-yet-enabled workspace is an SF Guardrail mutation (Power Tool family
+  **Fin CLI and Operator**); later reads are prompt-free.
 - Install runs exactly `npm install -g @intercom/cli@<exact version>`, never
   `sudo` or `@latest`, honors npm's `before` / `min-release-age` policy, and
   refuses to modify a CLI that global npm did not install.

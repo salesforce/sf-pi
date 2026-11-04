@@ -34,6 +34,14 @@ import { planCliInstall, runCliInstall, type InstallPlan } from "./install/insta
 import { buildStatusText, createFinStatusStore } from "./status.ts";
 import { COMMAND_NAME, type FinOutcomeKind, type FinStatusSnapshot } from "./types.ts";
 import { getFinCredential } from "./auth.ts";
+import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import {
+  createSdkReadDeps,
+  downloadResources,
+  readManifest,
+  type SdkReadDeps,
+  type SdkReadResult,
+} from "./sdk-reads.ts";
 
 export interface FinService {
   doctor(ctx: ExtensionContext): Promise<{
@@ -47,12 +55,15 @@ export interface FinService {
   debugBundle(meta: { sfPiVersion?: string; piVersion?: string }): string;
   setVerbose(on: boolean, runs?: number): string;
   cachedDoctorReport(): ExtensionDoctorReport;
+  /** Fin-as-code reads. Enables the Fin SDK by default on first use. */
+  sdk(ctx: ExtensionContext, operation: "manifest" | "download"): Promise<SdkReadResult>;
 }
 
 export interface FinServiceDeps {
   exec: ExecFn;
   fetchRegistry?: FetchRegistryFn;
   doctorDeps?: DoctorDeps;
+  sdkDeps?: SdkReadDeps;
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
@@ -147,6 +158,22 @@ export function createFinService(deps: FinServiceDeps): FinService {
       ].join("\n");
     },
 
+    async sdk(ctx, operation) {
+      const credential = await getFinCredential(ctx);
+      if (credential.ok === false) {
+        return {
+          ok: false,
+          enabledNow: false,
+          text: credential.message,
+          details: { phase: "credential" },
+        };
+      }
+      const appId = statusStore.read().identity?.appId;
+      const sdkDeps = deps.sdkDeps ?? createSdkReadDeps(deps.exec, appId);
+      if (operation === "manifest") return readManifest(credential.credential, sdkDeps, ctx.signal);
+      return downloadResources(credential.credential, sdkDeps, sdkDownloadDir(appId), ctx.signal);
+    },
+
     cachedDoctorReport() {
       const snapshot = statusStore.read();
       const checks = buildCachedChecks(snapshot, existsSync(path.join(homedir(), ".intercom")));
@@ -158,6 +185,12 @@ export function createFinService(deps: FinServiceDeps): FinService {
       return { extensionId: "sf-fin", title: "SF Fin", checks, summary: worst };
     },
   };
+}
+
+/** Owner-only per-workspace download location under SF Pi state. */
+export function sdkDownloadDir(appId: string | undefined): string {
+  const safe = appId && /^[A-Za-z0-9_-]+$/.test(appId) ? appId : "workspace";
+  return globalAgentPath("sf-pi", "sf-fin", "sdk", safe);
 }
 
 export function statusText(): string {

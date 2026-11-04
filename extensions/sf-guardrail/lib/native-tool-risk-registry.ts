@@ -12,6 +12,7 @@ import {
   type BrowserSnapshotRefLookup,
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { inferNonProductionOrgTypeFromUrl } from "../../../lib/common/sf-environment/org-type.ts";
+import { readFinSdkState } from "../../../lib/common/fin-sdk-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
 import { classifySfMcpConfiguration } from "./sf-mcp-config-risk.ts";
 import { classifySfMcpRisk } from "./mcp-tool-risk.ts";
@@ -36,6 +37,7 @@ export function classifyNativeToolRisk(
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifySfFinInstall(toolName, input) ??
+    classifySfFinSdkEnable(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
     classifySfSoql(toolName, input) ??
@@ -241,6 +243,37 @@ function classifySfFinInstall(
     fingerprint: `sf_fin|install|${fingerprintText(version)}`,
     approvalLabel: `npm install -g @intercom/cli@${version}`,
     approvalDetail: `package=@intercom/cli; version=${version}; scope=global npm`,
+  };
+}
+
+/**
+ * `sf_fin sdk` enables the Fin SDK on first use. Once SF Fin has recorded the
+ * workspace as enabled, SDK reads are prompt-free; otherwise the call is a
+ * workspace-feature mutation (`POST /fin-sdk/enable`). No Salesforce org is
+ * involved; Power Tool Mode's `fin` family auto-approves it.
+ */
+function classifySfFinSdkEnable(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "sdk") return undefined;
+  const sdk = readFinSdkState();
+  if (sdk.state === "enabled") return undefined;
+  const workspace = sdk.appId ?? "connected workspace";
+  const operation = stringValue(input.operation) ?? "manifest";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "sdk",
+    ruleId: "native-sf-fin-sdk-enable",
+    subject: `sf_fin sdk ${operation} (enable Fin SDK)`,
+    reason: `Fin SDK is not recorded as enabled for ${workspace}; SF Fin will enable it (POST /fin-sdk/enable) before running ${operation}.`,
+    promptTitle: "⚠ Enable Fin SDK for this workspace",
+    operationFamily: "fin sdk enable",
+    riskTier: "workspace_feature_enable",
+    fingerprint: `sf_fin|sdk-enable|${fingerprintText(workspace)}`,
+    approvalLabel: `enable Fin SDK for ${workspace}`,
+    approvalDetail: `workspace=${workspace}; operation=${operation}; observed=${sdk.state}`,
   };
 }
 

@@ -11,6 +11,7 @@ export type SfFinCommandAction =
   | "debug"
   | "debug-on"
   | "debug-off"
+  | "sdk"
   | "help";
 
 export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
@@ -66,6 +67,13 @@ export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
     group: "Diagnostics",
   },
   {
+    value: "sdk",
+    label: "Fin SDK manifest",
+    description:
+      "Summarize procedures, workflows, guidance, and connectors. Enables the Fin SDK on first use.",
+    group: "Fin as code",
+  },
+  {
     value: "help",
     label: "Show help",
     description: "Show command usage and setup guidance.",
@@ -87,6 +95,7 @@ export function renderHelp(): string {
     `- \`/${COMMAND_NAME} doctor\` — live read-only checks.`,
     `- \`/${COMMAND_NAME} debug\` — redacted support bundle.`,
     `- \`/${COMMAND_NAME} debug on [runs]\` / \`debug off\` — arm or disarm a one-shot verbose trace.`,
+    `- \`/${COMMAND_NAME} sdk [manifest|download]\` — Fin-as-code reads; enables the Fin SDK on first use.`,
     "",
     "Setup:",
     `1. \`/${COMMAND_NAME} install\` (or \`npm install -g @intercom/cli\`).`,
