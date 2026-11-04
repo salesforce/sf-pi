@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.350.0](https://github.com/salesforce/sf-pi/compare/v0.349.1...v0.350.0) (2026-11-04)
+
+
+### Features
+
+* **sf-fin:** add named workspaces, automatic region detection, and unified setup ([#875](https://github.com/salesforce/sf-pi/issues/875)) ([f491816](https://github.com/salesforce/sf-pi/commit/f491816b8fa0b35ddca16c293989d0c7f0f14707))
+
 ## [0.349.1](https://github.com/salesforce/sf-pi/compare/v0.349.0...v0.349.1) (2026-11-04)
 
 
