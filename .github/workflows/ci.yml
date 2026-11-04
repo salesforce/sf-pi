@@ -73,6 +73,16 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Check runtime imports
+        # Every bare import in extension runtime code must be a production
+        # dependency, a Node built-in, or a module Pi's loader aliases.
+        run: npm run check:runtime-imports
+
+      - name: Load every extension from a git-style install
+        # Reproduces Pi's git install (npm install --omit=dev --legacy-peer-deps)
+        # and loads every extension through Pi's real extension loader.
+        run: npm run check:git-install-load
+
       - name: LLM artifact check
         # Fails on unresolved conflict markers, prompt-template tokens,
         # and unresolved TODO(llm|agent|claude|gpt|pi) markers.

@@ -16,7 +16,8 @@
  */
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
-import * as JsonSchema from "typebox/schema";
+// typebox/value is aliased by Pi's extension loader; typebox/schema is not.
+import * as JsonSchema from "typebox/value";
 import { parse, parseDocument } from "yaml";
 import { procedureDrift } from "./procedure-normalize.ts";
 import type { FinCredential } from "./auth.ts";
@@ -255,7 +256,7 @@ function schemaIssues(
   schema: Parameters<typeof JsonSchema.Check>[0],
   value: unknown,
 ): ValidationIssue[] {
-  const [, rawErrors] = JsonSchema.Errors(schema, value) as unknown as [boolean, SchemaError[]];
+  const rawErrors = JsonSchema.Errors(schema, value) as unknown as SchemaError[];
   // oneOf branches produce many errors; report the most specific paths first.
   const errors = [...(rawErrors ?? [])]
     .filter((e) => e.keyword !== "boolean")

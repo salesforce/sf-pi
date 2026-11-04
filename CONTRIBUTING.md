@@ -105,7 +105,7 @@ validation.
 This complete inventory is generated from `package.json`; edit that file and run `npm run generate-catalog`.
 
 <details>
-<summary>Show all 74 package scripts</summary>
+<summary>Show all 76 package scripts</summary>
 
 **Generated sources**
 
@@ -145,8 +145,10 @@ This complete inventory is generated from `package.json`; edit that file and run
 - `npm run check:architecture`
 - `npm run check:boot-path`
 - `npm run check:commands`
+- `npm run check:git-install-load`
 - `npm run check:lifecycle-scripts`
 - `npm run check:manager-first`
+- `npm run check:runtime-imports`
 - `npm run check:salesforce-connection`
 - `npm run spdx`
 - `npm run spdx:check`
