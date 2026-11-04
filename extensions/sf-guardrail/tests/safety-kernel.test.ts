@@ -779,6 +779,76 @@ describe("Safety Kernel", () => {
     }
   });
 
+  it("mediates guidance state, data connector creation, and Agent API runs; reads stay prompt-free", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-more-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      writeFinSdkState({ state: "enabled", appId: "example" });
+      const evaluate = (input: Record<string, unknown>) =>
+        evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+
+      expect(
+        await evaluate({
+          action: "sdk",
+          operation: "guidance_state",
+          guidance_id: "9",
+          state: "live",
+        }),
+      ).toBeUndefined();
+      const guidance = await evaluate({
+        action: "sdk",
+        operation: "guidance_state",
+        guidance_id: "9",
+        state: "live",
+        allow_mutation: true,
+      });
+      expect(guidance).toMatchObject({
+        action: "confirm",
+        ruleId: "native-sf-fin-procedure-state",
+        approvalScope: { operationFamily: "fin procedure state", allowSession: false },
+      });
+
+      const create = await evaluate({
+        action: "sdk",
+        operation: "create_data_connector",
+        name: "Example lookup",
+      });
+      expect(create).toMatchObject({
+        action: "confirm",
+        ruleId: "native-sf-fin-procedure-write",
+        approvalScope: { operationFamily: "fin procedure write" },
+      });
+
+      const run = await evaluate({ action: "agent", operation: "run", procedure_id: "4242" });
+      expect(run).toMatchObject({
+        action: "confirm",
+        ruleId: "native-sf-fin-agent-run",
+        approvalScope: { operationFamily: "fin agent run" },
+      });
+      for (const decision of [guidance, create, run]) {
+        expect(decision?.orgType).toBeUndefined();
+        expect(
+          shouldPowerToolAutoApprove(decision!, { mode: "native", nativeFamilies: ["fin"] }),
+        ).toBe(true);
+        expect(shouldPowerToolAutoApprove(decision!, undefined)).toBe(false);
+      }
+
+      for (const input of [
+        { action: "agent", operation: "access" },
+        { action: "agent", operation: "capabilities" },
+        { action: "surfaces" },
+        { action: "sdk", operation: "validate", file: "guidance.yaml" },
+      ]) {
+        expect(await evaluate(input)).toBeUndefined();
+      }
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
   it("treats the first sf_fin sdk call as a Fin SDK enable; enabled workspaces stay prompt-free", async () => {
     const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-sdk-"));
     const previous = process.env.PI_CODING_AGENT_DIR;

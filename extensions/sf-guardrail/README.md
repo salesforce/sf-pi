@@ -125,8 +125,15 @@ confirm-class decisions) without the production/unknown-org opt-in.
   grant, because publishing puts a procedure in front of customers. Planning
   without `allow_mutation` is prompt-free.
 
-Both ask for approval by default. Power Tool Mode auto-approves them when the
-**Fin CLI and Operator** family is selected.
+- `sdk guidance_state` with `allow_mutation=true` uses the same exact,
+  no-session rule, because live guidance changes every answer at once.
+  `sdk create_data_connector` is a procedure-write.
+- `agent run` is `native-sf-fin-agent-run`: it starts a real Fin Agent API
+  conversation, and a conversation Fin resolves is a billable outcome. Access
+  checks, capability listing, and `surfaces` are prompt-free.
+
+All of these ask for approval by default. Power Tool Mode auto-approves them
+when the **Fin CLI and Operator** family is selected.
 
 ## Integration and Flow production controls
 

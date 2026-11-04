@@ -21,6 +21,7 @@ import {
   loginWithSecureCredentialPrompt,
   type SecureCredentialPromptBridge,
 } from "../../../lib/common/secure-credential-prompt.ts";
+import { AGENT_API_ENV_KEY, AGENT_API_PROVIDER } from "./agent-api.ts";
 import {
   DEFAULT_REGION,
   ENV_REGION,
@@ -178,4 +179,72 @@ export async function getFinCredential(ctx: ExtensionContext): Promise<FinCreden
     };
   }
   return { ok: false, message: notConnectedMessage() };
+}
+
+/**
+ * Fin Agent API key: a second, separate Pi provider (`/login sf-fin-agent`).
+ * The Fin Agent API uses its own workspace key, distinct from the personal
+ * token the Fin CLI uses, so the two are stored and revoked independently.
+ * It is sent only as an HTTPS Authorization header, never to the CLI.
+ */
+export function createSfFinAgentAuthController(
+  promptBridge: SecureCredentialPromptBridge = createSecureCredentialPromptBridge({
+    title: "SF Fin Agent API key",
+    description:
+      "Create it in Fin under Settings → Integrations → Fin Agent API (access is granted on request). The value is masked and is not added to the session.",
+  }),
+): SfFinAuthController {
+  const provider = createAuthOnlyProvider({
+    id: AGENT_API_PROVIDER,
+    name: "SF Fin Agent API",
+    auth: {
+      apiKey: {
+        name: "Fin Agent API key",
+        login: async (interaction) => loginWithSecureCredentialPrompt(promptBridge, interaction),
+        resolve: async ({ ctx, credential }) => {
+          const saved = credential?.key?.trim();
+          const envKey = (await ctx.env(AGENT_API_ENV_KEY))?.trim();
+          const key = saved || envKey;
+          if (!key) return undefined;
+          return {
+            auth: { apiKey: key },
+            source: saved ? "Pi saved credential" : AGENT_API_ENV_KEY,
+          };
+        },
+      },
+    },
+  });
+  return {
+    provider,
+    bind: (ui, mode) => promptBridge.bind(ui, mode),
+    clear: () => promptBridge.clear(),
+  };
+}
+
+export const sfFinAgentAuthController = createSfFinAgentAuthController();
+
+export async function getFinAgentApiKey(
+  ctx: ExtensionContext,
+): Promise<{ ok: true; key: string; region: FinRegion } | { ok: false; message: string }> {
+  const region = detectRegion().region;
+  const getProviderAuth = ctx.modelRegistry.getProviderAuth;
+  if (typeof getProviderAuth === "function") {
+    try {
+      const resolved = await getProviderAuth.call(ctx.modelRegistry, AGENT_API_PROVIDER);
+      const key = resolved?.auth?.apiKey?.trim();
+      if (key) return { ok: true, key, region };
+    } catch {
+      // Fall through to the automation fallback below.
+    }
+  }
+  const envKey = getEnv(AGENT_API_ENV_KEY);
+  if (envKey) return { ok: true, key: envKey, region };
+  return {
+    ok: false,
+    message: [
+      "No Fin Agent API key is saved.",
+      "The Fin Agent API is granted per workspace on request: in Fin, go to Settings → Integrations → Fin Agent API. Once approved, generate the key there.",
+      `Then run /login ${AGENT_API_PROVIDER} in interactive TUI mode (masked), or set ${AGENT_API_ENV_KEY} for automation.`,
+    ].join("\n"),
+  };
 }

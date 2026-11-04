@@ -29,7 +29,10 @@ describe("sf-fin", () => {
 
     mod.default(pi as never);
 
-    expect(pi.registerProvider.mock.calls.map(([provider]) => provider.id)).toEqual(["sf-fin"]);
+    expect(pi.registerProvider.mock.calls.map(([provider]) => provider.id)).toEqual([
+      "sf-fin",
+      "sf-fin-agent",
+    ]);
     expect(pi.registerTool.mock.calls.map(([tool]) => tool.name)).toEqual(["sf_fin"]);
     expect(pi.registerCommand.mock.calls.map(([name]) => name)).toEqual(["sf-fin"]);
     expect(pi.on.mock.calls.map(([event]) => event).sort()).toEqual([
@@ -53,7 +56,7 @@ describe("sf-fin", () => {
     expect(values("deb")).toEqual(["debug"]);
   });
 
-  it("exposes status, doctor, install, debug, and sdk tool actions", async () => {
+  it("exposes status, doctor, install, debug, sdk, surfaces, and agent tool actions", async () => {
     const mod = await import("../index.ts");
     const pi = fakePi();
     mod.default(pi as never);
@@ -64,6 +67,8 @@ describe("sf-fin", () => {
       "install",
       "debug",
       "sdk",
+      "surfaces",
+      "agent",
     ]);
   });
 

@@ -26,6 +26,22 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 
 - Publishing puts the procedure in front of customers. Never publish without the user's explicit request for that procedure.
 
+### Guidance and data connectors
+
+- Guidance (`type: guidance`) and data connectors (`type: data_connector`) use the same `operation='validate'` / `operation='upload'`; SF Fin routes by the file's `type` and validates against the workspace `guidance.json` / `data-connector.json`.
+- Guidance has no draft state, and live guidance changes every answer at once. Upload always saves it **paused**. To make it live, call `operation='guidance_state' guidance_id=… state='live'` for the plan, ask the user, then repeat with `allow_mutation=true`.
+- Data connectors: first `operation='create_data_connector' name=…` to get a numeric id. Then write the JSON with that `id`, an `https://` request URL, only the inputs the request uses (`<read attr='…' />`), and a `mock_response`, and upload it. It saves as a draft. Publishing is done by the user in the Intercom web UI.
+
+### Choosing a surface
+
+- `sf_fin action='surfaces'` compares the installed Fin CLI, the Intercom MCP, and the Fin Agent API and says which one SF Fin uses for each capability. It fails when either surface has changed since the map was reviewed.
+
+### Fin Agent API runs
+
+- `sf_fin action='agent' operation='access'` checks access first. The Fin Agent API is granted per workspace on request and uses its own key: the user saves it with `/login sf-fin-agent`, never in chat. The personal token does not work.
+- `operation='capabilities'` lists the procedures a test user can trigger. It creates no conversation.
+- `operation='run'` starts a real Fin conversation, using `procedure_id` (or `message` to ask Fin) plus scripted `replies`, and returns the transcript and final status. It is Guardrail-mediated, because a conversation Fin resolves is a billable outcome. The procedure must be live and available on the Fin Agent API channel.
+
 ## Recovery
 
 | Outcome             | Next step                                                                             |
@@ -48,4 +64,4 @@ Install plan outcomes:
 - Never ask the user to paste a token into chat, and never run `intercom auth login` yourself. `/login sf-fin` is the only credential entry path.
 - Do not run the Fin CLI or `npm install -g @intercom/cli` directly through `bash`. Use `sf_fin`, which keeps the token out of argv and the user's own CLI config, pins exact versions, and routes installs through SF Guardrail.
 - `allow_mutation=true` states intent; it is not approval. Never claim an install was approved unless the tool result shows it ran.
-- `sf_fin` changes only Fin-as-code procedures and their simulations: draft uploads, simulation sets, simulation runs, and publish/pause. It changes no other workspace configuration.
+- `sf_fin` changes only Fin-as-code resources: procedure drafts, simulations, publish/pause, paused guidance and its state, draft data connectors, and Fin Agent API test conversations. It changes no other workspace configuration, and never publishes a data connector.

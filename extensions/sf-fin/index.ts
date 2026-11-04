@@ -39,7 +39,12 @@ import {
 import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
 import { getInstalledPiVersion, requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { withSafeCommandHandler } from "../../lib/common/safe-command-handler.ts";
-import { detectTokenSource, hasStoredFinCredential, sfFinAuthController } from "./lib/auth.ts";
+import {
+  detectTokenSource,
+  hasStoredFinCredential,
+  sfFinAgentAuthController,
+  sfFinAuthController,
+} from "./lib/auth.ts";
 import { SF_FIN_ACTIONS, renderHelp } from "./lib/command-surface.ts";
 import { createFinConfirmPanel } from "./lib/manager-action-panels.ts";
 import { createFinService, statusText, type FinService } from "./lib/service.ts";
@@ -52,12 +57,15 @@ export default function sfFin(pi: ExtensionAPI) {
   const service = createFinService({ exec: buildExecFn(pi) });
 
   pi.registerProvider(sfFinAuthController.provider);
+  pi.registerProvider(sfFinAgentAuthController.provider);
 
   pi.on("session_start", async (_event, ctx) => {
     sfFinAuthController.bind(ctx.ui, ctx.mode);
+    sfFinAgentAuthController.bind(ctx.ui, ctx.mode);
   });
   pi.on("session_shutdown", async () => {
     sfFinAuthController.clear();
+    sfFinAgentAuthController.clear();
   });
 
   registerSfFinTool(pi, service, runtimeMeta);
@@ -163,6 +171,30 @@ export async function handleCommand(
   if (sub === "sdk" && (parts[1] === "publish" || parts[1] === "pause")) {
     return procedureState(service, ctx, parts[1], parts[2], fromPanel);
   }
+  if (sub === "sdk" && parts[1] === "guidance_state") {
+    return guidanceState(service, ctx, parts[2], parts[3], fromPanel);
+  }
+  if (sub === "sdk" && parts[1] === "create_data_connector") {
+    const result = await service.procedure(ctx, {
+      operation: "create_data_connector",
+      name: parts.slice(2).join(" "),
+    });
+    return emit(
+      ctx,
+      "SF Fin data connector",
+      result.text,
+      result.ok ? "info" : "warning",
+      fromPanel,
+    );
+  }
+  if (sub === "surfaces") {
+    const result = await service.surfaces();
+    return emit(ctx, "SF Fin surfaces", result.text, result.ok ? "info" : "warning", fromPanel);
+  }
+  if (sub === "agent") {
+    const result = await service.agent(ctx, { operation: "access" });
+    return emit(ctx, "SF Fin Agent API", result.text, result.ok ? "info" : "warning", fromPanel);
+  }
   if (
     sub === "sdk" &&
     (parts[1] === "validate" ||
@@ -216,6 +248,30 @@ export async function handleCommand(
     "warning",
     fromPanel,
   );
+}
+
+async function guidanceState(
+  service: FinService,
+  ctx: ExtensionCommandContext,
+  guidanceId: string | undefined,
+  state: string | undefined,
+  fromPanel: boolean,
+): Promise<void> {
+  const title = "SF Fin guidance state";
+  const request = { operation: "guidance_state" as const, guidanceId, state };
+  const plan = await service.procedure(ctx, { ...request, execute: false });
+  if (!plan.ok || plan.details.phase !== "plan") {
+    return emit(ctx, title, plan.text, plan.ok ? "info" : "warning", fromPanel);
+  }
+  if (!ctx.hasUI) return emit(ctx, title, plan.text, "info", fromPanel);
+  const confirmed = await ctx.ui.confirm(
+    state === "live" ? "Set this Fin guidance live?" : "Pause this Fin guidance?",
+    `${plan.text.split("\n").slice(0, 2).join("\n")}\n\nContinue?`,
+  );
+  if (!confirmed)
+    return emit(ctx, `${title} cancelled`, "No changes were made.", "info", fromPanel);
+  const result = await service.procedure(ctx, { ...request, execute: true });
+  return emit(ctx, title, result.text, result.ok ? "success" : "warning", fromPanel);
 }
 
 async function procedureState(

@@ -18,30 +18,34 @@ credential, the workspace **personal API token**, and manages the Fin CLI
 - `/sf-pi doctor` includes SF Fin's cached checks without network or
   credential use.
 
-For Fin-as-code procedures, SF Fin validates, uploads drafts, runs simulations, and publishes or pauses procedures. Each step that changes the workspace goes through SF Guardrail. It does not change any other Fin workspace configuration.
+For Fin as code, SF Fin authors and tests procedures (validation, draft upload, simulations, publish and pause), guidance (always uploaded paused), and draft data connectors. It also compares the Fin CLI, Intercom MCP, and Fin Agent API surfaces, and runs end-to-end Fin Agent API conversations once your workspace has access. Each step that changes the workspace goes through SF Guardrail.
 
 ## Commands
 
-| Command                                 | Purpose                                                 |
-| --------------------------------------- | ------------------------------------------------------- |
-| `/sf-fin`                               | Open SF Fin in the SF Pi Manager                        |
-| `/sf-fin connect`                       | Prefill native `/login sf-fin`                          |
-| `/sf-fin disconnect`                    | Prefill native `/logout sf-fin`                         |
-| `/sf-fin status`                        | Print cached credential, region, CLI, and doctor result |
-| `/sf-fin install [version]`             | Install or update the Fin CLI after confirmation        |
-| `/sf-fin doctor`                        | Live read-only checks                                   |
-| `/sf-fin debug`                         | Redacted support bundle                                 |
-| `/sf-fin debug on [runs]`               | Trace the next doctor run(s) with the CLI's `--verbose` |
-| `/sf-fin debug off`                     | Disarm verbose tracing                                  |
-| `/sf-fin sdk [manifest]`                | Summarize Fin-as-code resources (enables the SDK once)  |
-| `/sf-fin sdk download`                  | Download and extract all Fin SDK resources locally      |
-| `/sf-fin sdk validate <file>`           | Check a procedure.yaml against the workspace schema     |
-| `/sf-fin sdk upload <file>`             | Upload an unpublished draft; verify the saved copy      |
-| `/sf-fin sdk upload_simulations <file>` | Upload a simulation set for a procedure                 |
-| `/sf-fin sdk simulate <id>`             | Generate (optional) and run simulations, with results   |
-| `/sf-fin sdk publish <id>`              | Set a procedure live after confirmation                 |
-| `/sf-fin sdk pause <id>`                | Take a live procedure offline after confirmation        |
-| `/sf-fin help`                          | Print setup guidance                                    |
+| Command                                        | Purpose                                                 |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| `/sf-fin`                                      | Open SF Fin in the SF Pi Manager                        |
+| `/sf-fin connect`                              | Prefill native `/login sf-fin`                          |
+| `/sf-fin disconnect`                           | Prefill native `/logout sf-fin`                         |
+| `/sf-fin status`                               | Print cached credential, region, CLI, and doctor result |
+| `/sf-fin install [version]`                    | Install or update the Fin CLI after confirmation        |
+| `/sf-fin doctor`                               | Live read-only checks                                   |
+| `/sf-fin debug`                                | Redacted support bundle                                 |
+| `/sf-fin debug on [runs]`                      | Trace the next doctor run(s) with the CLI's `--verbose` |
+| `/sf-fin debug off`                            | Disarm verbose tracing                                  |
+| `/sf-fin sdk [manifest]`                       | Summarize Fin-as-code resources (enables the SDK once)  |
+| `/sf-fin sdk download`                         | Download and extract all Fin SDK resources locally      |
+| `/sf-fin sdk validate <file>`                  | Check a procedure.yaml against the workspace schema     |
+| `/sf-fin sdk upload <file>`                    | Upload an unpublished draft; verify the saved copy      |
+| `/sf-fin sdk upload_simulations <file>`        | Upload a simulation set for a procedure                 |
+| `/sf-fin sdk simulate <id>`                    | Generate (optional) and run simulations, with results   |
+| `/sf-fin sdk publish <id>`                     | Set a procedure live after confirmation                 |
+| `/sf-fin sdk pause <id>`                       | Take a live procedure offline after confirmation        |
+| `/sf-fin sdk create_data_connector <name>`     | Create a named draft data connector                     |
+| `/sf-fin sdk guidance_state <id> live\|paused` | Set guidance live or paused after confirmation          |
+| `/sf-fin surfaces`                             | Compare Fin CLI, Intercom MCP, and Fin Agent API        |
+| `/sf-fin agent`                                | Check Fin Agent API access                              |
+| `/sf-fin help`                                 | Print setup guidance                                    |
 
 The agent uses the same operations through `sf_fin`. `sf_fin action='install'`
 returns a plan; executing it requires `allow_mutation=true` and is mediated by
@@ -57,7 +61,12 @@ SF Guardrail (see below).
    (`app.intercom.com` is US), and paste the token into the masked prompt.
 4. Run `/sf-fin doctor`.
 
+For Fin Agent API runs (optional), request access in Fin under **Settings →
+Integrations → Fin Agent API**, generate the Fin Agent API key there, and save
+it with `/login sf-fin-agent`. It is a separate key from the personal token.
+
 `INTERCOM_TOKEN` and `INTERCOM_REGION` are non-persisted automation fallbacks.
+`FIN_AGENT_API_KEY` is the automation fallback for the Fin Agent API key.
 `INTERCOM_APP_ID` is forwarded only for legacy Basic-auth API keys.
 
 ## Safety and Data Boundaries
@@ -91,6 +100,17 @@ SF Guardrail (see below).
   Tool family **Fin CLI and Operator**) that is never session-approved, because
   publishing puts the procedure in front of customers. SF Fin then checks the
   state Fin reports.
+- Guidance uploads are always saved `paused`, because live guidance changes
+  every answer at once. `sdk guidance_state` plans by default; executing it is
+  an exact SF Guardrail mutation that is never session-approved. Data
+  connectors upload only as drafts, and publishing them stays in the Intercom
+  web UI.
+- The Fin Agent API key is a separate Pi credential (`sf-fin-agent`), sent
+  only as an HTTPS `Authorization` header and never to the CLI. `agent run`
+  is an SF Guardrail mutation (`native-sf-fin-agent-run`), because a
+  conversation Fin resolves is a billable outcome. Access checks and capability
+  listing create no conversation.
+- `surfaces` runs only local `--help` commands, with no token and no network.
 - Agent-initiated installs are SF Guardrail native mutations in the
   **Fin CLI install** family. They ask for approval by default and are
   auto-approved only when Guardrail Power Tool Mode includes that family (or
