@@ -35,7 +35,7 @@ export const NATIVE_TOOL_FAMILIES: Array<{
   {
     id: "fin",
     label: "Fin CLI and Operator",
-    description: "sf_fin install and SDK enable; Fin Operator turns/apply",
+    description: "sf_fin install, SDK enable, draft upload/simulate; Fin Operator",
   },
   { id: "soql", label: "SOQL disclosures", description: "export, queryAll, unbounded reads" },
 ];
@@ -107,6 +107,7 @@ export function nativeToolFamilyForDecision(
   if (
     family === "fin cli install" ||
     family === "fin sdk enable" ||
+    family === "fin procedure write" ||
     family.startsWith("mcp fin operator ")
   )
     return "fin";

@@ -37,6 +37,7 @@ export function classifyNativeToolRisk(
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifySfFinInstall(toolName, input) ??
+    classifySfFinProcedureWrite(toolName, input) ??
     classifySfFinSdkEnable(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
     classifyData360(toolName, input) ??
@@ -247,6 +248,48 @@ function classifySfFinInstall(
 }
 
 /**
+ * `sf_fin sdk upload` saves an unpublished procedure draft and `sdk simulate`
+ * generates and runs simulations. Both write to the Fin workspace (drafts and
+ * simulation sets, never publish). `validate`, `manifest`, and `download` are
+ * not workspace writes. No Salesforce org is involved; Power Tool Mode's `fin`
+ * family auto-approves them.
+ */
+function classifySfFinProcedureWrite(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "sdk") return undefined;
+  const operation = stringValue(input.operation);
+  if (operation !== "upload" && operation !== "upload_simulations" && operation !== "simulate") {
+    return undefined;
+  }
+  const target =
+    operation === "upload" || operation === "upload_simulations"
+      ? (stringValue(input.file) ?? "unspecified file")
+      : (stringValue(input.procedure_id) ?? "unspecified procedure");
+  const generate = operation === "simulate" && input.generate !== false;
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: `sdk.${operation}`,
+    ruleId: "native-sf-fin-procedure-write",
+    subject: `sf_fin sdk ${operation} ${target}`,
+    reason:
+      operation === "upload"
+        ? `Fin procedure draft upload requested for ${target} (unpublished; round-trip verified).`
+        : operation === "upload_simulations"
+          ? `Fin simulation set upload requested for ${target} (tests without an id are added).`
+          : `Fin simulations ${generate ? "generate and run" : "run"} requested for procedure ${target}.`,
+    promptTitle: operation === "upload" ? "⚠ Upload Fin procedure draft" : "⚠ Run Fin simulations",
+    operationFamily: "fin procedure write",
+    riskTier: "fin_procedure_draft_write",
+    fingerprint: `sf_fin|sdk-${operation}|${fingerprintText(JSON.stringify({ target, generate }))}`,
+    approvalLabel: `${operation} ${target}`,
+    approvalDetail: `operation=${operation}; target=${target}${operation === "simulate" ? `; generate=${generate}` : ""}`,
+  };
+}
+
+/**
  * `sf_fin sdk` enables the Fin SDK on first use. Once SF Fin has recorded the
  * workspace as enabled, SDK reads are prompt-free; otherwise the call is a
  * workspace-feature mutation (`POST /fin-sdk/enable`). No Salesforce org is
@@ -257,6 +300,7 @@ function classifySfFinSdkEnable(
   input: Record<string, unknown>,
 ): NativeToolSafetySubject | undefined {
   if (toolName !== "sf_fin" || input.action !== "sdk") return undefined;
+  if (input.operation === "validate") return undefined;
   const sdk = readFinSdkState();
   if (sdk.state === "enabled") return undefined;
   const workspace = sdk.appId ?? "connected workspace";

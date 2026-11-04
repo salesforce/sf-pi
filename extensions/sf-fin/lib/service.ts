@@ -36,6 +36,15 @@ import { COMMAND_NAME, type FinOutcomeKind, type FinStatusSnapshot } from "./typ
 import { getFinCredential } from "./auth.ts";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
 import {
+  formatValidation,
+  procedureSchemaPath,
+  simulateProcedure,
+  simulationSchemaPath,
+  uploadSimulationSet,
+  uploadProcedureDraft,
+  validateProcedureFile,
+} from "./sdk-procedures.ts";
+import {
   createSdkReadDeps,
   downloadResources,
   readManifest,
@@ -57,6 +66,8 @@ export interface FinService {
   cachedDoctorReport(): ExtensionDoctorReport;
   /** Fin-as-code reads. Enables the Fin SDK by default on first use. */
   sdk(ctx: ExtensionContext, operation: "manifest" | "download"): Promise<SdkReadResult>;
+  /** Fin-as-code procedure lifecycle: local validate, draft upload, simulate. */
+  procedure(ctx: ExtensionContext, request: ProcedureRequest): Promise<ProcedureResponse>;
 }
 
 export interface FinServiceDeps {
@@ -174,6 +185,56 @@ export function createFinService(deps: FinServiceDeps): FinService {
       return downloadResources(credential.credential, sdkDeps, sdkDownloadDir(appId), ctx.signal);
     },
 
+    async procedure(ctx, request) {
+      const appId = statusStore.read().identity?.appId;
+      const schemaPath = procedureSchemaPath(sdkDownloadDir(appId));
+      if (request.operation === "validate") {
+        const result = validateProcedureFile(resolveFile(ctx.cwd, request.file), schemaPath);
+        return {
+          ok: result.ok,
+          text: formatValidation(result),
+          details: { phase: "validate", issues: result.issues },
+        };
+      }
+      const credential = await getFinCredential(ctx);
+      if (credential.ok === false) {
+        return { ok: false, text: credential.message, details: { phase: "credential" } };
+      }
+      const sdkDeps = deps.sdkDeps ?? createSdkReadDeps(deps.exec, appId);
+      if (request.operation === "upload_simulations") {
+        return uploadSimulationSet(
+          credential.credential,
+          sdkDeps,
+          {
+            file: resolveFile(ctx.cwd, request.file),
+            schemaPath: simulationSchemaPath(sdkDownloadDir(appId)),
+          },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "upload") {
+        return uploadProcedureDraft(
+          credential.credential,
+          sdkDeps,
+          { file: resolveFile(ctx.cwd, request.file), schemaPath, note: request.note },
+          ctx.signal,
+        );
+      }
+      if (!request.procedureId) {
+        return {
+          ok: false,
+          text: "simulate requires procedure_id (from the upload result).",
+          details: { phase: "input" },
+        };
+      }
+      return simulateProcedure(
+        credential.credential,
+        sdkDeps,
+        { procedureId: request.procedureId, generate: request.generate !== false },
+        ctx.signal,
+      );
+    },
+
     cachedDoctorReport() {
       const snapshot = statusStore.read();
       const checks = buildCachedChecks(snapshot, existsSync(path.join(homedir(), ".intercom")));
@@ -185,6 +246,23 @@ export function createFinService(deps: FinServiceDeps): FinService {
       return { extensionId: "sf-fin", title: "SF Fin", checks, summary: worst };
     },
   };
+}
+
+export type ProcedureRequest =
+  | { operation: "validate"; file?: string }
+  | { operation: "upload"; file?: string; note?: string }
+  | { operation: "upload_simulations"; file?: string }
+  | { operation: "simulate"; procedureId?: string; generate?: boolean };
+
+export interface ProcedureResponse {
+  ok: boolean;
+  text: string;
+  details: Record<string, unknown>;
+}
+
+function resolveFile(cwd: string, file: string | undefined): string {
+  if (!file?.trim()) return "";
+  return path.isAbsolute(file) ? file : path.resolve(cwd, file);
 }
 
 /** Owner-only per-workspace download location under SF Pi state. */

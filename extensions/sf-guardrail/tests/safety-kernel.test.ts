@@ -707,6 +707,41 @@ describe("Safety Kernel", () => {
     expect(apply?.approvalScope?.allowSession).toBe(false);
   });
 
+  it("mediates sf_fin procedure draft upload and simulate; validate stays prompt-free", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-proc-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      writeFinSdkState({ state: "enabled", appId: "example" });
+      const evaluate = (input: Record<string, unknown>) =>
+        evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+      const upload = await evaluate({ action: "sdk", operation: "upload", file: "p.yaml" });
+      const simulate = await evaluate({
+        action: "sdk",
+        operation: "simulate",
+        procedure_id: "4242",
+      });
+      const validate = await evaluate({ action: "sdk", operation: "validate", file: "p.yaml" });
+      for (const decision of [upload, simulate]) {
+        expect(decision).toMatchObject({
+          action: "confirm",
+          ruleId: "native-sf-fin-procedure-write",
+          approvalScope: { operationFamily: "fin procedure write" },
+        });
+        expect(decision?.orgType).toBeUndefined();
+        expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(true);
+        expect(
+          shouldPowerToolAutoApprove(decision!, { mode: "native", nativeFamilies: ["fin"] }),
+        ).toBe(true);
+      }
+      expect(validate).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
   it("treats the first sf_fin sdk call as a Fin SDK enable; enabled workspaces stay prompt-free", async () => {
     const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-sdk-"));
     const previous = process.env.PI_CODING_AGENT_DIR;
