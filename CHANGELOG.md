@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.348.0](https://github.com/salesforce/sf-pi/compare/v0.347.0...v0.348.0) (2026-11-04)
+
+
+### Features
+
+* **sf-fin:** add surface comparison, guidance and data connectors, and Fin Agent API harness ([#869](https://github.com/salesforce/sf-pi/issues/869)) ([bf744e1](https://github.com/salesforce/sf-pi/commit/bf744e1c664cdbb0d7be68a2bd9e1f1d723bdedb))
+
 ## [0.347.0](https://github.com/salesforce/sf-pi/compare/v0.346.0...v0.347.0) (2026-11-04)
 
 
