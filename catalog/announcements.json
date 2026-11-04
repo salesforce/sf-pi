@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.345.0-2026-11-04",
-  "latestVersion": "0.345.0",
+  "revision": "release-0.346.0-2026-11-04",
+  "latestVersion": "0.346.0",
   "announcements": [
     {
-      "id": "release-0.345.0",
+      "id": "release-0.346.0",
       "kind": "update",
-      "title": "sf-pi v0.345.0 — sf-fin: add Fin workspace extension, Intercom MCP preset, and Guardrail mediation",
+      "title": "sf-pi v0.346.0 — sf-fin: add Fin procedure draft lifecycle with semantic verify and simulations",
       "publishedAt": "2026-11-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.345.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.346.0",
       "severity": "info",
-      "body": "sf-fin: add Fin workspace extension, Intercom MCP preset, and Guardrail mediation"
+      "body": "sf-fin: add Fin procedure draft lifecycle with semantic verify and simulations"
     }
   ]
 }
