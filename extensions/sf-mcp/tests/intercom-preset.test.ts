@@ -117,7 +117,16 @@ describe("Intercom MCP preset", () => {
     );
   });
 
-  it("with SF Fin enabled, recommends hidden apply_proposals and deferred Operator turns", () => {
+  it("starts new connections with every reviewed tool available (ADR 0154)", () => {
+    expect(preset.initialToolProfile).toBe("all-approved");
+    const initial = buildToolExposurePolicy(preset, preset.initialToolProfile ?? "quarantine");
+    expect(Object.values(initial.exposures)).toEqual(Array(19).fill("codemode"));
+    // Other presets keep the Quarantine default.
+    expect(getPreset("slack").initialToolProfile).toBeUndefined();
+    expect(getPreset("tableau").initialToolProfile).toBeUndefined();
+  });
+
+  it("keeps Operator tools callable when SF Fin is enabled; Guardrail mediates them", () => {
     const plan = planPresetConflicts(preset, new Set(["sf-fin"]));
     expect(plan.conflicts[0]).toMatchObject({
       nativeExtensionId: "sf-fin",
@@ -130,12 +139,6 @@ describe("Intercom MCP preset", () => {
         .sort(),
     ).toEqual(["apply_proposals", "send_operator_message"]);
     const policy = buildConflictAwareToolPolicy(preset, plan);
-    expect(policy.exposures.apply_proposals).toBe("hidden");
-    expect(policy.exposures.send_operator_message).toBe("deferred");
-    expect(policy.exposures.search).toBe("codemode");
-    expect(policy.exposures.get_proposal_details).toBe("codemode");
-
-    const noFin = buildConflictAwareToolPolicy(preset, planPresetConflicts(preset, new Set()));
-    expect(noFin.exposures.apply_proposals).toBe("codemode");
+    expect(Object.values(policy.exposures)).toEqual(Array(19).fill("codemode"));
   });
 });

@@ -78,6 +78,12 @@ export interface McpPreset {
   docsUrl: string;
   approvedTools?: readonly string[];
   defaultExposure?: McpExposure;
+  /**
+   * Reviewed tool profile for a brand-new connection. Defaults to Quarantine
+   * (every tool Hidden). Set only when Guardrail mediates every mutating tool
+   * in the reviewed contract.
+   */
+  initialToolProfile?: "all-approved" | "read-only";
   overlaps: McpPresetOverlap[];
 }
 
@@ -558,6 +564,8 @@ const PRESETS: readonly McpPreset[] = [
       "Uses Pi-native OAuth with dynamic client registration against the US or EU endpoint. Fin Operator tools appear only for teammates with Operator access.",
     docsUrl: "https://developers.intercom.com/docs/guides/mcp",
     approvedTools: INTERCOM_MCP_TOOLS.map((tool) => tool.name),
+    // Every mutating Intercom tool is Guardrail-mediated or low impact (ADR 0154).
+    initialToolProfile: "all-approved",
     overlaps: [
       {
         nativeExtensionId: "sf-fin",

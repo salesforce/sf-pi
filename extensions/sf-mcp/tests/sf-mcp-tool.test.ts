@@ -54,6 +54,69 @@ async function execute(
 }
 
 describe("sf_mcp tool", () => {
+  it("connects Intercom with every reviewed tool available and no quarantine warning", async () => {
+    const cwd = workspace();
+    const tool = registeredTool();
+    const planned = await execute(tool, cwd, {
+      action: "connection.plan",
+      scope: "global",
+      preset_id: "intercom",
+      region: "US",
+    });
+    await execute(tool, cwd, {
+      action: "connection.apply",
+      scope: "global",
+      preset_id: "intercom",
+      plan_id: planned.details.planId,
+      plan_hash: planned.details.planHash,
+      allow_mutation: true,
+    });
+    const config = JSON.parse(readFileSync(mcpConfigPath(cwd, "global"), "utf8"));
+    expect(Object.values(config.mcpServers.intercom.toolExposure)).toEqual(
+      Array(19).fill("codemode"),
+    );
+
+    const handoff = await execute(tool, cwd, {
+      action: "login.handoff",
+      scope: "global",
+      preset_id: "intercom",
+    });
+    expect(handoff.details).toMatchObject({ command: "/mcp login intercom", exposedTools: 19 });
+    expect(handoff.details.warning).toBeUndefined();
+  });
+
+  it("warns in status and login.handoff when a connection exposes zero tools", async () => {
+    const cwd = workspace();
+    const tool = registeredTool();
+    const planned = await execute(tool, cwd, {
+      action: "connection.plan",
+      scope: "global",
+      preset_id: "trailhead",
+    });
+    await execute(tool, cwd, {
+      action: "connection.apply",
+      scope: "global",
+      preset_id: "trailhead",
+      plan_id: planned.details.planId,
+      plan_hash: planned.details.planHash,
+      allow_mutation: true,
+    });
+
+    const status = await execute(tool, cwd, {
+      action: "status",
+      scope: "global",
+      preset_id: "trailhead",
+    });
+    expect(status.content[0].text).toContain("0 tools exposed");
+    const handoff = await execute(tool, cwd, {
+      action: "login.handoff",
+      scope: "global",
+      preset_id: "trailhead",
+    });
+    expect(handoff.details).toMatchObject({ exposedTools: 0, warning: "zero_tools_exposed" });
+    expect(handoff.content[0].text).toContain("Signing in alone makes no tool callable");
+  });
+
   it("configures independent Headless 360 connection instances for two target orgs", async () => {
     const cwd = workspace();
     const resolveHostedOrgBinding = vi.fn(async ({ targetOrg }: { targetOrg: string }) => ({

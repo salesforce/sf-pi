@@ -103,6 +103,7 @@ SF MCP-managed entries can be disabled from the catalog or `/sf-mcp disable <pre
 - Native-preferred conflict recommendations alter only MCP exposure. They never disable `sf-soql`, `sf-apex`, `sf-flow`, `sf-data360`, or another SF Pi owner.
 - Runtime observation never approves a new tool. Additions require a reviewed preset revision; removed tools remain unavailable and repair only changes their native exposure to Hidden.
 - New custom servers start with `hidden` exposure and no callable tools.
+- `status` and `login.handoff` warn when a managed, enabled connection exposes zero reviewed tools, because sign-in alone makes nothing callable.
 - OAuth tokens, including standalone Tableau OAuth, remain in Pi's native MCP credential store.
 - Trailhead MCP requires no authentication and is restricted to its two documented read-only public-content tools.
 - Intercom MCP (Fin) uses Pi-native OAuth with dynamic client registration and requests the `mcp` and `operator` scopes; bearer-header or fixed-client entries are not adopted because they don't receive Fin Operator tools. Applying Fin Operator proposals is an exact, non-session SF Guardrail approval, and Operator turns are Guardrail-confirmed; both belong to the Power Tool **Fin CLI and Operator** family.
@@ -178,7 +179,7 @@ Upgrades never delete user-owned Pi configuration. Existing `salesforce-sobject-
 
 ### Fin
 
-- Intercom MCP (Fin) — US or EU hosted workspaces; 14 reviewed data tools plus 5 Fin Operator tools that appear only for teammates with Operator access. With SF Fin enabled, the recommendation hides `apply_proposals` and defers `send_operator_message`.
+- Intercom MCP (Fin) — US or EU hosted workspaces; 14 reviewed data tools plus 5 Fin Operator tools that appear only for teammates with Operator access. Unlike other presets, new connections start with every reviewed tool in Code Mode because SF Guardrail mediates Operator turns and applies (ADR 0154).
 
 ### Custom
 

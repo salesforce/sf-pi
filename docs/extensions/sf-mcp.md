@@ -50,7 +50,7 @@ Open its Manager detail or change its package state with:
 - Agentforce Sales, Slack, and MuleSoft secrets are referenced through environment variables and are never stored in SF MCP managed state.
 - Slack and Informatica connections start quarantined because their public references do not publish stable exact tool-name contracts; observed tools remain Hidden pending a reviewed preset revision.
 - B2C Commerce uses the GA @salesforce/b2c-dx-mcp package with a versioned reviewed tool contract and hidden-by-default exposure.
-- Intercom MCP (Fin) uses Pi-native OAuth with dynamic client registration and the mcp and operator scopes; Fin Operator apply_proposals requires exact non-session SF Guardrail approval and Operator turns are Guardrail-confirmed.
+- Intercom MCP (Fin) uses Pi-native OAuth with dynamic client registration and the mcp and operator scopes. It is the one preset whose new connections expose every reviewed tool by default; Fin Operator apply_proposals requires exact non-session SF Guardrail approval and Operator turns are Guardrail-confirmed, both auto-approved by Power Tool Mode.
 
 ## Exact reference
 

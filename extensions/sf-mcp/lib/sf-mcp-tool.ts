@@ -25,6 +25,7 @@ import {
   applyToolExposurePolicy,
   buildToolExposurePolicy,
   customizeToolExposure,
+  exposedToolCount,
   hasReviewedToolPolicy,
   type ToolExposureMode,
   type ToolPolicyProfile,
@@ -320,6 +321,7 @@ function statusResult(cwd: string, scope: SfMcpScope, presetId?: string) {
         targetOrg: state.managed.record?.orgBinding?.targetOrg,
         orgType: state.managed.record?.orgBinding?.orgType,
         identityBound: Boolean(state.managed.record?.orgBinding?.orgId),
+        exposedTools: exposedToolCount(state.managed.config),
       }));
     const primary = connections[0] ?? {
       serverName: preset.serverName,
@@ -327,6 +329,7 @@ function statusResult(cwd: string, scope: SfMcpScope, presetId?: string) {
       targetOrg: undefined,
       orgType: undefined,
       identityBound: false,
+      exposedTools: 0 as number | undefined,
     };
     const state = instances[0] ?? inspectPresetRuntime(cwd, scope, preset);
     return {
@@ -334,6 +337,7 @@ function statusResult(cwd: string, scope: SfMcpScope, presetId?: string) {
       label: preset.label,
       serverName: primary.serverName,
       status: primary.status,
+      exposedTools: primary.exposedTools,
       connections,
       conflictOwners: state.plan.conflicts.map((conflict) => conflict.nativeExtensionId),
       scopeConflict: state.scopeConflict?.kind,
@@ -347,10 +351,18 @@ function statusResult(cwd: string, scope: SfMcpScope, presetId?: string) {
         `${row.presetId}: ${row.status}` +
         (row.connections.length > 1 ? ` · ${row.connections.length} connections` : "") +
         (row.conflictOwners.length ? ` · overlaps ${row.conflictOwners.join(", ")}` : "") +
-        (row.scopeConflict ? ` · ${row.scopeConflict}` : ""),
+        (row.scopeConflict ? ` · ${row.scopeConflict}` : "") +
+        (zeroExposure(row.status, row.exposedTools)
+          ? " · ⚠ 0 tools exposed — run tools.plan (recommended profile)"
+          : ""),
     ),
   ].join("\n");
   return successResult(body, { ok: true, action: "status", scope, presets: rows });
+}
+
+/** A managed, enabled entry whose reviewed per-tool policy exposes nothing. */
+function zeroExposure(status: string, exposedTools: number | undefined): boolean {
+  return status === "managed-enabled" && exposedTools === 0;
 }
 
 function conflictsResult(cwd: string, scope: SfMcpScope, params: SfMcpParams) {
@@ -401,7 +413,7 @@ async function createConnectionPlan(
   const toolPolicy = hasReviewedToolPolicy(preset)
     ? state.managed.config
       ? buildToolExposurePolicy(preset, "custom", state.managed.config)
-      : buildToolExposurePolicy(preset, "quarantine")
+      : buildToolExposurePolicy(preset, preset.initialToolProfile ?? "quarantine")
     : undefined;
   const proposedConfig = buildServerConfig(preset, resolution, setup, toolPolicy?.exposures);
   const diff = summarizeConfigDiff(state.managed.config ?? state.managed.override, proposedConfig);
@@ -949,11 +961,18 @@ function loginHandoffResult(cwd: string, scope: SfMcpScope, params: SfMcpParams)
     throw new Error(`${preset.label} doesn't use OAuth login through Pi's native MCP runtime.`);
   }
   const command = `/mcp login ${state.managed.configuredName}`;
+  const exposedTools = exposedToolCount(state.managed.config);
+  const quarantined = zeroExposure(state.managed.status, exposedTools);
   return successResult(
     [
       `READY: ${preset.label} native MCP login handoff.`,
       `Reload Pi if configuration changed, then run: ${command}`,
       "Pi owns token storage and refresh. Browser approval remains human OAuth consent.",
+      ...(quarantined
+        ? [
+            `⚠ 0 tools are exposed. Signing in alone makes no tool callable; run tools.plan then tools.apply for ${preset.id} (recommended profile).`,
+          ]
+        : []),
     ].join("\n"),
     {
       ok: true,
@@ -962,6 +981,8 @@ function loginHandoffResult(cwd: string, scope: SfMcpScope, params: SfMcpParams)
       presetId: preset.id,
       serverName: state.managed.configuredName,
       command,
+      exposedTools,
+      ...(quarantined ? { warning: "zero_tools_exposed" } : {}),
     },
   );
 }

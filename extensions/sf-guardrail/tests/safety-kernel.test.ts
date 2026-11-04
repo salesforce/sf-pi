@@ -678,6 +678,34 @@ describe("Safety Kernel", () => {
     expect(shouldPowerToolAutoApprove(execute!, { mode: "off" })).toBe(false);
   });
 
+  it("Power Tool Mode auto-approves Fin Operator apply and turns without an org opt-in", async () => {
+    const apply = await evaluateSafety({
+      toolName: "mcp__intercom__apply_proposals",
+      input: { chat_id: "chat-1", proposals: [{ proposal_id: "p_1" }] },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    const turn = await evaluateSafety({
+      toolName: "mcp__intercom__send_operator_message",
+      input: { message: "Review Fin setup gaps" },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+    for (const decision of [apply, turn]) {
+      expect(decision).toMatchObject({ action: "confirm", feature: "nativeToolGate" });
+      expect(decision?.orgType).toBeUndefined();
+      expect(decision?.orgResolutionGuessed).toBeUndefined();
+      // "all" with no production opt-in, and "native" + fin: both skip the prompt.
+      expect(shouldPowerToolAutoApprove(decision!, { mode: "all" })).toBe(true);
+      expect(
+        shouldPowerToolAutoApprove(decision!, { mode: "native", nativeFamilies: ["fin"] }),
+      ).toBe(true);
+      // Off (the default) still asks.
+      expect(shouldPowerToolAutoApprove(decision!, undefined)).toBe(false);
+    }
+    expect(apply?.approvalScope?.allowSession).toBe(false);
+  });
+
   it("confirms mutating sf_flow lifecycle actions with exact action fingerprints", async () => {
     mockedEnv = env("FlowLifecycleDev", "developer");
     lookupOrg("FlowLifecycleDev", "developer");
