@@ -19,6 +19,9 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 | Fin-as-code reads (manifest, download) that enable on first use    | `lib/sdk-reads.ts`             |
 | Procedure validate, draft upload, simulation sets, simulate        | `lib/sdk-procedures.ts`        |
 | Semantic procedure round-trip comparison                           | `lib/procedure-normalize.ts`   |
+| Guidance and data connector validate/upload, guidance state        | `lib/sdk-resources.ts`         |
+| CLI vs MCP vs Agent API capability map and drift report            | `lib/surfaces.ts`              |
+| Fin Agent API harness (access, capabilities, scripted runs)        | `lib/agent-api.ts`             |
 | Manager install confirm page                                       | `lib/manager-action-panels.ts` |
 | One `sf_fin` family tool                                           | `lib/sf_fin-tool.ts`           |
 | Cache-first status file and text                                   | `lib/status.ts`                |

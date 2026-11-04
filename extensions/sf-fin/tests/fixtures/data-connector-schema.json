@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Synthetic minimal data connector schema for tests",
+  "type": "object",
+  "required": ["name", "description", "request"],
+  "properties": {
+    "type": { "const": "data_connector" },
+    "id": { "type": "integer" },
+    "name": { "type": "string" },
+    "state": { "type": "string", "enum": ["draft", "live"] },
+    "description": { "type": "string" },
+    "enable_direct_usage": { "type": "boolean" },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "format": { "enum": ["string", "integer", "decimal", "boolean"] },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "required": ["method", "url"],
+      "properties": {
+        "method": { "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
+        "url": { "type": "string" },
+        "headers": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "mock_response": {
+      "type": "object",
+      "required": ["body"],
+      "properties": { "body": {} },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

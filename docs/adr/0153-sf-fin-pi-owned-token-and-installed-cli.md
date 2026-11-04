@@ -60,3 +60,26 @@ Live testing showed that Fin's simulator runs only **live** procedures. A draft 
 - `sdk upload` still never sets `state`, so editing a procedure keeps its current state.
 
 Procedure version history (`/fin-sdk/procedures/{id}/versions`) is gated by a separate Fin feature even after the SDK is enabled, and the CLI's `procedures versions` command would try its silent auto-enable on that 403. SF Fin therefore reads version history only through a direct request and reports the separate gate.
+
+## Addendum: surfaces, guidance, data connectors, and the Fin Agent API harness
+
+- **`sf_fin action='surfaces'`** answers "CLI or MCP?" from evidence instead of a hand-maintained table:
+  - It crawls the installed CLI's `--help` tree locally, with no token or network.
+  - It reads SF MCP's reviewed Intercom tool contract, the same one the preset uses.
+  - It maps every CLI command and MCP tool to a capability, together with the surface SF Fin uses for it.
+  - Unmapped or vanished commands and tools fail the action, so a CLI or MCP change can't add surface unnoticed.
+- **Guidance** has only `live` and `paused`, and live guidance changes every answer at once. Upload therefore always sends `state: paused`. `sdk guidance_state` re-uploads the current guidance with only `state` changed. It plans by default and verifies the state Fin reports. Execution is an exact Guardrail approval with no session grant, using the same rule as procedure publish/pause.
+- **Data connectors** upload only as drafts, because Fin publishes them in the web UI. SF Fin requires:
+  - an existing numeric id, created first with `sdk create_data_connector`;
+  - an `https://` request URL;
+  - only inputs the request uses;
+  - a `mock_response`.
+
+  All three resource kinds use the CLI's generic `/fin-sdk/upload`, which routes on `type`.
+
+  Verification uses the server-processed copy in the upload response, comparing name, method, URL path, and inputs. The `data-connectors get` endpoint returns only the published version, so a never-published draft reads back as an empty `Untitled` connector and can't be used to check the save. Fin also rewrites `<read attr='x' />` to `<read attr="input.x" />` on save, so the URL comparison ignores the query string.
+
+- **The Fin Agent API** is granted per workspace on request and uses its own workspace key. The personal token is rejected with `forbidden`. SF Fin stores the key as a second Pi-owned provider (`/login sf-fin-agent`) and sends it only as an HTTPS `Authorization` header. Replies arrive by webhook, so the harness uses the Fin Agent API MCP server's `get_fin_response` instead of hosting a receiver:
+  - `access` probes `tools/list` and reports when access isn't granted, when the wrong key was sent, or when the key was rejected;
+  - `run` drives a scripted conversation with bounded polls and turns;
+  - `run` is classified `native-sf-fin-agent-run`, because a resolved conversation is a billable outcome.

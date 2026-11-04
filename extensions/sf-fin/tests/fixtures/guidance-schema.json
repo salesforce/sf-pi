@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Synthetic minimal guidance schema for tests",
+  "type": "object",
+  "required": ["type", "title", "prompt", "category"],
+  "properties": {
+    "type": { "const": "guidance" },
+    "id": { "oneOf": [{ "type": "integer" }, { "const": "new" }] },
+    "state": { "type": "string", "enum": ["live", "paused"] },
+    "category": { "type": "string", "enum": ["tone", "routing", "other"] },
+    "title": { "type": "string" },
+    "prompt": { "type": "string", "minLength": 1, "maxLength": 2500 },
+    "audiences": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

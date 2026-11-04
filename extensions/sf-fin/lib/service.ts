@@ -33,7 +33,30 @@ import {
 import { planCliInstall, runCliInstall, type InstallPlan } from "./install/installer.ts";
 import { buildStatusText, createFinStatusStore } from "./status.ts";
 import { COMMAND_NAME, type FinOutcomeKind, type FinStatusSnapshot } from "./types.ts";
-import { getFinCredential } from "./auth.ts";
+import { getFinAgentApiKey, getFinCredential } from "./auth.ts";
+import {
+  accessText,
+  createAgentApiClient,
+  probeAgentApiAccess,
+  runScriptedConversation,
+  type AgentApiDeps,
+  type ScriptedRun,
+} from "./agent-api.ts";
+import {
+  createDataConnector,
+  detectResourceKind,
+  resourceSchemaPath,
+  setGuidanceState,
+  uploadResource,
+  validateResourceFile,
+} from "./sdk-resources.ts";
+import { runFinCli } from "./cli-runner.ts";
+import {
+  cliHelpRunner,
+  compareSurfaces,
+  crawlCliCommands,
+  formatSurfaceReport,
+} from "./surfaces.ts";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
 import {
   formatValidation,
@@ -69,6 +92,10 @@ export interface FinService {
   sdk(ctx: ExtensionContext, operation: "manifest" | "download"): Promise<SdkReadResult>;
   /** Fin-as-code procedure lifecycle: validate, draft upload, simulate, publish/pause. */
   procedure(ctx: ExtensionContext, request: ProcedureRequest): Promise<ProcedureResponse>;
+  /** Compare Fin CLI, Intercom MCP, and Fin Agent API surfaces (local, read-only). */
+  surfaces(): Promise<ProcedureResponse>;
+  /** Fin Agent API harness: access check, capabilities, scripted runs. */
+  agent(ctx: ExtensionContext, request: AgentRequest): Promise<ProcedureResponse>;
 }
 
 export interface FinServiceDeps {
@@ -76,6 +103,9 @@ export interface FinServiceDeps {
   fetchRegistry?: FetchRegistryFn;
   doctorDeps?: DoctorDeps;
   sdkDeps?: SdkReadDeps;
+  agentDeps?: AgentApiDeps;
+  /** Test seam for the surfaces crawl (defaults to the installed Fin CLI). */
+  helpRunner?: Parameters<typeof crawlCliCommands>[0];
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
@@ -189,6 +219,20 @@ export function createFinService(deps: FinServiceDeps): FinService {
     async procedure(ctx, request) {
       const appId = statusStore.read().identity?.appId;
       const schemaPath = procedureSchemaPath(sdkDownloadDir(appId));
+      const sdkDir = sdkDownloadDir(appId);
+      const filePath =
+        request.operation === "validate" || request.operation === "upload"
+          ? resolveFile(ctx.cwd, request.file)
+          : undefined;
+      const kind = filePath ? detectResourceKind(filePath) : undefined;
+      if (request.operation === "validate" && filePath && kind && kind !== "procedure") {
+        const result = validateResourceFile(filePath, kind, resourceSchemaPath(sdkDir, kind));
+        return {
+          ok: result.ok,
+          text: formatValidation(result),
+          details: { phase: "validate", kind, issues: result.issues },
+        };
+      }
       if (request.operation === "validate") {
         const result = validateProcedureFile(resolveFile(ctx.cwd, request.file), schemaPath);
         return {
@@ -202,6 +246,46 @@ export function createFinService(deps: FinServiceDeps): FinService {
         return { ok: false, text: credential.message, details: { phase: "credential" } };
       }
       const sdkDeps = deps.sdkDeps ?? createSdkReadDeps(deps.exec, appId);
+      if (request.operation === "upload" && filePath && kind && kind !== "procedure") {
+        return uploadResource(
+          credential.credential,
+          sdkDeps,
+          {
+            file: filePath,
+            kind,
+            schemaPath: resourceSchemaPath(sdkDir, kind),
+            note: request.note,
+          },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "create_data_connector") {
+        return createDataConnector(
+          credential.credential,
+          sdkDeps,
+          { name: request.name ?? "" },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "guidance_state") {
+        if (request.state !== "live" && request.state !== "paused") {
+          return {
+            ok: false,
+            text: "guidance_state requires state='live' or state='paused'.",
+            details: { phase: "input" },
+          };
+        }
+        return setGuidanceState(
+          credential.credential,
+          sdkDeps,
+          {
+            guidanceId: request.guidanceId ?? "",
+            target: request.state,
+            execute: request.execute === true,
+          },
+          ctx.signal,
+        );
+      }
       if (request.operation === "publish" || request.operation === "pause") {
         return setProcedureState(
           credential.credential,
@@ -249,6 +333,112 @@ export function createFinService(deps: FinServiceDeps): FinService {
       );
     },
 
+    async surfaces() {
+      const help = deps.helpRunner ?? cliHelpRunner(runFinCli);
+      const commands = await crawlCliCommands(help);
+      const versionText = commands ? await help(["--version"]) : undefined;
+      const cliVersion = versionText?.match(/\d+\.\d+\.\d+/)?.[0];
+      const report = compareSurfaces({ cliCommands: commands, cliVersion });
+      const drift =
+        report.unmappedCli.length +
+        report.missingCli.length +
+        report.unmappedMcp.length +
+        report.missingMcp.length;
+      return {
+        ok: commands !== undefined && drift === 0,
+        text: formatSurfaceReport(report),
+        details: {
+          phase: "surfaces",
+          cliVersion,
+          cliCommands: report.cliCommands,
+          mcpTools: report.mcpTools,
+          unmappedCli: report.unmappedCli,
+          missingCli: report.missingCli,
+          unmappedMcp: report.unmappedMcp,
+          missingMcp: report.missingMcp,
+          capabilities: report.capabilities.map((c) => ({
+            id: c.id,
+            cli: c.cli.length,
+            mcp: c.mcp.length,
+            agentApi: c.agentApi.length,
+            sfFin: c.sfFin,
+          })),
+        },
+      };
+    },
+
+    async agent(ctx, request) {
+      const key = await getFinAgentApiKey(ctx);
+      if (key.ok === false) {
+        return { ok: false, text: key.message, details: { phase: "credential", access: "no_key" } };
+      }
+      const agentDeps = deps.agentDeps ?? {
+        fetch: globalThis.fetch.bind(globalThis),
+        sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
+      };
+      const client = createAgentApiClient({
+        key: key.key,
+        region: key.region,
+        deps: agentDeps,
+        signal: ctx.signal,
+      });
+      const access = await probeAgentApiAccess(client);
+      if (request.operation === "access" || access.state !== "granted") {
+        return {
+          ok: access.state === "granted",
+          text: accessText(access),
+          details: { phase: "access", access: access.state },
+        };
+      }
+      const stamp = Date.now().toString(36);
+      const userId = request.userId ?? `sf-pi-test-${stamp}`;
+      if (request.operation === "capabilities") {
+        try {
+          const result = await client.callTool("list_fin_capabilities", { user_id: userId });
+          return {
+            ok: true,
+            text: `Fin capabilities for test user ${userId}:\n${typeof result === "string" ? result : JSON.stringify(result, null, 2).slice(0, 4000)}`,
+            details: { phase: "capabilities", userId },
+          };
+        } catch (error) {
+          return {
+            ok: false,
+            text: `❌ list_fin_capabilities failed: ${error instanceof Error ? error.message : String(error)}`,
+            details: { phase: "capabilities" },
+          };
+        }
+      }
+      if (!request.run.procedureId && !request.run.message?.trim()) {
+        return {
+          ok: false,
+          text: "agent run needs procedure_id (run a procedure) or message (ask Fin).",
+          details: { phase: "input" },
+        };
+      }
+      try {
+        const result = await runScriptedConversation(client, agentDeps, request.run, {
+          conversationId: `sf-pi-${stamp}`,
+          userId,
+        });
+        return {
+          ok: result.ok,
+          text: result.text,
+          details: {
+            phase: "run",
+            conversationId: result.conversationId,
+            status: result.status,
+            turns: result.transcript.length,
+          },
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          text: `❌ Fin Agent API run failed: ${error instanceof Error ? error.message : String(error)}`,
+          details: { phase: "run" },
+        };
+      }
+    },
+
     cachedDoctorReport() {
       const snapshot = statusStore.read();
       const checks = buildCachedChecks(snapshot, existsSync(path.join(homedir(), ".intercom")));
@@ -267,8 +457,20 @@ export type ProcedureRequest =
   | { operation: "upload"; file?: string; note?: string }
   | { operation: "upload_simulations"; file?: string }
   | { operation: "simulate"; procedureId?: string; generate?: boolean }
+  | { operation: "create_data_connector"; name?: string }
+  | {
+      operation: "guidance_state";
+      guidanceId?: string;
+      state?: string;
+      execute?: boolean;
+    }
   | { operation: "publish"; procedureId?: string; execute?: boolean; note?: string }
   | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string };
+
+export type AgentRequest =
+  | { operation: "access" }
+  | { operation: "capabilities"; userId?: string }
+  | { operation: "run"; userId?: string; run: ScriptedRun };
 
 export interface ProcedureResponse {
   ok: boolean;

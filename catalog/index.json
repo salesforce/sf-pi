@@ -557,7 +557,7 @@
   {
     "id": "sf-fin",
     "name": "SF Fin",
-    "description": "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked personal API token, Guardrail-mediated Fin CLI install through global npm, live and cached doctor, and redacted debug traces.",
+    "description": "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness.",
     "category": "agent-tool",
     "maturity": "experimental",
     "defaultEnabled": true,
@@ -567,7 +567,8 @@
       "/sf-fin"
     ],
     "providers": [
-      "sf-fin"
+      "sf-fin",
+      "sf-fin-agent"
     ],
     "tools": [
       "sf_fin"
@@ -592,7 +593,7 @@
         "lib/sf_fin-tool.ts"
       ],
       "stateFiles": [
-        "~/.pi/agent/auth.json entry: sf-fin (Pi-owned API key plus credential.env.INTERCOM_REGION)",
+        "~/.pi/agent/auth.json entries: sf-fin (Pi-owned API key plus credential.env.INTERCOM_REGION) and sf-fin-agent (Fin Agent API key)",
         "<globalAgentDir>/sf-pi/sf-fin/status.json",
         "<globalAgentDir>/sf-pi/sf-fin/debug.json",
         "<globalAgentDir>/sf-pi/sf-fin/debug/trace-*.log",
@@ -603,7 +604,8 @@
       "env": [
         "INTERCOM_TOKEN",
         "INTERCOM_REGION",
-        "INTERCOM_APP_ID"
+        "INTERCOM_APP_ID",
+        "FIN_AGENT_API_KEY"
       ],
       "safety": [
         "Interactive `/login sf-fin` masks the personal API token through SF Pi's shared credential input and returns it to Pi under provider id `sf-fin`; SF Fin writes no second secret store.",
@@ -614,13 +616,14 @@
         "Verbose traces drop Authorization, Cookie, and bearer/basic values, are written as 0600 files with ten-file retention, self-disarm after the armed runs, and expose only the file path to the model.",
         "Procedure upload validates against the workspace schema first, never sets state (cannot publish), and verifies the saved copy semantically; simulation sets are validated per test; upload, upload_simulations, and simulate are SF Guardrail native writes in the fin Power Tool family, and validate is local.",
         "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.",
-        "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state."
+        "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.",
+        "Guidance uploads are always paused and data connectors only as drafts; sdk guidance_state plans by default and executes as the exact SF Guardrail mutation native-sf-fin-procedure-state. The Fin Agent API key is a separate Pi provider (sf-fin-agent), sent only as an HTTPS Authorization header; agent run is native-sf-fin-agent-run because resolved conversations are billable. surfaces runs only local --help commands."
       ]
     },
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4017
+    "srcLoc": 5715
   },
   {
     "id": "sf-flow",
@@ -746,7 +749,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6680
+    "srcLoc": 6767
   },
   {
     "id": "sf-herdr",

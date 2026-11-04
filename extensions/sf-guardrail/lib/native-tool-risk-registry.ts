@@ -38,6 +38,8 @@ export function classifyNativeToolRisk(
     classifySfFlowLifecycle(toolName, input) ??
     classifySfFinInstall(toolName, input) ??
     classifySfFinProcedureState(toolName, input) ??
+    classifySfFinGuidanceState(toolName, input) ??
+    classifySfFinAgentRun(toolName, input) ??
     classifySfFinProcedureWrite(toolName, input) ??
     classifySfFinSdkEnable(toolName, input) ??
     classifyAgentScriptLifecycle(toolName, input) ??
@@ -261,13 +263,20 @@ function classifySfFinProcedureWrite(
 ): NativeToolSafetySubject | undefined {
   if (toolName !== "sf_fin" || input.action !== "sdk") return undefined;
   const operation = stringValue(input.operation);
-  if (operation !== "upload" && operation !== "upload_simulations" && operation !== "simulate") {
+  if (
+    operation !== "upload" &&
+    operation !== "upload_simulations" &&
+    operation !== "simulate" &&
+    operation !== "create_data_connector"
+  ) {
     return undefined;
   }
   const target =
     operation === "upload" || operation === "upload_simulations"
       ? (stringValue(input.file) ?? "unspecified file")
-      : (stringValue(input.procedure_id) ?? "unspecified procedure");
+      : operation === "create_data_connector"
+        ? (stringValue(input.name) ?? "unnamed connector")
+        : (stringValue(input.procedure_id) ?? "unspecified procedure");
   const generate = operation === "simulate" && input.generate !== false;
   return {
     kind: "nativeTool",
@@ -277,11 +286,18 @@ function classifySfFinProcedureWrite(
     subject: `sf_fin sdk ${operation} ${target}`,
     reason:
       operation === "upload"
-        ? `Fin procedure draft upload requested for ${target} (unpublished; round-trip verified).`
-        : operation === "upload_simulations"
-          ? `Fin simulation set upload requested for ${target} (tests without an id are added).`
-          : `Fin simulations ${generate ? "generate and run" : "run"} requested for procedure ${target}.`,
-    promptTitle: operation === "upload" ? "⚠ Upload Fin procedure draft" : "⚠ Run Fin simulations",
+        ? `Fin draft upload requested for ${target} (procedure draft, paused guidance, or draft data connector; never live).`
+        : operation === "create_data_connector"
+          ? `Fin draft data connector creation requested: "${target}".`
+          : operation === "upload_simulations"
+            ? `Fin simulation set upload requested for ${target} (tests without an id are added).`
+            : `Fin simulations ${generate ? "generate and run" : "run"} requested for procedure ${target}.`,
+    promptTitle:
+      operation === "upload"
+        ? "⚠ Upload Fin draft"
+        : operation === "create_data_connector"
+          ? "⚠ Create Fin data connector draft"
+          : "⚠ Run Fin simulations",
     operationFamily: "fin procedure write",
     riskTier: "fin_procedure_draft_write",
     fingerprint: `sf_fin|sdk-${operation}|${fingerprintText(JSON.stringify({ target, generate }))}`,
@@ -325,6 +341,77 @@ function classifySfFinProcedureState(
     approvalLabel: `${operation} Fin procedure ${procedureId}`,
     approvalDetail: `procedure=${procedureId}; state→${target}`,
     allowSession: false,
+  };
+}
+
+/**
+ * `sf_fin sdk guidance_state` with `allow_mutation=true` sets workspace-wide
+ * guidance live or paused. Live guidance changes every matching answer at
+ * once, so each call is an exact approval with no session grant.
+ */
+function classifySfFinGuidanceState(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (
+    toolName !== "sf_fin" ||
+    input.action !== "sdk" ||
+    input.operation !== "guidance_state" ||
+    input.allow_mutation !== true
+  ) {
+    return undefined;
+  }
+  const guidanceId = stringValue(input.guidance_id) ?? "unspecified guidance";
+  const target = stringValue(input.state) ?? "unspecified";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "sdk.guidance_state",
+    ruleId: "native-sf-fin-procedure-state",
+    subject: `sf_fin sdk guidance_state ${guidanceId} ${target}`,
+    reason:
+      target === "live"
+        ? `Set Fin guidance ${guidanceId} live: it applies to every matching customer conversation immediately.`
+        : `Pause Fin guidance ${guidanceId}: Fin stops applying it.`,
+    promptTitle: target === "live" ? "⚠ Set Fin guidance live" : "⚠ Pause Fin guidance",
+    operationFamily: "fin procedure state",
+    riskTier: "fin_procedure_state_exact",
+    fingerprint: `sf_fin|guidance-state|${fingerprintText(`${guidanceId}|${target}`)}`,
+    approvalLabel: `set Fin guidance ${guidanceId} ${target}`,
+    approvalDetail: `guidance=${guidanceId}; state→${target}`,
+    allowSession: false,
+  };
+}
+
+/**
+ * `sf_fin agent operation='run'` starts a real Fin conversation through the
+ * Fin Agent API. A run Fin resolves is a billable outcome. Access checks and
+ * capability listing create no conversation and stay prompt-free.
+ */
+function classifySfFinAgentRun(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "agent" || input.operation !== "run") {
+    return undefined;
+  }
+  const target = stringValue(input.procedure_id)
+    ? `procedure ${stringValue(input.procedure_id)}`
+    : "ask Fin";
+  const replies = Array.isArray(input.replies) ? input.replies.length : 0;
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: "agent.run",
+    ruleId: "native-sf-fin-agent-run",
+    subject: `sf_fin agent run ${target}`,
+    reason: `Fin Agent API conversation requested (${target}, ${replies} scripted repl${replies === 1 ? "y" : "ies"}). A conversation Fin resolves is a billable outcome.`,
+    promptTitle: "⚠ Run a live Fin Agent API conversation",
+    operationFamily: "fin agent run",
+    riskTier: "fin_agent_api_conversation",
+    fingerprint: `sf_fin|agent-run|${fingerprintText(JSON.stringify({ target, message: stringValue(input.message), replies: input.replies }))}`,
+    approvalLabel: `Fin Agent API run (${target})`,
+    approvalDetail: `target=${target}; replies=${replies}`,
   };
 }
 

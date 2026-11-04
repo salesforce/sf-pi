@@ -12,6 +12,8 @@ export type SfFinCommandAction =
   | "debug-on"
   | "debug-off"
   | "sdk"
+  | "surfaces"
+  | "agent"
   | "help";
 
 export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
@@ -74,6 +76,20 @@ export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
     group: "Fin as code",
   },
   {
+    value: "surfaces",
+    label: "Compare Fin surfaces",
+    description:
+      "Compare the installed Fin CLI, the Intercom MCP, and the Fin Agent API; show which SF Fin uses per capability (local).",
+    group: "Fin as code",
+  },
+  {
+    value: "agent",
+    label: "Fin Agent API access",
+    description:
+      "Check Fin Agent API access with the key saved by /login sf-fin-agent (no conversation).",
+    group: "Fin as code",
+  },
+  {
     value: "help",
     label: "Show help",
     description: "Show command usage and setup guidance.",
@@ -101,6 +117,11 @@ export function renderHelp(): string {
     `- \`/${COMMAND_NAME} sdk upload_simulations <simulations.yaml>\` — upload a simulation_set (tests with an id update; without one, add).`,
     `- \`/${COMMAND_NAME} sdk simulate <procedure_id>\` — generate and run simulations (live procedures only).`,
     `- \`/${COMMAND_NAME} sdk publish|pause <procedure_id>\` — set a procedure live or paused after confirmation.`,
+    `- \`/${COMMAND_NAME} sdk validate|upload <guidance.yaml|connector.json>\` — guidance uploads paused; data connectors upload as drafts.`,
+    `- \`/${COMMAND_NAME} sdk create_data_connector <name>\` — create a named draft data connector and print its id.`,
+    `- \`/${COMMAND_NAME} sdk guidance_state <guidance_id> live|paused\` — set guidance live or paused after confirmation.`,
+    `- \`/${COMMAND_NAME} surfaces\` — compare the Fin CLI, Intercom MCP, and Fin Agent API.`,
+    `- \`/${COMMAND_NAME} agent\` — check Fin Agent API access (key from \`/login sf-fin-agent\`).`,
     "",
     "Setup:",
     `1. \`/${COMMAND_NAME} install\` (or \`npm install -g @intercom/cli\`).`,

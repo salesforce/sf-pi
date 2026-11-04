@@ -17,10 +17,13 @@ import { statusText } from "./service.ts";
 import { COMMAND_NAME, PROVIDER_NAME, TOOL_NAME } from "./types.ts";
 
 const Params = Type.Object({
-  action: StringEnum(["status", "doctor", "install", "debug", "sdk"] as const, {
-    description:
-      "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads (enables the Fin SDK on first use).",
-  }),
+  action: StringEnum(
+    ["status", "doctor", "install", "debug", "sdk", "surfaces", "agent"] as const,
+    {
+      description:
+        "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads and authoring (enables the Fin SDK on first use). surfaces: compare the installed Fin CLI, Intercom MCP, and Fin Agent API, and say which SF Fin uses per capability (local, read-only). agent: Fin Agent API test harness (needs granted access and /login sf-fin-agent).",
+    },
+  ),
   operation: Type.Optional(
     StringEnum(
       [
@@ -32,10 +35,15 @@ const Params = Type.Object({
         "simulate",
         "publish",
         "pause",
+        "create_data_connector",
+        "guidance_state",
+        "access",
+        "capabilities",
+        "run",
       ] as const,
       {
         description:
-          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft.",
+          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation).",
       },
     ),
   ),
@@ -56,6 +64,35 @@ const Params = Type.Object({
   generate: Type.Optional(
     Type.Boolean({
       description: "sdk simulate: generate simulations before running them. Default true.",
+    }),
+  ),
+  name: Type.Optional(
+    Type.String({ description: "sdk create_data_connector: name for the new connector." }),
+  ),
+  guidance_id: Type.Optional(
+    Type.String({ description: "sdk guidance_state: numeric Fin guidance id." }),
+  ),
+  state: Type.Optional(
+    StringEnum(["live", "paused"] as const, {
+      description: "sdk guidance_state: target state.",
+    }),
+  ),
+  message: Type.Optional(
+    Type.String({
+      description:
+        "agent run: opening user message (asks Fin when no procedure_id; optional trigger for a procedure run).",
+    }),
+  ),
+  replies: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "agent run: user replies sent in order each time Fin awaits a reply.",
+      maxItems: 8,
+    }),
+  ),
+  user_id: Type.Optional(
+    Type.String({
+      description:
+        "agent capabilities/run: test user external id; a synthetic id is generated when omitted.",
     }),
   ),
   version: Type.Optional(
@@ -81,7 +118,7 @@ const Params = Type.Object({
 });
 
 type Params = {
-  action: "status" | "doctor" | "install" | "debug" | "sdk";
+  action: "status" | "doctor" | "install" | "debug" | "sdk" | "surfaces" | "agent";
   operation?:
     | "manifest"
     | "download"
@@ -90,8 +127,19 @@ type Params = {
     | "upload_simulations"
     | "simulate"
     | "publish"
-    | "pause";
+    | "pause"
+    | "create_data_connector"
+    | "guidance_state"
+    | "access"
+    | "capabilities"
+    | "run";
   file?: string;
+  name?: string;
+  guidance_id?: string;
+  state?: "live" | "paused";
+  message?: string;
+  replies?: string[];
+  user_id?: string;
   note?: string;
   procedure_id?: string;
   generate?: boolean;
@@ -110,7 +158,7 @@ export function registerSfFinTool(
     name: TOOL_NAME,
     label: "SF Fin",
     description:
-      "Manage the Fin (formerly Intercom) workspace connection used by SF Fin: cached status, live read-only doctor, Fin CLI install/update through global npm (planned by default, Guardrail-mediated when executed), and redacted debug bundles or one-shot verbose tracing.",
+      "Manage the Fin (formerly Intercom) workspace connection used by SF Fin: cached status, live read-only doctor, Fin CLI install/update through global npm (planned by default, Guardrail-mediated when executed), redacted debug bundles or one-shot verbose tracing, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness.",
     promptSnippet: "Check, install, and debug the Fin workspace CLI connection.",
     promptGuidelines: [
       "Use sf_fin action='status' first; run action='doctor' when verified workspace identity or install readiness is needed.",
@@ -119,6 +167,9 @@ export function registerSfFinTool(
       "Use sf_fin action='debug' for a redacted support bundle; arm verbose='on' only when a doctor failure needs the CLI's HTTP trace.",
       "Use sf_fin action='sdk' operation='manifest' or 'download' for Fin-as-code reads; SF Fin enables the Fin SDK on first use (Guardrail-mediated) and never runs `intercom fin …` through bash.",
       "For a procedure, run sf_fin sdk operation='validate' file=…, then operation='upload' (unpublished draft, round-trip verified), then operation='simulate' procedure_id=…; uploads never set state, and publishing is separate.",
+      "Guidance and data connectors use the same sdk validate/upload (by file `type`); guidance uploads paused and goes live only through sdk operation='guidance_state' (plan, then allow_mutation=true); data connectors upload as drafts and are published in the Intercom UI.",
+      "Use sf_fin action='surfaces' to decide between the Fin CLI, the Intercom MCP, and the Fin Agent API for a capability.",
+      "Use sf_fin action='agent' operation='access' before Fin Agent API runs; never ask for the Fin Agent API key in chat (use /login sf-fin-agent). Runs Fin resolves are billable outcomes.",
     ],
     parameters: Params,
     renderCall: (args, theme) => {
@@ -179,6 +230,66 @@ export function registerSfFinTool(
             ok: result.ok,
             cliVersion: result.snapshot?.cliVersion,
           },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
+
+      if (input.action === "surfaces") {
+        const result = await service.surfaces();
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: { action: "surfaces", ok: result.ok, ...result.details },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
+
+      if (input.action === "agent") {
+        const operation =
+          input.operation === "capabilities" || input.operation === "run"
+            ? input.operation
+            : "access";
+        const result = await service.agent(
+          ctx,
+          operation === "run"
+            ? {
+                operation,
+                userId: input.user_id,
+                run: {
+                  procedureId: input.procedure_id,
+                  message: input.message,
+                  replies: input.replies,
+                  userId: input.user_id,
+                },
+              }
+            : operation === "capabilities"
+              ? { operation, userId: input.user_id }
+              : { operation },
+        );
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: { action: "agent", operation, ok: result.ok, ...result.details },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
+
+      if (
+        input.action === "sdk" &&
+        (input.operation === "create_data_connector" || input.operation === "guidance_state")
+      ) {
+        const result = await service.procedure(
+          ctx,
+          input.operation === "create_data_connector"
+            ? { operation: "create_data_connector", name: input.name }
+            : {
+                operation: "guidance_state",
+                guidanceId: input.guidance_id,
+                state: input.state,
+                execute: input.allow_mutation === true,
+              },
+        );
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: { action: "sdk", operation: input.operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
         };
       }
