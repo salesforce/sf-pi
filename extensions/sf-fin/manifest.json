@@ -41,7 +41,9 @@
       "Doctor runs `intercom --version` and `intercom me` only; Fin SDK actions enable the SDK by default on first use through an explicit probe \u2192 POST /fin-sdk/enable \u2192 verify sequence before any `fin \u2026` CLI call, so the CLI's silent auto-enable never fires; the `/sf-pi doctor` provider reads cached state only.",
       "Install runs exactly `npm install -g @intercom/cli@<exact version>` without sudo or `@latest`, honors npm release-age policy, and refuses CLIs not installed by global npm; agent execution (`allow_mutation=true`) is an SF Guardrail native mutation in the `fin` Power Tool family.",
       "Verbose traces drop Authorization, Cookie, and bearer/basic values, are written as 0600 files with ten-file retention, self-disarm after the armed runs, and expose only the file path to the model.",
-      "Procedure upload validates against the workspace schema first, never sets state (cannot publish), and verifies the saved copy semantically; simulation sets are validated per test; upload, upload_simulations, and simulate are SF Guardrail native writes in the fin Power Tool family, and validate is local."
+      "Procedure upload validates against the workspace schema first, never sets state (cannot publish), and verifies the saved copy semantically; simulation sets are validated per test; upload, upload_simulations, and simulate are SF Guardrail native writes in the fin Power Tool family, and validate is local.",
+      "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state.",
+      "Fin simulates live procedures only; sdk simulate warns on drafts. sdk publish|pause plans by default; allow_mutation=true executes as the exact SF Guardrail mutation native-sf-fin-procedure-state (never session-approved) and verifies the resulting state."
     ]
   }
 }

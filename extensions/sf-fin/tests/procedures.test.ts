@@ -10,6 +10,7 @@ import { procedureDrift } from "../lib/procedure-normalize.ts";
 import { readProcedureVersions } from "../lib/sdk-gate.ts";
 import {
   draftRuleIssues,
+  setProcedureState,
   simulationSetRuleIssues,
   simulationTestRuleIssues,
   uploadSimulationSet,
@@ -305,6 +306,7 @@ describe("simulateProcedure", () => {
       generate: true,
     });
     expect(run.mock.calls.map((c) => (c[0] as string[]).slice(2, 4).join(" "))).toEqual([
+      "get 4242",
       "list 4242",
       "generate 4242",
       "list 4242",
@@ -488,6 +490,120 @@ tests:
     expect(lists).toBe(5);
     expect(result.text).toContain("produced no tests");
     expect(result.text).toContain("upload_simulations");
+  });
+});
+
+describe("setProcedureState (publish / pause)", () => {
+  const proc = (state: string, version = 7) =>
+    `id: 4242\nversion: ${version}\nname: Example\nstate: ${state}\nprocedure:\n  main: [Step]\n`;
+  function stateRun(current: string, savedState = "live") {
+    return vi.fn(async (args: string[]) => {
+      if (args[2] === "get") return cli(proc(current));
+      if (args[2] === "publish" || args[2] === "pause")
+        return cli(JSON.stringify({ id: 4242, new_file_content: proc(savedState, 8) }));
+      return cli("{}", 1);
+    });
+  }
+
+  it("plans by default without changing anything", async () => {
+    const run = stateRun("draft");
+    const result = await setProcedureState(credential, deps(run), {
+      procedureId: "4242",
+      target: "live",
+      execute: false,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.details).toMatchObject({ phase: "plan", from: "draft", to: "live" });
+    expect(result.text).toContain("allow_mutation=true");
+    expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["get"]);
+  });
+
+  it("publishes with execute, passes the note, and verifies the saved state", async () => {
+    const run = stateRun("paused", "live");
+    const result = await setProcedureState(credential, deps(run), {
+      procedureId: "4242",
+      target: "live",
+      execute: true,
+      note: "go live",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.details).toMatchObject({ phase: "execute", observed: "live", version: "8" });
+    expect(run.mock.calls[1]?.[0]).toEqual([
+      "fin",
+      "procedures",
+      "publish",
+      "4242",
+      "--json",
+      "--note",
+      "go live",
+    ]);
+  });
+
+  it("fails closed when Fin reports a different state after the change", async () => {
+    const run = stateRun("live", "live");
+    const result = await setProcedureState(credential, deps(run), {
+      procedureId: "4242",
+      target: "paused",
+      execute: true,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.details).toMatchObject({ phase: "verify", observed: "live" });
+  });
+
+  it("is a no-op when already in the target state, and refuses to pause a draft", async () => {
+    const live = stateRun("live");
+    const noop = await setProcedureState(credential, deps(live), {
+      procedureId: "4242",
+      target: "live",
+      execute: true,
+    });
+    expect(noop).toMatchObject({ ok: true, details: { phase: "noop" } });
+    const draft = stateRun("draft");
+    const refused = await setProcedureState(credential, deps(draft), {
+      procedureId: "4242",
+      target: "paused",
+      execute: true,
+    });
+    expect(refused).toMatchObject({ ok: false, details: { phase: "refused" } });
+    for (const run of [live, draft]) {
+      expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["get"]);
+    }
+  });
+
+  it("rejects a non-numeric procedure id before any call", async () => {
+    const run = stateRun("draft");
+    const result = await setProcedureState(credential, deps(run), {
+      procedureId: "4242; rm",
+      target: "live",
+      execute: true,
+    });
+    expect(result.ok).toBe(false);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("warns when simulating a draft, because Fin only simulates live procedures", async () => {
+    const run = vi.fn(async (args: string[]) => {
+      if (args[2] === "get") return cli(proc("draft"));
+      if (args[2] === "list") return cli("tests: []\n");
+      if (args[2] === "run") return cli(JSON.stringify({ enqueued: [{ run_id: "r1" }] }));
+      if (args[2] === "result") return cli(JSON.stringify({ status: "passed" }));
+      return cli("{}", 1);
+    });
+    const draft = await simulateProcedure(credential, deps(run), {
+      procedureId: "4242",
+      generate: false,
+    });
+    expect(draft.text).toContain("is a draft");
+    expect(draft.details).toMatchObject({ procedureState: "draft" });
+
+    const liveRun = vi.fn(async (args: string[]) =>
+      args[2] === "get" ? cli(proc("live")) : run(args),
+    );
+    const live = await simulateProcedure(credential, deps(liveRun), {
+      procedureId: "4242",
+      generate: false,
+    });
+    expect(live.text).not.toContain("is a draft");
   });
 });
 

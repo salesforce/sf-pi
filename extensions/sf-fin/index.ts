@@ -17,7 +17,8 @@
  *   /sf-fin doctor           | Live read-only checks (Node, CLI, version, credential, workspace)
  *   /sf-fin debug [on|off]   | Redacted bundle, or arm/disarm a one-shot verbose trace
  *   /sf-fin sdk [manifest|download] | Fin-as-code reads; enables the Fin SDK on first use
- *   /sf-fin sdk validate|upload|simulate | Procedure draft lifecycle (never publishes)
+ *   /sf-fin sdk validate|upload|simulate | Procedure draft lifecycle (upload never sets state)
+ *   /sf-fin sdk publish|pause <id>    | Set a procedure live or paused after confirmation
  *   /sf-pi doctor            | Cached sf-fin checks (no network, no credential)
  *   sf_fin <action>          | Same actions for the agent; install execution is Guardrail-mediated
  */
@@ -134,7 +135,8 @@ function actionArgs(value: string): string {
   return value;
 }
 
-async function handleCommand(
+/** Exported for tests. */
+export async function handleCommand(
   service: FinService,
   ctx: ExtensionCommandContext,
   rawArgs: string,
@@ -158,6 +160,9 @@ async function handleCommand(
     );
   }
   if (sub === "install") return install(service, ctx, parts[1], fromPanel);
+  if (sub === "sdk" && (parts[1] === "publish" || parts[1] === "pause")) {
+    return procedureState(service, ctx, parts[1], parts[2], fromPanel);
+  }
   if (
     sub === "sdk" &&
     (parts[1] === "validate" ||
@@ -211,6 +216,29 @@ async function handleCommand(
     "warning",
     fromPanel,
   );
+}
+
+async function procedureState(
+  service: FinService,
+  ctx: ExtensionCommandContext,
+  operation: "publish" | "pause",
+  procedureId: string | undefined,
+  fromPanel: boolean,
+): Promise<void> {
+  const title = `SF Fin SDK ${operation}`;
+  const plan = await service.procedure(ctx, { operation, procedureId, execute: false });
+  if (!plan.ok || plan.details.phase !== "plan") {
+    return emit(ctx, title, plan.text, plan.ok ? "info" : "warning", fromPanel);
+  }
+  if (!ctx.hasUI) return emit(ctx, title, plan.text, "info", fromPanel);
+  const confirmed = await ctx.ui.confirm(
+    operation === "publish" ? "Publish this Fin procedure?" : "Pause this Fin procedure?",
+    `${plan.text.split("\n").slice(0, 2).join("\n")}\n\nContinue?`,
+  );
+  if (!confirmed)
+    return emit(ctx, `${title} cancelled`, "No changes were made.", "info", fromPanel);
+  const result = await service.procedure(ctx, { operation, procedureId, execute: true });
+  return emit(ctx, title, result.text, result.ok ? "success" : "warning", fromPanel);
 }
 
 async function install(

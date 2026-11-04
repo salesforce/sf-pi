@@ -519,6 +519,15 @@ export async function simulateProcedure(
     }
   };
 
+  // Fin only runs live procedures in simulations. A draft (never published)
+  // produces "no procedure instructions" runs, so warn before spending runs.
+  const state = await readProcedureState(credential, deps, input.procedureId, signal);
+  if (state.state === "draft") {
+    lines.push(
+      `⚠ Procedure ${input.procedureId} is a draft. Fin only runs live procedures in simulations, so these runs will not follow its steps. Publish it with sdk operation='publish' (and pause it again afterwards) to test it.`,
+    );
+  }
+
   const before = await countTests();
   if (input.generate) {
     const generated = await call(["fin", "simulations", "generate", input.procedureId]);
@@ -602,7 +611,156 @@ export async function simulateProcedure(
     ok: runs.length > 0 && passed === runs.length,
     text: lines.join("\n"),
     runs,
-    details: { phase: "result", procedureId: input.procedureId, passed, total: runs.length },
+    details: {
+      phase: "result",
+      procedureId: input.procedureId,
+      passed,
+      total: runs.length,
+      procedureState: state.state,
+    },
+  };
+}
+
+export type ProcedureState = "draft" | "live" | "paused";
+export type ProcedureStateTarget = "live" | "paused";
+
+/** Read a procedure's current state and version through the Fin CLI. */
+export async function readProcedureState(
+  credential: FinCredential,
+  deps: SdkReadDeps,
+  procedureId: string,
+  signal?: AbortSignal,
+): Promise<{
+  ok: boolean;
+  state?: ProcedureState;
+  version?: string;
+  name?: string;
+  error?: string;
+}> {
+  const result = await deps.run(["fin", "procedures", "get", procedureId], {
+    credential,
+    signal,
+    timeoutMs: 60_000,
+  });
+  if (classifyCliResult(result) !== "ok") {
+    return {
+      ok: false,
+      error: readCliErrorMessage(result) ?? "intercom fin procedures get failed.",
+    };
+  }
+  const doc = parseYamlSafe(result.stdout) as Record<string, unknown> | undefined;
+  const state = stringValue(doc?.state);
+  return {
+    ok: true,
+    state: state === "draft" || state === "live" || state === "paused" ? state : undefined,
+    version: stringId(doc?.version),
+    name: stringValue(doc?.name),
+  };
+}
+
+export interface StateChangeResult {
+  ok: boolean;
+  text: string;
+  details: Record<string, unknown>;
+}
+
+/**
+ * Publish (`live`) or pause a procedure. Without `execute` this only plans:
+ * it reads the current state and reports the transition. With `execute` it
+ * runs `intercom fin procedures publish|pause` and verifies the resulting
+ * state. Fin never moves a procedure back to `draft`; `paused` is the way to
+ * take a live procedure offline.
+ */
+export async function setProcedureState(
+  credential: FinCredential,
+  deps: SdkReadDeps,
+  input: { procedureId: string; target: ProcedureStateTarget; execute: boolean; note?: string },
+  signal?: AbortSignal,
+): Promise<StateChangeResult> {
+  const verb = input.target === "live" ? "publish" : "pause";
+  if (!/^[0-9]+$/.test(input.procedureId)) {
+    return {
+      ok: false,
+      text: `${verb} requires procedure_id: an exact numeric Fin procedure id.`,
+      details: { phase: "input" },
+    };
+  }
+  const ensured = await ensureFinSdkEnabled(credential, deps, signal);
+  if (!ensured.ok) return { ok: false, text: ensured.message, details: { phase: "enable" } };
+
+  const current = await readProcedureState(credential, deps, input.procedureId, signal);
+  if (!current.ok || !current.state) {
+    return {
+      ok: false,
+      text: `❌ Could not read procedure ${input.procedureId}: ${current.error ?? "no state returned."}`,
+      details: { phase: "read", procedureId: input.procedureId },
+    };
+  }
+  const label = `"${current.name ?? input.procedureId}" (${input.procedureId})`;
+  const base = { procedureId: input.procedureId, from: current.state, to: input.target };
+  if (current.state === input.target) {
+    return {
+      ok: true,
+      text: `Procedure ${label} is already ${current.state}; nothing to change.`,
+      details: { phase: "noop", ...base },
+    };
+  }
+  if (input.target === "paused" && current.state === "draft") {
+    return {
+      ok: false,
+      text: `Procedure ${label} is a draft, which is already unpublished; pausing applies only to a live procedure.`,
+      details: { phase: "refused", ...base },
+    };
+  }
+  const effect =
+    input.target === "live"
+      ? "Fin will start using it for matching customer conversations on its targeted channels."
+      : "Fin will stop using it for customer conversations. It can be published again later; it cannot return to draft.";
+  if (!input.execute) {
+    return {
+      ok: true,
+      text: [
+        `Plan: ${verb} procedure ${label} — ${current.state} → ${input.target}.`,
+        effect,
+        `To proceed, call sf_fin action='sdk' operation='${verb}' procedure_id='${input.procedureId}' allow_mutation=true (SF Guardrail mediates it).`,
+      ].join("\n"),
+      details: { phase: "plan", ...base, version: current.version },
+    };
+  }
+
+  const args = ["fin", "procedures", verb, input.procedureId, "--json"];
+  if (input.note?.trim()) args.push("--note", input.note.trim());
+  const result = await deps.run(args, { credential, signal, timeoutMs: 120_000 });
+  if (classifyCliResult(result) !== "ok") {
+    return {
+      ok: false,
+      text: `❌ ${verb} failed: ${readCliErrorMessage(result) ?? `intercom fin procedures ${verb} failed.`}`,
+      details: { phase: "execute", ...base },
+    };
+  }
+  const saved = parseYamlSafe(stringValue(parseJson(result.stdout)?.new_file_content) ?? "") as
+    Record<string, unknown> | undefined;
+  const after = stringValue(saved?.state);
+  const version = stringId(saved?.version);
+  if (after !== input.target) {
+    return {
+      ok: false,
+      text: `⚠ Fin accepted the ${verb} request for ${label}, but reports state ${after ?? "unknown"} instead of ${input.target}. Check it with sdk operation='manifest'.`,
+      details: { phase: "verify", ...base, observed: after, version },
+    };
+  }
+  return {
+    ok: true,
+    text: [
+      `✅ Procedure ${label} is now ${after} (was ${current.state}).`,
+      effect,
+      version
+        ? `Next edit: set \`version: ${version}\` in the file; leave \`state\` out so uploads keep the current state.`
+        : undefined,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    details: { phase: "execute", ...base, observed: after, version },
   };
 }
 
