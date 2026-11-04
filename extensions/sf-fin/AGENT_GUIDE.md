@@ -38,7 +38,8 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 
 ### Fin Agent API runs
 
-- `sf_fin action='agent' operation='access'` checks access first. The Fin Agent API is granted per workspace on request and uses its own key: the user saves it with `/login sf-fin-agent`, never in chat. The personal token does not work.
+- `sf_fin action='agent' operation='access'` checks access first. The Fin Agent API is granted per workspace on request and uses its own key, generated under Fin AI Agent → Deploy → Fin Agent API. The user saves it with `/sf-fin connect agent` (`/login sf-fin-agent`), never in chat. SF Fin rejects the personal token as an Agent API key at login and before every request.
+- Results `not_granted`, `wrong_key`, `auth_failed`, and `same_as_personal_token` each name the fix; relay it, and never retry with a different credential.
 - `operation='capabilities'` lists the procedures a test user can trigger. It creates no conversation.
 - `operation='run'` starts a real Fin conversation, using `procedure_id` (or `message` to ask Fin) plus scripted `replies`, and returns the transcript and final status. It is Guardrail-mediated, because a conversation Fin resolves is a billable outcome. The procedure must be live and available on the Fin Agent API channel.
 

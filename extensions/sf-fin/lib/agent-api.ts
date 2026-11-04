@@ -24,6 +24,7 @@ export const AGENT_API_ENV_KEY = "FIN_AGENT_API_KEY";
 const MAX_POLLS = 30;
 const POLL_MS = 3_000;
 const MAX_TURNS = 8;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export function agentApiMcpUrl(region: FinRegion): string {
   const host =
@@ -67,6 +68,8 @@ export function createAgentApiClient(input: {
   let nextId = 1;
   const url = agentApiMcpUrl(input.region);
   const rpc = async (method: string, params?: Record<string, unknown>): Promise<unknown> => {
+    const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    const signal = input.signal ? AbortSignal.any([input.signal, timeout]) : timeout;
     const response = await input.deps.fetch(url, {
       method: "POST",
       headers: {
@@ -75,7 +78,9 @@ export function createAgentApiClient(input: {
         Accept: "application/json, text/event-stream",
       },
       body: JSON.stringify({ jsonrpc: "2.0", id: nextId++, method, ...(params ? { params } : {}) }),
-      signal: input.signal,
+      // The key goes only to the fixed regional host; never follow a redirect with it.
+      redirect: "error",
+      signal,
     });
     const text = redact(await response.text(), input.key);
     if (!response.ok) {
@@ -137,12 +142,12 @@ export function accessText(access: AgentApiAccess): string {
     case "not_granted":
       return [
         `❌ Fin Agent API access is not granted for this workspace (${access.message}).`,
-        "Request it in Fin under Settings → Integrations → Fin Agent API. Once approved, generate the Fin Agent API key there and save it with /login sf-fin-agent.",
+        "Request it in Fin under Settings → Integrations → Fin Agent API. Once granted, generate the key under Fin AI Agent → Deploy → Fin Agent API and save it with /login sf-fin-agent.",
       ].join("\n");
     case "auth_failed":
-      return `❌ The Fin Agent API key was rejected (${access.message}). Generate a new key in Fin and run /login sf-fin-agent.`;
+      return `❌ The Fin Agent API key was rejected (${access.message}). Generate a new key under Fin AI Agent → Deploy → Fin Agent API and run /login sf-fin-agent.`;
     case "wrong_key":
-      return `❌ The saved key is not a Fin Agent API key (${access.message}). The personal API token used for the Fin CLI does not work here; generate the Fin Agent API key under Settings → Integrations → Fin Agent API and save it with /login sf-fin-agent.`;
+      return `❌ The saved key is not a Fin Agent API key (${access.message}). The personal API token used for the Fin CLI does not work here; generate the Fin Agent API key under Fin AI Agent → Deploy → Fin Agent API and save it with /login sf-fin-agent.`;
     case "error":
       return `❌ Fin Agent API check failed: ${access.message}`;
   }

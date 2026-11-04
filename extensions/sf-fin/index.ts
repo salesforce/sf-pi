@@ -47,6 +47,8 @@ import {
 } from "./lib/auth.ts";
 import { SF_FIN_ACTIONS, renderHelp } from "./lib/command-surface.ts";
 import { createFinConfirmPanel } from "./lib/manager-action-panels.ts";
+import { AGENT_API_ENV_KEY, AGENT_API_PROVIDER } from "./lib/agent-api.ts";
+import { detectAgentKeySource } from "./lib/agent-key.ts";
 import { createFinService, statusText, type FinService } from "./lib/service.ts";
 import { registerSfFinTool } from "./lib/sf_fin-tool.ts";
 import { COMMAND_NAME, ENV_REGION, ENV_TOKEN, PROVIDER_NAME } from "./lib/types.ts";
@@ -155,6 +157,8 @@ export async function handleCommand(
 
   if (sub === "status") return emit(ctx, "SF Fin status", statusText(), "info", fromPanel);
   if (sub === "help") return emit(ctx, "SF Fin help", renderHelp(), "info", fromPanel);
+  if (sub === "connect" && parts[1] === "agent") return connectAgent(ctx, fromPanel);
+  if (sub === "disconnect" && parts[1] === "agent") return disconnectAgent(ctx, fromPanel);
   if (sub === "connect") return connect(ctx, fromPanel);
   if (sub === "disconnect") return disconnect(ctx, fromPanel);
   if (sub === "doctor") {
@@ -390,6 +394,57 @@ async function disconnect(ctx: ExtensionCommandContext, fromPanel: boolean): Pro
     ctx,
     "SF Fin logout handoff",
     `Prefilled \`/logout ${PROVIDER_NAME}\`. Submit it to remove only the saved credential; environment variables are untouched.`,
+    "info",
+    fromPanel,
+  );
+}
+
+async function connectAgent(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
+  if (ctx.mode !== "tui") {
+    return emit(
+      ctx,
+      "Fin Agent API login requires TUI mode",
+      `Run /login ${AGENT_API_PROVIDER} in interactive TUI mode, or set ${AGENT_API_ENV_KEY} before starting Pi.`,
+      "warning",
+      fromPanel,
+    );
+  }
+  ctx.ui.setEditorText(`/login ${AGENT_API_PROVIDER}`);
+  return emit(
+    ctx,
+    "Fin Agent API login prepared",
+    [
+      `Prefilled /login ${AGENT_API_PROVIDER}. Submit it, then paste the Fin Agent API key into the masked prompt.`,
+      "Generate the key in Fin under Fin AI Agent → Deploy → Fin Agent API. It is separate from the personal API token; SF Fin rejects the personal token here.",
+    ].join("\n"),
+    "info",
+    fromPanel,
+  );
+}
+
+async function disconnectAgent(ctx: ExtensionCommandContext, fromPanel: boolean): Promise<void> {
+  const source = detectAgentKeySource();
+  if (source !== "pi-auth") {
+    const message =
+      source === "env"
+        ? `${AGENT_API_ENV_KEY} is active. Native logout does not modify environment variables; unset it outside Pi and restart the session.`
+        : "No Fin Agent API key is saved.";
+    return emit(ctx, "Fin Agent API disconnect", message, "info", fromPanel);
+  }
+  if (!ctx.hasUI) {
+    return emit(
+      ctx,
+      "Fin Agent API disconnect",
+      `Run \`/logout ${AGENT_API_PROVIDER}\` in an interactive Pi session.`,
+      "info",
+      fromPanel,
+    );
+  }
+  ctx.ui.setEditorText(`/logout ${AGENT_API_PROVIDER}`);
+  return emit(
+    ctx,
+    "Fin Agent API logout handoff",
+    `Prefilled \`/logout ${AGENT_API_PROVIDER}\`. Submit it to remove only the saved Fin Agent API key. Also revoke or regenerate the key in Fin if it may have been exposed.`,
     "info",
     fromPanel,
   );

@@ -61,9 +61,16 @@ SF Guardrail (see below).
    (`app.intercom.com` is US), and paste the token into the masked prompt.
 4. Run `/sf-fin doctor`.
 
-For Fin Agent API runs (optional), request access in Fin under **Settings →
-Integrations → Fin Agent API**, generate the Fin Agent API key there, and save
-it with `/login sf-fin-agent`. It is a separate key from the personal token.
+For Fin Agent API runs (optional):
+
+1. Request access in Fin under **Settings → Integrations → Fin Agent API**.
+2. Once access is granted, open **Fin AI Agent → Deploy → Fin Agent API** and
+   click **Generate API key**. Copy it with the copy button.
+3. Run `/sf-fin connect agent` (or `/login sf-fin-agent`) and paste the key into
+   the masked prompt. It is a separate key from the personal token, and SF Fin
+   rejects the personal token here.
+4. Run `/sf-fin agent` to check access. This starts no conversation and costs
+   nothing.
 
 `INTERCOM_TOKEN` and `INTERCOM_REGION` are non-persisted automation fallbacks.
 `FIN_AGENT_API_KEY` is the automation fallback for the Fin Agent API key.
@@ -105,9 +112,23 @@ it with `/login sf-fin-agent`. It is a separate key from the personal token.
   an exact SF Guardrail mutation that is never session-approved. Data
   connectors upload only as drafts, and publishing them stays in the Intercom
   web UI.
-- The Fin Agent API key is a separate Pi credential (`sf-fin-agent`), sent
-  only as an HTTPS `Authorization` header and never to the CLI. `agent run`
-  is an SF Guardrail mutation (`native-sf-fin-agent-run`), because a
+- The Fin Agent API key is a separate Pi credential (`sf-fin-agent`). Pi alone
+  persists it, in `~/.pi/agent/auth.json` (owner-only), and SF Fin writes no
+  second copy.
+  - Login trims the key. It rejects empty, multi-line, `Bearer`-prefixed, or
+    too-short values, and the personal token. Comparisons are constant-time.
+  - Before every request, SF Fin refuses a key equal to the personal token,
+    from any source.
+  - The key is sent only as an HTTPS `Authorization` header to the region's
+    fixed Fin Agent API host, never following redirects. It never reaches the
+    CLI, argv, child environments, logs, status files, or tool output.
+  - `agent-api-status.json` (owner-only) records only the last access outcome
+    and its time.
+  - `/sf-pi doctor`, `/sf-fin status`, and the debug bundle report the key's
+    source and last access result, never its value.
+  - `/sf-fin disconnect agent` prepares `/logout sf-fin-agent`. Revoke or
+    regenerate the key in Fin if it may have been exposed.
+- `agent run` is an SF Guardrail mutation (`native-sf-fin-agent-run`), because a
   conversation Fin resolves is a billable outcome. Access checks and capability
   listing create no conversation.
 - `surfaces` runs only local `--help` commands, with no token and no network.

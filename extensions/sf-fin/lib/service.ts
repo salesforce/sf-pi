@@ -35,6 +35,14 @@ import { buildStatusText, createFinStatusStore } from "./status.ts";
 import { COMMAND_NAME, type FinOutcomeKind, type FinStatusSnapshot } from "./types.ts";
 import { getFinAgentApiKey, getFinCredential } from "./auth.ts";
 import {
+  agentKeyCachedCheck,
+  agentKeyStatusLines,
+  createAgentKeyStatusStore,
+  detectAgentKeySource,
+  sameSecret,
+  type AgentKeyStatus,
+} from "./agent-key.ts";
+import {
   accessText,
   createAgentApiClient,
   probeAgentApiAccess,
@@ -106,6 +114,8 @@ export interface FinServiceDeps {
   agentDeps?: AgentApiDeps;
   /** Test seam for the surfaces crawl (defaults to the installed Fin CLI). */
   helpRunner?: Parameters<typeof crawlCliCommands>[0];
+  /** Test seam: Agent API status store. */
+  agentStatusStore?: ReturnType<typeof createAgentKeyStatusStore>;
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
@@ -368,9 +378,21 @@ export function createFinService(deps: FinServiceDeps): FinService {
     },
 
     async agent(ctx, request) {
+      const agentStatus = deps.agentStatusStore ?? createAgentKeyStatusStore();
       const key = await getFinAgentApiKey(ctx);
       if (key.ok === false) {
         return { ok: false, text: key.message, details: { phase: "credential", access: "no_key" } };
+      }
+      // Separation check before anything is sent: the personal token must
+      // never be used on the Agent API path, whatever its source.
+      const personal = await getFinCredential(ctx);
+      if (personal.ok && sameSecret(key.key, personal.credential.token)) {
+        recordAgentStatus(agentStatus, { lastAccess: "same_as_personal_token" });
+        return {
+          ok: false,
+          text: `❌ The Fin Agent API key is the same as the personal API token. Save the separate Fin Agent API key (Fin AI Agent → Deploy → Fin Agent API) with /login sf-fin-agent; nothing was sent.`,
+          details: { phase: "credential", access: "same_as_personal_token" },
+        };
       }
       const agentDeps = deps.agentDeps ?? {
         fetch: globalThis.fetch.bind(globalThis),
@@ -383,6 +405,10 @@ export function createFinService(deps: FinServiceDeps): FinService {
         signal: ctx.signal,
       });
       const access = await probeAgentApiAccess(client);
+      recordAgentStatus(agentStatus, {
+        lastAccess: access.state,
+        toolCount: access.state === "granted" ? access.tools.length : undefined,
+      });
       if (request.operation === "access" || access.state !== "granted") {
         return {
           ok: access.state === "granted",
@@ -442,6 +468,9 @@ export function createFinService(deps: FinServiceDeps): FinService {
     cachedDoctorReport() {
       const snapshot = statusStore.read();
       const checks = buildCachedChecks(snapshot, existsSync(path.join(homedir(), ".intercom")));
+      checks.push(
+        agentKeyCachedCheck((deps.agentStatusStore ?? createAgentKeyStatusStore()).read()),
+      );
       const worst = checks.some((c) => c.severity === "error")
         ? "✗ errors"
         : checks.some((c) => c.severity === "warn")
@@ -490,5 +519,17 @@ export function sdkDownloadDir(appId: string | undefined): string {
 }
 
 export function statusText(): string {
-  return buildStatusText(createFinStatusStore().read());
+  return [
+    buildStatusText(createFinStatusStore().read()),
+    ...agentKeyStatusLines(createAgentKeyStatusStore().read()),
+  ].join("\n");
 }
+
+function recordAgentStatus(
+  store: ReturnType<typeof createAgentKeyStatusStore>,
+  next: Omit<AgentKeyStatus, "lastCheckedAt">,
+): void {
+  store.write({ ...next, lastCheckedAt: new Date().toISOString() });
+}
+
+export { detectAgentKeySource };

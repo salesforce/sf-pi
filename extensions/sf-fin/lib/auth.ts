@@ -13,6 +13,7 @@ import type { AuthInteraction } from "@earendil-works/pi-ai";
 import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { createAuthOnlyProvider } from "../../../lib/common/auth-only-provider.ts";
 import {
+  getPiAuthStorePath,
   hasPiAuthProviderApiKey,
   readPiAuthProviderEnv,
 } from "../../../lib/common/pi-auth-status.ts";
@@ -21,7 +22,10 @@ import {
   loginWithSecureCredentialPrompt,
   type SecureCredentialPromptBridge,
 } from "../../../lib/common/secure-credential-prompt.ts";
+import { existsSync } from "node:fs";
+import { readStoredCredential } from "@earendil-works/pi-coding-agent";
 import { AGENT_API_ENV_KEY, AGENT_API_PROVIDER } from "./agent-api.ts";
+import { agentKeyShapeIssue, sameSecret } from "./agent-key.ts";
 import {
   DEFAULT_REGION,
   ENV_REGION,
@@ -191,7 +195,7 @@ export function createSfFinAgentAuthController(
   promptBridge: SecureCredentialPromptBridge = createSecureCredentialPromptBridge({
     title: "SF Fin Agent API key",
     description:
-      "Create it in Fin under Settings → Integrations → Fin Agent API (access is granted on request). The value is masked and is not added to the session.",
+      "Generate it in Fin under Fin AI Agent → Deploy → Fin Agent API (after access is granted). It is separate from the personal API token. The value is masked and is not added to the session.",
   }),
 ): SfFinAuthController {
   const provider = createAuthOnlyProvider({
@@ -200,7 +204,19 @@ export function createSfFinAgentAuthController(
     auth: {
       apiKey: {
         name: "Fin Agent API key",
-        login: async (interaction) => loginWithSecureCredentialPrompt(promptBridge, interaction),
+        login: async (interaction) => {
+          const credential = await loginWithSecureCredentialPrompt(promptBridge, interaction);
+          // Fail before Pi persists anything: malformed keys and the personal
+          // token pasted into the wrong slot are rejected at login.
+          const issue = agentKeyShapeIssue(credential.key);
+          if (issue) throw new Error(issue);
+          if (sameSecret(credential.key, readSavedPersonalToken())) {
+            throw new Error(
+              `That is the personal API token used by /login ${PROVIDER_NAME}. Paste the separate Fin Agent API key from Fin AI Agent → Deploy → Fin Agent API.`,
+            );
+          }
+          return { ...credential, key: credential.key.trim() };
+        },
         resolve: async ({ ctx, credential }) => {
           const saved = credential?.key?.trim();
           const envKey = (await ctx.env(AGENT_API_ENV_KEY))?.trim();
@@ -223,6 +239,21 @@ export function createSfFinAgentAuthController(
 
 export const sfFinAgentAuthController = createSfFinAgentAuthController();
 
+/**
+ * The saved personal token, read only for the login-time separation check and
+ * compared in constant time; it is never returned to callers outside this file.
+ */
+function readSavedPersonalToken(): string | undefined {
+  try {
+    const path = getPiAuthStorePath();
+    if (!existsSync(path)) return undefined;
+    const credential = readStoredCredential(PROVIDER_NAME, path) as { key?: unknown } | undefined;
+    return typeof credential?.key === "string" ? credential.key : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function getFinAgentApiKey(
   ctx: ExtensionContext,
 ): Promise<{ ok: true; key: string; region: FinRegion } | { ok: false; message: string }> {
@@ -243,7 +274,7 @@ export async function getFinAgentApiKey(
     ok: false,
     message: [
       "No Fin Agent API key is saved.",
-      "The Fin Agent API is granted per workspace on request: in Fin, go to Settings → Integrations → Fin Agent API. Once approved, generate the key there.",
+      "The Fin Agent API is granted per workspace on request (Settings → Integrations → Fin Agent API). Once granted, generate the key under Fin AI Agent → Deploy → Fin Agent API.",
       `Then run /login ${AGENT_API_PROVIDER} in interactive TUI mode (masked), or set ${AGENT_API_ENV_KEY} for automation.`,
     ].join("\n"),
   };

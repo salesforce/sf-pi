@@ -10,6 +10,8 @@
  * `--verbose` flag. The trace is scrubbed and written to an owner-only
  * artifact file; only the path and a short summary reach the model.
  */
+import { AGENT_API_ENV_KEY } from "./agent-api.ts";
+import { detectAgentKeySource } from "./agent-key.ts";
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
@@ -131,6 +133,7 @@ export function buildDebugBundle(input: DebugBundleInput): string {
     ENV_APP_ID,
     "INTERCOM_CONFIG_DIR",
     "INTERCOM_API_BASE_URL",
+    AGENT_API_ENV_KEY,
   ]
     .filter((name) => Boolean(env[name]?.trim()))
     .sort();
@@ -158,7 +161,8 @@ export function buildDebugBundle(input: DebugBundleInput): string {
     "## Credential",
     `- Source: ${detectTokenSource()}`,
     `- Region: ${region.region} (${region.source})`,
-    `- INTERCOM_* variables set (names only): ${setNames.length ? setNames.join(", ") : "none"}`,
+    `- Fin Agent API key source: ${detectAgentKeySource(env)}`,
+    `- Variables set (names only): ${setNames.length ? setNames.join(", ") : "none"}`,
     "",
     "## Private CLI config",
     `- Path: ${configDir}`,
