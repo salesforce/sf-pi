@@ -6,8 +6,6 @@
  * the single default SF Browser session, output redaction, and actionable
  * install/launch errors.
  */
-import { existsSync } from "node:fs";
-import path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { BROWSER_LAUNCH_RECOVERY, isBrowserLaunchFailure } from "./browser-launch-diagnostics.ts";
 import {
@@ -20,6 +18,7 @@ import {
   writeCachedBrowserRuntimeStatus,
 } from "../../../lib/common/browser-runtime-status/store.ts";
 import { maskFinSecrets } from "../../../lib/common/fin-admin-surface.ts";
+import { resolveAgentBrowserInvocation } from "../../../lib/common/agent-browser-invocation.ts";
 import { redactText } from "./redaction.ts";
 import { startTimer } from "./timing.ts";
 
@@ -36,24 +35,6 @@ export interface AgentBrowserResult {
   code: number;
   durationMs: number;
   durationText: string;
-}
-
-/**
- * Windows: `agent-browser` is a `.cmd` shim that Node cannot spawn directly, and
- * routing through a shell would parse user-supplied arguments (fill values,
- * URLs). Run the npm-installed native exe, or else the package's Node entry
- * point, with an args array instead. Other platforms are unchanged.
- */
-export function resolveAgentBrowserInvocation(command: string, args: string[]): [string, string[]] {
-  if (process.platform !== "win32" || command !== "agent-browser") return [command, args];
-  const appData = process.env.APPDATA;
-  if (!appData) return [command, args];
-  const packageBin = path.join(appData, "npm", "node_modules", "agent-browser", "bin");
-  const nativeExe = path.join(packageBin, "agent-browser-win32-x64.exe");
-  if (existsSync(nativeExe)) return [nativeExe, args];
-  const entry = path.join(packageBin, "agent-browser.js");
-  if (existsSync(entry)) return [process.execPath, [entry, ...args]];
-  return [command, args];
 }
 
 export async function runAgentBrowser(

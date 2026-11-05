@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveAgentBrowserInvocation } from "../lib/agent-browser.ts";
+import { resolveAgentBrowserInvocation } from "../../../lib/common/agent-browser-invocation.ts";
 
 const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
 let appData: string;

@@ -38,6 +38,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 
 | Path                           | Kind      | Production TypeScript | Test TypeScript |
 | ------------------------------ | --------- | --------------------: | --------------: |
+| `agent-browser-invocation.ts`  | module    |                     1 |               0 |
 | `auth-only-provider.ts`        | module    |                     1 |               0 |
 | `auto-update/`                 | directory |                     2 |               0 |
 | `boot-timing.ts`               | module    |                     1 |               0 |

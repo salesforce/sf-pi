@@ -89,6 +89,7 @@ import {
 } from "../../lib/common/doctor/diagnostics.ts";
 
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
+import { resolveAgentBrowserInvocation } from "../../lib/common/agent-browser-invocation.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import {
   getMonthlyUsageState,
@@ -679,9 +680,15 @@ export default function sfWelcome(pi: ExtensionAPI) {
 
     // Background agent-browser install/freshness check. This preserves the SF
     // Browser lazy-runtime boundary: version probe only, no Chrome/CDP launch.
+    const browserRuntimeExec: typeof exec = (command, args, options) => {
+      const [file, fileArgs] = resolveAgentBrowserInvocation(command, args);
+      return exec(file, fileArgs, options);
+    };
     const browserRuntimeTimer = setTimeout(() => {
       if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
-      void markBootStep("sf-welcome.agent-browser-detect", () => detectBrowserRuntimeStatus(exec))
+      void markBootStep("sf-welcome.agent-browser-detect", () =>
+        detectBrowserRuntimeStatus(browserRuntimeExec),
+      )
         .then((status) => {
           writeCachedBrowserRuntimeStatus(status);
           if (runId !== startupRunId || !isActiveSession(ctx, generation)) return;
