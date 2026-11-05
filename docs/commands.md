@@ -96,7 +96,7 @@ _Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentia
 - Default: **on**
 - Commands: `/sf-fin`
 - Tools: `sf_fin`
-- Providers: `sf-fin`, `sf-fin-agent`
+- Providers: `sf-fin`, `sf-fin-agent`, `sf-fin-browser`
 
 ### [SF Flow](./extensions/sf-flow)
 

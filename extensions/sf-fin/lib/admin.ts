@@ -17,7 +17,6 @@ import {
   FIN_ADMIN_PAGES,
   finAdminLocation,
   finAdminPageUrl,
-  finAdminSignInUrl,
   isFinAdminSignedOut,
   maskFinSecrets,
   type FinAdminPageId,
@@ -43,6 +42,18 @@ export type AdminRunner = (
 export interface AdminRequest {
   operation: "pages" | "open" | "read" | "sign_in";
   page?: string;
+}
+
+/**
+ * Persisted Fin sign-in, owned by Pi. `restore` puts the stored cookies into
+ * the browser before a Fin page; `finish` saves rotated cookies back through
+ * Pi and clears them from the browser. Both never throw.
+ */
+export interface AdminSignin {
+  /** Provider id for `/login`, shown in recovery text. */
+  loginId: string;
+  restore(): Promise<"restored" | "none" | "expired">;
+  finish(): Promise<void>;
 }
 
 export interface AdminResult {
@@ -114,14 +125,15 @@ export async function runAdmin(
   request: AdminRequest,
   profile: WorkspaceProfile,
   run: AdminRunner,
-  sleep: AdminSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  sleep: AdminSleep,
+  signin: AdminSignin,
 ): Promise<AdminResult> {
-  if (request.operation === "pages") return listPages(profile);
+  if (request.operation === "pages") return listPages(profile, signin);
   const identity = boundIdentity(profile);
   if (identity.ok === false) return identity.result;
   const { appId, region } = identity;
 
-  if (request.operation === "sign_in") return signIn(region, run);
+  if (request.operation === "sign_in") return signInWithPi(signin);
 
   if (!isAdminPageId(request.page)) {
     return fail(
@@ -129,7 +141,42 @@ export async function runAdmin(
       "unknown_page",
     );
   }
-  const page = request.page;
+  const restored = await signin.restore();
+  if (restored !== "restored") {
+    return fail(
+      restored === "expired"
+        ? `The saved Fin sign-in has expired. Run /login ${signin.loginId} and sign in again in the window that opens.`
+        : `No saved Fin sign-in for workspace "${profile.name}". Run /login ${signin.loginId} once; Pi keeps it.`,
+      restored === "expired" ? "signin_expired" : "signed_out",
+      { loginId: signin.loginId },
+    );
+  }
+  try {
+    const result = await visitPage(request, profile, request.page, appId, region, run, sleep);
+    if (result.details.code === "signed_out") {
+      return fail(
+        `Fin did not accept the saved sign-in (it may have been signed out). Run /login ${signin.loginId} and sign in again.`,
+        "signin_rejected",
+        { loginId: signin.loginId },
+      );
+    }
+    return result;
+  } finally {
+    // Save rotated cookies through Pi, then clear them from the browser, on
+    // every path, so the browser's own state file never keeps a Fin sign-in.
+    await signin.finish();
+  }
+}
+
+async function visitPage(
+  request: AdminRequest,
+  profile: WorkspaceProfile,
+  page: FinAdminPageId,
+  appId: string,
+  region: FinAdminRegion,
+  run: AdminRunner,
+  sleep: AdminSleep,
+): Promise<AdminResult> {
   const url = finAdminPageUrl(region, appId, page);
   const opened = await run(["open", url], { timeoutMs: OPEN_TIMEOUT_MS });
   if (opened.code !== 0) {
@@ -217,7 +264,7 @@ export async function runAdmin(
   };
 }
 
-function listPages(profile: WorkspaceProfile): AdminResult {
+function listPages(profile: WorkspaceProfile, signin: AdminSignin): AdminResult {
   const rows = FIN_ADMIN_PAGE_IDS.map(
     (id) =>
       `  ${id.padEnd(18)} ${PAGE_GUIDE[id].useFor}${FIN_ADMIN_PAGES[id].secret ? " (secret page: masked, no screenshots)" : ""}`,
@@ -231,33 +278,20 @@ function listPages(profile: WorkspaceProfile): AdminResult {
       profile.appId
         ? `Open one with sf_fin action='admin' operation='open' page=<id>.`
         : `Run /sf-fin setup first so the workspace's app id is verified.`,
+      `Sign-in: saved by Pi under /login ${signin.loginId}.`,
     ].join("\n"),
     details: { pages: FIN_ADMIN_PAGE_IDS, appBound: Boolean(profile.appId) },
   };
 }
 
-async function signIn(region: FinAdminRegion, run: AdminRunner): Promise<AdminResult> {
-  // Sign-in needs a visible window, and agent-browser only applies --headed
-  // when it launches, so the shared session is relaunched once, headed. Its
-  // files are created owner-only because they will hold the Fin login.
-  await run(["close"], { timeoutMs: READ_TIMEOUT_MS });
-  const opened = await run(["--headed", "open", finAdminSignInUrl(region)], {
-    timeoutMs: OPEN_TIMEOUT_MS,
-    ownerOnlyFiles: true,
-  });
-  if (opened.code !== 0) {
-    return fail(
-      `Could not open the Fin sign-in window: ${firstLine(opened.stderr || opened.stdout)}`,
-      "open_failed",
-    );
-  }
+function signInWithPi(signin: AdminSignin): AdminResult {
   return {
     ok: true,
     text: [
-      "Opened Fin sign-in in a browser window. Sign in yourself; SF Pi does not type passwords or read this page.",
-      'Tick "Keep me signed in". When you are done, retry the admin action; the browser goes back to headless on its next restart.',
+      `Run /login ${signin.loginId}. A browser window opens on Fin's sign-in page; sign in there yourself.`,
+      "Pi saves the sign-in like your other Fin credentials, so later admin pages need no sign-in until Fin expires it (about two weeks).",
     ].join("\n"),
-    details: { region, headed: true },
+    details: { loginId: signin.loginId, handoff: "login" },
   };
 }
 
@@ -319,9 +353,16 @@ export function summarizeAdminSnapshot(snapshot: string, focus: string[] = []): 
   return out;
 }
 
-/** A level-1 heading other than the Settings breadcrumb means content rendered. */
+/**
+ * Content rendered: a level-1 heading other than the Settings breadcrumb,
+ * followed by at least one level-2 heading or control below it (the page's
+ * own body, not just its title).
+ */
 function pageRendered(snapshot: string): boolean {
-  return /heading "(?!Settings")[^"]+" \[level=1/u.test(snapshot);
+  const title = /heading "(?!Settings")[^"]+" \[level=1[^\n]*\n/u.exec(snapshot);
+  if (!title) return false;
+  const body = snapshot.slice(title.index + title[0].length);
+  return /(?:heading "[^"]+" \[level=[2-4]|button "[^"]+"|link "[^"]+")/u.test(body);
 }
 
 function fail(text: string, code: string, extra: Record<string, unknown> = {}): AdminResult {

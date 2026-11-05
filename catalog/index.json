@@ -568,7 +568,8 @@
     ],
     "providers": [
       "sf-fin",
-      "sf-fin-agent"
+      "sf-fin-agent",
+      "sf-fin-browser"
     ],
     "tools": [
       "sf_fin"
@@ -593,7 +594,7 @@
         "lib/sf_fin-tool.ts"
       ],
       "stateFiles": [
-        "~/.pi/agent/auth.json entries: sf-fin / sf-fin-<workspace> (personal API token plus credential.env.INTERCOM_REGION) and sf-fin-agent / sf-fin-agent-<workspace> (Fin Agent API key)",
+        "~/.pi/agent/auth.json entries: sf-fin / sf-fin-<workspace> (personal API token plus credential.env.INTERCOM_REGION), sf-fin-agent / sf-fin-agent-<workspace> (Fin Agent API key), and sf-fin-browser / sf-fin-browser-<workspace> (Fin admin sign-in cookies)",
         "<globalAgentDir>/sf-pi/sf-fin/workspaces.json (named workspace profiles: kind, verified app id and region; shared read-only with SF Guardrail; no credentials)",
         "<globalAgentDir>/sf-pi/sf-fin/status.json",
         "<globalAgentDir>/sf-pi/sf-fin/agent-api-status.json (last Fin Agent API access outcome; no key material)",
@@ -622,13 +623,14 @@
         "Guidance uploads are always paused and data connectors only as drafts; sdk guidance_state plans by default and executes as the exact SF Guardrail mutation native-sf-fin-procedure-state. The Fin Agent API key is a separate Pi provider (sf-fin-agent), sent only as an HTTPS Authorization header; agent run is native-sf-fin-agent-run because resolved conversations are billable. surfaces runs only local --help commands.",
         "The Fin Agent API key is rejected at login when it is malformed or equals the personal token, and every Agent API request refuses a key equal to the active personal token (constant-time digest comparison); it is sent only as an HTTPS Authorization header to the fixed regional host with redirects refused.",
         "Personal-token login detects the region from /me on the fixed regional hosts and refuses a token every region rejects. Named workspaces have their own Pi sign-ins; environment fallbacks apply only to the default workspace. Setup binds a workspace to the app id its token proves and refuses a different app. SF Guardrail treats a prod (or unknown) Fin workspace like a production org: no session approvals, and Power Tool Mode needs the production opt-in.",
-        "Fin admin pages (/sf-fin admin) open only verified pages for the workspace's verified app id in the shared SF Pi browser and navigate and read only. Sign-in is human-only in a visible window, with owner-only saved-login files. All browser text is masked, and pages that can show a key get no screenshots or editor reads. A committing click there is bound to the Fin workspace in SF Guardrail and is never session-approved."
+        "Fin admin pages (/sf-fin admin) open only verified pages for the workspace's verified app id in the shared SF Pi browser and navigate and read only. Sign-in is human-only in a visible window, with owner-only saved-login files. All browser text is masked, and pages that can show a key get no screenshots or editor reads. A committing click there is bound to the Fin workspace in SF Guardrail and is never session-approved.",
+        "The Fin admin sign-in (/login sf-fin-browser) is two Fin cookies persisted by Pi. They are restored into the shared browser only for one admin action and removed afterwards, so the browser's own state file never keeps them. Values go to the browser on stdin, never on a command line. Pi reports the sign-in as expired when Fin's remember cookie expires (about two weeks)."
       ]
     },
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 7355
+    "srcLoc": 7904
   },
   {
     "id": "sf-flow",

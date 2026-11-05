@@ -43,11 +43,13 @@ describe("workspace profiles", () => {
     expect(workspaceProviders("default")).toEqual({
       personal: "sf-fin",
       agent: "sf-fin-agent",
+      browser: "sf-fin-browser",
       mcpConnection: "intercom",
     });
     expect(workspaceProviders("prod")).toEqual({
       personal: "sf-fin-prod",
       agent: "sf-fin-agent-prod",
+      browser: "sf-fin-browser-prod",
       mcpConnection: "intercom-prod",
     });
   });
@@ -56,7 +58,17 @@ describe("workspace profiles", () => {
     const s = store();
     expect(addWorkspace(s, "prod", "prod")).toMatchObject({ ok: true });
     expect(addWorkspace(s, "prod", "prod")).toMatchObject({ ok: false });
-    for (const bad of ["Prod", "1x", "default", "agent", "agent-x", "a b", "x".repeat(25)]) {
+    for (const bad of [
+      "Prod",
+      "1x",
+      "default",
+      "agent",
+      "agent-x",
+      "browser",
+      "browser-x",
+      "a b",
+      "x".repeat(25),
+    ]) {
       expect(workspaceNameIssue(bad)).toBeDefined();
     }
     expect(useWorkspace(s, "prod")).toMatchObject({ ok: true });

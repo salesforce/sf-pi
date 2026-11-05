@@ -49,7 +49,7 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 ## Fin admin pages
 
 - `sf_fin action='admin' operation='pages'` lists the verified pages. `operation='read' page=<id>` opens one for the workspace's verified app and returns a masked summary; `operation='open'` only navigates, for follow-up `sf_browser_snapshot` work.
-- `signed_out`: ask the user to run `/sf-fin admin sign-in` (or call `operation='sign_in'`, which opens a window) and sign in themselves. Never type a Fin email or password, and never fill the sign-in form.
+- `signed_out`, `signin_expired`, or `signin_rejected`: ask the user to run `/login sf-fin-browser` (named workspaces: `sf-fin-browser-<name>`) and sign in themselves in the window that opens. Pi keeps the sign-in for about two weeks. Never type a Fin email or password, never fill the sign-in form, and never ask for a verification code; codes are typed only in the browser window.
 - `app_mismatch`: the browser is signed in to another Fin app. Do not continue; tell the user.
 - On secret pages (agent-api, api-tokens, workspace-tokens), never click reveal, copy, or show controls to obtain a key, and never ask for one in chat. The user copies keys into `/sf-fin connect agent` or `/login sf-fin`.
 - This release reads Fin admin pages only. Do not click buttons that change Fin (generate, publish, go live, connect, revoke, save); SF Guardrail treats them as Fin workspace commits.

@@ -53,12 +53,19 @@ import {
   sfFinAuthController,
   type SfFinAuthController,
 } from "./lib/auth.ts";
-import { createWorkspaceStore, DEFAULT_WORKSPACE, readWorkspaces } from "./lib/workspaces.ts";
+import {
+  createWorkspaceStore,
+  DEFAULT_WORKSPACE,
+  readWorkspaces,
+  workspaceProviders,
+} from "./lib/workspaces.ts";
 import { SF_FIN_ACTIONS, renderHelp } from "./lib/command-surface.ts";
 import { createFinConfirmPanel } from "./lib/manager-action-panels.ts";
 import { AGENT_API_ENV_KEY, AGENT_API_PROVIDER } from "./lib/agent-api.ts";
 import { detectAgentKeySource } from "./lib/agent-key.ts";
 import { createFinService, statusText, type FinService } from "./lib/service.ts";
+import { createFinBrowserSigninProvider } from "./lib/browser-signin.ts";
+import { createSigninBrowser } from "./lib/signin-browser.ts";
 import { registerSfFinTool } from "./lib/sf_fin-tool.ts";
 import { COMMAND_NAME, ENV_REGION, ENV_TOKEN, PROVIDER_NAME } from "./lib/types.ts";
 
@@ -84,6 +91,15 @@ export default function sfFin(pi: ExtensionAPI) {
       pi.registerProvider(controller.provider);
       if (binding) controller.bind(binding.ui, binding.mode);
     }
+    // Fin admin browser sign-in: Pi stores Fin's sign-in cookies like the
+    // other credentials; the login is the human signing in in a window.
+    pi.registerProvider(
+      createFinBrowserSigninProvider({
+        workspace: name,
+        profile: () => readWorkspaces(createWorkspaceStore()).workspaces[name],
+        browser: () => createSigninBrowser(),
+      }),
+    );
   };
   for (const name of Object.keys(readWorkspaces(createWorkspaceStore()).workspaces)) {
     registerWorkspace(name);
@@ -216,6 +232,26 @@ export async function handleCommand(
           ? service.workspace({ operation: op, name: parts[2] })
           : service.workspace({ operation: "list" });
     return emit(ctx, "SF Fin workspaces", result.text, result.ok ? "info" : "warning", fromPanel);
+  }
+  if (sub === "admin" && (parts[1] === "sign-in" || parts[1] === "sign_in")) {
+    const loginId = workspaceProviders(
+      parts[2] || readWorkspaces(createWorkspaceStore()).active,
+    ).browser;
+    if (ctx.mode === "tui") ctx.ui.setEditorText(`/login ${loginId}`);
+    return emit(
+      ctx,
+      "SF Fin admin sign-in",
+      [
+        ctx.mode === "tui"
+          ? `Prefilled /login ${loginId}. Submit it; a browser window opens on Fin's sign-in page.`
+          : `Run /login ${loginId} in interactive TUI mode; a browser window opens on Fin's sign-in page.`,
+        "Sign in there yourself. Pi saves the sign-in like your other Fin credentials; /logout " +
+          loginId +
+          " removes it.",
+      ].join("\n"),
+      "info",
+      fromPanel,
+    );
   }
   if (sub === "admin") {
     const op = parts[1] === "sign-in" ? "sign_in" : parts[1];

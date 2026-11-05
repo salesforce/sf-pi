@@ -4,33 +4,34 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 
 ## File map
 
-| Responsibility                                                                  | File                           |
-| ------------------------------------------------------------------------------- | ------------------------------ |
-| Extension entry, provider, command routing, Manager actions                     | `index.ts`                     |
-| Shared doctor/install/debug service for command, tool, and Manager              | `lib/service.ts`               |
-| Pi-native region + masked token login and resolution                            | `lib/auth.ts`                  |
-| Bounded Fin CLI child process, outcome classes, trace scrubbing                 | `lib/cli-runner.ts`            |
-| Live six-check doctor and cached `/sf-pi doctor` checks                         | `lib/doctor.ts`                |
-| CLI detection, npm global root, registry metadata                               | `lib/install/detect.ts`        |
-| Install planning and the single npm install execution                           | `lib/install/installer.ts`     |
-| Debug bundle, verbose arming, trace artifacts                                   | `lib/debug.ts`                 |
-| Pattern-based failure advice                                                    | `lib/failure-diagnostics.ts`   |
-| Direct Fin SDK probe and explicit enable                                        | `lib/sdk-gate.ts`              |
-| Fin-as-code reads (manifest, download) that enable on first use                 | `lib/sdk-reads.ts`             |
-| Procedure validate, draft upload, simulation sets, simulate                     | `lib/sdk-procedures.ts`        |
-| Semantic procedure round-trip comparison                                        | `lib/procedure-normalize.ts`   |
-| Guidance and data connector validate/upload, guidance state                     | `lib/sdk-resources.ts`         |
-| CLI vs MCP vs Agent API capability map and drift report                         | `lib/surfaces.ts`              |
-| Fin Agent API harness (access, capabilities, scripted runs)                     | `lib/agent-api.ts`             |
-| Named workspace profiles and per-workspace sign-in names                        | `lib/workspaces.ts`            |
-| Automatic region discovery from `/me`                                           | `lib/region.ts`                |
-| Unified setup evaluation (credentials, capabilities, mismatches)                | `lib/setup.ts`                 |
-| Fin admin pages in the shared SF Pi browser (navigate, verify app, masked read) | `lib/admin.ts`                 |
-| Manager install confirm page                                                    | `lib/manager-action-panels.ts` |
-| One `sf_fin` family tool                                                        | `lib/sf_fin-tool.ts`           |
-| Cache-first status file and text                                                | `lib/status.ts`                |
-| Command metadata/help                                                           | `lib/command-surface.ts`       |
-| Shared constants/types                                                          | `lib/types.ts`                 |
+| Responsibility                                                                  | File                                             |
+| ------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Extension entry, provider, command routing, Manager actions                     | `index.ts`                                       |
+| Shared doctor/install/debug service for command, tool, and Manager              | `lib/service.ts`                                 |
+| Pi-native region + masked token login and resolution                            | `lib/auth.ts`                                    |
+| Bounded Fin CLI child process, outcome classes, trace scrubbing                 | `lib/cli-runner.ts`                              |
+| Live six-check doctor and cached `/sf-pi doctor` checks                         | `lib/doctor.ts`                                  |
+| CLI detection, npm global root, registry metadata                               | `lib/install/detect.ts`                          |
+| Install planning and the single npm install execution                           | `lib/install/installer.ts`                       |
+| Debug bundle, verbose arming, trace artifacts                                   | `lib/debug.ts`                                   |
+| Pattern-based failure advice                                                    | `lib/failure-diagnostics.ts`                     |
+| Direct Fin SDK probe and explicit enable                                        | `lib/sdk-gate.ts`                                |
+| Fin-as-code reads (manifest, download) that enable on first use                 | `lib/sdk-reads.ts`                               |
+| Procedure validate, draft upload, simulation sets, simulate                     | `lib/sdk-procedures.ts`                          |
+| Semantic procedure round-trip comparison                                        | `lib/procedure-normalize.ts`                     |
+| Guidance and data connector validate/upload, guidance state                     | `lib/sdk-resources.ts`                           |
+| CLI vs MCP vs Agent API capability map and drift report                         | `lib/surfaces.ts`                                |
+| Fin Agent API harness (access, capabilities, scripted runs)                     | `lib/agent-api.ts`                               |
+| Named workspace profiles and per-workspace sign-in names                        | `lib/workspaces.ts`                              |
+| Automatic region discovery from `/me`                                           | `lib/region.ts`                                  |
+| Unified setup evaluation (credentials, capabilities, mismatches)                | `lib/setup.ts`                                   |
+| Fin admin pages in the shared SF Pi browser (navigate, verify app, masked read) | `lib/admin.ts`                                   |
+| Pi-persisted Fin admin sign-in (cookies) and its agent-browser boundary         | `lib/browser-signin.ts`, `lib/signin-browser.ts` |
+| Manager install confirm page                                                    | `lib/manager-action-panels.ts`                   |
+| One `sf_fin` family tool                                                        | `lib/sf_fin-tool.ts`                             |
+| Cache-first status file and text                                                | `lib/status.ts`                                  |
+| Command metadata/help                                                           | `lib/command-surface.ts`                         |
+| Shared constants/types                                                          | `lib/types.ts`                                   |
 
 ## Invariants
 
