@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.351.0](https://github.com/salesforce/sf-pi/compare/v0.350.0...v0.351.0) (2026-11-05)
+
+
+### Features
+
+* **sf-fin:** open and read Fin admin pages in the SF Pi browser, with secrets masked ([#877](https://github.com/salesforce/sf-pi/issues/877)) ([93ea0ad](https://github.com/salesforce/sf-pi/commit/93ea0ad2e1640556fc3169444cb3d33dd4da360e))
+
 ## [0.350.0](https://github.com/salesforce/sf-pi/compare/v0.349.1...v0.350.0) (2026-11-04)
 
 
