@@ -8,6 +8,7 @@ import { Text, type Component } from "@earendil-works/pi-tui";
 import { renderSfPiProgressText } from "../../../lib/common/display/result-card.ts";
 import { Type } from "typebox";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
+import { buildCodeAnalyzerExec } from "./exec.ts";
 import { nextReportPath } from "./artifacts.ts";
 import { DEFAULT_APEXGURU_TIMEOUT_MS, runApexGuru, validateApexGuru } from "./apexguru.ts";
 import {
@@ -144,7 +145,7 @@ type CodeAnalyzerToolInput = {
 };
 
 export function registerCodeAnalyzerTool(pi: ExtensionAPI): void {
-  const exec = buildExecFn(pi);
+  const exec = buildCodeAnalyzerExec(pi);
   pi.registerTool({
     name: CODE_ANALYZER_TOOL_NAME,
     label: "Code Analyzer",

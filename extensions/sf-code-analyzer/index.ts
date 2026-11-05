@@ -38,7 +38,7 @@ import {
   type ManagerDetailAction,
   type ManagerScope,
 } from "../../lib/common/manager-actions.ts";
-import { buildExecFn } from "../../lib/common/exec-adapter.ts";
+import { buildCodeAnalyzerExec, sfCommand } from "./lib/exec.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
@@ -206,7 +206,7 @@ export default function sfCodeAnalyzer(pi: ExtensionAPI) {
 
   let toolsRegistered = false;
   let readinessTimer: ReturnType<typeof setTimeout> | undefined;
-  const exec = buildExecFn(pi);
+  const exec = buildCodeAnalyzerExec(pi);
 
   function clearReadinessTimer(): void {
     if (readinessTimer === undefined) return;
@@ -511,7 +511,7 @@ async function handleAction(
   }
 
   if (action === "doctor") {
-    const exec = buildExecFn(pi, ctx.cwd);
+    const exec = buildCodeAnalyzerExec(pi, ctx.cwd);
     const report = await runCodeAnalyzerDoctor(exec);
     await refreshCodeAnalyzerReadiness(exec).catch(() => undefined);
     await emitOutput(
@@ -581,11 +581,12 @@ async function setupCodeAnalyzerPlugin(
   const command = "sf plugins install code-analyzer";
   ctx.ui.setStatus("sf-code-analyzer", "Code Analyzer setup: installing plugin…");
   try {
-    const result = await pi.exec("sf", ["plugins", "install", "code-analyzer"], {
+    const [installCommand, installCommandArgs] = sfCommand(["plugins", "install", "code-analyzer"]);
+    const result = await pi.exec(installCommand, installCommandArgs, {
       cwd: ctx.cwd,
       timeout: 180_000,
     });
-    const exec = buildExecFn(pi, ctx.cwd);
+    const exec = buildCodeAnalyzerExec(pi, ctx.cwd);
     const readiness = await refreshCodeAnalyzerReadiness(exec).catch(() => undefined);
     return [
       `Command: ${command}`,
