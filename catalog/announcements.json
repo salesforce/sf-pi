@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.352.0-2026-11-05",
-  "latestVersion": "0.352.0",
+  "revision": "release-0.352.1-2026-11-05",
+  "latestVersion": "0.352.1",
   "announcements": [
     {
-      "id": "release-0.352.0",
+      "id": "release-0.352.1",
       "kind": "update",
-      "title": "sf-pi v0.352.0 — sf-fin: persist the Fin admin sign-in in Pi's credential store",
+      "title": "sf-pi v0.352.1 — sf-fin: leave Fin before clearing the admin sign-in from the browser",
       "publishedAt": "2026-11-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.352.0",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.352.1",
       "severity": "info",
-      "body": "sf-fin: persist the Fin admin sign-in in Pi's credential store"
+      "body": "sf-fin: leave Fin before clearing the admin sign-in from the browser"
     }
   ]
 }
