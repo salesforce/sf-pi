@@ -8,6 +8,7 @@
  */
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { checkFinSecretSurface, FIN_SECRET_SURFACE_MESSAGE } from "./fin-admin-guard.ts";
 import { buildBrowserHelperExpression } from "./browser-expression.ts";
 import { throwWithFailureDiagnostics } from "./failure-diagnostics.ts";
 import { redactText } from "./redaction.ts";
@@ -72,6 +73,18 @@ export async function runEditorOperation(
 ): Promise<{ text: string; details: Record<string, unknown> }> {
   const stopTimer = startTimer();
   const payload = normalizeEditorInput(input);
+  // Editor reads and writes are refused on Fin admin pages that can show a
+  // secret; the masked snapshot is the only view of those pages.
+  if (payload.action !== "detect") {
+    const finSecret = await checkFinSecretSurface(pi, ctx.cwd, signal);
+    if (finSecret.blocked) {
+      const duration = stopTimer();
+      return {
+        text: `Editor ${payload.action} refused. ${FIN_SECRET_SURFACE_MESSAGE} (${finSecret.reason})`,
+        details: { ok: false, code: "fin-secret-surface", reason: finSecret.reason, ...duration },
+      };
+    }
+  }
   try {
     const result = await runAgentBrowser(pi, ["eval", buildEditorExpression(payload)], {
       cwd: ctx.cwd,

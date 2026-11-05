@@ -121,6 +121,9 @@ function isProductionLikeDecision(decision: ClassifiedDecision): boolean {
   if (decision.orgType === "production" || decision.orgResolutionGuessed === true) return true;
   // Production (or unknown named) Fin workspaces need the same production opt-in.
   if (decision.finWorkspaceKind === "prod" || decision.finWorkspaceKind === "unknown") return true;
+  // A verified test Fin workspace is the resolved target (for example a browser
+  // commit on a Fin admin page), so it is not an unknown Salesforce org.
+  if (decision.finWorkspaceKind === "test") return false;
   if (decision.orgType !== undefined) return false;
   if (decision.feature === "commandGate" && decision.ruleId === "agent-browser-direct") {
     return true;

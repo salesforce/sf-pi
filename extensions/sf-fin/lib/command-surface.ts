@@ -16,6 +16,7 @@ export type SfFinCommandAction =
   | "agent"
   | "setup"
   | "workspace"
+  | "admin"
   | "help";
 
 export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
@@ -89,6 +90,13 @@ export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
     label: "Workspaces",
     description:
       "List, add, use, or remove named Fin workspace profiles (for example test and prod).",
+    group: "Connection",
+  },
+  {
+    value: "admin",
+    label: "Fin admin pages",
+    description:
+      "Open or read verified Fin admin pages in the SF Pi browser (masked; no screenshots of secret pages). sign-in opens a window for you to sign in.",
     group: "Connection",
   },
   {

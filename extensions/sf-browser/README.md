@@ -77,6 +77,10 @@ Homebrew installations should be updated through Homebrew. Run
   current screen.
 - Session-bearing org URLs are passed to the browser process but never echoed in
   tool results.
+- Every browser output is masked for secret-shaped values before any tool sees
+  it. On Fin admin pages that can show a key, and whenever a key dialog is open,
+  screenshots and editor reads are refused (SF Fin's `/sf-fin admin` drives
+  those pages).
 - Ambiguous waits, Setup matches, list views, and related lists fail closed or
   return candidates; they are not success assertions.
 

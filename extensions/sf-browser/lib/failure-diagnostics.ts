@@ -14,6 +14,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { commitEvidenceCapture, planEvidenceCapture } from "./artifacts.ts";
 import { runAgentBrowser } from "./agent-browser.ts";
+import { checkFinSecretSurface } from "./fin-admin-guard.ts";
 import { BROWSER_LAUNCH_RECOVERY, isBrowserLaunchFailure } from "./browser-launch-diagnostics.ts";
 import { redactText, sanitizeLabel } from "./redaction.ts";
 import { formatDuration } from "./timing.ts";
@@ -225,6 +226,8 @@ async function safeScreenshotArtifact(
   signal: AbortSignal | undefined,
 ): Promise<{ path: string; thumbnailPath?: string } | undefined> {
   const sessionId = ctx.sessionManager.getSessionId();
+  // No diagnostic screenshot of a Fin admin page that can show a secret.
+  if ((await checkFinSecretSurface(pi, ctx.cwd, signal, currentUrl)).blocked) return undefined;
   const planned = planEvidenceCapture(diagnosticLabel(input, "screenshot"), sessionId);
   try {
     await runAgentBrowser(pi, ["screenshot", planned.path], {

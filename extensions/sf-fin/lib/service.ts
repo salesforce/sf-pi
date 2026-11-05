@@ -3,6 +3,13 @@
  * One implementation of doctor, install, and debug shared by the `/sf-fin`
  * command, Manager actions, the `sf_fin` tool, and `/sf-pi doctor`.
  */
+import {
+  createAdminRunner,
+  runAdmin,
+  type AdminRequest,
+  type AdminRunner,
+  type AdminSleep,
+} from "./admin.ts";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -141,6 +148,8 @@ export interface FinService {
   ): Promise<ProcedureResponse>;
   /** Named workspace profiles: list, add, use, remove (no credentials). */
   workspace(request: WorkspaceRequest): ProcedureResponse;
+  /** Fin admin web pages in the shared SF Pi browser (navigate and read only). */
+  admin(request: AdminRequest & { workspace?: string; cwd?: string }): Promise<ProcedureResponse>;
   /** Unified, read-only setup check for one workspace. */
   setup(
     ctx: ExtensionContext & {
@@ -164,6 +173,10 @@ export interface FinServiceDeps {
   workspaceStore?: StateStore<WorkspaceState>;
   /** Test seam: region discovery fetch. */
   fetch?: typeof fetch;
+  /** Test seam: Fin admin browser runner (defaults to the shared SF Pi browser). */
+  adminRunner?: AdminRunner;
+  /** Test seam: wait between admin page-render polls. */
+  adminSleep?: AdminSleep;
   /** Called after a workspace is added, so its Pi sign-ins can be registered. */
   onWorkspaceAdded?: (name: string) => void;
 }
@@ -592,6 +605,19 @@ export function createFinService(deps: FinServiceDeps): FinService {
         ok: true,
         text: `Removed workspace profile "${request.name}". Its saved credentials are untouched; remove them with /logout ${p.personal} and /logout ${p.agent}.`,
         details: { phase: "remove" },
+      };
+    },
+
+    async admin(request) {
+      const target = ws(request.workspace);
+      if (target.ok === false)
+        return { ok: false, text: target.message, details: { phase: "workspace" } };
+      const run = deps.adminRunner ?? createAdminRunner(deps.exec, request.cwd);
+      const result = await runAdmin(request, target.profile, run, deps.adminSleep);
+      return {
+        ok: result.ok,
+        text: result.text,
+        details: { workspace: target.profile.name, ...result.details },
       };
     },
 
