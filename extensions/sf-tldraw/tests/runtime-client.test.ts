@@ -31,7 +31,7 @@ describe("TldrawRuntimeClient", () => {
     dir = mkdtempSync(path.join(tmpdir(), "sf-tldraw-runtime-"));
     configPath = path.join(dir, "server.json");
     writeFileSync(configPath, JSON.stringify({ port: 7236, token: "unit-test-token", pid: 123 }));
-    const captureRoot = path.join(tmpdir(), "tldraw-canvas-api");
+    const captureRoot = path.join(tmpdir(), "tldraw-agent-api");
     mkdirSync(captureRoot, { recursive: true });
     captureDir = mkdtempSync(path.join(captureRoot, "sf-tldraw-runtime-"));
     screenshotPath = path.join(captureDir, "screenshot.jpg");

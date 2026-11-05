@@ -581,7 +581,7 @@ function inspectRuntimeScreenshotFile(
   const screenshot = screenshotMetadata(value);
   let descriptor: number | undefined;
   try {
-    const allowedRoot = realpathSync(path.join(os.tmpdir(), "tldraw-canvas-api"));
+    const allowedRoot = realpathSync(path.join(os.tmpdir(), "tldraw-agent-api"));
     const requestedPath = path.resolve(screenshot.filePath);
     const source = realpathSync(requestedPath);
     if (source !== allowedRoot && !source.startsWith(`${allowedRoot}${path.sep}`)) {

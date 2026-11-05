@@ -35,7 +35,7 @@ describe("sf-tldraw artifacts", () => {
 
   beforeEach(() => {
     tempAgentDir = mkdtempSync(path.join(tmpdir(), "sf-tldraw-artifacts-"));
-    const root = path.join(tmpdir(), "tldraw-canvas-api");
+    const root = path.join(tmpdir(), "tldraw-agent-api");
     mkdirSync(root, { recursive: true });
     captureDir = mkdtempSync(path.join(root, "sf-tldraw-artifacts-"));
     source = path.join(captureDir, "artifact.jpg");
