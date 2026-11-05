@@ -39,22 +39,21 @@ export interface AgentBrowserResult {
 }
 
 /**
- * Windows: Node cannot spawn the `agent-browser.cmd` shim directly. Prefer the
- * native npm-installed exe (no shell, so `&` in URLs is safe); otherwise fall
- * back to `cmd.exe /d /c agent-browser …`. Other platforms are unchanged.
+ * Windows: `agent-browser` is a `.cmd` shim that Node cannot spawn directly, and
+ * routing through a shell would parse user-supplied arguments (fill values,
+ * URLs). Run the npm-installed native exe, or else the package's Node entry
+ * point, with an args array instead. Other platforms are unchanged.
  */
 export function resolveAgentBrowserInvocation(command: string, args: string[]): [string, string[]] {
   if (process.platform !== "win32" || command !== "agent-browser") return [command, args];
-  const nativeExe = path.join(
-    process.env.APPDATA ?? "",
-    "npm",
-    "node_modules",
-    "agent-browser",
-    "bin",
-    "agent-browser-win32-x64.exe",
-  );
-  if (process.env.APPDATA && existsSync(nativeExe)) return [nativeExe, args];
-  return ["cmd.exe", ["/d", "/c", command, ...args]];
+  const appData = process.env.APPDATA;
+  if (!appData) return [command, args];
+  const packageBin = path.join(appData, "npm", "node_modules", "agent-browser", "bin");
+  const nativeExe = path.join(packageBin, "agent-browser-win32-x64.exe");
+  if (existsSync(nativeExe)) return [nativeExe, args];
+  const entry = path.join(packageBin, "agent-browser.js");
+  if (existsSync(entry)) return [process.execPath, [entry, ...args]];
+  return [command, args];
 }
 
 export async function runAgentBrowser(

@@ -8,15 +8,22 @@ import { resolveAgentBrowserInvocation } from "../lib/agent-browser.ts";
 const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
 let appData: string;
 let originalAppData: string | undefined;
+let packageBin: string;
 
 function setPlatform(platform: NodeJS.Platform): void {
   Object.defineProperty(process, "platform", { value: platform });
+}
+
+function touch(filePath: string): void {
+  writeFileSync(filePath, "");
 }
 
 beforeEach(() => {
   appData = mkdtempSync(path.join(tmpdir(), "sf-browser-appdata-"));
   originalAppData = process.env.APPDATA;
   process.env.APPDATA = appData;
+  packageBin = path.join(appData, "npm", "node_modules", "agent-browser", "bin");
+  mkdirSync(packageBin, { recursive: true });
 });
 
 afterEach(() => {
@@ -35,24 +42,32 @@ describe("resolveAgentBrowserInvocation", () => {
     ]);
   });
 
-  it("falls back to cmd.exe on Windows when the native exe is missing", () => {
+  it("runs the native exe directly on Windows, keeping & in URLs as one argument", () => {
     setPlatform("win32");
-    expect(resolveAgentBrowserInvocation("agent-browser", ["doctor"])).toEqual([
-      "cmd.exe",
-      ["/d", "/c", "agent-browser", "doctor"],
-    ]);
-  });
-
-  it("runs the native exe directly on Windows when it exists, keeping & in URLs intact", () => {
-    setPlatform("win32");
-    const binDir = path.join(appData, "npm", "node_modules", "agent-browser", "bin");
-    mkdirSync(binDir, { recursive: true });
-    const exe = path.join(binDir, "agent-browser-win32-x64.exe");
-    writeFileSync(exe, "");
+    const exe = path.join(packageBin, "agent-browser-win32-x64.exe");
+    touch(exe);
     const url = "https://example.invalid/frontdoor.jsp?sid=x&retURL=%2Fsetup";
     expect(resolveAgentBrowserInvocation("agent-browser", ["open", url])).toEqual([
       exe,
       ["open", url],
+    ]);
+  });
+
+  it("runs the package's Node entry point when the exe is missing (no cmd.exe)", () => {
+    setPlatform("win32");
+    const entry = path.join(packageBin, "agent-browser.js");
+    touch(entry);
+    expect(resolveAgentBrowserInvocation("agent-browser", ["doctor"])).toEqual([
+      process.execPath,
+      [entry, "doctor"],
+    ]);
+  });
+
+  it("returns the plain command when nothing is installed, instead of guessing a shell", () => {
+    setPlatform("win32");
+    expect(resolveAgentBrowserInvocation("agent-browser", ["doctor"])).toEqual([
+      "agent-browser",
+      ["doctor"],
     ]);
   });
 

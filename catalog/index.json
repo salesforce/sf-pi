@@ -254,7 +254,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9464
+    "srcLoc": 9481
   },
   {
     "id": "sf-code-analyzer",
