@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.350.0-2026-11-04",
-  "latestVersion": "0.350.0",
+  "revision": "release-0.351.0-2026-11-05",
+  "latestVersion": "0.351.0",
   "announcements": [
     {
-      "id": "release-0.350.0",
+      "id": "release-0.351.0",
       "kind": "update",
-      "title": "sf-pi v0.350.0 — sf-fin: add named workspaces, automatic region detection, and unified setup",
-      "publishedAt": "2026-11-04T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.350.0",
+      "title": "sf-pi v0.351.0 — sf-fin: open and read Fin admin pages in the SF Pi browser, with secrets masked",
+      "publishedAt": "2026-11-05T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.351.0",
       "severity": "info",
-      "body": "sf-fin: add named workspaces, automatic region detection, and unified setup"
+      "body": "sf-fin: open and read Fin admin pages in the SF Pi browser, with secrets masked"
     }
   ]
 }
