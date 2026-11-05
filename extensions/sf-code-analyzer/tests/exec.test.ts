@@ -7,37 +7,86 @@ import { buildCodeAnalyzerExec, resolveSfEntryPoint, sfCommand } from "../lib/ex
 
 const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
 let root: string;
+let localAppData: string;
 let originalPath: string | undefined;
+let originalLocalAppData: string | undefined;
+let clock = 0;
 
 function setPlatform(platform: NodeJS.Platform): void {
   Object.defineProperty(process, "platform", { value: platform });
 }
 
-function touch(filePath: string): void {
+function write(filePath: string, content = ""): void {
   mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, "");
+  writeFileSync(filePath, content);
+}
+
+/** Mirrors the Salesforce CLI installer: bin\sf.cmd plus client\bin\{node.exe,run.js}. */
+function installerLayout(): { bin: string; node: string; run: string } {
+  const bin = path.join(root, "sf_cli", "bin");
+  write(path.join(bin, "sf.cmd"), "@echo off\r\n");
+  const clientBin = path.join(root, "sf_cli", "client", "bin");
+  write(path.join(clientBin, "node.exe"));
+  write(path.join(clientBin, "run.js"));
+  return { bin, node: path.join(clientBin, "node.exe"), run: path.join(clientBin, "run.js") };
+}
+
+/** Mirrors the auto-updated client: %LOCALAPPDATA%\sf\client\bin\sf.cmd -> versioned folder. */
+function autoUpdatedLayout(version: string): { node: string; run: string } {
+  const clientRoot = path.join(localAppData, "sf", "client");
+  write(
+    path.join(clientRoot, "bin", "sf.cmd"),
+    `@echo off\r\nsetlocal enableextensions\r\nset SF_REDIRECTED=1\r\nset SF_BINPATH=%~dp0sf\r\n"%~dp0..\\${version}\\bin\\sf.cmd" %*\r\n`,
+  );
+  const versionBin = path.join(clientRoot, version, "bin");
+  write(path.join(versionBin, "node.exe"));
+  write(path.join(versionBin, "run.js"));
+  return { node: path.join(versionBin, "node.exe"), run: path.join(versionBin, "run.js") };
 }
 
 beforeEach(() => {
   root = mkdtempSync(path.join(tmpdir(), "sf-ca-exec-"));
+  localAppData = path.join(root, "LocalAppData");
+  mkdirSync(localAppData, { recursive: true });
   originalPath = process.env.PATH;
+  originalLocalAppData = process.env.LOCALAPPDATA;
+  process.env.LOCALAPPDATA = localAppData;
+  clock += 1_000_000;
 });
 
 afterEach(() => {
   if (originalPlatform) Object.defineProperty(process, "platform", originalPlatform);
   process.env.PATH = originalPath;
+  if (originalLocalAppData === undefined) delete process.env.LOCALAPPDATA;
+  else process.env.LOCALAPPDATA = originalLocalAppData;
   rmSync(root, { recursive: true, force: true });
 });
 
 describe("sf entry point resolution (Windows)", () => {
-  it("uses the installer layout: client\\bin\\node.exe running client\\bin\\run", () => {
-    const bin = path.join(root, "sf_cli", "bin");
-    touch(path.join(bin, "sf.cmd"));
-    const clientBin = path.join(root, "sf_cli", "client", "bin");
-    touch(path.join(clientBin, "node.exe"));
-    touch(path.join(clientBin, "run"));
+  it("uses the installer's bundled client: client\\bin\\node.exe running run.js", () => {
+    const { bin, node, run } = installerLayout();
+    expect(resolveSfEntryPoint({ PATH: bin, LOCALAPPDATA: localAppData }, clock)).toEqual([
+      node,
+      ["--no-deprecation", run],
+    ]);
+  });
 
-    expect(resolveSfEntryPoint(bin, 1)).toEqual([
+  it("follows the installer's redirect to the auto-updated client under LOCALAPPDATA", () => {
+    const { bin } = installerLayout();
+    const updated = autoUpdatedLayout("2.153.5-577d18f");
+    expect(resolveSfEntryPoint({ PATH: bin, LOCALAPPDATA: localAppData }, clock)).toEqual([
+      updated.node,
+      ["--no-deprecation", updated.run],
+    ]);
+  });
+
+  it("accepts the legacy extensionless run script", () => {
+    const bin = path.join(root, "sf_cli", "bin");
+    write(path.join(bin, "sf.cmd"));
+    const clientBin = path.join(root, "sf_cli", "client", "bin");
+    write(path.join(clientBin, "node.exe"));
+    write(path.join(clientBin, "run"));
+    expect(resolveSfEntryPoint({ PATH: bin, LOCALAPPDATA: localAppData }, clock)).toEqual([
       path.join(clientBin, "node.exe"),
       ["--no-deprecation", path.join(clientBin, "run")],
     ]);
@@ -45,40 +94,42 @@ describe("sf entry point resolution (Windows)", () => {
 
   it("uses the npm global layout: Node running node_modules\\@salesforce\\cli\\bin\\run.js", () => {
     const npmDir = path.join(root, "npm");
-    touch(path.join(npmDir, "sf.cmd"));
+    write(path.join(npmDir, "sf.cmd"));
     const runJs = path.join(npmDir, "node_modules", "@salesforce", "cli", "bin", "run.js");
-    touch(runJs);
+    write(runJs);
+    expect(resolveSfEntryPoint({ PATH: npmDir, LOCALAPPDATA: localAppData }, clock)).toEqual([
+      process.execPath,
+      [runJs],
+    ]);
+  });
 
-    expect(resolveSfEntryPoint(npmDir, 2)).toEqual([process.execPath, [runJs]]);
+  it("picks the first sf.cmd on PATH, matching what a shell would run", () => {
+    const { bin, node, run } = installerLayout();
+    const npmDir = path.join(root, "npm");
+    write(path.join(npmDir, "sf.cmd"));
+    write(path.join(npmDir, "node_modules", "@salesforce", "cli", "bin", "run.js"));
+    const env = { PATH: [bin, npmDir].join(path.delimiter), LOCALAPPDATA: localAppData };
+    expect(resolveSfEntryPoint(env, clock)).toEqual([node, ["--no-deprecation", run]]);
   });
 
   it("returns null when no sf.cmd is on PATH", () => {
-    expect(resolveSfEntryPoint(path.join(root, "missing"), 3)).toBeNull();
+    expect(
+      resolveSfEntryPoint({ PATH: path.join(root, "missing"), LOCALAPPDATA: localAppData }, clock),
+    ).toBeNull();
   });
 });
 
 describe("sfCommand", () => {
   it("never routes through cmd.exe, and keeps user arguments as single args", () => {
     setPlatform("win32");
-    const bin = path.join(root, "sf_cli", "bin");
-    touch(path.join(bin, "sf.cmd"));
-    const clientBin = path.join(root, "sf_cli", "client", "bin");
-    touch(path.join(clientBin, "node.exe"));
-    touch(path.join(clientBin, "run"));
+    const { bin, node, run } = installerLayout();
     process.env.PATH = bin;
 
     const target = "src\\classes & calc.cls";
     const [file, args] = sfCommand(["code-analyzer", "run", "--target", target]);
-    expect(file).toBe(path.join(clientBin, "node.exe"));
+    expect(file).toBe(node);
     expect(file.toLowerCase()).not.toContain("cmd");
-    expect(args).toEqual([
-      "--no-deprecation",
-      path.join(clientBin, "run"),
-      "code-analyzer",
-      "run",
-      "--target",
-      target,
-    ]);
+    expect(args).toEqual(["--no-deprecation", run, "code-analyzer", "run", "--target", target]);
   });
 
   it("falls back to plain sf when no entry point is found, so the error stays honest", () => {
@@ -96,25 +147,21 @@ describe("sfCommand", () => {
 describe("buildCodeAnalyzerExec", () => {
   it("routes sf through the resolved entry point and leaves other commands alone on Windows", async () => {
     setPlatform("win32");
-    const bin = path.join(root, "sf_cli", "bin");
-    touch(path.join(bin, "sf.cmd"));
-    const clientBin = path.join(root, "sf_cli", "client", "bin");
-    touch(path.join(clientBin, "node.exe"));
-    touch(path.join(clientBin, "run"));
+    const { bin, node, run } = installerLayout();
     process.env.PATH = bin;
 
     const exec = vi.fn(async () => ({ stdout: "", stderr: "", code: 0, killed: false }));
     const pi = { exec } as unknown as Parameters<typeof buildCodeAnalyzerExec>[0];
-    const run = buildCodeAnalyzerExec(pi);
+    const runExec = buildCodeAnalyzerExec(pi);
 
-    await run("sf", ["--version"], { timeout: 1000 });
+    await runExec("sf", ["--version"], { timeout: 1000 });
     expect(exec).toHaveBeenLastCalledWith(
-      path.join(clientBin, "node.exe"),
-      ["--no-deprecation", path.join(clientBin, "run"), "--version"],
+      node,
+      ["--no-deprecation", run, "--version"],
       expect.objectContaining({ timeout: 1000 }),
     );
 
-    await run("java", ["-version"]);
+    await runExec("java", ["-version"]);
     expect(exec).toHaveBeenLastCalledWith("java", ["-version"], expect.anything());
   });
 });

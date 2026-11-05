@@ -302,7 +302,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4570
+    "srcLoc": 4603
   },
   {
     "id": "sf-data-explorer",
