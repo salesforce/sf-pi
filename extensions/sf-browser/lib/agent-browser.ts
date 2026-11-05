@@ -6,6 +6,8 @@
  * the single default SF Browser session, output redaction, and actionable
  * install/launch errors.
  */
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { BROWSER_LAUNCH_RECOVERY, isBrowserLaunchFailure } from "./browser-launch-diagnostics.ts";
 import {
@@ -36,6 +38,25 @@ export interface AgentBrowserResult {
   durationText: string;
 }
 
+/**
+ * Windows: Node cannot spawn the `agent-browser.cmd` shim directly. Prefer the
+ * native npm-installed exe (no shell, so `&` in URLs is safe); otherwise fall
+ * back to `cmd.exe /d /c agent-browser …`. Other platforms are unchanged.
+ */
+export function resolveAgentBrowserInvocation(command: string, args: string[]): [string, string[]] {
+  if (process.platform !== "win32" || command !== "agent-browser") return [command, args];
+  const nativeExe = path.join(
+    process.env.APPDATA ?? "",
+    "npm",
+    "node_modules",
+    "agent-browser",
+    "bin",
+    "agent-browser-win32-x64.exe",
+  );
+  if (process.env.APPDATA && existsSync(nativeExe)) return [nativeExe, args];
+  return ["cmd.exe", ["/d", "/c", command, ...args]];
+}
+
 export async function runAgentBrowser(
   pi: ExtensionAPI,
   args: string[],
@@ -44,22 +65,19 @@ export async function runAgentBrowser(
   const stopTimer = startTimer();
   let result: Awaited<ReturnType<ExtensionAPI["exec"]>>;
   try {
-    result = await pi.exec(
-      "agent-browser",
-      [
-        "--session",
-        SF_BROWSER_SESSION,
-        "--session-name",
-        SF_BROWSER_SESSION,
-        ...(options.extraGlobalArgs ?? []),
-        ...args,
-      ],
-      {
-        cwd: options.cwd,
-        signal: options.signal,
-        timeout: options.timeoutMs ?? DEFAULT_AGENT_BROWSER_TIMEOUT_MS,
-      },
-    );
+    const [file, fileArgs] = resolveAgentBrowserInvocation("agent-browser", [
+      "--session",
+      SF_BROWSER_SESSION,
+      "--session-name",
+      SF_BROWSER_SESSION,
+      ...(options.extraGlobalArgs ?? []),
+      ...args,
+    ]);
+    result = await pi.exec(file, fileArgs, {
+      cwd: options.cwd,
+      signal: options.signal,
+      timeout: options.timeoutMs ?? DEFAULT_AGENT_BROWSER_TIMEOUT_MS,
+    });
   } catch (error) {
     throw new Error(formatAgentBrowserError("", errorMessage(error), -1), { cause: error });
   }
@@ -78,7 +96,8 @@ export async function runAgentBrowser(
 
 export async function checkAgentBrowser(pi: ExtensionAPI, cwd: string): Promise<string> {
   const status = await detectBrowserRuntimeStatus(async (command, args, options) => {
-    const result = await pi.exec(command, args, {
+    const [file, fileArgs] = resolveAgentBrowserInvocation(command, args);
+    const result = await pi.exec(file, fileArgs, {
       cwd,
       timeout: options?.timeout ?? 15_000,
     });
