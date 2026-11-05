@@ -14,7 +14,7 @@ export type FinWorkspaceKind = "test" | "prod";
 
 interface WorkspacesShape {
   active?: string;
-  workspaces?: Record<string, { kind?: FinWorkspaceKind }>;
+  workspaces?: Record<string, { kind?: FinWorkspaceKind; appId?: string }>;
 }
 
 function store(pathOverride?: string) {
@@ -49,4 +49,18 @@ export function finWorkspaceForMcpServer(serverName: string): string {
   return serverName.startsWith("intercom_")
     ? serverName.slice("intercom_".length).replace(/_/g, "-")
     : "default";
+}
+
+/**
+ * Workspace whose verified app id matches a Fin admin app id, or undefined
+ * when no workspace has proved that app. Used to bind browser commits on Fin
+ * admin pages to their workspace.
+ */
+export function finWorkspaceForAppId(
+  appId: string | undefined,
+  pathOverride?: string,
+): string | undefined {
+  if (!appId) return undefined;
+  const workspaces = store(pathOverride).read().workspaces ?? {};
+  return Object.entries(workspaces).find(([, profile]) => profile.appId === appId)?.[0];
 }

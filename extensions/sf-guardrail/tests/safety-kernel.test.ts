@@ -907,6 +907,78 @@ describe("Safety Kernel", () => {
     }
   });
 
+  it("binds Fin admin browser commits to the Fin workspace that proved the app id", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-admin-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      const state = path.join(agentDir, "sf-pi", "sf-fin");
+      const { mkdirSync } = await import("node:fs");
+      mkdirSync(state, { recursive: true });
+      writeFileSync(
+        path.join(state, "workspaces.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          state: {
+            active: "default",
+            workspaces: {
+              default: { name: "default", kind: "test", appId: "tst111" },
+              prod: { name: "prod", kind: "prod", appId: "prd222" },
+            },
+          },
+        }),
+      );
+      const native = { mode: "native" as const, nativeFamilies: ["browser" as const] };
+      const clickOn = async (appId: string, sessionId: string) => {
+        // A Salesforce org recorded earlier in the same browser session must not
+        // be blamed for a click on a Fin admin page.
+        recordBrowserSessionTargetOrg(sessionId, "some-sandbox");
+        writeLatestBrowserSnapshotRefs({
+          sessionId,
+          snapshot: '- button "Publish" [ref=e7]',
+          url: `https://app.intercom.com/a/apps/${appId}/settings/app-settings/data-connectors`,
+        });
+        return evaluateSafety({
+          toolName: "sf_browser_click",
+          input: { ref: "@e7", reason: "publish connector" },
+          cwd: "/project",
+          config: readBundledConfig(),
+          sessionId,
+        });
+      };
+
+      const test = await clickOn("tst111", "fin-admin-test");
+      expect(test).toMatchObject({
+        action: "confirm",
+        ruleId: "native-sf-browser-fin-admin-commit",
+        finWorkspaceKind: "test",
+      });
+      expect(test?.orgAlias).toBeUndefined();
+      expect(test?.approvalScope?.allowSession).toBe(false);
+      expect(test?.approvalScope?.fingerprint).toContain("fin-workspace=default");
+      expect(test?.approvalScope?.detail).toContain("page=data-connectors");
+      expect(shouldPowerToolAutoApprove(test!, native)).toBe(true);
+
+      for (const [appId, label] of [
+        ["prd222", "prod"],
+        ["unknown9", "app:unknown9"],
+      ] as const) {
+        const decision = await clickOn(appId, `fin-admin-${label}`);
+        expect(decision?.ruleId).toBe("native-sf-browser-fin-admin-commit");
+        expect(decision?.approvalScope?.allowSession).toBe(false);
+        expect(decision?.approvalScope?.fingerprint).toContain(`fin-workspace=${label}`);
+        expect(shouldPowerToolAutoApprove(decision!, native)).toBe(false);
+        expect(shouldPowerToolAutoApprove(decision!, { ...native, productionUnknown: true })).toBe(
+          true,
+        );
+      }
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
   it("treats the first sf_fin sdk call as a Fin SDK enable; enabled workspaces stay prompt-free", async () => {
     const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-sdk-"));
     const previous = process.env.PI_CODING_AGENT_DIR;

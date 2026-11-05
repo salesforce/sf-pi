@@ -217,6 +217,17 @@ export async function handleCommand(
           : service.workspace({ operation: "list" });
     return emit(ctx, "SF Fin workspaces", result.text, result.ok ? "info" : "warning", fromPanel);
   }
+  if (sub === "admin") {
+    const op = parts[1] === "sign-in" ? "sign_in" : parts[1];
+    const operation = op === "open" || op === "read" || op === "sign_in" ? op : "pages";
+    const result = await service.admin({
+      operation,
+      page: parts[2],
+      workspace: parts[3],
+      cwd: ctx.cwd,
+    });
+    return emit(ctx, "SF Fin admin", result.text, result.ok ? "info" : "warning", fromPanel);
+  }
   if (sub === "connect" && parts[1] === "agent") return connectAgent(ctx, fromPanel);
   if (sub === "disconnect" && parts[1] === "agent") return disconnectAgent(ctx, fromPanel);
   if (sub === "connect") return connect(ctx, fromPanel);

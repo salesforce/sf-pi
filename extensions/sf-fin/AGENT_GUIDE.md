@@ -46,6 +46,14 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 - `operation='capabilities'` lists the procedures a test user can trigger. It creates no conversation.
 - `operation='run'` starts a real Fin conversation and returns the transcript and whether Fin answered (`answered` or `timed_out`). It takes `procedure_id` (or `message` to ask Fin) plus scripted `replies`. Asking is one-shot: one answer, with no follow-ups. A procedure run sends each scripted reply after each Fin turn. It is Guardrail-mediated, because a conversation Fin resolves is a billable outcome. The procedure must be live and available on the Fin Agent API channel with an API trigger.
 
+## Fin admin pages
+
+- `sf_fin action='admin' operation='pages'` lists the verified pages. `operation='read' page=<id>` opens one for the workspace's verified app and returns a masked summary; `operation='open'` only navigates, for follow-up `sf_browser_snapshot` work.
+- `signed_out`: ask the user to run `/sf-fin admin sign-in` (or call `operation='sign_in'`, which opens a window) and sign in themselves. Never type a Fin email or password, and never fill the sign-in form.
+- `app_mismatch`: the browser is signed in to another Fin app. Do not continue; tell the user.
+- On secret pages (agent-api, api-tokens, workspace-tokens), never click reveal, copy, or show controls to obtain a key, and never ask for one in chat. The user copies keys into `/sf-fin connect agent` or `/login sf-fin`.
+- This release reads Fin admin pages only. Do not click buttons that change Fin (generate, publish, go live, connect, revoke, save); SF Guardrail treats them as Fin workspace commits.
+
 ## Recovery
 
 | Outcome             | Next step                                                                             |
@@ -68,4 +76,5 @@ Install plan outcomes:
 - Never ask the user to paste a token into chat, and never run `intercom auth login` yourself. `/login sf-fin` is the only credential entry path.
 - Do not run the Fin CLI or `npm install -g @intercom/cli` directly through `bash`. Use `sf_fin`, which keeps the token out of argv and the user's own CLI config, pins exact versions, and routes installs through SF Guardrail.
 - `allow_mutation=true` states intent; it is not approval. Never claim an install was approved unless the tool result shows it ran.
+- `sf_fin action='admin'` never changes Fin; it navigates and reads masked page text.
 - `sf_fin` changes only Fin-as-code resources: procedure drafts, simulations, publish/pause, paused guidance and its state, draft data connectors, and Fin Agent API test conversations. It changes no other workspace configuration, and never publishes a data connector.

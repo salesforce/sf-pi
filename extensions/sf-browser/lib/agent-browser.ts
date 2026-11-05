@@ -17,6 +17,7 @@ import {
   detectBrowserRuntimeStatus,
   writeCachedBrowserRuntimeStatus,
 } from "../../../lib/common/browser-runtime-status/store.ts";
+import { maskFinSecrets } from "../../../lib/common/fin-admin-surface.ts";
 import { redactText } from "./redaction.ts";
 import { startTimer } from "./timing.ts";
 
@@ -64,8 +65,11 @@ export async function runAgentBrowser(
   }
 
   const duration = stopTimer();
-  const stdout = redactText(result.stdout ?? "");
-  const stderr = redactText(result.stderr ?? "");
+  // Every byte agent-browser returns is redacted (Salesforce session URLs) and
+  // masked (secret-shaped values, such as Fin admin keys and tokens) before
+  // any SF Pi tool, artifact, or log can see it.
+  const stdout = maskFinSecrets(redactText(result.stdout ?? ""));
+  const stderr = maskFinSecrets(redactText(result.stderr ?? ""));
   if (result.code !== 0) {
     throw new Error(formatAgentBrowserError(stdout, stderr, result.code));
   }

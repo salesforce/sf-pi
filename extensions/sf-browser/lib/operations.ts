@@ -24,6 +24,7 @@ import {
   planEvidenceCapture,
 } from "./artifacts.ts";
 import { routeFromInput } from "./navigation-intent.ts";
+import { checkFinSecretSurface, FIN_SECRET_SURFACE_MESSAGE } from "./fin-admin-guard.ts";
 import { dismissAmbientOverlays } from "./overlay-dismissal.ts";
 import { getSetupDestination, getSetupDestinationByPath } from "./setup-destinations.ts";
 import { redactText, redactUrl } from "./redaction.ts";
@@ -263,6 +264,32 @@ export async function captureEvidence(
     scrolledToRef = input.scrollToRef;
   }
 
+  // Never capture a Fin admin page that can show a secret. Checked last, right
+  // before the capture, from the URL the browser reports (not from input).
+  const finSecret = await checkFinSecretSurface(pi, ctx.cwd, signal);
+  if (finSecret.blocked) {
+    const duration = stopTimer();
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: okText([
+            "Screenshot not taken.",
+            `${FIN_SECRET_SURFACE_MESSAGE} (${finSecret.reason})`,
+            `Duration: ${duration.durationText}`,
+          ]),
+        },
+      ],
+      details: {
+        ok: false,
+        code: "fin-secret-surface",
+        reason: finSecret.reason,
+        sessionId,
+        label: planned.label,
+        ...duration,
+      },
+    };
+  }
   await runAgentBrowser(
     pi,
     ["screenshot", planned.path, ...(input.ifChanged ? ["--if-changed"] : [])],

@@ -22,32 +22,33 @@ For Fin as code, SF Fin authors and tests procedures (validation, draft upload, 
 
 ## Commands
 
-| Command                                             | Purpose                                                   |
-| --------------------------------------------------- | --------------------------------------------------------- |
-| `/sf-fin`                                           | Open SF Fin in the SF Pi Manager                          |
-| `/sf-fin connect`                                   | Prefill native `/login sf-fin`                            |
-| `/sf-fin disconnect`                                | Prefill native `/logout sf-fin`                           |
-| `/sf-fin status`                                    | Print cached credential, region, CLI, and doctor result   |
-| `/sf-fin install [version]`                         | Install or update the Fin CLI after confirmation          |
-| `/sf-fin doctor`                                    | Live read-only checks                                     |
-| `/sf-fin debug`                                     | Redacted support bundle                                   |
-| `/sf-fin debug on [runs]`                           | Trace the next doctor run(s) with the CLI's `--verbose`   |
-| `/sf-fin debug off`                                 | Disarm verbose tracing                                    |
-| `/sf-fin sdk [manifest]`                            | Summarize Fin-as-code resources (enables the SDK once)    |
-| `/sf-fin sdk download`                              | Download and extract all Fin SDK resources locally        |
-| `/sf-fin sdk validate <file>`                       | Check a procedure.yaml against the workspace schema       |
-| `/sf-fin sdk upload <file>`                         | Upload an unpublished draft; verify the saved copy        |
-| `/sf-fin sdk upload_simulations <file>`             | Upload a simulation set for a procedure                   |
-| `/sf-fin sdk simulate <id>`                         | Generate (optional) and run simulations, with results     |
-| `/sf-fin sdk publish <id>`                          | Set a procedure live after confirmation                   |
-| `/sf-fin sdk pause <id>`                            | Take a live procedure offline after confirmation          |
-| `/sf-fin sdk create_data_connector <name>`          | Create a named draft data connector                       |
-| `/sf-fin sdk guidance_state <id> live\|paused`      | Set guidance live or paused after confirmation            |
-| `/sf-fin surfaces`                                  | Compare Fin CLI, Intercom MCP, and Fin Agent API          |
-| `/sf-fin agent`                                     | Check Fin Agent API access                                |
-| `/sf-fin setup [workspace] [build\|operator\|test]` | What is set up, what it unlocks, and only what is missing |
-| `/sf-fin workspace [list\|add\|use\|remove]`        | Named workspaces, each with its own sign-ins              |
-| `/sf-fin help`                                      | Print setup guidance                                      |
+| Command                                             | Purpose                                                                        |
+| --------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `/sf-fin`                                           | Open SF Fin in the SF Pi Manager                                               |
+| `/sf-fin connect`                                   | Prefill native `/login sf-fin`                                                 |
+| `/sf-fin disconnect`                                | Prefill native `/logout sf-fin`                                                |
+| `/sf-fin status`                                    | Print cached credential, region, CLI, and doctor result                        |
+| `/sf-fin install [version]`                         | Install or update the Fin CLI after confirmation                               |
+| `/sf-fin doctor`                                    | Live read-only checks                                                          |
+| `/sf-fin debug`                                     | Redacted support bundle                                                        |
+| `/sf-fin debug on [runs]`                           | Trace the next doctor run(s) with the CLI's `--verbose`                        |
+| `/sf-fin debug off`                                 | Disarm verbose tracing                                                         |
+| `/sf-fin sdk [manifest]`                            | Summarize Fin-as-code resources (enables the SDK once)                         |
+| `/sf-fin sdk download`                              | Download and extract all Fin SDK resources locally                             |
+| `/sf-fin sdk validate <file>`                       | Check a procedure.yaml against the workspace schema                            |
+| `/sf-fin sdk upload <file>`                         | Upload an unpublished draft; verify the saved copy                             |
+| `/sf-fin sdk upload_simulations <file>`             | Upload a simulation set for a procedure                                        |
+| `/sf-fin sdk simulate <id>`                         | Generate (optional) and run simulations, with results                          |
+| `/sf-fin sdk publish <id>`                          | Set a procedure live after confirmation                                        |
+| `/sf-fin sdk pause <id>`                            | Take a live procedure offline after confirmation                               |
+| `/sf-fin sdk create_data_connector <name>`          | Create a named draft data connector                                            |
+| `/sf-fin sdk guidance_state <id> live\|paused`      | Set guidance live or paused after confirmation                                 |
+| `/sf-fin surfaces`                                  | Compare Fin CLI, Intercom MCP, and Fin Agent API                               |
+| `/sf-fin agent`                                     | Check Fin Agent API access                                                     |
+| `/sf-fin setup [workspace] [build\|operator\|test]` | What is set up, what it unlocks, and only what is missing                      |
+| `/sf-fin workspace [list\|add\|use\|remove]`        | Named workspaces, each with its own sign-ins                                   |
+| `/sf-fin admin [sign-in\|open <page>\|read <page>]` | Verified Fin admin pages in the SF Pi browser (masked, navigate and read only) |
+| `/sf-fin help`                                      | Print setup guidance                                                           |
 
 The agent uses the same operations through `sf_fin`. `sf_fin action='install'`
 returns a plan; executing it requires `allow_mutation=true` and is mediated by
@@ -96,10 +97,37 @@ For Fin Agent API runs (optional):
 `FIN_AGENT_API_KEY` is the automation fallback for the Fin Agent API key.
 `INTERCOM_APP_ID` is forwarded only for legacy Basic-auth API keys.
 
+### Fin admin pages
+
+Some Fin setup has no API: Agent API keys, Help Center sites, data connector
+publishing, and the Salesforce connection. `/sf-fin admin` opens these pages
+in the shared SF Pi browser. This release navigates and reads; it changes
+nothing in Fin.
+
+1. Run `/sf-fin admin sign-in`. A browser window opens on your region's Fin
+   sign-in page. Sign in yourself and tick **Keep me signed in**. SF Pi never
+   types or reads your password. The browser's saved-login file is created
+   owner-only (`0600`).
+2. Run `/sf-fin admin` to list the verified pages, then `/sf-fin admin read <page>`
+   (or `open <page>`).
+
+Every page is opened for the app id that `/sf-fin setup` verified for the
+workspace, and SF Fin checks after loading that the browser really shows that
+app. It refuses if it lands somewhere else.
+
 ## Safety and Data Boundaries
 
 - Pi alone persists the token under provider id `sf-fin`; `/logout sf-fin`
   removes it. SF Fin writes no other secret store.
+- Fin admin pages: all browser text is masked before SF Pi sees it (secret-labelled
+  values and key-shaped strings become `<masked>`). Pages that can show a key
+  (Agent API, API tokens, workspace tokens), and any page with an open key
+  dialog, never get screenshots or editor reads. Keys reach Pi only when you
+  copy them yourself into a masked `/login` prompt.
+- A committing click on a Fin admin page is bound to the Fin workspace that
+  proved that app id (`native-sf-browser-fin-admin-commit`), not to a Salesforce
+  org. It is never session-approved, and an unverified or `prod` app needs the
+  production opt-in under Power Tool Mode.
 - The token reaches the CLI only through an allowlisted child-process
   environment, never command-line arguments.
 - The CLI runs with an SF Pi-private `INTERCOM_CONFIG_DIR`, so your own Fin CLI

@@ -110,3 +110,18 @@ The Fin Agent API key follows the same rules as the personal token: a masked Pi-
 - **Production workspaces:** SF Guardrail binds every SF Fin and Intercom MCP mutation to its workspace (`fin-workspace=<name>` in the fingerprint).
   - A `prod` or unknown workspace is production-like: no session approval, and Power Tool Mode needs the `productionUnknown` opt-in, the same rule as production Salesforce orgs.
   - Guardrail reads only workspace kinds, from a credential-free shared view (`lib/common/fin-workspaces-state.ts`).
+
+## Addendum: Fin admin pages in the shared browser
+
+Some Fin setup exists only in the web admin. SF Fin drives those pages in the shared SF Pi browser session, with these rules:
+
+- **Human sign-in only.** `admin sign_in` relaunches the shared session in a visible window on the region's sign-in page. SF Pi never types, reads, or stores a Fin password. The launch runs under `umask 077`, so the browser's saved-login file and daemon files are owner-only. Arguments pass through `"$@"`, never into the shell string.
+- **Verified pages, bound to the workspace's app.** Only pages observed live from the admin navigation are opened, and only for the app id and region the workspace profile proved. After navigation, SF Fin re-reads the URL and refuses a different app or region, the sign-in page, a non-Fin host, or a redirect. It reads the page only after its own heading renders, and checks the URL again afterwards.
+- **No secret leaves the browser through SF Pi.**
+  - `runAgentBrowser` masks every output: values after secret-labelled fields, `Bearer` credentials, and long opaque runs.
+  - Pages that can show a key (`secret: true` in `lib/common/fin-admin-surface.ts`), and any page with an open secret dialog, refuse screenshots (evidence and failure diagnostics) and editor reads. The check uses the URL the browser reports, never model input, and it fails closed when the dialog state is unreadable.
+  - Keys still reach Pi only when the human pastes them into a masked `/login` prompt.
+- **Guardrail binding.** A committing click on a Fin admin page is classified as `native-sf-browser-fin-admin-commit` and bound to the workspace whose verified app id matches. It is never blamed on a Salesforce org recorded earlier in the same browser session.
+  - It is never session-approved.
+  - A `test` workspace follows Power Tool Mode's browser family. A `prod` workspace, or an app no workspace has verified, needs the production opt-in.
+- **Scope.** This release navigates and reads only. Runbooks that change Fin (generate a key when none exists, publish a connector draft, turn a Help Center live, set the Agent API webhook, connect Salesforce) are separate work under the same rules.

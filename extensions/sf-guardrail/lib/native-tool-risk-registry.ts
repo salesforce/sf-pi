@@ -13,7 +13,11 @@ import {
 } from "../../../lib/common/sf-browser-snapshot-state.ts";
 import { inferNonProductionOrgTypeFromUrl } from "../../../lib/common/sf-environment/org-type.ts";
 import { readFinSdkState } from "../../../lib/common/fin-sdk-state.ts";
-import { finWorkspaceKind } from "../../../lib/common/fin-workspaces-state.ts";
+import { finAdminLocation } from "../../../lib/common/fin-admin-surface.ts";
+import {
+  finWorkspaceForAppId,
+  finWorkspaceKind,
+} from "../../../lib/common/fin-workspaces-state.ts";
 import { fingerprintText } from "./fingerprint.ts";
 import { classifySfMcpConfiguration } from "./sf-mcp-config-risk.ts";
 import { classifySfMcpRisk } from "./mcp-tool-risk.ts";
@@ -815,7 +819,8 @@ function classifySfBrowserCommit(
   const snapshotSignal = snapshotCommitSignal(snapshotLookup);
   const browserSession =
     snapshotLookup?.session ?? findLatestBrowserSnapshotSession(context.sessionId);
-  const targetOrg = browserSession?.targetOrg;
+  const finAdmin = finAdminLocation(browserSession?.url);
+  const targetOrg = finAdmin ? undefined : browserSession?.targetOrg;
   const targetOrgType = targetOrg
     ? undefined
     : inferNonProductionOrgTypeFromUrl(browserSession?.url);
@@ -848,6 +853,20 @@ function classifySfBrowserCommit(
     }),
   );
 
+  if (finAdmin) {
+    return finAdminBrowserCommit({
+      toolName,
+      action,
+      targetLabel,
+      source,
+      payloadFingerprint,
+      appId: finAdmin.appId,
+      page: finAdmin.page ?? finAdmin.appPath ?? "sign-in",
+      snapshotLabel: snapshotRef?.label,
+      reason,
+    });
+  }
+
   return {
     kind: "nativeTool",
     toolName,
@@ -878,6 +897,60 @@ function classifySfBrowserCommit(
     targetOrgType,
     targetOrgResolutionSource: targetOrgType ? "url" : undefined,
     targetOrgUnverified: !targetOrg && !targetOrgType,
+    allowSession: false,
+  };
+}
+
+/**
+ * A committing click on a Fin admin page changes the Fin workspace, not a
+ * Salesforce org. Bind it to the workspace that proved this app id; an app no
+ * workspace has proved is "unknown", which is treated like production. Never
+ * session-approved, the same as Salesforce browser commits.
+ */
+function finAdminBrowserCommit(input: {
+  toolName: string;
+  action: string;
+  targetLabel: string;
+  source: string;
+  payloadFingerprint: string;
+  appId?: string;
+  page: string;
+  snapshotLabel?: string;
+  reason?: string;
+}): NativeToolSafetySubject {
+  const workspaceName = finWorkspaceForAppId(input.appId);
+  const workspace = workspaceName
+    ? finWorkspaceKind(workspaceName)
+    : { name: `app:${input.appId ?? "none"}`, kind: "unknown" as const };
+  const production = workspace.kind !== "test";
+  return {
+    kind: "nativeTool",
+    toolName: input.toolName,
+    action: input.action,
+    ruleId: "native-sf-browser-fin-admin-commit",
+    subject: `${input.toolName} ${input.targetLabel} [Fin admin ${input.page}; workspace ${workspace.name}]`,
+    reason: [
+      `Fin admin browser ${input.action} appears to change the Fin workspace (${input.source}).`,
+      production
+        ? `Fin workspace "${workspace.name}" is ${workspace.kind === "prod" ? "a production workspace" : "not a verified workspace"}; treated like a production org.`
+        : undefined,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+    promptTitle: "⚠ Fin admin browser commit",
+    operationFamily: "browser commit",
+    riskTier: "browser_commit_exact",
+    fingerprint: `fin-workspace=${workspace.name}|${input.toolName}|${input.action}|${input.payloadFingerprint}`,
+    approvalLabel: `Fin admin ${input.action} ${input.targetLabel}`,
+    approvalDetail: [
+      input.reason ? `reason=${input.reason}` : undefined,
+      input.snapshotLabel ? `snapshot_label=${input.snapshotLabel}` : undefined,
+      `page=${input.page}`,
+      `workspace=${workspace.name} (${workspace.kind})`,
+    ]
+      .filter(Boolean)
+      .join("; "),
+    finWorkspace: workspace,
     allowSession: false,
   };
 }
