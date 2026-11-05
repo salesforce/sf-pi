@@ -38,7 +38,7 @@ import {
   type ManagerDetailAction,
   type ManagerScope,
 } from "../../lib/common/manager-actions.ts";
-import { buildCodeAnalyzerExec } from "./lib/exec.ts";
+import { buildCodeAnalyzerExec, sfCommand } from "./lib/exec.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { requirePiVersion } from "../../lib/common/pi-compat.ts";
 import { beginSalesforceConnectionSession } from "../../lib/common/sf-conn/index.ts";
@@ -581,11 +581,7 @@ async function setupCodeAnalyzerPlugin(
   const command = "sf plugins install code-analyzer";
   ctx.ui.setStatus("sf-code-analyzer", "Code Analyzer setup: installing plugin…");
   try {
-    const installArgs = ["plugins", "install", "code-analyzer"];
-    const [installCommand, installCommandArgs] =
-      process.platform === "win32"
-        ? ["cmd.exe", ["/d", "/c", "sf", ...installArgs]]
-        : ["sf", installArgs];
+    const [installCommand, installCommandArgs] = sfCommand(["plugins", "install", "code-analyzer"]);
     const result = await pi.exec(installCommand, installCommandArgs, {
       cwd: ctx.cwd,
       timeout: 180_000,
