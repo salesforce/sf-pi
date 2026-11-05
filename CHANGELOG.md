@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.352.1](https://github.com/salesforce/sf-pi/compare/v0.352.0...v0.352.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **sf-fin:** leave Fin before clearing the admin sign-in from the browser ([#885](https://github.com/salesforce/sf-pi/issues/885)) ([8cd85f7](https://github.com/salesforce/sf-pi/commit/8cd85f77efd55204a366fbf3dba2fa4a9c1299be))
+
 ## [0.352.0](https://github.com/salesforce/sf-pi/compare/v0.351.0...v0.352.0) (2026-11-05)
 
 
