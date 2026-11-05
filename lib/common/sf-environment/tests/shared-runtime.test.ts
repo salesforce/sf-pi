@@ -24,6 +24,11 @@ vi.mock("../../sf-conn/index.ts", () => ({
   getCachedSalesforceTarget: (options: unknown) => getCachedSalesforceTargetMock(options),
   clearSalesforceConnectionCache: vi.fn(),
 }));
+// Keep fixtures keyed on `sf --version` on every OS: on win32, detectCli would
+// otherwise resolve the real sf entry point from this machine's PATH.
+vi.mock("../../sf-invocation.ts", () => ({
+  sfCommand: (args: string[]) => ["sf", args],
+}));
 
 import {
   clearSharedSfEnvironment,

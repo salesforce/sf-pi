@@ -25,6 +25,7 @@ import path from "node:path";
 // the Salesforce SDK or contact an org on the boot path.
 import type { ConfigAggregator as ConfigAggregatorClass } from "@salesforce/core";
 import { connectSalesforce, getCachedSalesforceTarget } from "../sf-conn/index.ts";
+import { sfCommand } from "../sf-invocation.ts";
 
 const DETECT_ORG_TIMEOUT_MS = 10_000;
 
@@ -78,9 +79,23 @@ export type ExecFn = (
 // 1. CLI detection
 // -------------------------------------------------------------------------------------------------
 
-export async function detectCli(exec: ExecFn): Promise<CliInfo> {
+export interface DetectCliOptions {
+  /** Defaults to `process.platform`; injectable for tests. */
+  platform?: NodeJS.Platform;
+  /** Maps `sf` args to a spawnable `[file, args]`; defaults to `sfCommand`. */
+  resolveSf?: (args: string[]) => [string, string[]];
+}
+
+export async function detectCli(exec: ExecFn, options: DetectCliOptions = {}): Promise<CliInfo> {
   try {
-    const result = await exec("sf", ["--version"], { timeout: 10_000 });
+    // Windows: `sf` is a .cmd shim that cannot be spawned without a shell, so
+    // run the resolved Node entry point instead. Other platforms are unchanged.
+    const platform = options.platform ?? process.platform;
+    const [file, args] =
+      platform === "win32"
+        ? (options.resolveSf ?? sfCommand)(["--version"])
+        : ["sf", ["--version"]];
+    const result = await exec(file, args, { timeout: 10_000 });
     if (result.code !== 0) {
       return { installed: false };
     }
@@ -322,6 +337,8 @@ export function inferOrgType(info: OrgTypeSignals): OrgType {
 export interface DetectEnvironmentOptions {
   /** Recreate the resolved target Org instead of reusing the shared connection cache. */
   freshOrgConnection?: boolean;
+  /** Platform and `sf` resolver for CLI detection; injectable for tests. */
+  cli?: DetectCliOptions;
 }
 
 export async function detectEnvironment(
@@ -330,7 +347,7 @@ export async function detectEnvironment(
   options: DetectEnvironmentOptions = {},
 ): Promise<SfEnvironment> {
   // Layer 1: CLI (subprocess — only honest answer to "is sf on PATH?")
-  const cli = await detectCli(exec);
+  const cli = await detectCli(exec, options.cli);
 
   if (!cli.installed) {
     return {

@@ -34,6 +34,9 @@ function createExec(
   };
 }
 
+/** Pin CLI detection to a non-Windows platform so fixtures keyed on `sf ...` hold on any OS. */
+const POSIX = { platform: "linux" as const };
+
 function stubFetchLatest(version: string | undefined): SfCliFetchLatestFn {
   return async () => version;
 }
@@ -60,6 +63,8 @@ describe("detectSfCliStatus", () => {
         "sf --version": { stdout: "@salesforce/cli/2.132.14 darwin-arm64\n" },
       }),
       stubFetchLatest("2.132.14"),
+      process.env,
+      POSIX,
     );
 
     expect(status).toEqual({
@@ -77,6 +82,8 @@ describe("detectSfCliStatus", () => {
         "sf --version": { stdout: "@salesforce/cli/2.132.14 darwin-arm64\n" },
       }),
       stubFetchLatest("2.133.0"),
+      process.env,
+      POSIX,
     );
 
     expect(status.freshness).toBe("update-available");
@@ -97,6 +104,8 @@ describe("detectSfCliStatus", () => {
         fetchCalls += 1;
         return "2.133.0";
       },
+      process.env,
+      POSIX,
     );
 
     expect(status).toEqual({ installed: false, freshness: "unknown", loading: false });
@@ -115,6 +124,7 @@ describe("detectSfCliStatus", () => {
         return "2.133.0";
       },
       { PI_OFFLINE: "1" },
+      POSIX,
     );
 
     expect(status).toMatchObject({
@@ -139,6 +149,7 @@ describe("detectSfCliStatus", () => {
         return "2.133.0";
       },
       { PI_SKIP_VERSION_CHECK: "1" },
+      POSIX,
     );
 
     expect(status).toMatchObject({
@@ -157,6 +168,8 @@ describe("detectSfCliStatus", () => {
         "sf --version": { stdout: "@salesforce/cli/2.132.14 darwin-arm64\n" },
       }),
       stubFetchLatest(undefined),
+      process.env,
+      POSIX,
     );
 
     expect(status).toEqual({
@@ -165,5 +178,34 @@ describe("detectSfCliStatus", () => {
       freshness: "unknown",
       loading: false,
     });
+  });
+
+  it("on Windows, runs the resolved sf entry point instead of the sf.cmd shim", async () => {
+    const calls: string[] = [];
+    const status = await detectSfCliStatus(
+      createExec(
+        { "node.exe run.js --version": { stdout: "@salesforce/cli/2.157.8 win32-x64\n" } },
+        calls,
+      ),
+      stubFetchLatest("2.157.8"),
+      {},
+      { platform: "win32", resolveSf: (args) => ["node.exe", ["run.js", ...args]] },
+    );
+
+    expect(calls).toEqual(["node.exe run.js --version"]);
+    expect(status.installed).toBe(true);
+    expect(status.installedVersion).toBe("2.157.8");
+  });
+
+  it("keeps running plain sf on non-Windows platforms", async () => {
+    const calls: string[] = [];
+    await detectSfCliStatus(
+      createExec({ "sf --version": { stdout: "@salesforce/cli/2.157.8 darwin-arm64\n" } }, calls),
+      stubFetchLatest("2.157.8"),
+      {},
+      { platform: "darwin", resolveSf: () => ["unused", []] },
+    );
+
+    expect(calls).toEqual(["sf --version"]);
   });
 });

@@ -165,6 +165,9 @@ function fakeSession(opts: {
   };
 }
 
+/** Pin CLI detection to a non-Windows platform so fixtures keyed on `sf ...` hold on any OS. */
+const POSIX = { platform: "linux" as const };
+
 // -------------------------------------------------------------------------------------------------
 // detectCli
 // -------------------------------------------------------------------------------------------------
@@ -174,7 +177,7 @@ describe("detectCli", () => {
     const exec = mockExec({
       "sf --version": { stdout: "@salesforce/cli/2.130.9 darwin-arm64 node-v22.22.2\n" },
     });
-    const result = await detectCli(exec);
+    const result = await detectCli(exec, POSIX);
     expect(result.installed).toBe(true);
     expect(result.version).toBe("2.130.9");
   });
@@ -183,7 +186,7 @@ describe("detectCli", () => {
     const exec = mockExec({
       "sf --version": { stdout: "", code: 127 },
     });
-    const result = await detectCli(exec);
+    const result = await detectCli(exec, POSIX);
     expect(result.installed).toBe(false);
     expect(result.version).toBeUndefined();
   });
@@ -192,8 +195,42 @@ describe("detectCli", () => {
     const exec: ExecFn = async () => {
       throw new Error("ENOENT");
     };
-    const result = await detectCli(exec);
+    const result = await detectCli(exec, POSIX);
     expect(result.installed).toBe(false);
+  });
+
+  it("on Windows, runs the resolved sf entry point instead of the sf.cmd shim", async () => {
+    const calls: Array<[string, string[]]> = [];
+    const exec: ExecFn = async (command, args) => {
+      calls.push([command, args]);
+      if (command === "sf") return { stdout: "", stderr: "spawn sf ENOENT", code: null };
+      return { stdout: "@salesforce/cli/2.157.8 win32-x64 node-v26.13.0\n", stderr: "", code: 0 };
+    };
+    const node = path.join("C:", "sf", "client", "2.157.8", "bin", "node.exe");
+    const run = path.join("C:", "sf", "client", "2.157.8", "bin", "run.js");
+    const result = await detectCli(exec, {
+      platform: "win32",
+      resolveSf: (args) => [node, ["--no-deprecation", run, ...args]],
+    });
+    expect(calls).toEqual([[node, ["--no-deprecation", run, "--version"]]]);
+    expect(result).toEqual({ installed: true, version: "2.157.8" });
+  });
+
+  it("keeps running plain sf on non-Windows platforms", async () => {
+    const calls: Array<[string, string[]]> = [];
+    const exec: ExecFn = async (command, args) => {
+      calls.push([command, args]);
+      return {
+        stdout: "@salesforce/cli/2.157.8 darwin-arm64 node-v22.22.2\n",
+        stderr: "",
+        code: 0,
+      };
+    };
+    const resolveSf = vi.fn();
+    const result = await detectCli(exec, { platform: "darwin", resolveSf });
+    expect(calls).toEqual([["sf", ["--version"]]]);
+    expect(resolveSf).not.toHaveBeenCalled();
+    expect(result.installed).toBe(true);
   });
 });
 
@@ -522,7 +559,7 @@ describe("detectEnvironment", () => {
     const dir = createTempDir();
     createSfdxProject(dir);
 
-    const env = await detectEnvironment(exec, dir);
+    const env = await detectEnvironment(exec, dir, { cli: POSIX });
     expect(env.cli.installed).toBe(false);
     expect(env.project.detected).toBe(false);
     expect(env.config.hasTargetOrg).toBe(false);
@@ -542,7 +579,7 @@ describe("detectEnvironment", () => {
     const dir = createTempDir();
     createSfdxProject(dir);
 
-    const env = await detectEnvironment(exec, dir);
+    const env = await detectEnvironment(exec, dir, { cli: POSIX });
     expect(env.project.name).toBe("test-project");
     expect(env.config.targetOrg).toBe("TestOrg");
     expect(env.org).toMatchObject({
