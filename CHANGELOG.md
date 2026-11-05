@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.352.0](https://github.com/salesforce/sf-pi/compare/v0.351.0...v0.352.0) (2026-11-05)
+
+
+### Features
+
+* **sf-fin:** persist the Fin admin sign-in in Pi's credential store ([#883](https://github.com/salesforce/sf-pi/issues/883)) ([4b57434](https://github.com/salesforce/sf-pi/commit/4b5743487f92599b7df5f3fc3c1547cccadcb930))
+
 ## [0.351.0](https://github.com/salesforce/sf-pi/compare/v0.350.0...v0.351.0) (2026-11-05)
 
 
