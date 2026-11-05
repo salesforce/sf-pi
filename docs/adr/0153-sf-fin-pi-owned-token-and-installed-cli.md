@@ -138,6 +138,7 @@ The admin browser sign-in is persisted by Pi like the personal token and the Age
   - It captures the cookies, then clears them from the browser and closes the window on every path. Pi persists the result in `auth.json` (`0600`); `/logout` removes it.
 - **Use.** Before a Fin admin page, SF Fin restores the unexpired cookies into the browser (HttpOnly, Secure, for the region host only), and removes them after the action on every path.
   - Restoring waits for the browser to launch; removal happens before the browser can write its state file, which happens only when it closes.
+  - Removal first navigates to `about:blank`. An open Fin tab would otherwise notice the missing sign-in, redirect to the sign-in page, and get a fresh anonymous session cookie that the browser later saves.
   - Without a saved, unexpired sign-in, the browser is not touched. A rejected sign-in returns `signin_rejected` with the `/login` fix.
 - **No exposure.** Cookie values reach agent-browser only on stdin (`batch` JSON), never in argv or process listings. They are never returned to tools or logs.
 - **Never replayed outside the browser.** Sending only the remember cookie from another client makes Fin start a new-device login verification, which emails the user a code. SF Fin never replays sign-in cookies outside the shared browser, and verification codes are typed only by the user in the browser window.
