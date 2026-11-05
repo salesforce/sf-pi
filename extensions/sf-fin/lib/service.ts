@@ -4,7 +4,18 @@
  * command, Manager actions, the `sf_fin` tool, and `/sf-pi doctor`.
  */
 import {
+  browserSigninProviderId,
+  clearCommands,
+  readStoredSignin,
+  restoreCommands,
+  signinExpired,
+  type SigninBrowser,
+} from "./browser-signin.ts";
+import type { FinAdminRegion } from "../../../lib/common/fin-admin-surface.ts";
+import { createSigninBrowser } from "./signin-browser.ts";
+import {
   createAdminRunner,
+  type AdminSignin,
   runAdmin,
   type AdminRequest,
   type AdminRunner,
@@ -177,6 +188,10 @@ export interface FinServiceDeps {
   adminRunner?: AdminRunner;
   /** Test seam: wait between admin page-render polls. */
   adminSleep?: AdminSleep;
+  /** Test seam: browser used to restore and clear the saved Fin sign-in. */
+  signinBrowser?: SigninBrowser;
+  /** Test seam: reads the Pi-stored Fin sign-in for a workspace. */
+  readSignin?: (workspace: string) => ReturnType<typeof readStoredSignin>;
   /** Called after a workspace is added, so its Pi sign-ins can be registered. */
   onWorkspaceAdded?: (name: string) => void;
 }
@@ -613,7 +628,13 @@ export function createFinService(deps: FinServiceDeps): FinService {
       if (target.ok === false)
         return { ok: false, text: target.message, details: { phase: "workspace" } };
       const run = deps.adminRunner ?? createAdminRunner(deps.exec, request.cwd);
-      const result = await runAdmin(request, target.profile, run, deps.adminSleep);
+      const signin = createAdminSignin(
+        target.profile.name,
+        deps.signinBrowser ?? createSigninBrowser(),
+        deps.readSignin ?? ((name) => readStoredSignin(name)),
+      );
+      const sleep = deps.adminSleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+      const result = await runAdmin(request, target.profile, run, sleep, signin);
       return {
         ok: result.ok,
         text: result.text,
@@ -838,3 +859,33 @@ function recordAgentStatus(
 }
 
 export { detectAgentKeySource };
+
+/**
+ * Restore/clear hooks around Fin admin pages. The Pi-stored cookies go into
+ * the browser only for the duration of one admin action.
+ */
+function createAdminSignin(
+  workspace: string,
+  browser: SigninBrowser,
+  read: (workspace: string) => ReturnType<typeof readStoredSignin>,
+): AdminSignin {
+  const loginId = browserSigninProviderId(workspace);
+  let region: FinAdminRegion = "us";
+  let restored = false;
+  return {
+    loginId,
+    async restore() {
+      const stored = read(workspace);
+      if (!stored) return "none";
+      if (signinExpired(stored)) return "expired";
+      region = stored.region;
+      restored = await browser.batch(restoreCommands(stored)).catch(() => false);
+      return restored ? "restored" : "none";
+    },
+    async finish() {
+      if (!restored) return;
+      await browser.batch(clearCommands(region)).catch(() => false);
+      restored = false;
+    },
+  };
+}

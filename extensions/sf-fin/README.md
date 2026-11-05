@@ -104,12 +104,19 @@ publishing, and the Salesforce connection. `/sf-fin admin` opens these pages
 in the shared SF Pi browser. This release navigates and reads; it changes
 nothing in Fin.
 
-1. Run `/sf-fin admin sign-in`. A browser window opens on your region's Fin
-   sign-in page. Sign in yourself and tick **Keep me signed in**. SF Pi never
-   types or reads your password. The browser's saved-login file is created
-   owner-only (`0600`).
-2. Run `/sf-fin admin` to list the verified pages, then `/sf-fin admin read <page>`
-   (or `open <page>`).
+1. Run `/login sf-fin-browser` once (`/sf-fin admin sign-in` prefills it). A
+   browser window opens on your region's Fin sign-in page. Sign in yourself and
+   tick **Keep me signed in**. SF Pi never types or sees your password.
+2. When Fin shows your workspace, SF Fin saves Fin's two sign-in cookies in
+   Pi's credential store, the same place as your token and Agent API key. It
+   then removes them from the browser and closes the window.
+3. Run `/sf-fin admin` to list the verified pages, then `/sf-fin admin read <page>`
+   (or `open <page>`). No further sign-in is needed until Fin expires its
+   remember cookie, about two weeks after you signed in. Then run
+   `/login sf-fin-browser` again.
+
+Named workspaces use `/login sf-fin-browser-<name>`. `/logout sf-fin-browser`
+signs SF Pi out of the Fin admin.
 
 Every page is opened for the app id that `/sf-fin setup` verified for the
 workspace, and SF Fin checks after loading that the browser really shows that
@@ -119,6 +126,11 @@ app. It refuses if it lands somewhere else.
 
 - Pi alone persists the token under provider id `sf-fin`; `/logout sf-fin`
   removes it. SF Fin writes no other secret store.
+- The Fin admin sign-in (`sf-fin-browser`) is two Fin cookies saved by Pi. SF
+  Fin puts them into the shared browser only for the length of one admin
+  action, and removes them on every path, so the browser's own saved-state file
+  never holds a Fin sign-in. Cookie values go to the browser on stdin, never on
+  a command line, and never appear in tool output.
 - Fin admin pages: all browser text is masked before SF Pi sees it (secret-labelled
   values and key-shaped strings become `<masked>`). Pages that can show a key
   (Agent API, API tokens, workspace tokens), and any page with an open key

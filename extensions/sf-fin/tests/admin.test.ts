@@ -9,10 +9,12 @@ import {
   runAdmin,
   summarizeAdminSnapshot,
   type AdminRunner,
+  type AdminSignin,
 } from "../lib/admin.ts";
 import { createFinService } from "../lib/service.ts";
 import { addWorkspace, bindWorkspaceIdentity, createWorkspaceStore } from "../lib/workspaces.ts";
 import type { WorkspaceProfile } from "../lib/workspaces.ts";
+import type { SigninBrowser } from "../lib/browser-signin.ts";
 
 const APP = "abc123";
 const BOUND: WorkspaceProfile = { name: "default", kind: "test", appId: APP, region: "us" };
@@ -22,6 +24,33 @@ const FAKE_KEY = Buffer.from(`tok:fake_${"0123456789abcdef"}:1:0x${"fake".repeat
   "base64",
 );
 const noSleep = async () => undefined;
+/** Sign-in hooks for direct runAdmin calls: always restored, nothing to clear. */
+const SIGNED_IN: AdminSignin = {
+  loginId: "sf-fin-browser",
+  restore: async () => "restored",
+  finish: async () => undefined,
+};
+const LIVE_COOKIE = {
+  name: "remember_admin_token" as const,
+  value: `synthetic-${"r".repeat(8)}`,
+  expires: Math.floor(Date.now() / 1000) + 7 * 86400,
+};
+
+/** Fake sign-in browser: records batches; cookie values only ever go through `batch`. */
+function fakeSigninBrowser() {
+  const batches: string[][][] = [];
+  const browser: SigninBrowser = {
+    openSignIn: async () => undefined,
+    currentUrl: async () => undefined,
+    cookies: async () => [],
+    batch: async (commands) => {
+      batches.push(commands);
+      return true;
+    },
+    close: async () => undefined,
+  };
+  return { browser, batches };
+}
 
 /**
  * Fake browser: `open` navigates to `landAt(url)` (default: the same URL);
@@ -35,7 +64,9 @@ function fakeRunner(options: {
   const calls: Array<{ args: string[]; ownerOnlyFiles?: boolean }> = [];
   let current = "https://app.intercom.com/admins/sign_in";
   let snapshotIndex = 0;
-  const snapshots = options.snapshots ?? ['- heading "Fin Agent API" [level=1, ref=e1]'];
+  const snapshots = options.snapshots ?? [
+    '- heading "Fin Agent API" [level=1, ref=e1]\n- button "Manage API key" [ref=e2]',
+  ];
   const run: AdminRunner = async (args, opts) => {
     calls.push({ args, ownerOnlyFiles: opts.ownerOnlyFiles });
     const op = args[0] === "--headed" ? args.slice(1) : args;
@@ -62,6 +93,7 @@ describe("runAdmin navigation", () => {
       BOUND,
       browser.run,
       noSleep,
+      SIGNED_IN,
     );
     expect(result.ok).toBe(true);
     const opens = browser.calls.filter((call) => call.args[0] === "open");
@@ -80,6 +112,7 @@ describe("runAdmin navigation", () => {
       BOUND,
       browser.run,
       noSleep,
+      SIGNED_IN,
     );
     expect(unknown.details.code).toBe("unknown_page");
     const unbound = await runAdmin(
@@ -87,6 +120,7 @@ describe("runAdmin navigation", () => {
       { name: "staging", kind: "test" },
       browser.run,
       noSleep,
+      SIGNED_IN,
     );
     expect(unbound.details.code).toBe("app_unbound");
     expect(browser.calls).toEqual([]);
@@ -95,20 +129,41 @@ describe("runAdmin navigation", () => {
   it("fails closed when the browser lands on another app, region, or a non-Fin page", async () => {
     const otherApp = fakeRunner({ landAt: (u) => u.replace(APP, "zzz999") });
     expect(
-      (await runAdmin({ operation: "read", page: "agent-api" }, BOUND, otherApp.run, noSleep))
-        .details.code,
+      (
+        await runAdmin(
+          { operation: "read", page: "agent-api" },
+          BOUND,
+          otherApp.run,
+          noSleep,
+          SIGNED_IN,
+        )
+      ).details.code,
     ).toBe("app_mismatch");
     const otherRegion = fakeRunner({
       landAt: (u) => u.replace("app.intercom.com", "app.eu.intercom.com"),
     });
     expect(
-      (await runAdmin({ operation: "read", page: "agent-api" }, BOUND, otherRegion.run, noSleep))
-        .details.code,
+      (
+        await runAdmin(
+          { operation: "read", page: "agent-api" },
+          BOUND,
+          otherRegion.run,
+          noSleep,
+          SIGNED_IN,
+        )
+      ).details.code,
     ).toBe("app_mismatch");
     const notFin = fakeRunner({ landAt: () => "https://example.com/" });
     expect(
-      (await runAdmin({ operation: "read", page: "agent-api" }, BOUND, notFin.run, noSleep)).details
-        .code,
+      (
+        await runAdmin(
+          { operation: "read", page: "agent-api" },
+          BOUND,
+          notFin.run,
+          noSleep,
+          SIGNED_IN,
+        )
+      ).details.code,
     ).toBe("not_fin");
     // No page content was read in any of these cases.
     for (const browser of [otherApp, otherRegion, notFin]) {
@@ -116,18 +171,32 @@ describe("runAdmin navigation", () => {
     }
   });
 
-  it("reports signed out (sign-in page) and redirects away from the requested page", async () => {
+  it("reports a rejected sign-in (sign-in page) and redirects away from the requested page", async () => {
     const signedOut = fakeRunner({ landAt: () => "https://app.intercom.com/admins/sign_in" });
     expect(
-      (await runAdmin({ operation: "read", page: "agent-api" }, BOUND, signedOut.run, noSleep))
-        .details.code,
-    ).toBe("signed_out");
+      (
+        await runAdmin(
+          { operation: "read", page: "agent-api" },
+          BOUND,
+          signedOut.run,
+          noSleep,
+          SIGNED_IN,
+        )
+      ).details.code,
+    ).toBe("signin_rejected");
     const redirected = fakeRunner({
       landAt: () => `https://app.intercom.com/a/apps/${APP}/getting-started`,
     });
     expect(
-      (await runAdmin({ operation: "read", page: "agent-api" }, BOUND, redirected.run, noSleep))
-        .details.code,
+      (
+        await runAdmin(
+          { operation: "read", page: "agent-api" },
+          BOUND,
+          redirected.run,
+          noSleep,
+          SIGNED_IN,
+        )
+      ).details.code,
     ).toBe("redirected");
   });
 });
@@ -151,6 +220,7 @@ describe("runAdmin read", () => {
       BOUND,
       browser.run,
       noSleep,
+      SIGNED_IN,
     );
     expect(result.ok).toBe(true);
     expect(result.text).not.toContain(FAKE_KEY.slice(0, 16));
@@ -163,9 +233,29 @@ describe("runAdmin read", () => {
 
   it("reports nothing when the page never renders, or changes while reading", async () => {
     const never = fakeRunner({ snapshots: ['- heading "Settings" [level=1, ref=e1]'] });
+    // A page title alone (body still loading) is not a rendered page.
+    const titleOnly = fakeRunner({ snapshots: ['- heading "Fin Agent API" [level=1, ref=e1]'] });
     expect(
-      (await runAdmin({ operation: "read", page: "agent-api" }, BOUND, never.run, noSleep)).details
-        .code,
+      (
+        await runAdmin(
+          { operation: "read", page: "agent-api" },
+          BOUND,
+          titleOnly.run,
+          noSleep,
+          SIGNED_IN,
+        )
+      ).details.code,
+    ).toBe("not_rendered");
+    expect(
+      (
+        await runAdmin(
+          { operation: "read", page: "agent-api" },
+          BOUND,
+          never.run,
+          noSleep,
+          SIGNED_IN,
+        )
+      ).details.code,
     ).toBe("not_rendered");
 
     let urlReads = 0;
@@ -183,6 +273,7 @@ describe("runAdmin read", () => {
       BOUND,
       drifting,
       noSleep,
+      SIGNED_IN,
     );
     expect(changed.details.code).toBe("page_changed");
     expect(changed.text).not.toContain('Fin Agent API"');
@@ -202,28 +293,6 @@ describe("runAdmin read", () => {
       'button "Go live in production" [disabled]',
       'button "Connect to Salesforce" [expanded=true]',
     ]);
-  });
-});
-
-describe("sign_in", () => {
-  it("relaunches the shared browser headed with owner-only files on the regional sign-in page", async () => {
-    const browser = fakeRunner({});
-    const result = await runAdmin(
-      { operation: "sign_in" },
-      { ...BOUND, region: "eu" },
-      browser.run,
-      noSleep,
-    );
-    expect(result.ok).toBe(true);
-    expect(browser.calls).toEqual([
-      { args: ["close"], ownerOnlyFiles: undefined },
-      {
-        args: ["--headed", "open", "https://app.eu.intercom.com/admins/sign_in"],
-        ownerOnlyFiles: true,
-      },
-    ]);
-    // Nothing on the sign-in page is read.
-    expect(browser.calls.some((call) => call.args.includes("snapshot"))).toBe(false);
   });
 });
 
@@ -265,6 +334,8 @@ describe("service.admin", () => {
       workspaceStore: store,
       adminRunner: browser.run,
       adminSleep: noSleep,
+      signinBrowser: fakeSigninBrowser().browser,
+      readSignin: () => ({ region: "au", appId: "stg456", cookies: [LIVE_COOKIE] }),
     });
     const opened = await service.admin({
       operation: "open",
@@ -281,5 +352,96 @@ describe("service.admin", () => {
       workspace: "nope",
     });
     expect(unknown.ok).toBe(false);
+  });
+});
+
+describe("persisted Fin sign-in around admin pages", () => {
+  function service(read: () => unknown, browser = fakeRunner({}), signin = fakeSigninBrowser()) {
+    const store = createWorkspaceStore(join(mkdtempSync(join(tmpdir(), "fin-signin-")), "w.json"));
+    bindWorkspaceIdentity(store, "default", {
+      appId: APP,
+      region: "us",
+      at: "2026-01-01T00:00:00Z",
+    });
+    return {
+      svc: createFinService({
+        exec: async () => ({ stdout: "", stderr: "", code: 0 }),
+        workspaceStore: store,
+        adminRunner: browser.run,
+        adminSleep: noSleep,
+        signinBrowser: signin.browser,
+        readSignin: read as never,
+      }),
+      browser,
+      signin,
+    };
+  }
+
+  it("restores the saved cookies before the page and clears them after, even on failure", async () => {
+    const ok = service(() => ({ region: "us", appId: APP, cookies: [LIVE_COOKIE] }));
+    expect((await ok.svc.admin({ operation: "read", page: "agent-api" })).ok).toBe(true);
+    expect(ok.signin.batches).toHaveLength(2);
+    const [restore, clear] = ok.signin.batches;
+    expect(restore![0]).toEqual(expect.arrayContaining(["cookies", "set", "remember_admin_token"]));
+    expect(restore![0]).toContain(LIVE_COOKIE.value);
+    expect(restore![0]).toContain("https://app.intercom.com/");
+    // Clearing sets each sign-in cookie to an expired, empty value.
+    expect(clear!.map((cmd) => [cmd[2], cmd[3], cmd.at(-1)])).toEqual([
+      ["remember_admin_token", "", "1"],
+      ["_intercom_session", "", "1"],
+    ]);
+
+    const failing = service(
+      () => ({ region: "us", appId: APP, cookies: [LIVE_COOKIE] }),
+      fakeRunner({ landAt: (u) => u.replace(APP, "zzz999") }),
+    );
+    expect((await failing.svc.admin({ operation: "read", page: "agent-api" })).details.code).toBe(
+      "app_mismatch",
+    );
+    expect(failing.signin.batches).toHaveLength(2);
+  });
+
+  it("never puts a cookie value in a browser command line or a tool result", async () => {
+    const ok = service(() => ({ region: "us", appId: APP, cookies: [LIVE_COOKIE] }));
+    const result = await ok.svc.admin({ operation: "read", page: "agent-api" });
+    for (const call of ok.browser.calls)
+      expect(call.args.join(" ")).not.toContain(LIVE_COOKIE.value);
+    expect(JSON.stringify(result)).not.toContain(LIVE_COOKIE.value);
+  });
+
+  it("does not touch the browser without a saved, unexpired sign-in, and names the /login fix", async () => {
+    const none = service(() => undefined);
+    const missing = await none.svc.admin({ operation: "read", page: "agent-api" });
+    expect(missing.details).toMatchObject({ code: "signed_out", loginId: "sf-fin-browser" });
+    expect(missing.text).toContain("/login sf-fin-browser");
+    expect(none.browser.calls).toEqual([]);
+    expect(none.signin.batches).toEqual([]);
+
+    const old = service(() => ({
+      region: "us",
+      appId: APP,
+      cookies: [{ ...LIVE_COOKIE, expires: Math.floor(Date.now() / 1000) - 10 }],
+    }));
+    const expired = await old.svc.admin({ operation: "read", page: "agent-api" });
+    expect(expired.details.code).toBe("signin_expired");
+    expect(old.browser.calls).toEqual([]);
+  });
+
+  it("reports a sign-in Fin rejected, and still clears the cookies", async () => {
+    const rejected = service(
+      () => ({ region: "us", appId: APP, cookies: [LIVE_COOKIE] }),
+      fakeRunner({ landAt: () => "https://app.intercom.com/admins/sign_in" }),
+    );
+    const result = await rejected.svc.admin({ operation: "read", page: "agent-api" });
+    expect(result.details.code).toBe("signin_rejected");
+    expect(result.text).toContain("/login sf-fin-browser");
+    expect(rejected.signin.batches).toHaveLength(2);
+  });
+
+  it("sign_in hands off to /login instead of opening an unsaved window", async () => {
+    const svc = service(() => undefined);
+    const result = await svc.svc.admin({ operation: "sign_in" });
+    expect(result.details).toMatchObject({ handoff: "login", loginId: "sf-fin-browser" });
+    expect(svc.browser.calls).toEqual([]);
   });
 });

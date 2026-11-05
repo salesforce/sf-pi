@@ -96,7 +96,7 @@ export const SF_FIN_ACTIONS: SfPiCommandAction<SfFinCommandAction>[] = [
     value: "admin",
     label: "Fin admin pages",
     description:
-      "Open or read verified Fin admin pages in the SF Pi browser (masked; no screenshots of secret pages). sign-in opens a window for you to sign in.",
+      "Open or read verified Fin admin pages in the SF Pi browser (masked; no screenshots of secret pages). sign-in prefills /login sf-fin-browser; Pi saves the sign-in.",
     group: "Connection",
   },
   {

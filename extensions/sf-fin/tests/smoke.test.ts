@@ -32,6 +32,7 @@ describe("sf-fin", () => {
     expect(pi.registerProvider.mock.calls.map(([provider]) => provider.id)).toEqual([
       "sf-fin",
       "sf-fin-agent",
+      "sf-fin-browser",
     ]);
     expect(pi.registerTool.mock.calls.map(([tool]) => tool.name)).toEqual(["sf_fin"]);
     expect(pi.registerCommand.mock.calls.map(([name]) => name)).toEqual(["sf-fin"]);

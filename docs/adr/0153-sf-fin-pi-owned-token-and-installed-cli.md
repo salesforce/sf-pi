@@ -125,3 +125,19 @@ Some Fin setup exists only in the web admin. SF Fin drives those pages in the sh
   - It is never session-approved.
   - A `test` workspace follows Power Tool Mode's browser family. A `prod` workspace, or an app no workspace has verified, needs the production opt-in.
 - **Scope.** This release navigates and reads only. Runbooks that change Fin (generate a key when none exists, publish a connector draft, turn a Help Center live, set the Agent API webhook, connect Salesforce) are separate work under the same rules.
+
+## Addendum: the Fin admin sign-in is a Pi credential
+
+The admin browser sign-in is persisted by Pi like the personal token and the Agent API key. The browser's own state file never keeps it.
+
+- **Provider.** `sf-fin-browser` (named workspaces: `sf-fin-browser-<name>`; `browser` and `browser-*` are reserved workspace names). It is an auth-only provider with an OAuth-shaped credential, because Pi validates `access`, `refresh`, and `expires` and keeps extra fields.
+  - The secret is Fin's two sign-in cookies, `remember_admin_token` and `_intercom_session`, taken only from the region's exact admin host. `expires` follows the remember cookie.
+  - `refresh` always fails with a `/login` instruction: Fin cannot renew the remember cookie without the human, so Pi reports the sign-in as expired with Fin (about two weeks).
+- **Login.** The login opens the shared browser headed on the sign-in page, under `umask 077`.
+  - It polls for the workspace's own app id for up to 10 minutes, and refuses (saving nothing) a different app or region.
+  - It captures the cookies, then clears them from the browser and closes the window on every path. Pi persists the result in `auth.json` (`0600`); `/logout` removes it.
+- **Use.** Before a Fin admin page, SF Fin restores the unexpired cookies into the browser (HttpOnly, Secure, for the region host only), and removes them after the action on every path.
+  - Restoring waits for the browser to launch; removal happens before the browser can write its state file, which happens only when it closes.
+  - Without a saved, unexpired sign-in, the browser is not touched. A rejected sign-in returns `signin_rejected` with the `/login` fix.
+- **No exposure.** Cookie values reach agent-browser only on stdin (`batch` JSON), never in argv or process listings. They are never returned to tools or logs.
+- **Never replayed outside the browser.** Sending only the remember cookie from another client makes Fin start a new-device login verification, which emails the user a code. SF Fin never replays sign-in cookies outside the shared browser, and verification codes are typed only by the user in the browser window.

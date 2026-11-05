@@ -40,13 +40,16 @@ export interface WorkspaceState {
 }
 
 const NAME_RE = /^[a-z][a-z0-9-]{0,23}$/;
-const RESERVED = new Set(["agent", "default", "all", "none"]);
+const RESERVED = new Set(["agent", "browser", "default", "all", "none"]);
 
 export function workspaceNameIssue(name: string): string | undefined {
   if (!NAME_RE.test(name)) {
     return "Use 1–24 lowercase letters, digits, or hyphens, starting with a letter (for example `test`).";
   }
-  if (RESERVED.has(name) || name.startsWith("agent-")) return `"${name}" is reserved.`;
+  // `agent-*` and `browser-*` would collide with other workspaces' sign-in ids.
+  if (RESERVED.has(name) || name.startsWith("agent-") || name.startsWith("browser-")) {
+    return `"${name}" is reserved.`;
+  }
   return undefined;
 }
 
@@ -54,14 +57,22 @@ export function workspaceNameIssue(name: string): string | undefined {
 export function workspaceProviders(name: string): {
   personal: string;
   agent: string;
+  /** Fin admin browser sign-in (cookies), stored by Pi like the other credentials. */
+  browser: string;
   mcpConnection: string;
 } {
   if (name === DEFAULT_WORKSPACE) {
-    return { personal: "sf-fin", agent: "sf-fin-agent", mcpConnection: "intercom" };
+    return {
+      personal: "sf-fin",
+      agent: "sf-fin-agent",
+      browser: "sf-fin-browser",
+      mcpConnection: "intercom",
+    };
   }
   return {
     personal: `sf-fin-${name}`,
     agent: `sf-fin-agent-${name}`,
+    browser: `sf-fin-browser-${name}`,
     mcpConnection: `intercom-${name}`,
   };
 }

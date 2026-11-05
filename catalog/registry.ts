@@ -171,7 +171,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
     maturity: "experimental",
     defaultEnabled: true,
     commands: ["/sf-fin"],
-    providers: ["sf-fin","sf-fin-agent"],
+    providers: ["sf-fin","sf-fin-agent","sf-fin-browser"],
     tools: ["sf_fin"],
     events: ["session_start","session_shutdown"],
   },
