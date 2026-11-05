@@ -2,11 +2,11 @@
 /** Aggregated `/sf-pi doctor` adapter for SF Code Analyzer. */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { ExtensionDoctorProvider } from "../../../lib/common/doctor/registry.ts";
-import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
+import { buildCodeAnalyzerExec } from "./exec.ts";
 import { runCodeAnalyzerDoctor } from "./cli.ts";
 
 export function buildCodeAnalyzerDoctor(pi: ExtensionAPI): ExtensionDoctorProvider {
-  const exec = buildExecFn(pi);
+  const exec = buildCodeAnalyzerExec(pi);
   return async () => {
     const report = await runCodeAnalyzerDoctor(exec);
     return {
