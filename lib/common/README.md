@@ -81,6 +81,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `sf-browser-snapshot-state.ts` | module    |                     1 |               0 |
 | `sf-conn/`                     | directory |                     5 |               0 |
 | `sf-environment/`              | directory |                     7 |               4 |
+| `sf-invocation.ts`             | module    |                     1 |               0 |
 | `sf-lsp-health/`               | directory |                     2 |               1 |
 | `sf-mcp-oauth-requirements.ts` | module    |                     1 |               0 |
 | `sf-pi-extension-state.ts`     | module    |                     1 |               0 |
@@ -94,7 +95,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `slack-status/`                | directory |                     1 |               0 |
 | `state-store.ts`               | module    |                     1 |               0 |
 | `test-fixtures.ts`             | module    |                     1 |               0 |
-| `tests/`                       | directory |                     0 |              47 |
+| `tests/`                       | directory |                     0 |              48 |
 | `tldraw-status/`               | directory |                     1 |               0 |
 | `ui-glyphs.ts`                 | module    |                     1 |               0 |
 

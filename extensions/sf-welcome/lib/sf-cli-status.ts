@@ -11,6 +11,7 @@
  * fetch to the npm registry. `sf --version` stays — it's the only honest
  * answer to "is sf on PATH?" and it's already fast.
  */
+import { sfCommand } from "../../../lib/common/sf-invocation.ts";
 import { createStateStore } from "../../../lib/common/state-store.ts";
 import type { SfCliStatusInfo } from "./types.ts";
 
@@ -155,11 +156,22 @@ export async function detectSfCliStatus(
   exec: SfCliExecFn,
   fetchLatest: SfCliFetchLatestFn = fetchLatestSfCliVersion,
   env: NodeJS.ProcessEnv = process.env,
+  invocation: {
+    platform?: NodeJS.Platform;
+    resolveSf?: (args: string[]) => [string, string[]];
+  } = {},
 ): Promise<SfCliStatusInfo> {
   let installedVersion: string | undefined;
 
   try {
-    const versionResult = await exec("sf", ["--version"], { timeout: 10_000 });
+    // Windows: `sf` is a .cmd shim that cannot be spawned without a shell, so
+    // run the resolved Node entry point instead. Other platforms are unchanged.
+    const platform = invocation.platform ?? process.platform;
+    const [file, args] =
+      platform === "win32"
+        ? (invocation.resolveSf ?? sfCommand)(["--version"])
+        : ["sf", ["--version"]];
+    const versionResult = await exec(file, args, { timeout: 10_000 });
     if (versionResult.code !== 0) {
       return { installed: false, freshness: "unknown", loading: false };
     }
