@@ -281,7 +281,13 @@ describe("sf-planreview review", () => {
     const install = pi.exec.mock.calls.find(
       ([name, args]) => name === "herdr" && args.includes("install"),
     );
-    expect(install?.[1]).toEqual(expect.arrayContaining(["plannotator/herdr-annotate", "--ref"]));
+    // setup installs the Windows Full variant on win32 (see index.ts), so the
+    // expected source follows the platform the test runs on.
+    const expectedSource =
+      process.platform === "win32"
+        ? "plannotator/herdr-annotate/windows-full"
+        : "plannotator/herdr-annotate";
+    expect(install?.[1]).toEqual(expect.arrayContaining([expectedSource, "--ref"]));
     expect(context.ui.notify).toHaveBeenCalledWith(
       expect.stringContaining("installed and verified"),
       "info",
