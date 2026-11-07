@@ -6,6 +6,7 @@ import {
   constants as fsConstants,
   existsSync,
   fstatSync,
+  lstatSync,
   openSync,
   readFileSync,
   readSync,
@@ -587,6 +588,12 @@ function inspectRuntimeScreenshotFile(
       throw new Error("outside capture directory");
     }
 
+    // O_NOFOLLOW is undefined on Windows, so openSync would follow a symlink
+    // there. Reject links explicitly first; the fstat identity check below
+    // still guards against a swap between this check and the open.
+    if (lstatSync(requestedPath).isSymbolicLink()) {
+      throw new Error("symbolic link");
+    }
     const noFollow = fsConstants.O_NOFOLLOW ?? 0;
     descriptor = openSync(requestedPath, fsConstants.O_RDONLY | noFollow);
     const opened = fstatSync(descriptor);
