@@ -18,6 +18,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
 import type { FinCredential } from "./auth.ts";
+import { npmCommand, type ShimContext } from "./npm-shim.ts";
 import {
   CLI_BINARY,
   ENV_APP_ID,
@@ -76,6 +77,8 @@ export interface CliRunOptions {
   configDir?: string;
   /** Test seam: replace the inherited parent environment. */
   parentEnv?: NodeJS.ProcessEnv;
+  /** Test seam: Windows shim resolution context. */
+  shim?: ShimContext;
 }
 
 export function privateCliConfigDir(): string {
@@ -129,7 +132,11 @@ export async function runFinCli(
     let timedOut = false;
     let settled = false;
 
-    const child = spawn(options.binary ?? CLI_BINARY, args, {
+    // Windows: `intercom` is an npm .cmd shim; run its entry with node instead.
+    const [command, commandArgs] = options.binary
+      ? [options.binary, args]
+      : npmCommand(CLI_BINARY, args, options.shim);
+    const child = spawn(command, commandArgs, {
       env,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],

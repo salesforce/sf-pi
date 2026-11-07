@@ -11,6 +11,12 @@ import { normalizeNpmConfigValue } from "../../../../lib/common/npm-release-age-
 import type { ExecFn } from "../../../../lib/common/sf-environment/detect.ts";
 import { isCliVersionSupported, parseCliVersion } from "../cli-runner.ts";
 import { CLI_BINARY, CLI_PACKAGE, MIN_CLI_VERSION } from "../types.ts";
+import {
+  defaultShimContext,
+  npmCommand,
+  resolveNpmCommand,
+  type ShimContext,
+} from "../npm-shim.ts";
 
 const REGISTRY_URL = "https://registry.npmjs.org/@intercom%2Fcli";
 const REGISTRY_TIMEOUT_MS = 5_000;
@@ -74,14 +80,27 @@ export async function fetchCliRegistryMetadata(
 export async function detectCli(
   exec: ExecFn,
   options: { latestVersion?: string } = {},
+  shim: ShimContext = defaultShimContext(),
 ): Promise<CliDetection> {
+  // Windows has no `which`, and npm CLIs are .cmd shims that can't be spawned
+  // without a shell. There, the resolved shim entry stands in for `which`, and
+  // both commands run through node.
+  const windowsCli = shim.platform === "win32" ? resolveNpmCommand(CLI_BINARY, shim) : undefined;
+  const [cliCommand, cliArgs] = npmCommand(CLI_BINARY, ["--version"], shim);
+  const [npmRootCommand, npmRootArgs] = npmCommand("npm", ["root", "-g"], shim);
   const [which, version, npmRoot] = await Promise.all([
-    exec("which", [CLI_BINARY], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
-    exec(CLI_BINARY, ["--version"], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
-    exec("npm", ["root", "-g"], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
+    windowsCli
+      ? Promise.resolve(undefined)
+      : exec("which", [CLI_BINARY], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
+    exec(cliCommand, cliArgs, { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
+    exec(npmRootCommand, npmRootArgs, { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
   ]);
 
-  const binaryPath = which?.code === 0 ? firstLine(which.stdout) : undefined;
+  const binaryPath = windowsCli
+    ? windowsCli.entry
+    : which?.code === 0
+      ? firstLine(which.stdout)
+      : undefined;
   const installedVersion = version?.code === 0 ? parseCliVersion(version.stdout) : undefined;
   const npmGlobalRoot = npmRoot?.code === 0 ? firstLine(npmRoot.stdout) : undefined;
   const installed = Boolean(binaryPath || installedVersion);
@@ -135,11 +154,13 @@ export interface NpmPolicyConfig {
   minimumReleaseAge?: string;
 }
 
-export async function readNpmReleaseAgeConfig(exec: ExecFn): Promise<NpmPolicyConfig> {
+export async function readNpmReleaseAgeConfig(
+  exec: ExecFn,
+  shim: ShimContext = defaultShimContext(),
+): Promise<NpmPolicyConfig> {
   const read = async (key: string) => {
-    const result = await exec("npm", ["config", "get", key], { timeout: EXEC_TIMEOUT_MS }).catch(
-      () => undefined,
-    );
+    const [command, args] = npmCommand("npm", ["config", "get", key], shim);
+    const result = await exec(command, args, { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined);
     return result?.code === 0 ? normalizeNpmConfigValue(firstLine(result.stdout)) : undefined;
   };
   const [before, minReleaseAge, minimumReleaseAge] = await Promise.all([

@@ -39,6 +39,7 @@ import {
   type CliDetection,
   type FetchRegistryFn,
 } from "./install/detect.ts";
+import type { ShimContext } from "./npm-shim.ts";
 import {
   COMMAND_NAME,
   ENV_TOKEN,
@@ -60,6 +61,8 @@ export interface DoctorDeps {
   now(): Date;
   nodeVersion: string;
   userCliConfigExists(): boolean;
+  /** Test seam: Windows npm shim resolution context. */
+  shim?: ShimContext;
 }
 
 export function createDoctorDeps(exec: ExecFn): DoctorDeps {
@@ -93,7 +96,7 @@ export async function runDoctor(
 ): Promise<DoctorReport & { meResult?: CliRunResult }> {
   const checkedAt = deps.now().toISOString();
   const registry = await deps.fetchRegistry(ctx.signal);
-  const detection = await detectCli(deps.exec, { latestVersion: registry?.latest });
+  const detection = await detectCli(deps.exec, { latestVersion: registry?.latest }, deps.shim);
   const checks: ExtensionDoctorCheck[] = [
     nodeCheck(deps.nodeVersion, registry?.latestNodeEngine),
     cliCheck(detection),

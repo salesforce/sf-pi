@@ -15,6 +15,10 @@ import {
   planCliInstall,
   runCliInstall,
 } from "../lib/install/installer.ts";
+import { defaultShimContext, type ShimContext } from "../lib/npm-shim.ts";
+
+/** Pins the POSIX branch so bare-name expectations hold on any host, including Windows. */
+const POSIX_SHIM: ShimContext = { ...defaultShimContext(), platform: "linux" };
 
 let dir: string;
 beforeEach(() => {
@@ -122,7 +126,7 @@ describe("runCliInstall", () => {
     const exec = vi.fn(async () => ({ code: 0, stdout: "", stderr: "" }));
     const plan = planCliInstall({ detection: detection(), registry });
     if (plan.kind !== "install") throw new Error("expected install");
-    const result = await runCliInstall(exec, plan);
+    const result = await runCliInstall(exec, plan, POSIX_SHIM);
     expect(result.ok).toBe(true);
     expect(exec).toHaveBeenCalledTimes(1);
     expect(exec.mock.calls[0]).toEqual(["npm", buildInstallArgs("0.15.0"), { timeout: 180_000 }]);
@@ -169,7 +173,7 @@ describe("detectCli", () => {
       if (command === "intercom") return { code: 0, stdout: "0.14.1\n", stderr: "" };
       return { code: 0, stdout: `${root}\n`, stderr: "" };
     });
-    await expect(detectCli(exec, { latestVersion: "0.15.0" })).resolves.toMatchObject({
+    await expect(detectCli(exec, { latestVersion: "0.15.0" }, POSIX_SHIM)).resolves.toMatchObject({
       installed: true,
       installSource: "npm-global",
       installedVersion: "0.14.1",
@@ -184,5 +188,76 @@ describe("detectCli", () => {
     expect(classifyInstallState("0.14.0", true, "0.14.1")).toBe("outdated");
     expect(classifyInstallState("0.14.1", true, "0.14.1")).toBe("current");
     expect(classifyInstallState("0.14.1", true, undefined)).toBe("current");
+  });
+});
+
+describe("Windows npm shims", () => {
+  // Mirrors npm's Windows layout: npm.cmd next to node.exe, and the global
+  // prefix holding intercom.cmd plus the package. Injected, so this runs anywhere.
+  const W = path.win32;
+  const NODE_DIR = W.join("C:\\", "apps", "nodejs");
+  const APPDATA = W.join("C:\\", "Users", "dev", "AppData", "Roaming");
+  const PREFIX = W.join(APPDATA, "npm");
+  const NODE = W.join(NODE_DIR, "node.exe");
+  const npmCli = W.join(NODE_DIR, "node_modules", "npm", "bin", "npm-cli.js");
+  const intercomJs = W.join(PREFIX, "node_modules", "@intercom", "cli", "dist", "index.js");
+  const files: Record<string, string> = {
+    [W.join(NODE_DIR, "npm.cmd")]:
+      String.raw`SET "NPM_CLI_JS=%~dp0\node_modules\npm\bin\npm-cli.js"`,
+    [npmCli]: "",
+    [W.join(PREFIX, "intercom.cmd")]:
+      String.raw`"%_prog%"  "%dp0%\node_modules\@intercom\cli\dist\index.js" %*`,
+    [intercomJs]: "",
+  };
+  const shim: ShimContext = {
+    platform: "win32",
+    env: { PATH: `${NODE_DIR};${PREFIX}`, APPDATA },
+    exists: (file) => Object.keys(files).some((k) => k.toLowerCase() === file.toLowerCase()),
+    readText: (file) => {
+      const key = Object.keys(files).find((k) => k.toLowerCase() === file.toLowerCase());
+      if (key === undefined) throw new Error("ENOENT");
+      return files[key];
+    },
+    nodePath: NODE,
+  };
+
+  it("installs by running node with npm-cli.js, not the bare npm name", async () => {
+    const exec = vi.fn(async () => ({ code: 0, stdout: "", stderr: "" }));
+    const plan = planCliInstall({ detection: detection(), registry });
+    if (plan.kind !== "install") throw new Error("expected install");
+    await runCliInstall(exec, plan, shim);
+    expect(exec.mock.calls[0]).toEqual([
+      NODE,
+      [npmCli, ...buildInstallArgs("0.15.0")],
+      { timeout: 180_000 },
+    ]);
+  });
+
+  it("detects an npm-global intercom through its shim, without which", async () => {
+    const calls: string[] = [];
+    const exec = vi.fn(async (command: string, args: string[]) => {
+      calls.push([command, ...args].join(" "));
+      if (command === NODE && args[0] === intercomJs)
+        return { code: 0, stdout: "0.15.0\n", stderr: "" };
+      if (command === NODE && args[0] === npmCli && args[1] === "root")
+        return { code: 0, stdout: `${W.join(PREFIX, "node_modules")}\n`, stderr: "" };
+      return { code: 1, stdout: "", stderr: "spawn ENOENT" };
+    });
+    await expect(detectCli(exec, { latestVersion: "0.15.0" }, shim)).resolves.toMatchObject({
+      installed: true,
+      installedVersion: "0.15.0",
+      installSource: "npm-global",
+      state: "current",
+    });
+    expect(calls.some((call) => call.startsWith("which "))).toBe(false);
+  });
+
+  it("reports missing when no intercom shim is on PATH", async () => {
+    const empty: ShimContext = { ...shim, exists: () => false };
+    const exec = vi.fn(async () => ({ code: 1, stdout: "", stderr: "spawn ENOENT" }));
+    await expect(detectCli(exec, {}, empty)).resolves.toMatchObject({
+      installed: false,
+      state: "missing",
+    });
   });
 });

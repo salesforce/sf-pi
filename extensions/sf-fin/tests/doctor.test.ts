@@ -7,6 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FinCredentialResult } from "../lib/auth.ts";
 import type { CliRunResult } from "../lib/cli-runner.ts";
 import { buildCachedChecks, parseIdentity, runDoctor, type DoctorDeps } from "../lib/doctor.ts";
+import { defaultShimContext, type ShimContext } from "../lib/npm-shim.ts";
+
+/** Pins the POSIX branch so the bare-name fake host below holds on any OS, including Windows. */
+const POSIX_SHIM: ShimContext = { ...defaultShimContext(), platform: "linux" };
 
 const SENTINEL = "fin-sentinel-token-0000";
 const ctx = { signal: undefined } as unknown as ExtensionContext;
@@ -72,6 +76,7 @@ function deps(
     resolveCredential: overrides.resolveCredential ?? (async () => connected),
     run: vi.fn(async () => overrides.meResponse ?? cli(0, ME)),
     exec: overrides.exec ?? fakeExec(),
+    shim: overrides.shim ?? POSIX_SHIM,
     fetchRegistry:
       overrides.fetchRegistry ?? (async () => ({ latest: "0.14.1", latestNodeEngine: ">=20.6.0" })),
     now: () => new Date("2026-01-01T00:00:00.000Z"),

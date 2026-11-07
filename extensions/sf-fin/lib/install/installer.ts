@@ -16,6 +16,7 @@ import type { ExecFn } from "../../../../lib/common/sf-environment/detect.ts";
 import { isCliVersionSupported } from "../cli-runner.ts";
 import { CLI_PACKAGE, MIN_CLI_VERSION } from "../types.ts";
 import type { CliDetection, NpmPolicyConfig, NpmRegistryMetadata } from "./detect.ts";
+import { defaultShimContext, npmCommand, type ShimContext } from "../npm-shim.ts";
 
 const INSTALL_TIMEOUT_MS = 180_000;
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -133,8 +134,11 @@ export interface InstallRunResult {
 export async function runCliInstall(
   exec: ExecFn,
   plan: Extract<InstallPlan, { kind: "install" | "update" }>,
+  shim: ShimContext = defaultShimContext(),
 ): Promise<InstallRunResult> {
-  const result = await exec("npm", plan.args, { timeout: INSTALL_TIMEOUT_MS }).catch(
+  // Windows: npm is a .cmd shim; run its npm-cli.js with node instead.
+  const [command, args] = npmCommand("npm", plan.args, shim);
+  const result = await exec(command, args, { timeout: INSTALL_TIMEOUT_MS }).catch(
     (error: unknown) => ({
       code: null,
       stdout: "",
