@@ -884,7 +884,10 @@ function createAdminSignin(
     },
     async finish() {
       if (!restored) return;
-      await browser.batch(clearCommands(region)).catch(() => false);
+      // Leave Fin first: an open Fin tab notices the sign-in is gone, redirects
+      // to the sign-in page, and Fin sets a fresh (anonymous) session cookie
+      // that the browser would later save. about:blank sends no Fin request.
+      await browser.batch([["open", "about:blank"], ...clearCommands(region)]).catch(() => false);
       restored = false;
     },
   };

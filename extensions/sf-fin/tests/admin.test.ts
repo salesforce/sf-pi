@@ -385,8 +385,10 @@ describe("persisted Fin sign-in around admin pages", () => {
     expect(restore![0]).toEqual(expect.arrayContaining(["cookies", "set", "remember_admin_token"]));
     expect(restore![0]).toContain(LIVE_COOKIE.value);
     expect(restore![0]).toContain("https://app.intercom.com/");
-    // Clearing sets each sign-in cookie to an expired, empty value.
-    expect(clear!.map((cmd) => [cmd[2], cmd[3], cmd.at(-1)])).toEqual([
+    // Leave Fin first, so no open Fin tab can redirect and get a new session
+    // cookie; then set each sign-in cookie to an expired, empty value.
+    expect(clear![0]).toEqual(["open", "about:blank"]);
+    expect(clear!.slice(1).map((cmd) => [cmd[2], cmd[3], cmd.at(-1)])).toEqual([
       ["remember_admin_token", "", "1"],
       ["_intercom_session", "", "1"],
     ]);
