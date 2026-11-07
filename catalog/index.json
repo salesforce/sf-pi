@@ -1230,7 +1230,7 @@
     "entry": "extensions/sf-planreview/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 972
+    "srcLoc": 974
   },
   {
     "id": "sf-skills",
