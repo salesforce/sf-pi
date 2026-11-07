@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -51,7 +52,8 @@ describe("sf-code-analyzer auto-scan transcript", () => {
     expect(rendered).toContain("[accent]**Reasoning**[/]");
     expect(rendered).toContain("JS/TS changed file → eslint:Recommended");
     expect(rendered).toContain("[accent]**Evidence**[/]");
-    expect(rendered).toContain("[muted]/tmp/report.json[/]");
+    // The transcript normalizes paths with node:path, so the separator follows the platform.
+    expect(rendered).toContain(`[muted]${path.normalize("/tmp/report.json")}[/]`);
   });
 
   it("registers human-only entry rendering instead of message rendering", () => {
