@@ -972,7 +972,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4105
+    "srcLoc": 4120
   },
   {
     "id": "sf-lwc",
