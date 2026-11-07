@@ -106,7 +106,7 @@ export async function detectCli(
   const installed = Boolean(binaryPath || installedVersion);
   const installSource: CliInstallSource = !installed
     ? "missing"
-    : isUnderNpmGlobal(binaryPath, npmGlobalRoot)
+    : isUnderNpmGlobal(binaryPath, npmGlobalRoot, pathPlatform(shim, binaryPath))
       ? "npm-global"
       : "other";
 
@@ -137,15 +137,31 @@ export function classifyInstallState(
  * The npm global bin link resolves into `<npm root -g>/@intercom/cli/...`.
  * Anything else (Homebrew formula, npx cache, manual copy) is unmanaged.
  */
+/**
+ * Which path rules to compare with. Real paths follow the host. A test can inject a
+ * win32 shim on a POSIX host; then the resolved entry is a Windows-style path
+ * (`C:\...`), so compare it with win32 rules.
+ */
+function pathPlatform(shim: ShimContext, binaryPath: string | undefined): NodeJS.Platform {
+  if (process.platform === "win32") return "win32";
+  return shim.platform === "win32" && binaryPath && /^[A-Za-z]:[\\/]/.test(binaryPath)
+    ? "win32"
+    : process.platform;
+}
+
 export function isUnderNpmGlobal(
   binaryPath: string | undefined,
   npmGlobalRoot: string | undefined,
+  platform: NodeJS.Platform = process.platform,
 ): boolean {
   if (!binaryPath || !npmGlobalRoot) return false;
-  const pkgDir = path.join(npmGlobalRoot, ...CLI_PACKAGE.split("/"));
-  const target = safeRealpath(binaryPath) ?? binaryPath;
-  const root = safeRealpath(pkgDir) ?? pkgDir;
-  return target === root || target.startsWith(`${root}${path.sep}`);
+  // Windows paths use `\` and are case-insensitive, so compare with win32 rules there.
+  const p = platform === "win32" ? path.win32 : path.posix;
+  const pkgDir = p.join(npmGlobalRoot, ...CLI_PACKAGE.split("/"));
+  const fold = (value: string) => (platform === "win32" ? value.toLowerCase() : value);
+  const target = fold(p.normalize(safeRealpath(binaryPath) ?? binaryPath));
+  const root = fold(p.normalize(safeRealpath(pkgDir) ?? pkgDir));
+  return target === root || target.startsWith(`${root}${p.sep}`);
 }
 
 export interface NpmPolicyConfig {
