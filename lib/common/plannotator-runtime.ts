@@ -153,10 +153,17 @@ export async function detectPlannotatorRuntime(
   };
 }
 
-function isExecutable(file: string): boolean {
+/**
+ * Windows has no POSIX execute bits: Node reports `.exe` files as 0o666, so the
+ * mode check would reject every Windows binary. There, a regular file is enough;
+ * `versionOf` still has to run it successfully before it counts as ready.
+ * The platform is read lazily so tests can inject it.
+ */
+export function isExecutable(file: string, platform: NodeJS.Platform = process.platform): boolean {
   try {
     const stat = statSync(file);
-    return stat.isFile() && (stat.mode & 0o111) !== 0;
+    if (!stat.isFile()) return false;
+    return platform === "win32" || (stat.mode & 0o111) !== 0;
   } catch {
     return false;
   }

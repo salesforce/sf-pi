@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   detectPlannotatorRuntime,
+  isExecutable,
   readCachedPlannotatorRuntime,
   writeCachedPlannotatorRuntime,
 } from "../plannotator-runtime.ts";
@@ -93,6 +94,36 @@ describe("Plannotator runtime readiness", () => {
     expect(
       await detectPlannotatorRuntime(async () => ({ stdout: "", stderr: "", code: 1 })),
     ).toMatchObject({ installed: false, herdrReady: false, standaloneReady: false });
+  });
+});
+
+describe("isExecutable", () => {
+  // Windows reports every writable file as 0o666 with no execute bits, so the
+  // platform is injected to check both rules on any runner.
+  const fixture = (name: string, mode: number): string => {
+    const file = path.join(directory, name);
+    writeFileSync(file, "fixture", { mode });
+    return file;
+  };
+
+  it("accepts a regular file on Windows even without execute bits", () => {
+    expect(isExecutable(fixture("tui-win.exe", 0o666), "win32")).toBe(true);
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "still rejects a non-executable file on POSIX platforms",
+    () => {
+      // Real POSIX mode bits are needed to observe the rejection.
+      expect(isExecutable(fixture("tui-noexec", 0o644), "linux")).toBe(false);
+      expect(isExecutable(fixture("tui-exec", 0o755), "linux")).toBe(true);
+    },
+  );
+
+  it("rejects directories and missing paths on every platform", () => {
+    for (const platform of ["win32", "linux", "darwin"] as const) {
+      expect(isExecutable(directory, platform)).toBe(false);
+      expect(isExecutable(path.join(directory, "missing.exe"), platform)).toBe(false);
+    }
   });
 });
 
