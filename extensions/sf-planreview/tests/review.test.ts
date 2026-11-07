@@ -207,6 +207,24 @@ describe("sf-planreview review", () => {
     expect(() => fileReviewSnapshot(cwd, "graphic.png")).toThrow(/text/i);
   });
 
+  it("refuses sensitive file names on every platform, including in subfolders", () => {
+    // The check must look at the file name: on Windows the resolved path uses
+    // backslashes, so a separator-based pattern let `.env` through.
+    const sub = path.join(cwd, "config.d");
+    mkdirSync(sub, { recursive: true });
+    for (const name of [".env", ".env.local", ".ENV.production", "server.key", "cert.PEM"]) {
+      writeFileSync(path.join(cwd, name), "secret");
+      writeFileSync(path.join(sub, name), "secret");
+      expect(() => prepareFileReview(cwd, name), name).toThrow(/sensitive/i);
+      expect(() => prepareFileReview(cwd, path.join("config.d", name)), name).toThrow(/sensitive/i);
+    }
+    // Names that only contain these words stay reviewable.
+    for (const name of ["my.env", "env.md", "keys.md", "pem-notes.md"]) {
+      writeFileSync(path.join(cwd, name), "# notes\n");
+      expect(prepareFileReview(cwd, name), name).toBe(realpathSync(path.join(cwd, name)));
+    }
+  });
+
   it("contributes read-only checks to the shared SF Pi doctor", async () => {
     const { pi } = mockPi();
     const { default: factory } = await import("../index.ts");
