@@ -12,6 +12,19 @@ import { tmpdir } from "node:os";
 import { collectRecommendationsStatus } from "../lib/recommendations-status.ts";
 
 const originalHome = process.env.HOME;
+// os.homedir() reads USERPROFILE on Windows and ignores HOME, so a fake home
+// must set both. Otherwise the code reads the real ~/.pi/agent on Windows.
+const originalUserProfile = process.env.USERPROFILE;
+
+function setHome(dir: string): void {
+  process.env.HOME = dir;
+  process.env.USERPROFILE = dir;
+}
+
+function restoreEnv(name: "HOME" | "USERPROFILE", value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
 const tempDirs: string[] = [];
 
 function makeTempDir(prefix: string): string {
@@ -32,11 +45,8 @@ function writeState(homeDir: string, state: Record<string, unknown>): void {
 }
 
 afterEach(() => {
-  if (originalHome === undefined) {
-    delete process.env.HOME;
-  } else {
-    process.env.HOME = originalHome;
-  }
+  restoreEnv("HOME", originalHome);
+  restoreEnv("USERPROFILE", originalUserProfile);
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -46,7 +56,7 @@ describe("collectRecommendationsStatus", () => {
   it("marks installed items from settings.json as installed", () => {
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     // Two recommended items installed (one with a version suffix, one via object form).
     writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
@@ -65,7 +75,7 @@ describe("collectRecommendationsStatus", () => {
   it("does not recommend an external MCP adapter when Pi provides native MCP", () => {
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
       packages: ["npm:@ff-labs/pi-fff@0.10.6", "npm:pi-mcp-adapter@2.33.0"],
@@ -80,7 +90,7 @@ describe("collectRecommendationsStatus", () => {
   it("falls back to the state file for declined markers only", () => {
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     writeState(homeDir, {
       acknowledgedRevision: "2026-05-01",
@@ -100,7 +110,7 @@ describe("collectRecommendationsStatus", () => {
     // wins. This locks in the precedence rule documented in the helper.
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
       packages: ["npm:pi-subagents"],
@@ -118,7 +128,7 @@ describe("collectRecommendationsStatus", () => {
   it("sorts pending items before installed and declined", () => {
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     writeSettings(path.join(homeDir, ".pi", "agent", "settings.json"), {
       packages: ["npm:pi-web-access"],
@@ -141,7 +151,7 @@ describe("collectRecommendationsStatus", () => {
   it("marks pi-herdr installed when only the git monorepo is configured", () => {
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
     const prevAgent = process.env.PI_CODING_AGENT_DIR;
     process.env.PI_CODING_AGENT_DIR = path.join(homeDir, ".pi", "agent");
     try {
@@ -164,7 +174,7 @@ describe("collectRecommendationsStatus", () => {
     // Before the fix the splash reported this as pending forever.
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     mkdirSync(path.join(homeDir, ".pi", "agent", "skills", "pi-skills"), { recursive: true });
 
@@ -179,7 +189,7 @@ describe("collectRecommendationsStatus", () => {
     // — npm packages install into settings.json and nowhere else.
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     mkdirSync(path.join(homeDir, ".pi", "agent", "skills", "pi-web-access"), { recursive: true });
 
@@ -194,7 +204,7 @@ describe("collectRecommendationsStatus", () => {
     // ~/.pi/agent/skills) deserve the same treatment.
     const homeDir = makeTempDir("sf-welcome-home-");
     const projectDir = makeTempDir("sf-welcome-project-");
-    process.env.HOME = homeDir;
+    setHome(homeDir);
 
     mkdirSync(path.join(homeDir, ".agents", "skills", "pi-skills"), { recursive: true });
 

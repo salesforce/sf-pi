@@ -25,11 +25,14 @@ import {
 
 describe("userFontDir", () => {
   it("returns ~/Library/Fonts on macOS", () => {
-    expect(userFontDir("darwin", "/Users/alex")).toBe("/Users/alex/Library/Fonts");
+    // userFontDir builds the path with node:path, so the separator follows the host.
+    expect(userFontDir("darwin", "/Users/alex")).toBe(path.join("/Users/alex", "Library", "Fonts"));
   });
 
   it("returns ~/.local/share/fonts on Linux", () => {
-    expect(userFontDir("linux", "/home/alex")).toBe("/home/alex/.local/share/fonts");
+    expect(userFontDir("linux", "/home/alex")).toBe(
+      path.join("/home/alex", ".local", "share", "fonts"),
+    );
   });
 
   it("returns null for Windows (manual install)", () => {
@@ -190,17 +193,23 @@ describe("runFontInstall", () => {
     expect(result.summary).toContain("MesloLGM Nerd Font Mono");
   });
 
-  it("produces the canonical Next-steps block with the Ghostty snippet", async () => {
-    // Exercising the darwin path uses the caller's real ~/Library/Fonts
-    // by design — but runFontInstall is idempotent, so running it in
-    // tests is safe on a machine where the font is already installed.
-    // We still assert only the shared output format so the test is
-    // stable regardless of which status each file actually reports.
-    const fakeExec = async () => ({ stdout: "", stderr: "", code: 0 });
-    const result = await runFontInstall(fakeExec);
-    expect(result.summary).toContain("Next steps:");
-    expect(result.summary).toContain("font-family = MesloLGM Nerd Font Mono");
-  });
+  // Runs the real host platform's install path, which only exists on macOS and
+  // Linux. On Windows it takes the manual-install branch (covered above), and
+  // forcing "darwin" there would copy fonts into the real Windows profile.
+  it.skipIf(process.platform === "win32")(
+    "produces the canonical Next-steps block with the Ghostty snippet",
+    async () => {
+      // Exercising the darwin path uses the caller's real ~/Library/Fonts
+      // by design — but runFontInstall is idempotent, so running it in
+      // tests is safe on a machine where the font is already installed.
+      // We still assert only the shared output format so the test is
+      // stable regardless of which status each file actually reports.
+      const fakeExec = async () => ({ stdout: "", stderr: "", code: 0 });
+      const result = await runFontInstall(fakeExec);
+      expect(result.summary).toContain("Next steps:");
+      expect(result.summary).toContain("font-family = MesloLGM Nerd Font Mono");
+    },
+  );
 });
 
 describe("refreshFontCache", () => {
