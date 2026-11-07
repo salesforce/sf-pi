@@ -38,6 +38,13 @@ import {
   type MessageConnection,
 } from "vscode-languageserver-protocol/node";
 import type { LspDiagnostic, LspDoctorStatus, LspResult, SupportedLanguage } from "./types.ts";
+import {
+  defaultDiscoveryContext,
+  findJavaBinary,
+  findNodeBinary,
+  resolveNpmShimEntry,
+  which,
+} from "./binary-discovery.ts";
 import { getLspLanguageId } from "./file-classify.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -126,46 +133,6 @@ function normalizeFsPath(p: string): string {
 
 function shellJoin(command: string, args: string[]): string {
   return [command, ...args.map((arg) => (/\s/.test(arg) ? JSON.stringify(arg) : arg))].join(" ");
-}
-
-function which(binary: string): string | undefined {
-  const searchPaths = [
-    ...(process.env.PATH?.split(path.delimiter) ?? []),
-    "/usr/local/bin",
-    "/opt/homebrew/bin",
-    path.join(os.homedir(), ".volta", "bin"),
-    path.join(os.homedir(), ".nvm", "current", "bin"),
-  ];
-  for (const dir of searchPaths) {
-    const candidate = path.join(dir, binary);
-    if (existsSync(candidate)) return candidate;
-  }
-  return undefined;
-}
-
-function findNodeBinary(): string | undefined {
-  return process.env.NODE_PATH || which("node") || "/usr/bin/node";
-}
-
-function findJavaBinary(): string | undefined {
-  const javaHome = process.env.JAVA_HOME;
-  if (javaHome) {
-    const candidate = path.join(javaHome, "bin", "java");
-    if (existsSync(candidate)) return candidate;
-  }
-
-  const candidates = [
-    process.env.SF_LSP_JAVA,
-    "/opt/homebrew/opt/openjdk@21/bin/java",
-    "/opt/homebrew/opt/openjdk@17/bin/java",
-    "/opt/homebrew/opt/openjdk@11/bin/java",
-    "/opt/homebrew/opt/openjdk/bin/java",
-    "/usr/bin/java",
-    "/usr/local/bin/java",
-    which("java"),
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
-
-  return candidates.find((candidate) => existsSync(candidate));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -473,6 +440,21 @@ async function discoverLwcLaunch(cwd: string): Promise<LaunchSpec | LspDoctorSta
 
   const binary = which("lwc-language-server");
   if (binary) {
+    // Windows: npm installs a .cmd shim that can't be spawned without a shell.
+    // Run its JavaScript entry with node instead.
+    if (process.platform === "win32" && binary.toLowerCase().endsWith(".cmd")) {
+      const entry = resolveNpmShimEntry(binary, defaultDiscoveryContext());
+      const node = findNodeBinary();
+      if (entry && node && existsSync(node)) {
+        return {
+          language: "lwc",
+          source: "path",
+          detail: entry,
+          command: node,
+          args: [entry, "--stdio"],
+        };
+      }
+    }
     return {
       language: "lwc",
       source: "path",
@@ -699,6 +681,7 @@ async function createClient(
     cwd: root,
     env: { ...process.env, ...launch.env },
     stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
   });
 
   // Prevent crashes from stream errors
