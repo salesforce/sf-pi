@@ -670,6 +670,34 @@ function wireDiagnostics(client: ManagedClient): void {
 // Client creation and retrieval
 // -------------------------------------------------------------------------------------------------
 
+/**
+ * LSP `initialize` parameters for a workspace root.
+ *
+ * `rootPath` is deprecated in the LSP spec but still read by the Apex language
+ * server: without it, `NdApexIndex.getToolsStoragePath()` gets a null root,
+ * the index fails to start, and no diagnostics are ever published. The VS Code
+ * Apex client sends it too. Other servers ignore it and use `rootUri`.
+ */
+export function buildInitializeParams(root: string, processId: number) {
+  const rootUri = pathToFileURL(root).href;
+  return {
+    processId,
+    clientInfo: { name: "sf-lsp", version: "1.0.0" },
+    rootPath: root,
+    rootUri,
+    capabilities: {
+      window: { workDoneProgress: true },
+      workspace: { configuration: true },
+      textDocument: {
+        synchronization: { didSave: true, didOpen: true, didChange: true, didClose: true },
+        publishDiagnostics: { versionSupport: true },
+        diagnostic: { dynamicRegistration: false, relatedDocumentSupport: false },
+      },
+    },
+    workspaceFolders: [{ uri: rootUri, name: path.basename(root) || root }],
+  };
+}
+
 async function createClient(
   language: SupportedLanguage,
   root: string,
@@ -712,22 +740,10 @@ async function createClient(
   wireDiagnostics(client);
   connection.listen();
 
-  const rootUri = pathToFileURL(root).href;
-  const initializePromise = connection.sendRequest(InitializeRequest.method, {
-    processId: process.pid,
-    clientInfo: { name: "sf-lsp", version: "1.0.0" },
-    rootUri,
-    capabilities: {
-      window: { workDoneProgress: true },
-      workspace: { configuration: true },
-      textDocument: {
-        synchronization: { didSave: true, didOpen: true, didChange: true, didClose: true },
-        publishDiagnostics: { versionSupport: true },
-        diagnostic: { dynamicRegistration: false, relatedDocumentSupport: false },
-      },
-    },
-    workspaceFolders: [{ uri: rootUri, name: path.basename(root) || root }],
-  });
+  const initializePromise = connection.sendRequest(
+    InitializeRequest.method,
+    buildInitializeParams(root, process.pid),
+  );
 
   await Promise.race([
     initializePromise,
