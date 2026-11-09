@@ -13,6 +13,11 @@
  */
 import type { ExecFn } from "../../../lib/common/sf-environment/detect.ts";
 import {
+  agentBrowserCommand,
+  defaultAgentBrowserContext,
+  type AgentBrowserContext,
+} from "./agent-browser-command.ts";
+import {
   FIN_ADMIN_PAGE_IDS,
   FIN_ADMIN_PAGES,
   finAdminLocation,
@@ -95,7 +100,11 @@ export function isAdminPageId(value: string | undefined): value is FinAdminPageI
 }
 
 /** Default runner: shared SF Pi browser, headless; sign-in opens a window. */
-export function createAdminRunner(exec: ExecFn, cwd?: string): AdminRunner {
+export function createAdminRunner(
+  exec: ExecFn,
+  cwd?: string,
+  ctx: AgentBrowserContext = defaultAgentBrowserContext(),
+): AdminRunner {
   return async (args, options) => {
     const browserArgs = [
       "--session",
@@ -104,15 +113,12 @@ export function createAdminRunner(exec: ExecFn, cwd?: string): AdminRunner {
       SF_PI_BROWSER_SESSION,
       ...args,
     ];
-    // A launch that will hold a Fin login runs under umask 077, so the
-    // browser's saved-login file and daemon files are created owner-only.
-    // Arguments go through "$@", never into the shell string.
-    const result = options.ownerOnlyFiles
-      ? await exec("sh", ["-c", 'umask 077; exec agent-browser "$@"', "sh", ...browserArgs], {
-          cwd,
-          timeout: options.timeoutMs,
-        })
-      : await exec("agent-browser", browserArgs, { cwd, timeout: options.timeoutMs });
+    // On macOS and Linux a launch that will hold a Fin login runs under umask 077,
+    // so the browser's saved-login file and daemon files are created owner-only
+    // (arguments through "$@", never in the shell string). On Windows the program
+    // behind the npm shim runs directly; see agent-browser-command.ts.
+    const [command, commandArgs] = agentBrowserCommand(browserArgs, options, ctx);
+    const result = await exec(command, commandArgs, { cwd, timeout: options.timeoutMs });
     return {
       stdout: maskFinSecrets(result.stdout ?? ""),
       stderr: maskFinSecrets(result.stderr ?? ""),

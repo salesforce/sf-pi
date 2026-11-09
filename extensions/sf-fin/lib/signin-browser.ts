@@ -8,6 +8,11 @@
  * agent-browser prints is discarded, apart from a short status line.
  */
 import { spawn } from "node:child_process";
+import {
+  agentBrowserCommand,
+  defaultAgentBrowserContext,
+  type AgentBrowserContext,
+} from "./agent-browser-command.ts";
 import type { BrowserCookie, SigninBrowser } from "./browser-signin.ts";
 
 /** Same shared session SF Browser uses. */
@@ -27,40 +32,52 @@ export type SpawnAgentBrowser = (
   options: { stdin?: string; ownerOnlyFiles?: boolean },
 ) => Promise<SpawnResult>;
 
+/**
+ * Build the agent-browser runner. On macOS and Linux a launch that will hold a
+ * Fin login runs under `umask 077` (arguments through "$@", never in the shell
+ * string). On Windows the program behind the npm shim runs directly, because a
+ * bare-name spawn of `agent-browser.cmd` fails with ENOENT (see
+ * agent-browser-command.ts). `ctx` and `spawnFn` are test seams.
+ */
+export function createSpawnAgentBrowser(
+  ctx: AgentBrowserContext = defaultAgentBrowserContext(),
+  spawnFn: typeof spawn = spawn,
+): SpawnAgentBrowser {
+  return (args, options) =>
+    new Promise((resolve) => {
+      const [command, commandArgs] = agentBrowserCommand([...BASE_ARGS, ...args], options, ctx);
+      const child = spawnFn(command, commandArgs, {
+        shell: false,
+        stdio: ["pipe", "pipe", "ignore"],
+        windowsHide: true,
+      });
+      let stdout = "";
+      let bytes = 0;
+      let settled = false;
+      const finish = (code: number | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ code, stdout });
+      };
+      const timer = setTimeout(() => {
+        child.kill("SIGTERM");
+        finish(null);
+      }, TIMEOUT_MS);
+      child.stdout.on("data", (chunk: Buffer) => {
+        bytes += chunk.length;
+        if (bytes > MAX_OUTPUT_BYTES) child.kill("SIGTERM");
+        else stdout += chunk.toString("utf8");
+      });
+      child.on("error", () => finish(null));
+      child.on("close", (code) => finish(code));
+      child.stdin.end(options.stdin ?? "");
+    });
+}
+
+/** Default runner for the current platform. */
 export const spawnAgentBrowser: SpawnAgentBrowser = (args, options) =>
-  new Promise((resolve) => {
-    const [command, commandArgs] = options.ownerOnlyFiles
-      ? // A launch that will hold a Fin login creates its files owner-only.
-        // Arguments pass through "$@", never into the shell string.
-        ["sh", ["-c", 'umask 077; exec agent-browser "$@"', "sh", ...BASE_ARGS, ...args]]
-      : ["agent-browser", [...BASE_ARGS, ...args]];
-    const child = spawn(command as string, commandArgs as string[], {
-      shell: false,
-      stdio: ["pipe", "pipe", "ignore"],
-      windowsHide: true,
-    });
-    let stdout = "";
-    let bytes = 0;
-    let settled = false;
-    const finish = (code: number | null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({ code, stdout });
-    };
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      finish(null);
-    }, TIMEOUT_MS);
-    child.stdout.on("data", (chunk: Buffer) => {
-      bytes += chunk.length;
-      if (bytes > MAX_OUTPUT_BYTES) child.kill("SIGTERM");
-      else stdout += chunk.toString("utf8");
-    });
-    child.on("error", () => finish(null));
-    child.on("close", (code) => finish(code));
-    child.stdin.end(options.stdin ?? "");
-  });
+  createSpawnAgentBrowser()(args, options);
 
 /** Parses `cookies get --json` output; tolerant of a leading status line. */
 export function parseCookieOutput(stdout: string): BrowserCookie[] {

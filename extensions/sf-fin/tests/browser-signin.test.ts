@@ -12,7 +12,14 @@ import {
   type BrowserCookie,
   type SigninBrowser,
 } from "../lib/browser-signin.ts";
-import { createSigninBrowser, parseCookieOutput } from "../lib/signin-browser.ts";
+import { EventEmitter } from "node:events";
+import path from "node:path";
+import type { AgentBrowserContext } from "../lib/agent-browser-command.ts";
+import {
+  createSigninBrowser,
+  createSpawnAgentBrowser,
+  parseCookieOutput,
+} from "../lib/signin-browser.ts";
 import type { WorkspaceProfile } from "../lib/workspaces.ts";
 
 const NOW_S = 1_900_000_000;
@@ -299,5 +306,64 @@ describe("agent-browser boundary", () => {
       { name: "a", value: "1", domain: "app.intercom.com", expires: 5 },
     ]);
     expect(parseCookieOutput("not json")).toEqual([]);
+  });
+});
+
+describe("agent-browser spawn on Windows", () => {
+  // The shim points at the native exe; injected so this runs on any runner.
+  const W = path.win32;
+  const PREFIX = W.join("C:\\", "Users", "dev", "AppData", "Roaming", "npm");
+  const EXE = W.join(PREFIX, "node_modules", "agent-browser", "bin", "agent-browser-win32-x64.exe");
+  const SHIM = W.join(PREFIX, "agent-browser.cmd");
+  const files: Record<string, string> = {
+    [SHIM]: String.raw`"%~dp0node_modules\agent-browser\bin\agent-browser-win32-x64.exe" %*`,
+    [EXE]: "",
+  };
+  const ctx: AgentBrowserContext = {
+    platform: "win32",
+    env: { PATH: PREFIX },
+    exists: (f) => Object.keys(files).some((k) => k.toLowerCase() === f.toLowerCase()),
+    readText: (f) => files[Object.keys(files).find((k) => k.toLowerCase() === f.toLowerCase())!]!,
+    nodePath: "node.exe",
+  };
+
+  function recordingSpawn() {
+    const calls: Array<[string, string[]]> = [];
+    const spawnFn = ((command: string, args: string[]) => {
+      calls.push([command, args]);
+      const child = new EventEmitter() as EventEmitter & {
+        stdout: EventEmitter;
+        stdin: { end: () => void };
+        kill: () => void;
+      };
+      child.stdout = new EventEmitter();
+      child.stdin = { end: () => queueMicrotask(() => child.emit("close", 0)) };
+      child.kill = () => {};
+      return child;
+    }) as unknown as typeof import("node:child_process").spawn;
+    return { calls, spawnFn };
+  }
+
+  it("reads the URL and cookies through the resolved exe, not the bare name", async () => {
+    const { calls, spawnFn } = recordingSpawn();
+    const browser = createSigninBrowser(createSpawnAgentBrowser(ctx, spawnFn));
+    await browser.currentUrl();
+    await browser.cookies();
+    expect(calls.map(([command]) => command)).toEqual([EXE, EXE]);
+    expect(calls[0]![1]).toEqual(["--session", "sf-pi", "--session-name", "sf-pi", "get", "url"]);
+    expect(calls[1]![1].slice(-3)).toEqual(["cookies", "get", "--json"]);
+  });
+
+  it("opens the sign-in window without sh on Windows", async () => {
+    const { calls, spawnFn } = recordingSpawn();
+    await createSigninBrowser(createSpawnAgentBrowser(ctx, spawnFn)).openSignIn(
+      "https://app.intercom.com/admins/sign_in",
+    );
+    expect(calls.map(([command]) => command)).toEqual([EXE, EXE]);
+    expect(calls[1]![1].slice(-3)).toEqual([
+      "--headed",
+      "open",
+      "https://app.intercom.com/admins/sign_in",
+    ]);
   });
 });

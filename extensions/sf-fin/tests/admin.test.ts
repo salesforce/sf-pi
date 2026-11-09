@@ -2,7 +2,8 @@
 /** Behavior Proofs for Fin admin pages in the shared SF Pi browser (synthetic ids). */
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, win32 as winPath } from "node:path";
+import type { AgentBrowserContext } from "../lib/agent-browser-command.ts";
 import { describe, expect, it } from "vitest";
 import {
   createAdminRunner,
@@ -299,10 +300,22 @@ describe("runAdmin read", () => {
 describe("createAdminRunner", () => {
   it("passes arguments through umask 077 without putting them in the shell string", async () => {
     const execs: Array<[string, string[]]> = [];
-    const run = createAdminRunner(async (command, args) => {
-      execs.push([command, args]);
-      return { stdout: `- textbox "API key": ${FAKE_KEY}`, stderr: "", code: 0 };
-    });
+    // Pin POSIX: the umask launch is the macOS/Linux path (Windows runs the exe directly).
+    const posix: AgentBrowserContext = {
+      platform: "linux",
+      env: { PATH: "/usr/bin" },
+      exists: () => false,
+      readText: () => "",
+      nodePath: "node",
+    };
+    const run = createAdminRunner(
+      async (command, args) => {
+        execs.push([command, args]);
+        return { stdout: `- textbox "API key": ${FAKE_KEY}`, stderr: "", code: 0 };
+      },
+      undefined,
+      posix,
+    );
     const hostile = "https://app.intercom.com/admins/sign_in;rm -rf ~";
     const result = await run(["--headed", "open", hostile], {
       timeoutMs: 1000,
@@ -316,6 +329,47 @@ describe("createAdminRunner", () => {
 
     await run(["get", "url"], { timeoutMs: 1000 });
     expect(execs[1]![0]).toBe("agent-browser");
+  });
+
+  it("on Windows runs the exe the npm shim points at, for reads and the sign-in launch", async () => {
+    const W = winPath;
+    const prefix = W.join("C:\\", "Users", "dev", "AppData", "Roaming", "npm");
+    const exe = W.join(
+      prefix,
+      "node_modules",
+      "agent-browser",
+      "bin",
+      "agent-browser-win32-x64.exe",
+    );
+    const files: Record<string, string> = {
+      [W.join(prefix, "agent-browser.cmd")]:
+        String.raw`"%~dp0node_modules\agent-browser\bin\agent-browser-win32-x64.exe" %*`,
+      [exe]: "",
+    };
+    const find = (f: string) => Object.keys(files).find((k) => k.toLowerCase() === f.toLowerCase());
+    const ctx: AgentBrowserContext = {
+      platform: "win32",
+      env: { PATH: prefix },
+      exists: (f) => find(f) !== undefined,
+      readText: (f) => files[find(f)!]!,
+      nodePath: "node.exe",
+    };
+    const execs: Array<[string, string[]]> = [];
+    const run = createAdminRunner(
+      async (command, args) => {
+        execs.push([command, args]);
+        return { stdout: "", stderr: "", code: 0 };
+      },
+      undefined,
+      ctx,
+    );
+    await run(["get", "url"], { timeoutMs: 1000 });
+    await run(["--headed", "open", "https://app.intercom.com/admins/sign_in"], {
+      timeoutMs: 1000,
+      ownerOnlyFiles: true,
+    });
+    expect(execs.map(([command]) => command)).toEqual([exe, exe]);
+    expect(execs[0]![1].slice(-2)).toEqual(["get", "url"]);
   });
 });
 
