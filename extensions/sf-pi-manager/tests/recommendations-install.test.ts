@@ -8,9 +8,16 @@
  *   - success/failure mapped to InstallRunResult.success
  *   - spawn errors surfaced instead of thrown
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { EventEmitter } from "node:events";
 import { installPackage, removePackage, type SpawnFn } from "../lib/recommendations-install.ts";
+
+// Exec expectations below use bare command names; Windows command resolution
+// is covered by lib/common/tests/windows-spawn.test.ts and the real-Pi proof.
+vi.mock("../../../lib/common/windows-spawn.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../lib/common/windows-spawn.ts")>()),
+  spawnCommand: (name: string, args: readonly string[]) => [name, [...args]],
+}));
 
 // -------------------------------------------------------------------------------------------------
 // Fake child process
