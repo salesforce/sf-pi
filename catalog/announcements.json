@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.352.1-2026-11-05",
-  "latestVersion": "0.352.1",
+  "revision": "release-0.352.2-2026-11-10",
+  "latestVersion": "0.352.2",
   "announcements": [
     {
-      "id": "release-0.352.1",
+      "id": "release-0.352.2",
       "kind": "update",
-      "title": "sf-pi v0.352.1 — sf-fin: leave Fin before clearing the admin sign-in from the browser",
-      "publishedAt": "2026-11-05T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.352.1",
+      "title": "sf-pi v0.352.2 — Windows support for SF CLI, npm, agent-browser, and language servers",
+      "publishedAt": "2026-11-10T00:00:00Z",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.352.2",
       "severity": "info",
-      "body": "sf-fin: leave Fin before clearing the admin sign-in from the browser"
+      "body": "Windows support for SF CLI, npm, agent-browser, and language servers"
     }
   ]
 }

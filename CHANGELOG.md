@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.352.2](https://github.com/salesforce/sf-pi/compare/v0.352.1...v0.352.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* Windows support for SF CLI, npm, agent-browser, and language servers ([#904](https://github.com/salesforce/sf-pi/issues/904)) ([bba28b3](https://github.com/salesforce/sf-pi/commit/bba28b3cfa978e8e78c078c2087279815f158984))
+
 ## [0.352.1](https://github.com/salesforce/sf-pi/compare/v0.352.0...v0.352.1) (2026-11-05)
 
 
