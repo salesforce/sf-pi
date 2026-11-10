@@ -29,6 +29,8 @@ This is a selected interface guide, not a hand-maintained complete file map:
 | `secure-credential-prompt.ts` | Fixed-mask credential entry while Pi owns persistence/logout                |
 | `privacy/`                    | Telemetry-default assertion and state                                       |
 | `session/`                    | Active-branch session projection helpers                                    |
+| `windows-spawn.ts`            | Shell-free launch of `.cmd`-wrapped CLIs (sf, npm, pi, …) on Windows        |
+| `open-external.ts`            | Shell-free URL and folder opening on macOS, Windows, and Linux              |
 
 ## Complete top-level inventory
 
@@ -66,6 +68,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `manager-deep-link.ts`         | module    |                     1 |               0 |
 | `monthly-usage/`               | directory |                     2 |               0 |
 | `npm-release-age-policy.ts`    | module    |                     1 |               0 |
+| `open-external.ts`             | module    |                     1 |               0 |
 | `pi-auth-status.ts`            | module    |                     1 |               0 |
 | `pi-compat.ts`                 | module    |                     1 |               0 |
 | `pi-paths.ts`                  | module    |                     1 |               0 |
@@ -94,7 +97,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `slack-status/`                | directory |                     1 |               0 |
 | `state-store.ts`               | module    |                     1 |               0 |
 | `test-fixtures.ts`             | module    |                     1 |               0 |
-| `tests/`                       | directory |                     0 |              49 |
+| `tests/`                       | directory |                     0 |              50 |
 | `tldraw-status/`               | directory |                     1 |               0 |
 | `ui-glyphs.ts`                 | module    |                     1 |               0 |
 | `windows-spawn.ts`             | module    |                     1 |               0 |

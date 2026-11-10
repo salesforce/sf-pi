@@ -12,10 +12,11 @@ describe("buildBrowserOpenCommand", () => {
     });
   });
 
-  it("uses cmd start on Windows", () => {
-    expect(buildBrowserOpenCommand("https://gateway.example.com", "win32")).toEqual({
-      command: "cmd",
-      args: ["/c", "start", "", "https://gateway.example.com"],
+  it("opens a URL with & on Windows without cmd.exe splitting it", () => {
+    const url = "https://gateway.example.com/?a=1&b=2";
+    expect(buildBrowserOpenCommand(url, "win32")).toEqual({
+      command: "rundll32",
+      args: ["url.dll,FileProtocolHandler", url],
     });
   });
 

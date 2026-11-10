@@ -22,6 +22,7 @@ import { isNodeRuntimeSupported, NODE_RUNTIME_FLOOR } from "../runtime-floor.ts"
 import { normalizeNpmConfigValue, readConfiguredNpmCommand } from "../npm-release-age-policy.ts";
 import { globalAgentPath, globalSettingsPath, projectSettingsPath } from "../pi-paths.ts";
 import { collectHerdrPackageInstall } from "../herdr-package-sources.ts";
+import { findAllOnPath, spawnCommand } from "../windows-spawn.ts";
 import { readCachedRuntimeDiagnostics, writeCachedRuntimeDiagnostics } from "./runtime-cache.ts";
 import type {
   AvailableSkillRoot,
@@ -604,9 +605,9 @@ export async function collectRuntimeDiagnosticsAsync(): Promise<RuntimeDiagnosti
   const npmCommand = readConfiguredNpmCommand(globalSettings) ?? ["npm"];
   const [piPath, npmPath, allPiPathsRaw, npmGlobalRoot, npmBeforeRaw, npmMinRaw, npmMinimumRaw] =
     await Promise.all([
-      runCaptureAsync("which", ["pi"]),
-      runCaptureAsync("which", ["npm"]),
-      runCaptureAsync("which", ["-a", "pi"]),
+      Promise.resolve(findAllOnPath("pi")[0] ?? ""),
+      Promise.resolve(findAllOnPath("npm")[0] ?? ""),
+      Promise.resolve(findAllOnPath("pi").join("\n")),
       runConfiguredNpmCaptureAsync(npmCommand, ["root", "-g"]),
       runConfiguredNpmCaptureAsync(npmCommand, ["config", "get", "before"]),
       runConfiguredNpmCaptureAsync(npmCommand, ["config", "get", "min-release-age"]),
@@ -665,9 +666,10 @@ export async function collectRuntimeDiagnosticsAsync(): Promise<RuntimeDiagnosti
 export function collectRuntimeDiagnostics(): RuntimeDiagnostics {
   const globalSettings = readJsonObject(globalSettingsPath());
   const npmCommand = readConfiguredNpmCommand(globalSettings) ?? ["npm"];
-  const piPath = runCapture("which", ["pi"]);
-  const npmPath = runCapture("which", ["npm"]);
-  const allPiPaths = runCapture("which", ["-a", "pi"])
+  const piPath = findAllOnPath("pi")[0] ?? "";
+  const npmPath = findAllOnPath("npm")[0] ?? "";
+  const allPiPaths = findAllOnPath("pi")
+    .join("\n")
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
@@ -733,7 +735,9 @@ function readPackageVersion(packageJsonPath: string): string | undefined {
   }
 }
 
-function runCapture(command: string, args: string[]): string | undefined {
+function runCapture(name: string, nameArgs: string[]): string | undefined {
+  // Windows: pi and npm are .cmd wrappers; run their entries without a shell.
+  const [command, args] = spawnCommand(name, nameArgs);
   try {
     return execFileSync(command, args, {
       encoding: "utf8",
@@ -750,7 +754,8 @@ function runConfiguredNpmCapture(npmCommand: string[], args: string[]): string |
   return command ? runCapture(command, [...prefixArgs, ...args]) : undefined;
 }
 
-function runCaptureAsync(command: string, args: string[]): Promise<string> {
+function runCaptureAsync(name: string, nameArgs: string[]): Promise<string> {
+  const [command, args] = spawnCommand(name, nameArgs);
   return new Promise((resolve) => {
     execFile(
       command,

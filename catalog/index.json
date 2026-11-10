@@ -408,7 +408,7 @@
     "entry": "extensions/sf-data360/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11128
+    "srcLoc": 11163
   },
   {
     "id": "sf-devbar",
@@ -552,7 +552,7 @@
     "entry": "extensions/sf-feedback/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1533
+    "srcLoc": 1538
   },
   {
     "id": "sf-fin",
@@ -933,7 +933,7 @@
     "entry": "extensions/sf-llm-gateway/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11507
+    "srcLoc": 11502
   },
   {
     "id": "sf-lsp",
@@ -1182,7 +1182,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4952
+    "srcLoc": 4961
   },
   {
     "id": "sf-planreview",

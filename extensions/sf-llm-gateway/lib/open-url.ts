@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Browser opener used by gateway onboarding commands. */
 import { spawn as realSpawn } from "node:child_process";
+import { browserOpenCommand } from "../../../lib/common/open-external.ts";
 
 export type BrowserOpenCommand = {
   command: string;
@@ -27,13 +28,7 @@ export function buildBrowserOpenCommand(
   url: string,
   platform: NodeJS.Platform = process.platform,
 ): BrowserOpenCommand {
-  if (platform === "darwin") {
-    return { command: "open", args: [url] };
-  }
-  if (platform === "win32") {
-    return { command: "cmd", args: ["/c", "start", "", url] };
-  }
-  return { command: "xdg-open", args: [url] };
+  return browserOpenCommand(url, platform);
 }
 
 export function openUrlInBrowser(

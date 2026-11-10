@@ -118,7 +118,13 @@ export async function runNativeAutoUpdate(
       markAutoUpdateRunning("pi-packages");
       setStatus("Auto Update: updating one compatible Pi package…");
       try {
-        const result = await pi.exec("pi", ["update", "--extension", source, "--no-approve"], {
+        const [piFile, piArgs] = spawnCommand("pi", [
+          "update",
+          "--extension",
+          source,
+          "--no-approve",
+        ]);
+        const result = await pi.exec(piFile, piArgs, {
           cwd: globalAgentPath(),
           timeout: Math.max(1, deadline - Date.now()),
           signal: options.signal,

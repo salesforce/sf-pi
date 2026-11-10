@@ -220,3 +220,31 @@ export function spawnCommand(
   const resolved = resolveSpawnCommand(name, ctx);
   return [resolved.command, [...resolved.prefixArgs, ...args]];
 }
+
+/**
+ * Every PATH location of `name`, in PATH order: `which -a` without a `which`
+ * binary, so it works on Windows. Off Windows it checks the bare name; on
+ * Windows it honors PATHEXT (for example `pi.cmd`, `npm.cmd`, `node.exe`).
+ */
+export function findAllOnPath(
+  name: string,
+  ctx: WindowsSpawnContext = defaultWindowsSpawnContext(),
+): string[] {
+  const windows = ctx.platform === "win32";
+  const p = windows ? W : path.posix;
+  const dirs = (ctx.env.PATH ?? ctx.env.Path ?? "").split(windows ? ";" : ":").filter(Boolean);
+  const extensions = windows
+    ? (ctx.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD")
+        .split(";")
+        .map((ext) => ext.trim().toLowerCase())
+        .filter((ext) => ext.startsWith("."))
+    : [""];
+  const found: string[] = [];
+  for (const dir of dirs) {
+    for (const ext of extensions) {
+      const candidate = p.join(dir, `${name}${ext}`);
+      if (ctx.exists(candidate) && !found.includes(candidate)) found.push(candidate);
+    }
+  }
+  return found;
+}
