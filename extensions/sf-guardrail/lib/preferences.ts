@@ -279,6 +279,8 @@ function commandPatternLabel(pattern: CommandPattern): string {
       return "Reveal org user password";
     case "sf-temp-show-secrets":
       return "Enable Salesforce CLI secret output";
+    case "pi-auth-credential-change":
+      return "Change stored Pi login";
     default:
       return pattern.description ?? pattern.id;
   }
@@ -300,6 +302,8 @@ function commandPatternDescription(pattern: CommandPattern): string {
     case "sf-org-auth-show-user-password":
     case "sf-temp-show-secrets":
       return "Warns before Salesforce credentials or secret output may be exposed.";
+    case "pi-auth-credential-change":
+      return "Warns before a shell command replaces or removes a stored Pi provider login.";
     default:
       return `Choose behavior for command pattern ${pattern.id}.`;
   }
@@ -325,6 +329,8 @@ function commandPatternExample(pattern: CommandPattern): string {
       return "sf org auth show-user-password -o DevHub";
     case "sf-temp-show-secrets":
       return "SF_TEMP_SHOW_SECRETS=true sf org display -o DevHub";
+    case "pi-auth-credential-change":
+      return "pi auth logout example-provider";
     default:
       return pattern.pattern;
   }
@@ -344,6 +350,8 @@ function commandPatternWhy(pattern: CommandPattern): string {
       return "Force push can rewrite shared history for other developers.";
     case "sf-org-delete":
       return "Org deletion can remove a working environment; verify the alias first.";
+    case "pi-auth-credential-change":
+      return "Logout removes a stored login and login overwrites it; re-entering it is a manual step.";
     default:
       return "Use Ask me when the action may be intentional; use Block when the rule should not be human-overridable.";
   }

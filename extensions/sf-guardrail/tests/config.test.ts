@@ -44,6 +44,7 @@ describe("bundled defaults", () => {
         "dd-of",
         "mkfs",
         "pi-auth-credential-output",
+        "pi-auth-credential-change",
         "sf-org-auth-show-access-token",
         "sf-org-auth-show-sfdx-auth-url",
         "sf-org-auth-show-user-password",

@@ -105,6 +105,19 @@ operator control and retain the audit output; hard blocks remain active.
 **Audit is empty after resume:** Decisions belong to the active session file.
 Confirm that the resumed branch is the one that recorded the decision.
 
+## Pi credential commands
+
+Pi owns provider credentials; Guardrail only mediates model-issued shell calls
+that reveal or change them. Both rules ask for approval by default:
+
+- `pi-auth-credential-output` covers `pi auth print-api-key`,
+  `pi auth print-bearer-token`, and `pi auth check --credentials`.
+- `pi-auth-credential-change` covers `pi auth login` and `pi auth logout`, which
+  replace or remove a stored login without prompting in a non-interactive shell.
+
+Plain `pi auth check` remains allowed. Interactive `/login` and `/logout` are
+human-driven and are not gated.
+
 ## Fin CLI install
 
 `sf_fin action='install'` with `allow_mutation=true` is a native mutation

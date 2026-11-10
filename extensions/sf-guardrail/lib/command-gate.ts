@@ -109,6 +109,9 @@ function patternMatches(
   if (trimmed === "pi-auth-credential-output") {
     return hasPiCredentialOutput(commands);
   }
+  if (trimmed === "pi-auth-credential-change") {
+    return hasPiCredentialChange(commands);
+  }
   if (trimmed === "find -delete") {
     return commands.some((item) => item.head === "find" && item.args.includes("-delete"));
   }
@@ -258,6 +261,15 @@ function hasPiCredentialOutput(commands: TokenizedCommand[]): boolean {
     const action = args[1];
     if (action === "check") return args.includes("--credentials");
     return action === "print-api-key" || action === "print-bearer-token";
+  });
+}
+
+// Pi 1.5.1+ `pi auth login|logout` replaces or removes stored provider
+// credentials without a prompt in non-interactive shells.
+function hasPiCredentialChange(commands: TokenizedCommand[]): boolean {
+  return commands.some((command) => {
+    const args = piCommandArgs(command);
+    return args?.[0] === "auth" && (args[1] === "login" || args[1] === "logout");
   });
 }
 
