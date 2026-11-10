@@ -52,8 +52,7 @@ structure and conventions live in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 `extensions/<id>/manifest.json` is the declarative extension contract.
 `npm run generate-catalog` produces the catalog, generated docs pages, sidebar,
 ADR lifecycle index, architecture/troubleshooting marker blocks, contributor,
-shared-module and E2E inventories, extension file maps, and release announcement
-metadata.
+shared-module and E2E inventories, and extension file maps.
 
 Never hand-edit:
 

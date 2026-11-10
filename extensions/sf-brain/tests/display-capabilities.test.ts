@@ -78,6 +78,7 @@ describe("SF Brain display capabilities", () => {
 
     expect(rich).toContain("<sf_display_capabilities>");
     expect(rich).toContain("Mermaid terminal rendering: streaming");
+    expect(rich).toContain("classDiagram, or pie block");
     expect(rich).toContain("Chat status markers: emoji");
     expect(fallback).toContain("Use indented bullets or `A → B → C`");
     expect(fallback).toContain("[OK], [FAIL], [WARN], [TIP], and [NEXT]");

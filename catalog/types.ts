@@ -295,14 +295,15 @@ export interface AnnouncementItem {
  * Shape of catalog/announcements.json.
  *
  * `revision` is the nudge cursor (same pattern as recommendations).
- * `latestVersion` / `feedUrl` are optional hooks for the update-nudge and
- * the optional remote feed merge — both are safe to omit.
+ * `latestVersion` / `feedUrl` are optional hooks for the welcome freshness
+ * row and the optional remote feed merge — both are safe to omit. Pi owns
+ * package update notices and release notes.
  */
 export interface AnnouncementsManifest {
   schemaVersion: 1;
   revision: string;
-  /** Latest sf-pi release known to this manifest. Drives the update nudge
-   * when it exceeds the installed version. */
+  /** Latest sf-pi release known to this manifest. Drives the welcome
+   * freshness row when it exceeds the installed version. */
   latestVersion?: string;
   /** Optional hosted JSON feed. Omit to disable network entirely. */
   feedUrl?: string;

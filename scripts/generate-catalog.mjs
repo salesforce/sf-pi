@@ -1306,7 +1306,6 @@ function generateAgentOrientationDoc(manifests) {
     "- `docs/adr/README.md`",
     "- generated marker blocks in `ARCHITECTURE.md`, `CONTRIBUTING.md`, `lib/common/README.md`, `scripts/e2e/README.md`, and `docs/troubleshooting.md`",
     "- generated file-structure marker blocks in `extensions/*/README.md`",
-    "- normalized `catalog/announcements.json` release entry",
     "",
     "## Automation shortcuts",
     "",
@@ -1560,7 +1559,6 @@ await writeOrCheckAdrIndex(adrRecords);
 
 await writeOrCheckExtensionReadmes(manifests);
 
-refreshAnnouncementsFromChangelog(announcementsPath);
 validateRecommendations(recommendationsPath);
 validateAnnouncements(announcementsPath);
 
@@ -1689,127 +1687,6 @@ function validateRecommendations(filePath, quiet = false) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Announcements auto-refresh from CHANGELOG.md
-//
-// Keeps `latestVersion` and a single `release-<version>` announcement in
-// sync with the most recent non-Unreleased section of the top-level
-// CHANGELOG.md. Without this the splash drifts: the bundled JSON claims
-// the user is behind an older latestVersion, and release notes never
-// surface. Hand-written entries (other kinds, deprecations, etc.) are
-// preserved untouched.
-//
-// The entry id is `release-<version>` so dismissals are sticky across
-// catalog regenerations within the same release — the id changes only
-// when a new version is cut, which is exactly when the user should see
-// the banner again.
-// -------------------------------------------------------------------------------------------------
-
-function refreshAnnouncementsFromChangelog(filePath) {
-  if (!existsSync(filePath)) return;
-
-  const changelogPath = path.join(ROOT, "CHANGELOG.md");
-  if (!existsSync(changelogPath)) return;
-
-  let manifest;
-  try {
-    manifest = JSON.parse(readFileSync(filePath, "utf8"));
-  } catch {
-    return; // validator will report the JSON error
-  }
-  if (!manifest || typeof manifest !== "object") return;
-
-  const release = parseLatestRelease(readFileSync(changelogPath, "utf8"));
-  if (!release) return;
-
-  const releaseId = `release-${release.version}`;
-  const others = Array.isArray(manifest.announcements)
-    ? manifest.announcements.filter((item) => !isGeneratedReleaseEntry(item))
-    : [];
-
-  const entry = buildReleaseAnnouncement(release, releaseId);
-  manifest.announcements = [entry, ...others];
-  manifest.latestVersion = release.version;
-  manifest.revision = `release-${release.version}-${release.date}`;
-
-  const next = `${JSON.stringify(manifest, null, 2)}\n`;
-  writeOrCheck(filePath, next, "catalog/announcements.json");
-}
-
-/** Our generated entries always use the `release-x.y.z` id + kind="update". */
-function isGeneratedReleaseEntry(item) {
-  return (
-    !!item &&
-    typeof item === "object" &&
-    typeof item.id === "string" &&
-    item.id.startsWith("release-") &&
-    item.kind === "update"
-  );
-}
-
-/** Parse the first non-Unreleased `## [x.y.z](...) (YYYY-MM-DD)` section. */
-function parseLatestRelease(source) {
-  const lines = source.split("\n");
-  const headerPattern = /^##\s*\[([0-9]+\.[0-9]+\.[0-9]+)\].*\((\d{4}-\d{2}-\d{2})\)\s*$/;
-  for (let i = 0; i < lines.length; i++) {
-    const match = headerPattern.exec(lines[i]);
-    if (!match) continue;
-    const version = match[1];
-    const date = match[2];
-    const bodyLines = [];
-    for (let j = i + 1; j < lines.length; j++) {
-      if (/^##\s/.test(lines[j])) break;
-      bodyLines.push(lines[j]);
-    }
-    const bullets = extractFirstBullets(bodyLines);
-    const title = bullets.length > 0 ? bullets[0] : `sf-pi v${version}`;
-    const body = bullets.slice(0, 2).join(" — ");
-    return { version, date, title, body };
-  }
-  return null;
-}
-
-/** Pull the first few "* bullet" lines, stripping PR/commit link noise. */
-function extractFirstBullets(bodyLines) {
-  const results = [];
-  for (const raw of bodyLines) {
-    const line = raw.trim();
-    if (!line.startsWith("*") && !line.startsWith("-")) continue;
-    let text = line.replace(/^[*-]\s*/, "");
-    // Strip trailing markdown links like `([#68](...))` and `([abc123](...))`.
-    text = text.replace(/\s*\(\[[^\]]+\]\([^)]+\)\)/g, "").trim();
-    // Strip remaining markdown link/emphasis syntax but keep the words.
-    text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
-    text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
-    if (text.length === 0) continue;
-    results.push(text);
-    if (results.length >= 3) break;
-  }
-  return results;
-}
-
-function buildReleaseAnnouncement(release, id) {
-  const { version, date, title, body } = release;
-  const entry = {
-    id,
-    kind: "update",
-    title: truncateTitle(`sf-pi v${version} — ${title}`),
-    publishedAt: `${date}T00:00:00Z`,
-    link: `https://github.com/salesforce/sf-pi/releases/tag/v${version}`,
-    severity: "info",
-  };
-  if (body && body.length > 0) entry.body = truncateBody(body);
-  return entry;
-}
-
-function truncateTitle(text) {
-  return text.length > 110 ? `${text.slice(0, 107).trimEnd()}…` : text;
-}
-
-function truncateBody(text) {
-  return text.length > 280 ? `${text.slice(0, 277).trimEnd()}…` : text;
-}
-
-// -------------------------------------------------------------------------------------------------
 // Announcements schema validation
 //
 // Same shape as the recommendations validator — hand-edited JSON, so we
@@ -1902,13 +1779,11 @@ function validateAnnouncements(filePath, quiet = false) {
           errors.push(`${label}.${dateField} must be an ISO-8601 date string`);
         }
       }
-      if (!isGeneratedReleaseEntry(item)) {
-        if (!item.expiresAt && !item.maxVersion && item.evergreen !== true) {
-          errors.push(`${label} must declare expiresAt, maxVersion, or evergreen=true`);
-        }
-        if (item.evergreen === true && (item.expiresAt || item.maxVersion)) {
-          errors.push(`${label}.evergreen=true cannot be combined with expiresAt or maxVersion`);
-        }
+      if (!item.expiresAt && !item.maxVersion && item.evergreen !== true) {
+        errors.push(`${label} must declare expiresAt, maxVersion, or evergreen=true`);
+      }
+      if (item.evergreen === true && (item.expiresAt || item.maxVersion)) {
+        errors.push(`${label}.evergreen=true cannot be combined with expiresAt or maxVersion`);
       }
     }
   }

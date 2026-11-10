@@ -21,9 +21,10 @@ describe("current documentation authority", () => {
     );
   });
 
-  it("requires non-release announcements to expire, target a version, or be evergreen", () => {
+  it("requires every announcement to expire, target a version, or be evergreen", () => {
     const manifest = JSON.parse(read("catalog/announcements.json")) as {
       feedUrl?: string;
+      latestVersion?: string;
       announcements: Array<{
         id: string;
         expiresAt?: string;
@@ -33,8 +34,9 @@ describe("current documentation authority", () => {
     };
 
     expect(manifest.feedUrl).toBeUndefined();
+    expect(manifest.latestVersion).toBeUndefined();
     for (const announcement of manifest.announcements) {
-      if (announcement.id.startsWith("release-")) continue;
+      expect(announcement.id.startsWith("release-")).toBe(false);
       expect(
         Boolean(announcement.expiresAt || announcement.maxVersion || announcement.evergreen),
         `${announcement.id} must expire, declare maxVersion, or set evergreen=true`,

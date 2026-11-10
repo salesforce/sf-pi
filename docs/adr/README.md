@@ -122,10 +122,9 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0145: SF MCP supports org-bound connection instances](./0145-sf-mcp-org-bound-connection-instances.md) — 2026-10-08
 - [0146: SF SOQL Execution Is API-Aware and Self-Grounding](./0146-sf-soql-execution-is-api-aware-and-self-grounding.md) — 2026-10-08
 - [0148: Guardrail owns Integration and Flow org-sensitive safety](./0148-guardrail-owns-integration-and-flow-org-safety.md) — 2026-10-16
-- [0151: Pi 1.4.0 floor and native Gateway compaction](./0151-pi-140-floor-and-native-gateway-compaction.md) — 2026-10-22
-- [0152: Pi 1.5.0 audit edge and extension type view](./0152-pi-150-audit-edge-and-extension-type-view.md) — 2026-11-02
 - [0153: SF Fin uses a Pi-owned token and the installed Fin CLI](./0153-sf-fin-pi-owned-token-and-installed-cli.md) — 2026-11-03
 - [0154: SF MCP Intercom preset and Fin Operator mediation](./0154-sf-mcp-intercom-preset-and-fin-operator-mediation.md) — 2026-11-03
+- [0155: Pi 1.5.1 floor and Pi 1.5.2 audit edge](./0155-pi-151-floor-and-152-audit-edge.md) — 2026-11-10
 
 ## Proposed
 
@@ -167,6 +166,8 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0147: Pi 1.2.0 audit edge and run-start discrimination](./0147-pi-120-audit-edge-and-run-start-discrimination.md) — 2026-10-14 — superseded by [ADR 0149](./0149-pi-130-audit-edge-and-native-runtime-fixes.md)
 - [0149: Pi 1.3.0 audit edge and native runtime fixes](./0149-pi-130-audit-edge-and-native-runtime-fixes.md) — 2026-10-18 — superseded by [ADR 0150](./0150-pi-140-audit-edge-and-native-runtime-fixes.md)
 - [0150: Pi 1.4.0 audit edge and native runtime fixes](./0150-pi-140-audit-edge-and-native-runtime-fixes.md) — 2026-10-22 — superseded by [ADR 0151](./0151-pi-140-floor-and-native-gateway-compaction.md)
+- [0151: Pi 1.4.0 floor and native Gateway compaction](./0151-pi-140-floor-and-native-gateway-compaction.md) — 2026-10-22 — superseded by [ADR 0155](./0155-pi-151-floor-and-152-audit-edge.md)
+- [0152: Pi 1.5.0 audit edge and extension type view](./0152-pi-150-audit-edge-and-extension-type-view.md) — 2026-11-02 — superseded by [ADR 0155](./0155-pi-151-floor-and-152-audit-edge.md)
 
 ### Rejected
 

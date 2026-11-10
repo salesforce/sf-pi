@@ -173,7 +173,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1695
+    "srcLoc": 1696
   },
   {
     "id": "sf-browser",
@@ -756,7 +756,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6911
+    "srcLoc": 6930
   },
   {
     "id": "sf-herdr",
@@ -1506,6 +1506,6 @@
     "entry": "extensions/sf-welcome/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6461
+    "srcLoc": 6462
   }
 ]

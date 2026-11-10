@@ -1242,9 +1242,10 @@ function buildRightColumn(data: SplashData, colWidth: number, mode: GlyphMode): 
     lines.push(horizontalRule(colWidth));
   }
 
-  // --- Announcements (maintainer notes + sf-pi update nudge) ---
+  // --- Announcements (maintainer notes) ---
   // Rendered at the very top of the right column so maintainer messaging
-  // and update nudges get first-glance real estate. Panel caps at 3 items
+  // gets first-glance real estate. Pi owns package update notices and
+  // release notes. Panel caps at 3 items
   // and each title truncates to one line — longer bodies live in
   // `/sf-pi announcements`.
   if (data.announcements && data.announcements.visible.length > 0) {

@@ -237,6 +237,8 @@ export function createSecureCredentialPromptBridge(
             }
             return component;
           },
+          // Terminals with program status show Pi waiting on sign-in input.
+          { blocked: { kind: "auth", message: options.title } },
         );
 
         if (generation !== promptGeneration || !result) {

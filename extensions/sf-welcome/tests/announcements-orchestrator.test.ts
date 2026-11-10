@@ -98,7 +98,7 @@ describe("buildAnnouncementsSync", () => {
     expect(payload.hasUnacknowledged).toBe(true);
   });
 
-  it("injects the update nudge when installed version < latestVersion", () => {
+  it("leaves sf-pi package update notices to Pi even when installed < latestVersion", () => {
     const root = makeRoot({
       version: "0.15.0",
       manifest: {
@@ -114,29 +114,8 @@ describe("buildAnnouncementsSync", () => {
       state: { acknowledgedRevision: "", dismissed: {} },
       now: new Date("2026-04-29T00:00:00Z"),
     });
-    expect(payload.visible.length).toBe(1);
-    const only = payload.visible[0];
-    expect(only.kind).toBe("update");
-    expect(only.severity).toBe("warn");
-    expect(only.title).toContain("0.17.0");
-  });
-
-  it("does not inject update nudge when installed >= latest", () => {
-    const root = makeRoot({
-      version: "0.17.0",
-      manifest: {
-        schemaVersion: 1,
-        revision: "r",
-        latestVersion: "0.17.0",
-        announcements: [],
-      },
-    });
-    const payload = buildAnnouncementsSync({
-      packageRoot: root,
-      env: {} as NodeJS.ProcessEnv,
-      state: { acknowledgedRevision: "", dismissed: {} },
-    });
     expect(payload.visible).toEqual([]);
+    expect(payload.totalActive).toBe(0);
   });
 
   it("hasUnacknowledged is false when revision is already acknowledged", () => {

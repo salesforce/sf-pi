@@ -353,7 +353,7 @@ export interface SplashData {
   /** Node custom-CA status populated cache-first, then refreshed on a
    *  deferred timer. Never performs a live TLS probe during startup. */
   nodeCert?: NodeCertStatusInfo;
-  /** Maintainer announcements and update nudges, sourced from
+  /** Maintainer announcements, sourced from
    * catalog/announcements.json (+ optional remote feed). Undefined when
    * the feature is disabled or there is nothing active to show. */
   announcements?: AnnouncementsSummary;

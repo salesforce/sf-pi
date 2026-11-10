@@ -459,6 +459,32 @@ describe("generate-catalog CLI", () => {
     expect(result.status, output(result)).toBe(0);
   });
 
+  it("leaves release notes to Pi instead of deriving a release announcement", () => {
+    writeText(
+      "CHANGELOG.md",
+      "# Changelog\n\n## Unreleased\n\n## [1.2.3](https://example.test/compare) (2026-01-02)\n\n### Bug Fixes\n\n* fixture fix\n",
+    );
+    writeJson("catalog/announcements.json", {
+      schemaVersion: 1,
+      revision: "fixture",
+      announcements: [
+        { id: "evergreen", kind: "note", title: "Evergreen guidance", evergreen: true },
+      ],
+    });
+
+    const result = runGenerator();
+    expect(result.status, output(result)).toBe(0);
+    expect(JSON.parse(readFileSync(path.join(root, "catalog/announcements.json"), "utf8"))).toEqual(
+      {
+        schemaVersion: 1,
+        revision: "fixture",
+        announcements: [
+          { id: "evergreen", kind: "note", title: "Evergreen guidance", evergreen: true },
+        ],
+      },
+    );
+  });
+
   it("rejects contradictory evergreen and expiry metadata", () => {
     writeJson("catalog/announcements.json", {
       schemaVersion: 1,

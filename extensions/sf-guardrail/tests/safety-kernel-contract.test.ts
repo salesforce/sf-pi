@@ -266,6 +266,48 @@ describe("Safety Kernel — commandGate (Tier 2)", () => {
     expect(decision).toBeUndefined();
   });
 
+  it.each([
+    "pi auth logout example-provider",
+    "pi auth login example-provider",
+    "pi auth login example-provider --api-key",
+    "pi auth login example-provider --no-browser",
+    "/opt/homebrew/bin/pi auth logout example-provider",
+    "env PI_CODING_AGENT_DIR=/tmp/pi-test pi auth logout example-provider",
+    "timeout 15 pi auth logout example-provider",
+    "(pi auth logout example-provider)",
+    'bash -c "pi auth logout example-provider"',
+    "eval 'pi auth logout example-provider'",
+    "npx --package @earendil-works/pi-coding-agent pi auth logout example-provider",
+    "pi auth check --provider example-provider && pi auth logout example-provider",
+  ])("confirms Pi stored-credential changes: %s", async (command) => {
+    const decision = await evaluateSafety({
+      toolName: "bash",
+      input: { command },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision?.feature).toBe("commandGate");
+    expect(decision?.action).toBe("confirm");
+    expect(decision?.ruleId).toBe("pi-auth-credential-change");
+  });
+
+  it.each([
+    'echo "pi auth logout example-provider"',
+    "timeout 15 echo pi auth login example-provider",
+    "npx eslint pi auth logout",
+    "pi auth --help",
+  ])("allows text that only mentions Pi credential changes: %s", async (command) => {
+    const decision = await evaluateSafety({
+      toolName: "bash",
+      input: { command },
+      cwd: "/project",
+      config: readBundledConfig(),
+    });
+
+    expect(decision).toBeUndefined();
+  });
+
   it("confirms temporary Salesforce CLI secret-output override", async () => {
     const config = readBundledConfig();
     const decision = await evaluateSafety({

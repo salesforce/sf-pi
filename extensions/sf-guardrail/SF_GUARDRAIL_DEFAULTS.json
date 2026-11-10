@@ -387,6 +387,11 @@
         "description": "reveal a configured Pi provider credential"
       },
       {
+        "id": "pi-auth-credential-change",
+        "pattern": "pi-auth-credential-change",
+        "description": "replace or remove a stored Pi provider credential"
+      },
+      {
         "id": "sf-org-auth-show-access-token",
         "pattern": "org auth show-access-token",
         "description": "reveal Salesforce org access token"
