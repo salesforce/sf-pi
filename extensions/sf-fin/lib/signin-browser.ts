@@ -8,6 +8,7 @@
  * agent-browser prints is discarded, apart from a short status line.
  */
 import { spawn } from "node:child_process";
+import { agentBrowserCommand } from "./agent-browser-command.ts";
 import type { BrowserCookie, SigninBrowser } from "./browser-signin.ts";
 
 /** Same shared session SF Browser uses. */
@@ -29,12 +30,8 @@ export type SpawnAgentBrowser = (
 
 export const spawnAgentBrowser: SpawnAgentBrowser = (args, options) =>
   new Promise((resolve) => {
-    const [command, commandArgs] = options.ownerOnlyFiles
-      ? // A launch that will hold a Fin login creates its files owner-only.
-        // Arguments pass through "$@", never into the shell string.
-        ["sh", ["-c", 'umask 077; exec agent-browser "$@"', "sh", ...BASE_ARGS, ...args]]
-      : ["agent-browser", [...BASE_ARGS, ...args]];
-    const child = spawn(command as string, commandArgs as string[], {
+    const [command, commandArgs] = agentBrowserCommand([...BASE_ARGS, ...args], options);
+    const child = spawn(command, commandArgs, {
       shell: false,
       stdio: ["pipe", "pipe", "ignore"],
       windowsHide: true,

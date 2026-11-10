@@ -11,6 +11,11 @@ import { normalizeNpmConfigValue } from "../../../../lib/common/npm-release-age-
 import type { ExecFn } from "../../../../lib/common/sf-environment/detect.ts";
 import { isCliVersionSupported, parseCliVersion } from "../cli-runner.ts";
 import { CLI_BINARY, CLI_PACKAGE, MIN_CLI_VERSION } from "../types.ts";
+import {
+  defaultWindowsSpawnContext,
+  resolveSpawnCommand,
+  type WindowsSpawnContext,
+} from "../../../../lib/common/windows-spawn.ts";
 
 const REGISTRY_URL = "https://registry.npmjs.org/@intercom%2Fcli";
 const REGISTRY_TIMEOUT_MS = 5_000;
@@ -74,20 +79,31 @@ export async function fetchCliRegistryMetadata(
 export async function detectCli(
   exec: ExecFn,
   options: { latestVersion?: string } = {},
+  spawnCtx: WindowsSpawnContext = defaultWindowsSpawnContext(),
 ): Promise<CliDetection> {
+  // Windows has no `which`; the resolved npm wrapper target stands in for it.
+  // `exec` already runs .cmd wrappers without a shell (lib/common/exec-adapter.ts).
+  const windows = spawnCtx.platform === "win32";
+  const windowsEntry = windows ? resolveSpawnCommand(CLI_BINARY, spawnCtx).entry : undefined;
   const [which, version, npmRoot] = await Promise.all([
-    exec("which", [CLI_BINARY], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
+    windows
+      ? Promise.resolve(undefined)
+      : exec("which", [CLI_BINARY], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
     exec(CLI_BINARY, ["--version"], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
     exec("npm", ["root", "-g"], { timeout: EXEC_TIMEOUT_MS }).catch(() => undefined),
   ]);
 
-  const binaryPath = which?.code === 0 ? firstLine(which.stdout) : undefined;
+  const binaryPath = windows
+    ? windowsEntry
+    : which?.code === 0
+      ? firstLine(which.stdout)
+      : undefined;
   const installedVersion = version?.code === 0 ? parseCliVersion(version.stdout) : undefined;
   const npmGlobalRoot = npmRoot?.code === 0 ? firstLine(npmRoot.stdout) : undefined;
   const installed = Boolean(binaryPath || installedVersion);
   const installSource: CliInstallSource = !installed
     ? "missing"
-    : isUnderNpmGlobal(binaryPath, npmGlobalRoot)
+    : isUnderNpmGlobal(binaryPath, npmGlobalRoot, windows ? "win32" : process.platform)
       ? "npm-global"
       : "other";
 
@@ -121,12 +137,16 @@ export function classifyInstallState(
 export function isUnderNpmGlobal(
   binaryPath: string | undefined,
   npmGlobalRoot: string | undefined,
+  platform: NodeJS.Platform = process.platform,
 ): boolean {
   if (!binaryPath || !npmGlobalRoot) return false;
-  const pkgDir = path.join(npmGlobalRoot, ...CLI_PACKAGE.split("/"));
-  const target = safeRealpath(binaryPath) ?? binaryPath;
-  const root = safeRealpath(pkgDir) ?? pkgDir;
-  return target === root || target.startsWith(`${root}${path.sep}`);
+  // Windows paths use `\` and are case-insensitive, so compare with win32 rules there.
+  const p = platform === "win32" ? path.win32 : path.posix;
+  const fold = (value: string) => (platform === "win32" ? value.toLowerCase() : value);
+  const pkgDir = p.join(npmGlobalRoot, ...CLI_PACKAGE.split("/"));
+  const target = fold(p.normalize(safeRealpath(binaryPath) ?? binaryPath));
+  const root = fold(p.normalize(safeRealpath(pkgDir) ?? pkgDir));
+  return target === root || target.startsWith(`${root}${p.sep}`);
 }
 
 export interface NpmPolicyConfig {

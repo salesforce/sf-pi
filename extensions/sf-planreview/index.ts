@@ -6,6 +6,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { getFirstTokenCompletions } from "../../lib/common/command-actions.ts";
 import { registerExtensionDoctor } from "../../lib/common/doctor/registry.ts";
 import { buildExecFn } from "../../lib/common/exec-adapter.ts";
+import { spawnCommand } from "../../lib/common/windows-spawn.ts";
 import { openExtensionInManager } from "../../lib/common/manager-deep-link.ts";
 import { openInfoPanel } from "../../lib/common/info-panel.ts";
 import { registerManagerDetailActions } from "../../lib/common/manager-actions.ts";
@@ -65,7 +66,8 @@ export default function sfPlannotator(pi: ExtensionAPI): void {
 
   const unregisterDoctor = registerExtensionDoctor(NAME, async (cwd, signal) => {
     const exec = async (command: string, args: string[], options?: { timeout?: number }) => {
-      const result = await pi.exec(command, args, {
+      const [file, fileArgs] = spawnCommand(command, args);
+      const result = await pi.exec(file, fileArgs, {
         cwd,
         signal,
         timeout: Math.min(options?.timeout ?? 2_000, 2_000),

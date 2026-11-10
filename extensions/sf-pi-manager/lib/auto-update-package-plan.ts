@@ -5,6 +5,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { compareVersions } from "../../../lib/common/pi-compat.ts";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
 import { globalSettingsPath, readJsonFile } from "../../../lib/common/sf-pi-settings.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 
 const PACKAGE_METADATA_TIMEOUT_MS = 15_000;
 const PACKAGE_METADATA_CONCURRENCY = 4;
@@ -153,11 +154,19 @@ async function readLatestMetadata(
   signal?: AbortSignal,
 ): Promise<{ version: string; piPeerRanges: string[]; nodeEngine?: string } | undefined> {
   try {
-    const result = await pi.exec(
-      "npm",
-      ["view", `${packageName}@latest`, "version", "peerDependencies", "engines", "--json"],
-      { cwd, timeout: PACKAGE_METADATA_TIMEOUT_MS, signal },
-    );
+    const [file, args] = spawnCommand("npm", [
+      "view",
+      `${packageName}@latest`,
+      "version",
+      "peerDependencies",
+      "engines",
+      "--json",
+    ]);
+    const result = await pi.exec(file, args, {
+      cwd,
+      timeout: PACKAGE_METADATA_TIMEOUT_MS,
+      signal,
+    });
     if (result.code !== 0 || result.killed || signal?.aborted) return undefined;
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     const peers =

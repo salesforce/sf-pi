@@ -65,6 +65,7 @@ import {
 } from "./lib/settings.ts";
 import { registerCodeAnalyzerTranscriptRenderer } from "./lib/transcript.ts";
 import { createCodeAnalyzerConfirmPanel } from "./lib/manager-action-panels.ts";
+import { spawnCommand } from "../../lib/common/windows-spawn.ts";
 
 const COMMAND_NAME = "sf-code-analyzer";
 
@@ -581,7 +582,8 @@ async function setupCodeAnalyzerPlugin(
   const command = "sf plugins install code-analyzer";
   ctx.ui.setStatus("sf-code-analyzer", "Code Analyzer setup: installing plugin…");
   try {
-    const result = await pi.exec("sf", ["plugins", "install", "code-analyzer"], {
+    const [installFile, installArgs] = spawnCommand("sf", ["plugins", "install", "code-analyzer"]);
+    const result = await pi.exec(installFile, installArgs, {
       cwd: ctx.cwd,
       timeout: 180_000,
     });

@@ -3,6 +3,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { redactText } from "./redaction.ts";
 import { resolveTargetOrg } from "./salesforce-open.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 
 export interface SetupAuditTrailRow {
   Id?: string;
@@ -63,7 +64,16 @@ export async function fetchSetupAuditTrail(
   ].join(" ");
 
   try {
-    const result = await pi.exec("sf", ["data", "query", "--json", "-o", targetOrg, "-q", query], {
+    const [file, fileArgs] = spawnCommand("sf", [
+      "data",
+      "query",
+      "--json",
+      "-o",
+      targetOrg,
+      "-q",
+      query,
+    ]);
+    const result = await pi.exec(file, fileArgs, {
       cwd: ctx.cwd,
       signal,
       timeout: 30_000,

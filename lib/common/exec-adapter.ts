@@ -9,6 +9,7 @@
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { ExecFn } from "./sf-environment/detect.ts";
+import { spawnCommand } from "./windows-spawn.ts";
 
 /**
  * Build an ExecFn from a Pi extension API handle.
@@ -27,7 +28,10 @@ import type { ExecFn } from "./sf-environment/detect.ts";
  */
 export function buildExecFn(pi: ExtensionAPI, defaultCwd?: string): ExecFn {
   return async (command, args, options) => {
-    const result = await pi.exec(command, args, {
+    // Windows: run `.cmd` wrappers (sf, npm, agent-browser, …) without a shell.
+    // Unchanged on macOS and Linux.
+    const [file, fileArgs] = spawnCommand(command, args);
+    const result = await pi.exec(file, fileArgs, {
       timeout: options?.timeout,
       cwd: options?.cwd ?? defaultCwd,
     });

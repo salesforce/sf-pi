@@ -16,6 +16,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 import { buildFlowDigest, row, section, toolResultFromDigest } from "./digest.ts";
 import type { SfFlowParams, ToolResult } from "./types.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 
 const SF_BROWSER_SESSION = "sf-pi";
 const OPEN_TIMEOUT_MS = 60_000;
@@ -194,10 +195,12 @@ function defaultBuilderVerifyAdapter(pi: ExtensionAPI, cwd: string): BuilderVeri
   const base = ["--session", SF_BROWSER_SESSION, "--session-name", SF_BROWSER_SESSION];
   return {
     async open(url) {
-      await pi.exec("agent-browser", [...base, "open", url], { cwd, timeout: OPEN_TIMEOUT_MS });
+      const [file, args] = spawnCommand("agent-browser", [...base, "open", url]);
+      await pi.exec(file, args, { cwd, timeout: OPEN_TIMEOUT_MS });
     },
     async snapshot() {
-      const result = await pi.exec("agent-browser", [...base, "snapshot", "-i"], {
+      const [file, args] = spawnCommand("agent-browser", [...base, "snapshot", "-i"]);
+      const result = await pi.exec(file, args, {
         cwd,
         timeout: SNAPSHOT_TIMEOUT_MS,
       });
