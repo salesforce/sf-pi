@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "revision": "release-0.352.6-2026-11-10",
-  "latestVersion": "0.352.6",
+  "revision": "release-0.352.7-2026-11-10",
+  "latestVersion": "0.352.7",
   "announcements": [
     {
-      "id": "release-0.352.6",
+      "id": "release-0.352.7",
       "kind": "update",
-      "title": "sf-pi v0.352.6 — make the Windows test suite pass and require it in CI",
+      "title": "sf-pi v0.352.7 — open URLs and launch pi correctly on Windows and Linux",
       "publishedAt": "2026-11-10T00:00:00Z",
-      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.352.6",
+      "link": "https://github.com/salesforce/sf-pi/releases/tag/v0.352.7",
       "severity": "info",
-      "body": "make the Windows test suite pass and require it in CI"
+      "body": "open URLs and launch pi correctly on Windows and Linux"
     }
   ]
 }
