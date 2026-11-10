@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.352.7](https://github.com/salesforce/sf-pi/compare/v0.352.6...v0.352.7) (2026-11-10)
+
+
+### Bug Fixes
+
+* open URLs and launch pi correctly on Windows and Linux ([#912](https://github.com/salesforce/sf-pi/issues/912)) ([92417e1](https://github.com/salesforce/sf-pi/commit/92417e1397fe29c6d6455239d2b21d2bdaa462ad))
+
 ## [0.352.6](https://github.com/salesforce/sf-pi/compare/v0.352.5...v0.352.6) (2026-11-10)
 
 
