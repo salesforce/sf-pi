@@ -44,7 +44,7 @@ This complete top-level inventory is generated from `lib/common/`. Directory cou
 | `auto-update/`                 | directory |                     2 |               0 |
 | `boot-timing.ts`               | module    |                     1 |               0 |
 | `browser-runtime-status/`      | directory |                     1 |               0 |
-| `catalog-state/`               | directory |                     9 |               0 |
+| `catalog-state/`               | directory |                     8 |               0 |
 | `code-analyzer-status/`        | directory |                     1 |               0 |
 | `color-policy.ts`              | module    |                     1 |               0 |
 | `command-actions.ts`           | module    |                     1 |               0 |

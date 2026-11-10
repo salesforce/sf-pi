@@ -242,7 +242,7 @@ Do not edit these manually:
 - generated shared-module inventory in `lib/common/README.md`
 - generated E2E harness inventory in `scripts/e2e/README.md`
 - generated file-structure blocks in `extensions/*/README.md`
-- normalized `catalog/announcements.json`
+- validated `catalog/announcements.json`
 - validated / normalized `catalog/recommendations.json`
 
 Regenerate them with:

@@ -151,6 +151,7 @@ describe("Salesforce Engineering Constitution", () => {
     expect(content).toContain("7. SIMPLE, VISUAL COMMUNICATION");
     expect(content).toContain("Applies to chat responses only");
     expect(content).toContain("Use the most specific supported Mermaid form");
+    expect(content).toContain("`pie` for a few proportions");
     expect(content).toContain("top-level fenced block");
     expect(content).toContain("6–8 nodes");
     expect(content).toContain("Prefer `TD` or `TB`");

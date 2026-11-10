@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Deterministic, content-safe checks for terminal Mermaid response contracts. */
-import { type DiagramKind, diagramKind, render } from "grok-mermaid";
+import { type DiagramKind, diagramKind, render } from "lovely-mermaid";
 
 export interface MermaidDiagramAnalysis {
   kind: DiagramKind | "unsupported";

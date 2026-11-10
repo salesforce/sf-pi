@@ -90,9 +90,8 @@ jobs:
         #      .gitleaksignore, etc.). Always bringing main forward means
         #      CI/gitleaks on the PR branch use the freshest workflow + ignore
         #      files.
-        #   2. Run `npm run generate-catalog`. release-please bumps
-        #      CHANGELOG; catalog/announcements.json is derived from
-        #      CHANGELOG, so it drifts on every release PR and fails
+        #   2. Run `npm run generate-catalog`. The merge from main can
+        #      change generated catalog inputs, which would fail
         #      `generate-catalog:check` in CI. Regenerate and commit.
         # Any resulting diff (merge commit and/or catalog regen) is pushed
         # back to the PR branch before dispatching CI.

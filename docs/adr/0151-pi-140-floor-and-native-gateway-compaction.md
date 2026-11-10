@@ -1,8 +1,9 @@
 ---
 id: "0151"
-status: accepted
+status: superseded
 date: 2026-10-22
 supersedes: ["0150"]
+supersededBy: ["0155"]
 ---
 
 # Pi 1.4.0 floor and native Gateway compaction

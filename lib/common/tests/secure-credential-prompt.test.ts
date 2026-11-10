@@ -179,7 +179,7 @@ async function expectModeRejected(mode: ExtensionContext["mode"]): Promise<void>
 }
 
 describe("secure credential prompt bridge", () => {
-  it("opens the configured component without overlay mode and returns its submitted value", async () => {
+  it("opens the configured component inline, reports blocked auth input, and returns its submitted value", async () => {
     const bridge = createSecureCredentialPromptBridge({
       title: "SF Slack credential",
       description: "Pi owns persistence.",
@@ -188,7 +188,9 @@ describe("secure credential prompt bridge", () => {
     bridge.bind(fake.ui, "tui");
 
     const result = bridge.prompt();
-    expect(fake.custom).toHaveBeenCalledWith(expect.any(Function));
+    expect(fake.custom).toHaveBeenCalledWith(expect.any(Function), {
+      blocked: { kind: "auth", message: "SF Slack credential" },
+    });
     expect(fake.active?.component.render(80).join("\n")).toContain("SF Slack credential");
     expect(fake.active?.component.render(80).join("\n")).toContain("Pi owns persistence.");
     fake.active?.component.handleInput("credential-from-provider-login");

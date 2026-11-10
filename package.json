@@ -141,16 +141,16 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": ">=1.4.0 <2.0.0",
+    "@earendil-works/pi-coding-agent": ">=1.5.1 <2.0.0",
     "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
-    "@earendil-works/pi-ai": "1.5.0",
-    "@earendil-works/pi-coding-agent": "1.5.0",
-    "@earendil-works/pi-tui": "1.5.0",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-coding-agent": "1.5.2",
+    "@earendil-works/pi-tui": "1.5.2",
     "@eslint/js": "^10.0.1",
     "@flow-scanner/lightning-flow-scanner-core": "6.20.0",
     "@sf-agentscript/agentfabric-dialect": "1.5.0",
@@ -184,7 +184,7 @@
     "@sf-agentscript/language": "3.2.3",
     "@sf-agentscript/lsp": "2.6.33",
     "fast-xml-parser": "^5.11.2",
-    "grok-mermaid": "0.2.3",
+    "lovely-mermaid": "0.3.3",
     "node-emoji": "^2.2.0",
     "vscode-languageserver-protocol": "^3.18.5",
     "yaml": "^2.9.1"

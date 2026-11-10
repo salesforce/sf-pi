@@ -2,14 +2,13 @@
 /**
  * Announcements orchestrator.
  *
- * Pulls together the bundled manifest, optional remote feed, update-nudge
- * synthesis, and user state into a single render-ready payload for the
- * splash panel.
+ * Pulls together the bundled manifest, optional remote feed, and user state
+ * into a single render-ready payload for the splash panel. Pi owns package
+ * update notices and post-update changelogs, so no update entry is synthesized.
  *
  * Split responsibilities:
  *   - announcements-manifest.ts  \u2014 load bundled JSON
  *   - announcements-remote.ts    \u2014 optional network fetch
- *   - announcements-update.ts    \u2014 synthesize the update nudge
  *   - announcements-filter.ts    \u2014 pure merge/filter/sort rules
  *   - announcements-state.ts     \u2014 dismissals + ack bookkeeping
  *
@@ -27,7 +26,6 @@ import type {
 } from "../../../catalog/types.ts";
 import { loadAnnouncementsManifest, resolveDefaultPackageRoot } from "./announcements-manifest.ts";
 import { fetchRemoteAnnouncements, type RemoteFetchOptions } from "./announcements-remote.ts";
-import { buildUpdateAnnouncement } from "./announcements-update.ts";
 import { filterAnnouncements, mergeAnnouncements } from "./announcements-filter.ts";
 import {
   readAnnouncementsState,
@@ -52,7 +50,7 @@ export interface AnnouncementsPayload {
   /** Current manifest revision. Used by the orchestrator to decide when to
    * re-arm the footer nudge. */
   revision: string;
-  /** Total active (post-filter) count across bundled + remote + update nudge. */
+  /** Total active (post-filter) count across bundled + remote entries. */
   totalActive: number;
   /** Items to render in the splash panel (already capped). */
   visible: AnnouncementView[];
@@ -64,7 +62,7 @@ export interface AnnouncementsPayload {
 export interface AnnouncementFeatureSettings {
   /** Master toggle. False hides the panel and disables the footer nudge. */
   enabled: boolean;
-  /** Remote feed toggle. False keeps bundled/update entries but skips fetch. */
+  /** Remote feed toggle. False keeps bundled entries but skips fetch. */
   feedEnabled: boolean;
 }
 
@@ -107,16 +105,7 @@ export function buildAnnouncementsSync(
   const state = options.state ?? readAnnouncementsState();
   const installedVersion = options.installedVersion ?? readInstalledVersion(packageRoot);
 
-  const updateItem = buildUpdateAnnouncement({
-    installedVersion,
-    latestVersion: manifest.latestVersion,
-    packageRoot,
-  });
-
-  const merged: AnnouncementItem[] = [
-    ...manifest.announcements,
-    ...(updateItem ? [updateItem] : []),
-  ];
+  const merged: AnnouncementItem[] = [...manifest.announcements];
   // If the user has a cached remote payload from a previous run, include
   // it on the sync path so the splash looks the same offline as online
   // until the next refresh completes.
@@ -163,14 +152,7 @@ export async function refreshAnnouncements(
     updateRemoteCache(remote.statePatch);
   }
 
-  const updateItem = buildUpdateAnnouncement({
-    installedVersion,
-    latestVersion: manifest.latestVersion,
-    packageRoot,
-  });
-
-  const combined = mergeAnnouncements(manifest.announcements, remote ? remote.announcements : []);
-  const merged = updateItem ? [...combined, updateItem] : combined;
+  const merged = mergeAnnouncements(manifest.announcements, remote ? remote.announcements : []);
 
   const latestState = options.state ?? readAnnouncementsState();
   return toPayload(merged, latestState, installedVersion, manifest.revision, options.now);

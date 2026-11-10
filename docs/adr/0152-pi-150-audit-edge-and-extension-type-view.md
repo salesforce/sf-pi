@@ -1,7 +1,8 @@
 ---
 id: "0152"
-status: accepted
+status: superseded
 date: 2026-11-02
+supersededBy: ["0155"]
 ---
 
 # Pi 1.5.0 audit edge and extension type view

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-import { render } from "grok-mermaid";
+import { render } from "lovely-mermaid";
 import { describe, expect, it } from "vitest";
 import {
   buildData360OrchestrationTrace,

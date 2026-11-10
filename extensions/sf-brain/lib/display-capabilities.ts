@@ -18,6 +18,7 @@ export const SUPPORTED_TERMINAL_MERMAID_FORMS = [
   "stateDiagram-v2",
   "erDiagram",
   "classDiagram",
+  "pie",
 ] as const;
 
 export type MermaidRenderingMode = "off" | "final" | "streaming";
@@ -68,7 +69,7 @@ export function buildDisplayCapabilitiesReport(
 /** Compact model-visible state that can be superseded when settings change. */
 export function formatDisplayCapabilitiesContext(capabilities: DisplayCapabilities): string {
   const mermaid = capabilities.mermaid
-    ? `Mermaid terminal rendering: ${capabilities.mermaidMode}. Use only a top-level flowchart, sequenceDiagram, stateDiagram-v2, erDiagram, or classDiagram block that fits the terminal.`
+    ? `Mermaid terminal rendering: ${capabilities.mermaidMode}. Use only a top-level flowchart, sequenceDiagram, stateDiagram-v2, erDiagram, classDiagram, or pie block that fits the terminal.`
     : "Mermaid terminal rendering: off. Use indented bullets or `A → B → C` text instead of Mermaid blocks.";
   const icons = capabilities.emoji
     ? "Chat status markers: emoji. Follow the constitution's semantic icon legend."

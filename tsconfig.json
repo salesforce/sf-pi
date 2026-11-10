@@ -14,12 +14,11 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     // Pi loads extensions with its pi-ai extension view (TypeBox StringEnum,
-    // Type, Static); type-check against that view, with the published
-    // entrypoint as the fallback for Pi releases that do not ship it.
+    // Type, Static); every supported Pi release ships it, so type-check
+    // against that view only. A moved view fails loudly in CI.
     "paths": {
       "@earendil-works/pi-ai": [
-        "./node_modules/@earendil-works/pi-coding-agent/dist/core/extensions/pi-ai-extension-view.d.ts",
-        "./node_modules/@earendil-works/pi-ai/dist/index.d.ts"
+        "./node_modules/@earendil-works/pi-coding-agent/dist/core/extensions/pi-ai-extension-view.d.ts"
       ]
     }
   },

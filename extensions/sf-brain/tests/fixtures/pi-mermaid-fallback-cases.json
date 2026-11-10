@@ -6,6 +6,12 @@
     "expected": "render"
   },
   {
+    "id": "pie-renders-on-pi-engine",
+    "available_width": 80,
+    "source": "pie title Checks\n  \"Passed\" : 12\n  \"Failed\" : 1",
+    "expected": "render"
+  },
+  {
     "id": "supported-but-too-wide",
     "available_width": 80,
     "source": "flowchart LR\n  A[First component with a long label] --> B[Second component with a long label] --> C[Third component with a long label] --> D[Fourth component with a long label]",
