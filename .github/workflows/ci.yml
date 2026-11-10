@@ -201,7 +201,7 @@ jobs:
   auto-merge-release-pr:
     name: Auto-merge release PR
     runs-on: ubuntu-latest
-    needs: [validate, audit]
+    needs: [validate, audit, windows]
     if: >-
       success() &&
       (
@@ -331,6 +331,7 @@ jobs:
           post_status "actionlint"
           post_status "Require SHA-pinned actions"
           post_status "License scan (production deps)"
+          post_status "Tests (Windows)"
 
       - name: Enable auto-merge on release PR
         if: steps.pr.outputs.pr_number != ''

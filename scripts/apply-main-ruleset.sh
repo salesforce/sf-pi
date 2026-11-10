@@ -18,7 +18,7 @@
 #   - Required status checks (strict=false so rebases aren't forced):
 #       Validate, npm audit (production), gitleaks, actionlint,
 #       Require SHA-pinned actions, commitlint,
-#       License scan (production deps).
+#       License scan (production deps), Tests (Windows).
 #     Not required (intentional):
 #       - CodeQL: workflow is schedule-only (weekly) + workflow_dispatch;
 #         requiring it would stall every PR.
@@ -88,7 +88,8 @@ payload=$(cat <<JSON
           { "context": "actionlint" },
           { "context": "Require SHA-pinned actions" },
           { "context": "commitlint" },
-          { "context": "License scan (production deps)" }
+          { "context": "License scan (production deps)" },
+          { "context": "Tests (Windows)" }
         ]
       }
     }
