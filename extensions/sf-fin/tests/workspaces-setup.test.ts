@@ -230,7 +230,7 @@ describe("service.setup", () => {
     vi.fn(async (url: string, init: RequestInit) => {
       const auth = (init.headers as Record<string, string>).Authorization;
       if (String(url).endsWith("/me")) {
-        return auth === `Bearer ${TOKEN}` && String(url).startsWith("https://api.intercom.io")
+        return auth === `Bearer ${TOKEN}` && new URL(String(url)).host === "api.intercom.io"
           ? new Response(
               JSON.stringify({ app: { id_code: "app1", name: "Example", region: "US" } }),
               {

@@ -151,21 +151,24 @@ Restart Pi or run `/reload`, then verify with `/sf-pi doctor`.
 
 ### Platform notes
 
-Required CI continuously proves Ubuntu with Node 22. SF Pi contains documented
-macOS, Linux, and WSL paths, but they are not all required release-blocking
-matrix jobs. Native Windows receives manual fallbacks for some installers and is
-best-effort; use WSL when Unix shell parity is required.
+Required CI continuously proves Ubuntu with Node 22, and the required
+`Tests (Windows)` job runs the type check and full unit suite on native Windows
+for every pull request and release. SF Pi launches Windows `.cmd` CLIs (`sf`,
+`npm`, `pi`, `agent-browser`) and opens URLs without a shell. macOS paths are
+documented but not a required CI job. On Windows, some installers (for example
+the Nerd Font) still use manual steps, and a few POSIX-only features such as
+owner-only file modes rely on the user profile's ACLs instead.
 
 </details>
 
 ## Maintained support evidence
 
-| Claim               | Maintained proof                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| Node.js `>=22.19`   | `package.json` engines, preinstall check, doctor diagnostics, and required Ubuntu CI       |
-| Pi `>=1.4.0 <2.0.0` | peer dependency, runtime-floor checks, and nightly exact-version compatibility jobs        |
-| npm client          | no independent engine/package-manager floor; required CI uses the npm bundled by Node 22   |
-| Operating systems   | required CI proves Ubuntu; other platform paths are documented at their actual proof level |
+| Claim               | Maintained proof                                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| Node.js `>=22.19`   | `package.json` engines, preinstall check, doctor diagnostics, and required Ubuntu CI          |
+| Pi `>=1.4.0 <2.0.0` | peer dependency, runtime-floor checks, and nightly exact-version compatibility jobs           |
+| npm client          | no independent engine/package-manager floor; required CI uses the npm bundled by Node 22      |
+| Operating systems   | required CI proves Ubuntu and native Windows; macOS paths are documented at their proof level |
 
 ## Next step
 
