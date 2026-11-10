@@ -98,6 +98,13 @@ describe("current documentation authority", () => {
     expect(install).toContain("Required CI continuously proves Ubuntu with Node 22");
     expect(install).not.toContain("- npm 11");
     expect(install).not.toContain("Native Windows is supported");
+    // The Windows claim must stay tied to the blocking CI job that proves it.
+    const ci = read(".github/workflows/ci.yml");
+    expect(ci).toMatch(
+      /name: Tests \(Windows\)\n\s+runs-on: windows-latest\n(?!\s+continue-on-error)/,
+    );
+    expect(install).toMatch(/required\s+`Tests \(Windows\)` job/);
+    expect(install).not.toContain("best-effort; use WSL");
   });
 
   it("lists every configurable extension exactly once in the settings audit", () => {
