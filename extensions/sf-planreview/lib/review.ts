@@ -53,7 +53,9 @@ export function prepareFileReview(cwd: string, requested: string): string {
       ? value.slice(1, -1)
       : value;
   const file = path.resolve(cwd, unquoted);
-  if (/(?:^|\/)(?:\.env(?:\..*)?|[^/]+\.(?:pem|key))$/i.test(file)) {
+  // Match the file name, not the whole path: on Windows the resolved path uses
+  // backslashes, so a '/'-anchored pattern never matched `.env`.
+  if (/^(?:\.env(?:\..*)?|.+\.(?:pem|key))$/i.test(path.basename(file))) {
     throw new Error("Sensitive files cannot be opened for review.");
   }
   const stat = lstatSync(file);

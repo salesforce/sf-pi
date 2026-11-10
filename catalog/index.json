@@ -254,7 +254,7 @@
     "entry": "extensions/sf-browser/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 9464
+    "srcLoc": 9475
   },
   {
     "id": "sf-code-analyzer",
@@ -302,7 +302,7 @@
     "entry": "extensions/sf-code-analyzer/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4499
+    "srcLoc": 4501
   },
   {
     "id": "sf-data-explorer",
@@ -630,7 +630,7 @@
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 7907
+    "srcLoc": 7953
   },
   {
     "id": "sf-flow",
@@ -699,7 +699,7 @@
     "entry": "extensions/sf-flow/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 10582
+    "srcLoc": 10585
   },
   {
     "id": "sf-guardrail",
@@ -972,7 +972,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4105
+    "srcLoc": 4204
   },
   {
     "id": "sf-lwc",
@@ -1182,7 +1182,7 @@
     "entry": "extensions/sf-pi-manager/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4941
+    "srcLoc": 4952
   },
   {
     "id": "sf-planreview",
@@ -1230,7 +1230,7 @@
     "entry": "extensions/sf-planreview/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 972
+    "srcLoc": 976
   },
   {
     "id": "sf-skills",
@@ -1460,7 +1460,7 @@
     "entry": "extensions/sf-tldraw/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4594
+    "srcLoc": 4617
   },
   {
     "id": "sf-welcome",

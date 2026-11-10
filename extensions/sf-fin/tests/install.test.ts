@@ -15,6 +15,14 @@ import {
   planCliInstall,
   runCliInstall,
 } from "../lib/install/installer.ts";
+import {
+  clearWindowsSpawnCache,
+  defaultWindowsSpawnContext,
+  type WindowsSpawnContext,
+} from "../../../lib/common/windows-spawn.ts";
+
+/** Pins the POSIX branch so bare-name expectations hold on any host, including Windows. */
+const POSIX_SPAWN: WindowsSpawnContext = { ...defaultWindowsSpawnContext(), platform: "linux" };
 
 let dir: string;
 beforeEach(() => {
@@ -169,7 +177,7 @@ describe("detectCli", () => {
       if (command === "intercom") return { code: 0, stdout: "0.14.1\n", stderr: "" };
       return { code: 0, stdout: `${root}\n`, stderr: "" };
     });
-    await expect(detectCli(exec, { latestVersion: "0.15.0" })).resolves.toMatchObject({
+    await expect(detectCli(exec, { latestVersion: "0.15.0" }, POSIX_SPAWN)).resolves.toMatchObject({
       installed: true,
       installSource: "npm-global",
       installedVersion: "0.14.1",
@@ -184,5 +192,72 @@ describe("detectCli", () => {
     expect(classifyInstallState("0.14.0", true, "0.14.1")).toBe("outdated");
     expect(classifyInstallState("0.14.1", true, "0.14.1")).toBe("current");
     expect(classifyInstallState("0.14.1", true, undefined)).toBe("current");
+  });
+});
+
+describe("Windows install detection", () => {
+  // Mirrors npm's Windows layout: the global prefix holds intercom.cmd plus the
+  // package. Injected, so this runs on any runner.
+  const W = path.win32;
+  const APPDATA = W.join("C:\\", "Users", "dev", "AppData", "Roaming");
+  const PREFIX = W.join(APPDATA, "npm");
+  const intercomJs = W.join(PREFIX, "node_modules", "@intercom", "cli", "dist", "index.js");
+  const files: Record<string, string> = {
+    [W.join(PREFIX, "intercom.cmd")]:
+      String.raw`"%_prog%"  "%dp0%\node_modules\@intercom\cli\dist\index.js" %*`,
+    [intercomJs]: "",
+  };
+  const find = (file: string) =>
+    Object.keys(files).find((key) => key.toLowerCase() === file.toLowerCase());
+  const spawnCtx: WindowsSpawnContext = {
+    platform: "win32",
+    env: { PATH: PREFIX, APPDATA },
+    exists: (file) => find(file) !== undefined,
+    readText: (file) => {
+      const key = find(file);
+      if (key === undefined) throw new Error("ENOENT");
+      return files[key]!;
+    },
+    nodePath: W.join("C:\\", "apps", "nodejs", "node.exe"),
+  };
+
+  beforeEach(() => clearWindowsSpawnCache());
+
+  it("detects an npm-global intercom through its wrapper, without which", async () => {
+    const calls: string[] = [];
+    const exec = vi.fn(async (command: string, args: string[]) => {
+      calls.push([command, ...args].join(" "));
+      if (command === "intercom") return { code: 0, stdout: "0.15.0\n", stderr: "" };
+      if (command === "npm")
+        return { code: 0, stdout: `${W.join(PREFIX, "node_modules")}\n`, stderr: "" };
+      return { code: 1, stdout: "", stderr: "spawn ENOENT" };
+    });
+    await expect(detectCli(exec, { latestVersion: "0.15.0" }, spawnCtx)).resolves.toMatchObject({
+      installed: true,
+      binaryPath: intercomJs,
+      installedVersion: "0.15.0",
+      installSource: "npm-global",
+      state: "current",
+    });
+    expect(calls.some((call) => call.startsWith("which "))).toBe(false);
+  });
+
+  it("reports missing when no intercom wrapper is on PATH", async () => {
+    const empty: WindowsSpawnContext = { ...spawnCtx, exists: () => false };
+    const exec = vi.fn(async () => ({ code: 1, stdout: "", stderr: "spawn ENOENT" }));
+    await expect(detectCli(exec, {}, empty)).resolves.toMatchObject({
+      installed: false,
+      state: "missing",
+    });
+  });
+
+  it("compares Windows paths case-insensitively with backslashes", () => {
+    expect(
+      isUnderNpmGlobal(
+        "c:\\users\\dev\\appdata\\roaming\\npm\\node_modules\\@intercom\\cli\\dist\\index.js",
+        W.join(PREFIX, "node_modules"),
+        "win32",
+      ),
+    ).toBe(true);
   });
 });

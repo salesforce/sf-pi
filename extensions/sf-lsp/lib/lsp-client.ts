@@ -38,7 +38,9 @@ import {
   type MessageConnection,
 } from "vscode-languageserver-protocol/node";
 import type { LspDiagnostic, LspDoctorStatus, LspResult, SupportedLanguage } from "./types.ts";
+import { findJavaBinary, findNodeBinary, which } from "./binary-discovery.ts";
 import { getLspLanguageId } from "./file-classify.ts";
+import { resolveSpawnCommand } from "../../../lib/common/windows-spawn.ts";
 
 // -------------------------------------------------------------------------------------------------
 // Constants
@@ -126,46 +128,6 @@ function normalizeFsPath(p: string): string {
 
 function shellJoin(command: string, args: string[]): string {
   return [command, ...args.map((arg) => (/\s/.test(arg) ? JSON.stringify(arg) : arg))].join(" ");
-}
-
-function which(binary: string): string | undefined {
-  const searchPaths = [
-    ...(process.env.PATH?.split(path.delimiter) ?? []),
-    "/usr/local/bin",
-    "/opt/homebrew/bin",
-    path.join(os.homedir(), ".volta", "bin"),
-    path.join(os.homedir(), ".nvm", "current", "bin"),
-  ];
-  for (const dir of searchPaths) {
-    const candidate = path.join(dir, binary);
-    if (existsSync(candidate)) return candidate;
-  }
-  return undefined;
-}
-
-function findNodeBinary(): string | undefined {
-  return process.env.NODE_PATH || which("node") || "/usr/bin/node";
-}
-
-function findJavaBinary(): string | undefined {
-  const javaHome = process.env.JAVA_HOME;
-  if (javaHome) {
-    const candidate = path.join(javaHome, "bin", "java");
-    if (existsSync(candidate)) return candidate;
-  }
-
-  const candidates = [
-    process.env.SF_LSP_JAVA,
-    "/opt/homebrew/opt/openjdk@21/bin/java",
-    "/opt/homebrew/opt/openjdk@17/bin/java",
-    "/opt/homebrew/opt/openjdk@11/bin/java",
-    "/opt/homebrew/opt/openjdk/bin/java",
-    "/usr/bin/java",
-    "/usr/local/bin/java",
-    which("java"),
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
-
-  return candidates.find((candidate) => existsSync(candidate));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -473,6 +435,20 @@ async function discoverLwcLaunch(cwd: string): Promise<LaunchSpec | LspDoctorSta
 
   const binary = which("lwc-language-server");
   if (binary) {
+    // Windows: npm installs a .cmd wrapper that can't be spawned without a shell.
+    // Run the program it points at instead.
+    if (process.platform === "win32" && binary.toLowerCase().endsWith(".cmd")) {
+      const resolved = resolveSpawnCommand("lwc-language-server");
+      if (resolved.entry) {
+        return {
+          language: "lwc",
+          source: "path",
+          detail: resolved.entry,
+          command: resolved.command,
+          args: [...resolved.prefixArgs, "--stdio"],
+        };
+      }
+    }
     return {
       language: "lwc",
       source: "path",
@@ -688,6 +664,34 @@ function wireDiagnostics(client: ManagedClient): void {
 // Client creation and retrieval
 // -------------------------------------------------------------------------------------------------
 
+/**
+ * LSP `initialize` parameters for a workspace root.
+ *
+ * `rootPath` is deprecated in the LSP spec but still read by the Apex language
+ * server: without it, `NdApexIndex.getToolsStoragePath()` gets a null root,
+ * the index fails to start, and no diagnostics are ever published. The VS Code
+ * Apex client sends it too. Other servers ignore it and use `rootUri`.
+ */
+export function buildInitializeParams(root: string, processId: number) {
+  const rootUri = pathToFileURL(root).href;
+  return {
+    processId,
+    clientInfo: { name: "sf-lsp", version: "1.0.0" },
+    rootPath: root,
+    rootUri,
+    capabilities: {
+      window: { workDoneProgress: true },
+      workspace: { configuration: true },
+      textDocument: {
+        synchronization: { didSave: true, didOpen: true, didChange: true, didClose: true },
+        publishDiagnostics: { versionSupport: true },
+        diagnostic: { dynamicRegistration: false, relatedDocumentSupport: false },
+      },
+    },
+    workspaceFolders: [{ uri: rootUri, name: path.basename(root) || root }],
+  };
+}
+
 async function createClient(
   language: SupportedLanguage,
   root: string,
@@ -699,6 +703,7 @@ async function createClient(
     cwd: root,
     env: { ...process.env, ...launch.env },
     stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
   });
 
   // Prevent crashes from stream errors
@@ -729,22 +734,10 @@ async function createClient(
   wireDiagnostics(client);
   connection.listen();
 
-  const rootUri = pathToFileURL(root).href;
-  const initializePromise = connection.sendRequest(InitializeRequest.method, {
-    processId: process.pid,
-    clientInfo: { name: "sf-lsp", version: "1.0.0" },
-    rootUri,
-    capabilities: {
-      window: { workDoneProgress: true },
-      workspace: { configuration: true },
-      textDocument: {
-        synchronization: { didSave: true, didOpen: true, didChange: true, didClose: true },
-        publishDiagnostics: { versionSupport: true },
-        diagnostic: { dynamicRegistration: false, relatedDocumentSupport: false },
-      },
-    },
-    workspaceFolders: [{ uri: rootUri, name: path.basename(root) || root }],
-  });
+  const initializePromise = connection.sendRequest(
+    InitializeRequest.method,
+    buildInitializeParams(root, process.pid),
+  );
 
   await Promise.race([
     initializePromise,

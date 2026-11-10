@@ -6,6 +6,7 @@ import {
   constants as fsConstants,
   existsSync,
   fstatSync,
+  lstatSync,
   openSync,
   readFileSync,
   readSync,
@@ -573,6 +574,21 @@ export function readValidatedRuntimeScreenshot(value: unknown): {
   return { screenshot: inspected.screenshot, bytes: inspected.bytes };
 }
 
+/**
+ * Folders under the OS temp directory where the tldraw desktop app writes
+ * screenshots. Current app builds use `tldraw-agent-api`; older builds used
+ * `tldraw-canvas-api`, kept so those installs still validate.
+ */
+const SCREENSHOT_CAPTURE_DIRS = ["tldraw-agent-api", "tldraw-canvas-api"] as const;
+
+function safeRealpath(target: string): string | undefined {
+  try {
+    return realpathSync(target);
+  } catch {
+    return undefined;
+  }
+}
+
 function inspectRuntimeScreenshotFile(
   value: unknown,
   includeBytes: boolean,
@@ -580,13 +596,22 @@ function inspectRuntimeScreenshotFile(
   const screenshot = screenshotMetadata(value);
   let descriptor: number | undefined;
   try {
-    const allowedRoot = realpathSync(path.join(os.tmpdir(), "tldraw-canvas-api"));
     const requestedPath = path.resolve(screenshot.filePath);
     const source = realpathSync(requestedPath);
-    if (source !== allowedRoot && !source.startsWith(`${allowedRoot}${path.sep}`)) {
+    const insideCaptureRoot = SCREENSHOT_CAPTURE_DIRS.some((name) => {
+      const root = safeRealpath(path.join(os.tmpdir(), name));
+      return root !== undefined && (source === root || source.startsWith(`${root}${path.sep}`));
+    });
+    if (!insideCaptureRoot) {
       throw new Error("outside capture directory");
     }
 
+    // O_NOFOLLOW is undefined on Windows, so openSync would follow a symlink
+    // there. Reject links explicitly first; the fstat identity check below
+    // still guards against a swap between this check and the open.
+    if (lstatSync(requestedPath).isSymbolicLink()) {
+      throw new Error("symbolic link");
+    }
     const noFollow = fsConstants.O_NOFOLLOW ?? 0;
     descriptor = openSync(requestedPath, fsConstants.O_RDONLY | noFollow);
     const opened = fstatSync(descriptor);

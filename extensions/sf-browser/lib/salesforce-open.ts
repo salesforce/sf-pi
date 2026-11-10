@@ -8,6 +8,7 @@
  */
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { buildExecFn } from "../../../lib/common/exec-adapter.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 import { generateSalesforceFrontdoorUrl } from "../../../lib/common/sf-conn/index.ts";
 import {
   getCachedSfEnvironment,
@@ -165,7 +166,8 @@ async function resolveSfCliFallbackUrl(
 ): Promise<string> {
   const args = ["org", "open", "--url-only", "--json", "-o", targetOrg];
   if (pathValue) args.push("--path", pathValue);
-  const result = await pi.exec("sf", args, {
+  const [file, fileArgs] = spawnCommand("sf", args);
+  const result = await pi.exec(file, fileArgs, {
     cwd: ctx.cwd,
     signal,
     timeout: DEFAULT_SF_OPEN_TIMEOUT_MS,

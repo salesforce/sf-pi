@@ -3,6 +3,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { getInstalledPiVersion } from "../../../lib/common/pi-compat.ts";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 import {
   markAutoUpdateResult,
   markAutoUpdateRunning,
@@ -164,7 +165,8 @@ export async function runNativeAutoUpdate(
     markAutoUpdateRunning("sf-cli");
     setStatus("Auto Update: sf update stable…");
     try {
-      const result = await pi.exec("sf", ["update", "stable"], {
+      const [sfFile, sfArgs] = spawnCommand("sf", ["update", "stable"]);
+      const result = await pi.exec(sfFile, sfArgs, {
         cwd: ctx.cwd,
         timeout: UPDATE_TIMEOUT_MS,
         signal: options.signal,

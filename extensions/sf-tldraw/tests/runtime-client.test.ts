@@ -31,7 +31,7 @@ describe("TldrawRuntimeClient", () => {
     dir = mkdtempSync(path.join(tmpdir(), "sf-tldraw-runtime-"));
     configPath = path.join(dir, "server.json");
     writeFileSync(configPath, JSON.stringify({ port: 7236, token: "unit-test-token", pid: 123 }));
-    const captureRoot = path.join(tmpdir(), "tldraw-canvas-api");
+    const captureRoot = path.join(tmpdir(), "tldraw-agent-api");
     mkdirSync(captureRoot, { recursive: true });
     captureDir = mkdtempSync(path.join(captureRoot, "sf-tldraw-runtime-"));
     screenshotPath = path.join(captureDir, "screenshot.jpg");
@@ -203,6 +203,33 @@ describe("TldrawRuntimeClient", () => {
       code: "invalid_response",
       message: expect.stringMatching(/failed local file validation/i),
     });
+  });
+
+  it("still accepts screenshots from the legacy tldraw-canvas-api capture folder", async () => {
+    const legacyRoot = path.join(tmpdir(), "tldraw-canvas-api");
+    mkdirSync(legacyRoot, { recursive: true });
+    const legacyDir = mkdtempSync(path.join(legacyRoot, "sf-tldraw-runtime-"));
+    try {
+      const legacyShot = path.join(legacyDir, "screenshot.jpg");
+      writeFileSync(legacyShot, Buffer.from([0xff, 0xd8, 0xff, 0xd9]), { mode: 0o600 });
+      const fetchImpl = vi.fn(async (url: string) => {
+        if (url.endsWith("/readme")) return new Response(V112_README);
+        return json({
+          success: true,
+          result: {
+            filePath: legacyShot,
+            width: 100,
+            height: 100,
+            pageName: "Page",
+            captureMode: "canvas",
+          },
+        });
+      }) as unknown as typeof fetch;
+      const client = new TldrawRuntimeClient({ fetchImpl, serverConfigPath: configPath });
+      await expect(client.screenshot("doc-1")).resolves.toMatchObject({ format: "jpeg" });
+    } finally {
+      rmSync(legacyDir, { recursive: true, force: true });
+    }
   });
 
   it("rejects symbolic-link screenshot files even when their target is inside the capture directory", async () => {

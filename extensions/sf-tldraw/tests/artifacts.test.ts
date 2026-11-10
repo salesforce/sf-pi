@@ -24,13 +24,18 @@ vi.mock("@earendil-works/pi-coding-agent", async () => {
   return { ...actual, getAgentDir: () => tempAgentDir };
 });
 
+// Windows has no POSIX permission bits: Node reports 0o666 for writable files and
+// ignores chmod modes, so owner-only modes can't be asserted there. Access is
+// governed by inherited ACLs instead.
+const POSIX_MODES = process.platform !== "win32";
+
 describe("sf-tldraw artifacts", () => {
   let captureDir: string;
   let source: string;
 
   beforeEach(() => {
     tempAgentDir = mkdtempSync(path.join(tmpdir(), "sf-tldraw-artifacts-"));
-    const root = path.join(tmpdir(), "tldraw-canvas-api");
+    const root = path.join(tmpdir(), "tldraw-agent-api");
     mkdirSync(root, { recursive: true });
     captureDir = mkdtempSync(path.join(root, "sf-tldraw-artifacts-"));
     source = path.join(captureDir, "artifact.jpg");
@@ -95,15 +100,17 @@ describe("sf-tldraw artifacts", () => {
         captureMode: "canvas",
       },
     });
-    expect(statSync(artifact.screenshotPath).mode & 0o777).toBe(0o600);
-    expect(statSync(artifact.directory).mode & 0o777).toBe(0o700);
+    if (POSIX_MODES) {
+      expect(statSync(artifact.screenshotPath).mode & 0o777).toBe(0o600);
+      expect(statSync(artifact.directory).mode & 0o777).toBe(0o700);
+    }
     const reportDescriptor = openSync(
       artifact.reportPath,
       fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
     );
     let report: string;
     try {
-      expect(fstatSync(reportDescriptor).mode & 0o777).toBe(0o600);
+      if (POSIX_MODES) expect(fstatSync(reportDescriptor).mode & 0o777).toBe(0o600);
       report = readFileSync(reportDescriptor, "utf8");
     } finally {
       closeSync(reportDescriptor);

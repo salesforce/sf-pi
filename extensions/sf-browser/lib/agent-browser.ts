@@ -18,6 +18,7 @@ import {
   writeCachedBrowserRuntimeStatus,
 } from "../../../lib/common/browser-runtime-status/store.ts";
 import { maskFinSecrets } from "../../../lib/common/fin-admin-surface.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 import { redactText } from "./redaction.ts";
 import { startTimer } from "./timing.ts";
 
@@ -44,22 +45,19 @@ export async function runAgentBrowser(
   const stopTimer = startTimer();
   let result: Awaited<ReturnType<ExtensionAPI["exec"]>>;
   try {
-    result = await pi.exec(
-      "agent-browser",
-      [
-        "--session",
-        SF_BROWSER_SESSION,
-        "--session-name",
-        SF_BROWSER_SESSION,
-        ...(options.extraGlobalArgs ?? []),
-        ...args,
-      ],
-      {
-        cwd: options.cwd,
-        signal: options.signal,
-        timeout: options.timeoutMs ?? DEFAULT_AGENT_BROWSER_TIMEOUT_MS,
-      },
-    );
+    const [file, fileArgs] = spawnCommand("agent-browser", [
+      "--session",
+      SF_BROWSER_SESSION,
+      "--session-name",
+      SF_BROWSER_SESSION,
+      ...(options.extraGlobalArgs ?? []),
+      ...args,
+    ]);
+    result = await pi.exec(file, fileArgs, {
+      cwd: options.cwd,
+      signal: options.signal,
+      timeout: options.timeoutMs ?? DEFAULT_AGENT_BROWSER_TIMEOUT_MS,
+    });
   } catch (error) {
     throw new Error(formatAgentBrowserError("", errorMessage(error), -1), { cause: error });
   }
@@ -78,7 +76,8 @@ export async function runAgentBrowser(
 
 export async function checkAgentBrowser(pi: ExtensionAPI, cwd: string): Promise<string> {
   const status = await detectBrowserRuntimeStatus(async (command, args, options) => {
-    const result = await pi.exec(command, args, {
+    const [file, fileArgs] = spawnCommand(command, args);
+    const result = await pi.exec(file, fileArgs, {
       cwd,
       timeout: options?.timeout ?? 15_000,
     });

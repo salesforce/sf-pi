@@ -17,6 +17,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { globalAgentPath } from "../../../lib/common/pi-paths.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 import type { FinCredential } from "./auth.ts";
 import {
   CLI_BINARY,
@@ -129,7 +130,11 @@ export async function runFinCli(
     let timedOut = false;
     let settled = false;
 
-    const child = spawn(options.binary ?? CLI_BINARY, args, {
+    // Windows: `intercom` is an npm .cmd wrapper; run its entry without a shell.
+    const [command, commandArgs] = options.binary
+      ? [options.binary, args]
+      : spawnCommand(CLI_BINARY, args);
+    const child = spawn(command, commandArgs, {
       env,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
