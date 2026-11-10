@@ -303,6 +303,18 @@ describe("detectJavaVersion", () => {
     expect(exec.mock.calls.map((call) => call[0])).toEqual(["/configured/java"]);
   });
 
+  it("uses JAVA_HOME\\bin\\java.exe on Windows", async () => {
+    const exec = javaExec({ "C:\\jdk17\\bin\\java.exe": OPENJDK17 });
+
+    const version = await detectJavaVersion(exec, {
+      platform: "win32",
+      env: { JAVA_HOME: "C:\\jdk17" },
+    });
+
+    expect(version).toBe("17.0.1");
+    expect(exec.mock.calls.map((call) => call[0])).toEqual(["C:\\jdk17\\bin\\java.exe"]);
+  });
+
   it("uses JAVA_HOME and never runs java_home or the PATH placeholder", async () => {
     const exec = javaExec({ "/opt/jdk17/bin/java": OPENJDK17 });
 

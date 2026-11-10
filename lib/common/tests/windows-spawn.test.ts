@@ -212,6 +212,13 @@ describe("unchanged inputs", () => {
     expect(spawnCommand("npm", ["root", "-g"], c)).toEqual(["npm", ["root", "-g"]]);
   });
 
+  it("runs an explicit .cmd wrapper path through its target", () => {
+    const shim = "C:\\work\\node_modules\\.bin\\lwc-jest.cmd";
+    const entry = "C:\\work\\node_modules\\.bin\\lwc-jest.js";
+    const c = ctx({ [shim]: packageBinCmd("lwc-jest.js"), [entry]: "" });
+    expect(spawnCommand(shim, ["--json"], c)).toEqual([NODE, [entry, "--json"]]);
+  });
+
   it("leaves paths and names with an extension unchanged on Windows", () => {
     const c = ctx({});
     expect(spawnCommand("C:\\tools\\x.exe", ["a"], c)).toEqual(["C:\\tools\\x.exe", ["a"]]);

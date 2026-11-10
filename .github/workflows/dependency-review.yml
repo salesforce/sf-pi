@@ -37,4 +37,9 @@ jobs:
             AGPL-3.0-only,AGPL-3.0-or-later,LGPL-2.0-only,LGPL-2.0-or-later,
             LGPL-2.1-only,LGPL-2.1-or-later,LGPL-3.0-only,LGPL-3.0-or-later,
             SSPL-1.0,BUSL-1.1
+          # jszip is dual-licensed "(MIT OR GPL-3.0-or-later)"; SF Pi consumes it
+          # under MIT through @salesforce/core and source-deploy-retrieve. The
+          # required license scan (license-scan.yml) still enforces the
+          # permissive-only allowlist for production dependencies.
+          allow-dependencies-licenses: pkg:npm/jszip
           comment-summary-in-pr: on-failure

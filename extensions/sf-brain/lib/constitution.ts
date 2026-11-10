@@ -20,7 +20,6 @@ const BUNDLED_CONSTITUTION_PATH = path.resolve(
   "SF_CONSTITUTION.md",
 );
 const SF_PI_PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const PACKAGE_ROOT_TOKEN = "{{SF_PI_PACKAGE_ROOT}}";
 
 export function constitutionAddendumPath(): string {
   return globalAgentPath("sf-brain", "SF_CONSTITUTION_APPEND.md");
@@ -30,8 +29,26 @@ export function readBundledConstitution(): string {
   return `${readFileSync(BUNDLED_CONSTITUTION_PATH, "utf8").trimEnd()}\n`;
 }
 
+/**
+ * Replace the package-root token with the installed root. Guide paths are
+ * written with `/` in the bundled file; on Windows render them with `\\` so
+ * the agent receives one consistent, readable path.
+ */
+export function renderGuidePaths(
+  text: string,
+  packageRoot: string = SF_PI_PACKAGE_ROOT,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const pattern = /\{\{SF_PI_PACKAGE_ROOT\}\}((?:\/[\w.-]+)*)/g;
+  return text.replace(pattern, (_match, rest: string) =>
+    platform === "win32"
+      ? path.win32.join(packageRoot, ...rest.split("/").filter(Boolean))
+      : `${packageRoot}${rest}`,
+  );
+}
+
 export function loadConstitution(options: { cliInstalled: boolean }): string {
-  let content = readBundledConstitution().replaceAll(PACKAGE_ROOT_TOKEN, SF_PI_PACKAGE_ROOT);
+  let content = renderGuidePaths(readBundledConstitution());
   if (!options.cliInstalled) {
     content += [
       "<sf_cli_status>",
@@ -55,7 +72,7 @@ export function loadConstitution(options: { cliInstalled: boolean }): string {
 }
 
 export function shouldInjectConstitution(sessionManager: ActiveContextSession): boolean {
-  const bundled = readBundledConstitution().replaceAll(PACKAGE_ROOT_TOKEN, SF_PI_PACKAGE_ROOT);
+  const bundled = renderGuidePaths(readBundledConstitution());
   // Refresh a changed bundle after reload; keep session-dependent addenda stable.
   return shouldInjectOnce(
     sessionManager,

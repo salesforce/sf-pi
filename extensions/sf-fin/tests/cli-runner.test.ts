@@ -42,11 +42,21 @@ process.stdout.write(JSON.stringify(out));
 process.exit(process.argv[2] === "exit" ? Number(process.argv[3]) : 0);
 `;
 
+/** Write a Node script as a spawnable fake CLI: a shebang file on POSIX, a .cmd wrapper on Windows. */
+function writeFakeBinary(file: string, source: string): string {
+  if (process.platform !== "win32") {
+    writeFileSync(file, source, "utf8");
+    chmodSync(file, 0o755);
+    return file;
+  }
+  writeFileSync(`${file}.js`, source, "utf8");
+  writeFileSync(`${file}.cmd`, `@ECHO off\r\n"%_prog%"  "%dp0%\\${path.basename(file)}.js" %*\r\n`);
+  return `${file}.cmd`;
+}
+
 beforeEach(() => {
   dir = mkdtempSync(path.join(tmpdir(), "sf-fin-cli-"));
-  fakeCli = path.join(dir, "intercom");
-  writeFileSync(fakeCli, FAKE_CLI, "utf8");
-  chmodSync(fakeCli, 0o755);
+  fakeCli = writeFakeBinary(path.join(dir, "intercom"), FAKE_CLI);
 });
 
 afterEach(() => {
@@ -84,7 +94,8 @@ describe("runFinCli credential boundary", () => {
       configDir,
       parentEnv: { PATH: process.env.PATH },
     });
-    expect(statSync(configDir).mode & 0o777).toBe(0o700);
+    // Windows has no POSIX mode bits; access follows the profile's inherited ACLs.
+    if (process.platform !== "win32") expect(statSync(configDir).mode & 0o777).toBe(0o700);
     expect(readdirSync(configDir)).toEqual([]);
   });
 
@@ -118,9 +129,10 @@ describe("runFinCli credential boundary", () => {
   });
 
   it("enforces the timeout", async () => {
-    const slow = path.join(dir, "slow");
-    writeFileSync(slow, "#!/usr/bin/env node\nsetTimeout(() => {}, 10000);\n", "utf8");
-    chmodSync(slow, 0o755);
+    const slow = writeFakeBinary(
+      path.join(dir, "slow"),
+      "#!/usr/bin/env node\nsetTimeout(() => {}, 10000);\n",
+    );
     const result = await runFinCli([], {
       binary: slow,
       configDir: path.join(dir, "c"),

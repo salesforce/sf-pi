@@ -85,8 +85,11 @@ describe("trace scrubbing and artifacts", () => {
         },
       );
     }
-    expect(statSync(last).mode & 0o777).toBe(0o600);
-    expect(statSync(traceDir).mode & 0o777).toBe(0o700);
+    // Windows has no POSIX mode bits; access follows the profile's inherited ACLs.
+    if (process.platform !== "win32") {
+      expect(statSync(last).mode & 0o777).toBe(0o600);
+      expect(statSync(traceDir).mode & 0o777).toBe(0o700);
+    }
     expect(readFileSync(last, "utf8")).not.toContain(SENTINEL);
     expect(readdirSync(traceDir)).toHaveLength(10);
   });

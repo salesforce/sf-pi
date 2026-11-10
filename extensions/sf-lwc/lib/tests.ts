@@ -15,6 +15,7 @@ import type {
   LwcTestFile,
   SfLwcParams,
 } from "./types.ts";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 
 const DEFAULT_TIMEOUT_SECONDS = 120;
 const MIN_TIMEOUT_SECONDS = 1;
@@ -228,7 +229,15 @@ function runProcess(
   timeoutMs: number,
 ): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { cwd, shell: false, stdio: ["ignore", "pipe", "pipe"] });
+    // Windows: node_modules\.bin\lwc-jest.cmd is an npm wrapper that Node cannot
+    // spawn without a shell; run the script it points at instead.
+    const [file, fileArgs] = spawnCommand(command, args);
+    const child = spawn(file, fileArgs, {
+      cwd,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {

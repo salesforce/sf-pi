@@ -45,15 +45,19 @@ export function matchPath(
 ): PolicyMatch | undefined {
   if (!targetPath) return undefined;
 
-  const abs = path.isAbsolute(targetPath) ? targetPath : path.resolve(cwd, targetPath);
-  const rel = path.relative(cwd, abs);
-  const basename = path.basename(abs);
+  // Policy globs use `/`. Windows paths may use `\`, so match on a
+  // forward-slash form of each variant; protected files must still match there.
+  const p = /^[A-Za-z]:[\\/]|\\/.test(`${cwd}${targetPath}`) ? path.win32 : path;
+  const absNative = p.isAbsolute(targetPath) ? targetPath : p.resolve(cwd, targetPath);
+  const abs = toSlash(absNative);
+  const rel = toSlash(p.relative(cwd, absNative));
+  const basename = p.basename(absNative);
 
   let best: PolicyMatch | undefined;
 
   for (const rule of rules) {
     if (rule.enabled === false) continue;
-    if (rule.onlyIfExists && !existsSync(abs)) continue;
+    if (rule.onlyIfExists && !existsSync(absNative)) continue;
 
     // Skip this rule if any `allowedPatterns` entry matches first.
     if (
@@ -75,6 +79,10 @@ export function matchPath(
     }
   }
   return best;
+}
+
+function toSlash(value: string): string {
+  return value.replace(/\\/g, "/");
 }
 
 /** Protection-level ordering (strongest first). */

@@ -24,6 +24,9 @@ vi.mock("../../../lib/common/sf-environment/detect.ts", () => ({
 import { evaluateCommandRisk, evaluateCommandRiskWithOrgLookup } from "../lib/command-risk-gate.ts";
 import { readBundledConfig } from "../lib/config.ts";
 
+/** Bash treats `\\` as an escape, so Windows paths reach bash with `/` separators. */
+const bashPath = (value: string): string => value.replace(/\\/g, "/");
+
 function lookupOrg(alias: string, orgType: OrgInfo["orgType"]): void {
   mockedLookup[alias] = {
     detected: true,
@@ -62,7 +65,7 @@ describe("evaluateCommandRisk", () => {
     const tempDir = mkdtempSync(path.join(tmpdir(), "tmp.sf-guardrail-"));
     try {
       const result = evaluateCommandRisk(
-        { kind: "shellCommand", toolName: "bash", command: `rm -rf ${tempDir}` },
+        { kind: "shellCommand", toolName: "bash", command: `rm -rf ${bashPath(tempDir)}` },
         "/project",
         readBundledConfig(),
       );

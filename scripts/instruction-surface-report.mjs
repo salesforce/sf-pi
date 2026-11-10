@@ -7,14 +7,25 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const piBin = path.join(repoRoot, "node_modules", ".bin", "pi");
+// Run Pi's CLI entry with this Node binary: node_modules/.bin/pi is a shell
+// script (or a .cmd wrapper on Windows) that cannot be spawned portably.
+const piCli = path.join(
+  repoRoot,
+  "node_modules",
+  "@earendil-works",
+  "pi-coding-agent",
+  "dist",
+  "bundle",
+  "cli.js",
+);
 const fixture = path.join(repoRoot, "scripts", "fixtures", "instruction-surface-probe.ts");
 const outputDir = resolveOutput(process.argv.slice(2));
 mkdirSync(outputDir, { recursive: true });
 
 const result = spawnSync(
-  piBin,
+  process.execPath,
   [
+    piCli,
     "--offline",
     "--approve",
     "--no-session",

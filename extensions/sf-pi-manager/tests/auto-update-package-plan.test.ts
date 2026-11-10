@@ -9,6 +9,13 @@ import {
   planCompatiblePiPackageUpdates,
 } from "../lib/auto-update-package-plan.ts";
 
+// Exec expectations below use bare command names; Windows command resolution
+// is covered by lib/common/tests/windows-spawn.test.ts.
+vi.mock("../../../lib/common/windows-spawn.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../lib/common/windows-spawn.ts")>()),
+  spawnCommand: (name: string, args: readonly string[]) => [name, [...args]],
+}));
+
 const PI_AGENT_ENV = "PI_CODING_AGENT_DIR";
 let tmpDir: string;
 let previousAgentDir: string | undefined;

@@ -2,6 +2,7 @@
 /**
  * Tests for file classification and path resolution in sf-agentscript.
  */
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { isAgentScriptFile, resolveToolPath } from "../lib/file-classify.ts";
 
@@ -32,25 +33,25 @@ describe("isAgentScriptFile", () => {
 describe("resolveToolPath", () => {
   it("resolves relative paths against cwd", () => {
     expect(resolveToolPath("agents/Billing.agent", "/home/user/project")).toBe(
-      "/home/user/project/agents/Billing.agent",
+      path.resolve("/home/user/project/agents/Billing.agent"),
     );
   });
 
   it("strips the @ prefix before resolving", () => {
     expect(resolveToolPath("@agents/Billing.agent", "/home/user/project")).toBe(
-      "/home/user/project/agents/Billing.agent",
+      path.resolve("/home/user/project/agents/Billing.agent"),
     );
   });
 
   it("preserves absolute paths", () => {
     expect(resolveToolPath("/absolute/path/Billing.agent", "/home/user/project")).toBe(
-      "/absolute/path/Billing.agent",
+      path.resolve("/absolute/path/Billing.agent"),
     );
   });
 
   it("strips @ from absolute paths", () => {
     expect(resolveToolPath("@/absolute/path/Billing.agent", "/home/user/project")).toBe(
-      "/absolute/path/Billing.agent",
+      path.resolve("/absolute/path/Billing.agent"),
     );
   });
 });

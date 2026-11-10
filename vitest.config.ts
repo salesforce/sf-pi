@@ -13,6 +13,7 @@ export default defineConfig({
       "scripts/tests/**/*.test.ts",
     ],
     environment: "node",
+    setupFiles: ["./scripts/vitest-setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "html"],

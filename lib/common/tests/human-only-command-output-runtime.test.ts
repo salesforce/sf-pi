@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
+import { spawnCommand } from "../windows-spawn.ts";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 const PI_BIN = path.join(REPO_ROOT, "node_modules", ".bin", "pi");
@@ -31,7 +32,12 @@ function runPi(extensionPath: string, modeArgs: string[], command: string, input
   ];
   if (command) args.push(command);
 
-  return spawnSync(PI_BIN, args, {
+  // Windows: node_modules\.bin\pi is a .cmd wrapper; run its entry without a shell.
+  const [piCommand, piArgs] = spawnCommand(
+    process.platform === "win32" ? `${PI_BIN}.cmd` : PI_BIN,
+    args,
+  );
+  return spawnSync(piCommand, piArgs, {
     cwd: agentDir,
     env,
     encoding: "utf8",

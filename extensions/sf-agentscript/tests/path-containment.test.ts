@@ -17,7 +17,7 @@ describe("resolveToolPath workspace containment", () => {
   test("relative path inside workspace resolves cleanly", () => {
     const out = resolveToolPath("force-app/main/default/bundles/X.agent", WORKSPACE);
     expect(out.startsWith(WORKSPACE + path.sep)).toBe(true);
-    expect(out.endsWith("/X.agent")).toBe(true);
+    expect(out.endsWith(`${path.sep}X.agent`)).toBe(true);
   });
 
   test("relative path with ../ that escapes the workspace is rejected", () => {
@@ -26,7 +26,7 @@ describe("resolveToolPath workspace containment", () => {
 
   test("absolute path outside workspace is allowed (user typed it explicitly)", () => {
     const out = resolveToolPath("/tmp/outside.agent", WORKSPACE);
-    expect(out).toBe("/tmp/outside.agent");
+    expect(out).toBe(path.resolve("/tmp/outside.agent"));
   });
 
   test("absolute path with literal `..` segment is rejected", () => {

@@ -131,9 +131,7 @@ export async function runFinCli(
     let settled = false;
 
     // Windows: `intercom` is an npm .cmd wrapper; run its entry without a shell.
-    const [command, commandArgs] = options.binary
-      ? [options.binary, args]
-      : spawnCommand(CLI_BINARY, args);
+    const [command, commandArgs] = spawnCommand(options.binary ?? CLI_BINARY, args);
     const child = spawn(command, commandArgs, {
       env,
       shell: false,

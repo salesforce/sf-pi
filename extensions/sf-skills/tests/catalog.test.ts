@@ -269,6 +269,34 @@ describe("conflict classification", () => {
   });
 });
 
+describe("Windows path case", () => {
+  it.runIf(process.platform === "win32")(
+    "matches paths case-insensitively but keeps the original spelling for display",
+    () => {
+      const file = p("Claude", "skills", "alpha", "SKILL.md");
+      const catalog = buildSkillCatalog(
+        baseInput({
+          sources: [
+            source({
+              id: "claude",
+              rootPath: p("Claude", "skills"),
+              skills: [{ name: "alpha", filePath: file }],
+            }),
+          ],
+          loadedPaths: [file.toLowerCase()],
+          winners: [{ name: "alpha", filePath: file.toLowerCase() }],
+          settingsGlobal: [dirEntry(p("claude", "SKILLS"))],
+        }),
+      );
+      expect(catalog.skills[0]).toMatchObject({
+        filePath: file,
+        effective: "loaded",
+        enabledGlobal: true,
+      });
+    },
+  );
+});
+
 describe("source rollups + usage", () => {
   it("counts loaded/shadowed per source and attaches usage by name", () => {
     const a = p("claude", "skills", "a", "SKILL.md");
