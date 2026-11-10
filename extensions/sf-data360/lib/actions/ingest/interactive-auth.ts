@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-import { execFile } from "node:child_process";
 import http from "node:http";
-import os from "node:os";
+
+import { openUrl, type OpenOptions } from "../../../../../lib/common/open-external.ts";
 
 import { exchangePkceForTenantIngestAuth, startTenantIngestPkce } from "./auth.ts";
 import type { TenantIngestAuthStatus } from "./types.ts";
@@ -18,9 +18,21 @@ export interface InteractivePkceOptions {
   targetOrg?: string;
   /** Internal test seam; public action params must not control browser opening directly. */
   authorizationOpener?: (url: string) => void;
+  /**
+   * Called with the authorization URL before waiting for the redirect, so the
+   * caller can show it. Required for headless, SSH, and minimal Linux sessions
+   * where no browser can be opened automatically.
+   */
+  onAuthorizationUrl?: (event: AuthorizationUrlEvent) => void;
   fetchFn?: typeof fetch;
   timeoutMs?: number;
   onReady?: (event: InteractivePkceReadyEvent) => void | Promise<void>;
+}
+
+export interface AuthorizationUrlEvent {
+  url: string;
+  /** True when a browser opener was launched; the URL may still need manual use. */
+  opened: boolean;
 }
 
 export interface InteractivePkceResult {
@@ -94,7 +106,11 @@ export async function runInteractivePkceAuth(
           state: started.authorization.state,
         };
         await options.onReady?.(ready);
-        (options.authorizationOpener ?? openAuthorizationUrl)(authorizationUrl);
+        if (options.authorizationOpener) {
+          options.authorizationOpener(authorizationUrl);
+        } else {
+          options.onAuthorizationUrl?.(openAuthorizationUrl(authorizationUrl));
+        }
       } catch (error) {
         clearTimeout(timeout);
         closeServer(server);
@@ -139,9 +155,16 @@ function actualBaseUrl(server: http.Server, redirect: { host: string; pathname: 
   return `http://${redirect.host}:${address.port}${redirect.pathname}`;
 }
 
-function openAuthorizationUrl(url: string): void {
-  if (os.platform() !== "darwin") return;
-  execFile("open", [url], () => undefined);
+/**
+ * Open the Salesforce authorization URL in the default browser on macOS,
+ * Windows, or Linux. Always returns the URL so callers can show it for manual
+ * sign-in when no browser opener is available.
+ */
+export function openAuthorizationUrl(
+  url: string,
+  options: OpenOptions = {},
+): AuthorizationUrlEvent {
+  return { url, opened: openUrl(url, options).ok };
 }
 
 export function validateSalesforceAuthorizationUrl(value: string): string {

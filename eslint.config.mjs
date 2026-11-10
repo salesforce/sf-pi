@@ -65,6 +65,44 @@ export default tseslint.config(
     },
   },
 
+  // Cross-platform process launching. On Windows, npm and installer CLIs are
+  // .cmd wrappers that Node cannot spawn with shell: false, and `cmd /c start`
+  // splits URLs at `&`. Runtime code must route these through
+  // lib/common/windows-spawn.ts (spawnCommand / buildExecFn) and
+  // lib/common/open-external.ts (openUrl / browserOpenCommand).
+  {
+    files: ["extensions/**/*.ts", "lib/**/*.ts"],
+    ignores: [
+      "**/tests/**",
+      "**/*.test.ts",
+      "lib/common/windows-spawn.ts",
+      "lib/common/open-external.ts",
+      "lib/common/exec-adapter.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.name=/^(spawn|spawnSync|execFile|execFileSync|execFileAsync)$/] > Literal.arguments:first-child[value=/^(sf|npm|npx|pi|agent-browser|intercom|hunk|lwc-language-server|which|open|xdg-open|cmd)$/]",
+          message:
+            "Spawn this CLI through spawnCommand() (lib/common/windows-spawn.ts) or open URLs/folders with lib/common/open-external.ts so it works on Windows.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='exec'][callee.object.name='pi'] > Literal.arguments:first-child[value=/^(sf|npm|npx|pi|agent-browser|intercom|hunk|lwc-language-server|which|open|xdg-open|cmd)$/]",
+          message:
+            "pi.exec does not resolve Windows .cmd wrappers. Use spawnCommand() from lib/common/windows-spawn.ts or buildExecFn().",
+        },
+        {
+          selector: "ArrayExpression > Literal[value='/c'] + Literal[value='start']",
+          message:
+            "`cmd /c start` splits URLs at `&`. Use openUrl() / browserOpenCommand() from lib/common/open-external.ts.",
+        },
+      ],
+    },
+  },
+
   // Tests can use any / non-null without warnings.
   {
     files: ["**/tests/**/*.ts", "**/*.test.ts"],

@@ -2664,7 +2664,21 @@ async function runJourneyAction(
     if (input.allow_mutation !== true) {
       return tenantIngestAuthConfirmationRequired(input, action, targetOrg, apiVersion, plan);
     }
-    const result = await runInteractivePkceAuth(input.params ?? {}, { targetOrg });
+    const result = await runInteractivePkceAuth(input.params ?? {}, {
+      targetOrg,
+      // Show the sign-in URL while waiting: a browser may not open automatically
+      // (headless, SSH, or a Linux session without xdg-open).
+      onAuthorizationUrl: ({ url, opened }) =>
+        emitProgress(
+          progress,
+          input,
+          "execute",
+          opened ? "running" : "warning",
+          opened
+            ? `Opened Salesforce sign-in in your browser. If it did not appear, open: ${url}`
+            : `Open this URL to sign in to Salesforce: ${url}`,
+        ),
+    });
     return {
       ok: true,
       tool: input.tool,

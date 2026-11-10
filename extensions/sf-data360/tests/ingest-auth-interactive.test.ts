@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SfEnvironment } from "../../../lib/common/sf-environment/types.ts";
 import {
+  openAuthorizationUrl,
   runInteractivePkceAuth,
   validateSalesforceAuthorizationUrl,
 } from "../lib/actions/ingest/interactive-auth.ts";
@@ -160,6 +161,31 @@ describe("Data 360 interactive PKCE auth orchestration", () => {
         },
       ),
     ).rejects.toThrow("Missing OAuth authorization code");
+  });
+
+  it("opens the authorization URL on every platform and always reports it", () => {
+    const url = "https://test.salesforce.com/services/oauth2/authorize?client_id=x&state=y";
+    for (const platform of ["darwin", "win32", "linux"] as const) {
+      const calls: Array<{ command: string; args: string[] }> = [];
+      const spawn = ((command: string, args: string[]) => {
+        calls.push({ command, args });
+        return { once: () => undefined, unref: () => undefined };
+      }) as never;
+      const opened = openAuthorizationUrl(url, { platform, spawn });
+      expect(opened, platform).toMatchObject({ opened: true, url });
+      expect(calls[0]!.args.at(-1), platform).toBe(url);
+    }
+  });
+
+  it("reports the URL for manual sign-in when no browser opener is available", () => {
+    const url = "https://test.salesforce.com/services/oauth2/authorize?client_id=x&state=y";
+    const spawn = (() => {
+      throw new Error("spawn xdg-open ENOENT");
+    }) as never;
+    expect(openAuthorizationUrl(url, { platform: "linux", spawn })).toMatchObject({
+      opened: false,
+      url,
+    });
   });
 
   it("allows only Salesforce HTTPS authorization URLs for browser opening", () => {

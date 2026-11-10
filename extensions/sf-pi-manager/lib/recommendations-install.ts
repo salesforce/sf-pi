@@ -10,6 +10,7 @@
  * tested by injecting a fake spawn implementation.
  */
 import { spawn as realSpawn, type ChildProcess } from "node:child_process";
+import { spawnCommand } from "../../../lib/common/windows-spawn.ts";
 
 export type InstallScope = "global" | "project";
 
@@ -68,7 +69,9 @@ function runPi(args: readonly string[], options: InstallOptions): Promise<Instal
   return new Promise((resolve) => {
     let child: ReturnType<SpawnFn>;
     try {
-      child = spawn(piBin, args, { cwd: options.cwd });
+      // Windows: `pi` is an npm .cmd wrapper; run its entry without a shell.
+      const [file, fileArgs] = spawnCommand(piBin, [...args]);
+      child = spawn(file, fileArgs, { cwd: options.cwd });
     } catch (error) {
       resolve({
         success: false,

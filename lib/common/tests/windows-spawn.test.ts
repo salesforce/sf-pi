@@ -8,6 +8,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearWindowsSpawnCache,
+  findAllOnPath,
   npmGlobalPrefix,
   resolveSpawnCommand,
   spawnCommand,
@@ -223,5 +224,32 @@ describe("unchanged inputs", () => {
     const c = ctx({});
     expect(spawnCommand("C:\\tools\\x.exe", ["a"], c)).toEqual(["C:\\tools\\x.exe", ["a"]]);
     expect(spawnCommand("node.exe", ["a"], c)).toEqual(["node.exe", ["a"]]);
+  });
+});
+
+describe("findAllOnPath", () => {
+  it("finds .cmd and .exe matches in PATH order on Windows", () => {
+    const c = ctx(
+      {
+        [W.join(NODE_DIR, "pi.cmd")]: "",
+        [W.join(NPM_PREFIX, "pi.cmd")]: "",
+        [W.join(NODE_DIR, "npm.cmd")]: "",
+      },
+      { PATH: [NODE_DIR, NPM_PREFIX].join(";"), PATHEXT: ".EXE;.CMD" },
+    );
+    expect(findAllOnPath("pi", c)).toEqual([
+      W.join(NODE_DIR, "pi.cmd"),
+      W.join(NPM_PREFIX, "pi.cmd"),
+    ]);
+    expect(findAllOnPath("missing", c)).toEqual([]);
+  });
+
+  it("checks the bare name with POSIX rules off Windows", () => {
+    const c = ctx(
+      { "/usr/local/bin/pi": "", "/opt/bin/pi": "" },
+      { PATH: "/usr/local/bin:/opt/bin" },
+      "linux",
+    );
+    expect(findAllOnPath("pi", c)).toEqual(["/usr/local/bin/pi", "/opt/bin/pi"]);
   });
 });

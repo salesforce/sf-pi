@@ -19,6 +19,7 @@ import { collectAuthoringBrief, handoffAuthoringBrief } from "./handoff.ts";
 import { cancelStudioRun, startStudioBackgroundTask, startStudioRun } from "./run-coordinator.ts";
 import { collectStudioRunTarget } from "./run-target.ts";
 import { actionRunRelease } from "../eval/actions/run.ts";
+import { folderOpenCommand } from "../../../../lib/common/open-external.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -210,7 +211,6 @@ async function discoverForContext(ctx: ExtensionCommandContext) {
 }
 
 async function openDirectory(directory: string): Promise<void> {
-  const command =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open";
-  await execFileAsync(command, [directory]);
+  const { command, args } = folderOpenCommand(directory);
+  await execFileAsync(command, args);
 }

@@ -1,6 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import { describe, expect, it } from "vitest";
-import { buildIssueUrl, createIssueWithGh, isIssueCreationPermissionError } from "../lib/github.ts";
+import {
+  buildIssueUrl,
+  createIssueWithGh,
+  isIssueCreationPermissionError,
+  openUrl,
+} from "../lib/github.ts";
 import type { ExecFn } from "../lib/diagnostics.ts";
 
 describe("sf-feedback GitHub helpers", () => {
@@ -34,5 +39,18 @@ describe("sf-feedback GitHub helpers", () => {
     expect(result.ok).toBe(false);
     expect(result.shouldOpenFallback).toBe(false);
     expect(result.fallbackUrl).toContain("https://github.com/salesforce/sf-pi/issues/new?");
+  });
+});
+
+describe("openUrl", () => {
+  it("opens the prefilled issue URL with & intact on Windows, without cmd.exe", async () => {
+    const calls: Array<[string, string[]]> = [];
+    const exec = async (command: string, args: string[]) => {
+      calls.push([command, args]);
+      return { stdout: "", stderr: "", code: 0 };
+    };
+    const url = "https://github.com/example/repo/issues/new?title=Bug&body=Steps&labels=bug";
+    await expect(openUrl(exec, url, "win32")).resolves.toBe(true);
+    expect(calls).toEqual([["rundll32", ["url.dll,FileProtocolHandler", url]]]);
   });
 });

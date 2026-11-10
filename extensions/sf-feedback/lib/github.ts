@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { ExecFn } from "./diagnostics.ts";
 import { sanitizeText } from "./sanitize.ts";
+import { browserOpenCommand } from "../../../lib/common/open-external.ts";
 
 const REPO = "salesforce/sf-pi";
 const ISSUE_NEW_URL = `https://github.com/${REPO}/issues/new`;
@@ -96,11 +97,15 @@ export function buildIssueUrl(title: string, body: string, labels: string[]): st
   return `${ISSUE_NEW_URL}?${params.toString()}`;
 }
 
-export async function openUrl(exec: ExecFn, url: string): Promise<boolean> {
-  const opener =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
-  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
-  const result = await run(exec, opener, args);
+export async function openUrl(
+  exec: ExecFn,
+  url: string,
+  platform: NodeJS.Platform = process.platform,
+): Promise<boolean> {
+  // Shell-free on every platform; Windows uses rundll32 so the issue URL's
+  // `&`-separated title/body/labels reach the browser intact.
+  const { command, args } = browserOpenCommand(url, platform);
+  const result = await run(exec, command, args);
   return result.ok;
 }
 
