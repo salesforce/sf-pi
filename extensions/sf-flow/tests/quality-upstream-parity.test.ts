@@ -39,7 +39,7 @@ afterEach(async () => {
 });
 
 describe("Lightning Flow Scanner black-box parity", () => {
-  it("pins the complete 6.19.4 public rule surface", () => {
+  it("pins the complete public rule surface (stable plus opt-in beta rules)", () => {
     const stable = scanner.getRules().map((rule) => rule.ruleId);
     const betaIds = [
       "hardcoded-secret",
@@ -51,8 +51,11 @@ describe("Lightning Flow Scanner black-box parity", () => {
       "missing-start-reference",
     ];
     const beta = scanner.getRules(betaIds).map((rule) => rule.ruleId);
+    // Upstream promotes beta rules into the stable set over time (6.20.0 promoted
+    // all of these), so compare unique rule ids rather than the concatenation.
+    const surface = [...new Set([...stable, ...beta])].sort();
 
-    expect([...stable, ...beta].sort()).toEqual([...LIGHTNING_FLOW_SCANNER_RULE_IDS].sort());
+    expect(surface).toEqual([...LIGHTNING_FLOW_SCANNER_RULE_IDS].sort());
   });
 
   it("agrees on selected high-value rule occurrences using fresh SF Pi fixtures", async () => {
