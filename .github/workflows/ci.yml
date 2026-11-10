@@ -89,14 +89,11 @@ jobs:
         # See scripts/check-llm-artifacts.sh for the exact rules.
         run: bash scripts/check-llm-artifacts.sh
 
-  # Windows signal lane: runs the unit suite on windows-latest so Windows
-  # regressions are visible on every PR. Non-blocking (and not a required
-  # status check) while some POSIX-only tests are still being made
-  # platform-neutral; flip continue-on-error once it is consistently green.
+  # Windows lane: type check and the full unit suite on windows-latest, so
+  # Windows regressions fail CI on every PR.
   windows:
     name: Tests (Windows)
     runs-on: windows-latest
-    continue-on-error: true
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
