@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.352.6](https://github.com/salesforce/sf-pi/compare/v0.352.5...v0.352.6) (2026-11-10)
+
+
+### Bug Fixes
+
+* make the Windows test suite pass and require it in CI ([#910](https://github.com/salesforce/sf-pi/issues/910)) ([209d260](https://github.com/salesforce/sf-pi/commit/209d2603c74519cfe6bee947f58d9e11964bdd61))
+
 ## [0.352.5](https://github.com/salesforce/sf-pi/compare/v0.352.4...v0.352.5) (2026-11-10)
 
 
