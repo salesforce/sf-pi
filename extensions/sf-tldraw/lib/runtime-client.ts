@@ -574,6 +574,21 @@ export function readValidatedRuntimeScreenshot(value: unknown): {
   return { screenshot: inspected.screenshot, bytes: inspected.bytes };
 }
 
+/**
+ * Folders under the OS temp directory where the tldraw desktop app writes
+ * screenshots. Current app builds use `tldraw-agent-api`; older builds used
+ * `tldraw-canvas-api`, kept so those installs still validate.
+ */
+const SCREENSHOT_CAPTURE_DIRS = ["tldraw-agent-api", "tldraw-canvas-api"] as const;
+
+function safeRealpath(target: string): string | undefined {
+  try {
+    return realpathSync(target);
+  } catch {
+    return undefined;
+  }
+}
+
 function inspectRuntimeScreenshotFile(
   value: unknown,
   includeBytes: boolean,
@@ -581,10 +596,13 @@ function inspectRuntimeScreenshotFile(
   const screenshot = screenshotMetadata(value);
   let descriptor: number | undefined;
   try {
-    const allowedRoot = realpathSync(path.join(os.tmpdir(), "tldraw-agent-api"));
     const requestedPath = path.resolve(screenshot.filePath);
     const source = realpathSync(requestedPath);
-    if (source !== allowedRoot && !source.startsWith(`${allowedRoot}${path.sep}`)) {
+    const insideCaptureRoot = SCREENSHOT_CAPTURE_DIRS.some((name) => {
+      const root = safeRealpath(path.join(os.tmpdir(), name));
+      return root !== undefined && (source === root || source.startsWith(`${root}${path.sep}`));
+    });
+    if (!insideCaptureRoot) {
       throw new Error("outside capture directory");
     }
 
