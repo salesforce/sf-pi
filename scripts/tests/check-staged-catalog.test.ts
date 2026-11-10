@@ -182,6 +182,8 @@ function createRepository(): void {
   expect(generated.status, output(generated)).toBe(0);
 
   git("init", "--quiet");
+  // Keep the fixture's LF files byte-identical on Windows runners (core.autocrlf).
+  git("config", "core.autocrlf", "false");
   git("config", "user.email", "fixture@example.invalid");
   git("config", "user.name", "Fixture User");
   git("add", "--all");

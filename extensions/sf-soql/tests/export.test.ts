@@ -120,7 +120,12 @@ describe("exportQueryResult", () => {
       const target = path.join(cwd, ".sf-pi", "exports", "soql", "reports", "accounts.csv");
       await expect(readFile(target, "utf8")).resolves.toBe("Id,Name\n001,Acme\n");
       expect(result.details.digest).toMatchObject({ action: "query.export", status: "pass" });
-      expect(JSON.stringify(result.details)).toContain(".sf-pi/exports/soql/reports/accounts.csv");
+      expect(JSON.stringify(result.details)).toContain(
+        JSON.stringify(path.join(".sf-pi", "exports", "soql", "reports", "accounts.csv")).slice(
+          1,
+          -1,
+        ),
+      );
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

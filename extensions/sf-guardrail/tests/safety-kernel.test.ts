@@ -49,6 +49,9 @@ import { evaluateSafety } from "../lib/safety-kernel.ts";
 import { writeFinSdkState } from "../../../lib/common/fin-sdk-state.ts";
 import { writeFileSync } from "node:fs";
 
+/** Bash treats `\\` as an escape, so Windows paths reach bash with `/` separators. */
+const bashPath = (value: string): string => value.replace(/\\/g, "/");
+
 function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvironment {
   return {
     cli: { installed: true, version: "2.0.0" },
@@ -193,7 +196,7 @@ describe("Safety Kernel", () => {
     try {
       const decision = await evaluateSafety({
         toolName: "bash",
-        input: { command: `rm -rf ${tempDir}` },
+        input: { command: `rm -rf ${bashPath(tempDir)}` },
         cwd: "/project",
         config: readBundledConfig(),
       });

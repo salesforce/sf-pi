@@ -81,7 +81,7 @@ describe("path helpers", () => {
     const out = agentReportPath("/cwd", "Some Agent / weird", "summary");
     expect(out.endsWith(".md")).toBe(true);
     expect(out).toMatch(/Some_Agent.*weird/);
-    expect(out).toMatch(/\.sfdx\/agents/);
+    expect(out).toContain(path.join(".sfdx", "agents"));
   });
 
   it("agentReportPath preserves an explicit .md suffix", () => {

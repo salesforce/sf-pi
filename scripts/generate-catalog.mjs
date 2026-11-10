@@ -1370,7 +1370,8 @@ function readMarkedFile(filePath, startMarker, endMarker) {
   const endIndex = current.indexOf(endMarker);
 
   if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
-    fail(`${path.relative(ROOT, filePath)} is missing markers: ${startMarker} / ${endMarker}`);
+    const relative = path.relative(ROOT, filePath).replaceAll(path.sep, "/");
+    fail(`${relative} is missing markers: ${startMarker} / ${endMarker}`);
   }
 
   return { current, startIndex, endIndex };

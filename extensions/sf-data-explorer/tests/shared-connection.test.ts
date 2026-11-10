@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /** Transport proof that Data Explorer uses the shared Salesforce Connection Module. */
 
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { SalesforceSession } from "../../../lib/common/sf-conn/index.ts";
 
@@ -54,7 +55,7 @@ describe("SF Data Explorer shared connection", () => {
 
     expect(connectSalesforceMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        cwd: "/workspace",
+        cwd: path.resolve("/workspace"),
         targetOrg: "ExampleOrg",
         signal,
         timeoutMs: 10_000,
@@ -84,7 +85,7 @@ describe("SF Data Explorer shared connection", () => {
     await transport.resolveTarget();
 
     expect(connectSalesforceMock).toHaveBeenCalledWith(
-      expect.objectContaining({ cwd: "/workspace", targetOrg: undefined }),
+      expect.objectContaining({ cwd: path.resolve("/workspace"), targetOrg: undefined }),
     );
   });
 });

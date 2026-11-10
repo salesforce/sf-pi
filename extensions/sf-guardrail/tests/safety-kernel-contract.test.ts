@@ -41,6 +41,9 @@ vi.mock("node:fs", async () => {
 import { evaluateSafety } from "../lib/safety-kernel.ts";
 import { readBundledConfig } from "../lib/config.ts";
 
+/** Bash treats `\\` as an escape, so Windows paths reach bash with `/` separators. */
+const bashPath = (value: string): string => value.replace(/\\/g, "/");
+
 function env(orgAlias: string, orgType: SfEnvironment["org"]["orgType"]): SfEnvironment {
   return {
     cli: { installed: true, version: "2.0.0" },
@@ -399,7 +402,7 @@ describe("Safety Kernel — commandGate (Tier 2)", () => {
       const config = readBundledConfig();
       const decision = await evaluateSafety({
         toolName: "bash",
-        input: { command: `rm -rf ${tempDir}` },
+        input: { command: `rm -rf ${bashPath(tempDir)}` },
         cwd: "/project",
         config,
       });

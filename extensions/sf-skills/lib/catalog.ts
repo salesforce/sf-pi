@@ -163,9 +163,9 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
   const sourceByRoot = [...input.sources].sort((a, b) => b.rootPath.length - a.rootPath.length);
   const copies = new Map<string, RawCopy>(); // key: normalized path
 
-  const addCopy = (raw: RawCopy) => {
+  const addCopy = (raw: Omit<RawCopy, "key">) => {
     const key = norm(raw.filePath);
-    if (!copies.has(key)) copies.set(key, { ...raw, filePath: key });
+    if (!copies.has(key)) copies.set(key, { ...raw, filePath: path.normalize(raw.filePath), key });
   };
 
   for (const src of input.sources) {
@@ -184,11 +184,11 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
   // Collision losers + winners that weren't scanned (e.g. a root we didn't
   // walk) still belong in the catalog so conflicts are never lost.
   for (const c of input.collisions) {
-    ensureCopy(norm(c.loserPath), c.name, sourceByRoot, addCopy);
-    ensureCopy(norm(c.winnerPath), c.name, sourceByRoot, addCopy);
+    ensureCopy(c.loserPath, c.name, sourceByRoot, addCopy);
+    ensureCopy(c.winnerPath, c.name, sourceByRoot, addCopy);
   }
   for (const w of input.winners) {
-    ensureCopy(norm(w.filePath), w.name, sourceByRoot, addCopy);
+    ensureCopy(w.filePath, w.name, sourceByRoot, addCopy);
   }
 
   const isSeen = (copy: RawCopy): boolean => (copy.source ? copy.source.gate === "seen" : true);
@@ -204,13 +204,12 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
   }
   const collisionLoserPaths = new Set(input.collisions.map((c) => norm(c.loserPath)));
 
-  const isParticipant = (copy: RawCopy): boolean =>
-    isSeen(copy) || collisionPaths.has(copy.filePath);
+  const isParticipant = (copy: RawCopy): boolean => isSeen(copy) || collisionPaths.has(copy.key);
 
   // 2. Which names have at least one loaded/winning copy (for shadow detection)?
   const loadedNames = new Set<string>();
   for (const copy of copies.values()) {
-    if (loaded.has(copy.filePath) || winnerByName.get(copy.name) === copy.filePath) {
+    if (loaded.has(copy.key) || winnerByName.get(copy.name) === copy.key) {
       loadedNames.add(copy.name);
     }
   }
@@ -234,11 +233,11 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
     const group = byName.get(copy.name) ?? [];
     const isConflict = isParticipant(copy) && group.length > 1;
     const reportOnly = isConflict && group.some((c) => c.source?.autoDefault);
-    const thisLoaded = loaded.has(copy.filePath) || winnerByName.get(copy.name) === copy.filePath;
+    const thisLoaded = loaded.has(copy.key) || winnerByName.get(copy.name) === copy.key;
 
     let effective: EffectiveState;
     if (thisLoaded) effective = "loaded";
-    else if (collisionLoserPaths.has(copy.filePath)) effective = "shadowed";
+    else if (collisionLoserPaths.has(copy.key)) effective = "shadowed";
     else if (!seen) effective = "gated-out";
     else if (loadedNames.has(copy.name)) effective = "shadowed";
     else effective = "gated-out";
@@ -259,15 +258,15 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
       sourceKind: copy.source?.kind ?? "custom",
       autoDefault: copy.source?.autoDefault ?? false,
       seen: copy.source ? copy.source.gate === "seen" : true,
-      enabledGlobal: coveredBy(copy.filePath, input.settingsGlobal),
-      enabledProject: coveredBy(copy.filePath, input.settingsProject),
+      enabledGlobal: coveredBy(copy.key, input.settingsGlobal),
+      enabledProject: coveredBy(copy.key, input.settingsProject),
       effective,
       conflictRole,
-      loadedByPi: loaded.has(copy.filePath),
+      loadedByPi: loaded.has(copy.key),
       usage: usage.get(copy.name),
     };
     skills.push(row);
-    skillByPath.set(copy.filePath, row);
+    skillByPath.set(copy.key, row);
   }
 
   skills.sort(compareSkills);
@@ -276,9 +275,7 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
   const conflicts: CatalogConflict[] = [];
   for (const [name, group] of byName) {
     if (group.length <= 1) continue;
-    const rows = group
-      .map((c) => skillByPath.get(c.filePath))
-      .filter((r): r is CatalogSkill => !!r);
+    const rows = group.map((c) => skillByPath.get(c.key)).filter((r): r is CatalogSkill => !!r);
     const kind: ConflictKind = group.some((c) => c.source?.autoDefault)
       ? "report-only"
       : "resolvable";
@@ -325,6 +322,8 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
 interface RawCopy {
   name: string;
   filePath: string;
+  /** Comparison key: normalized, and case-folded on Windows. */
+  key: string;
   description?: string;
   source?: CatalogSourceInput;
 }
@@ -348,11 +347,13 @@ function ensureCopy(
   filePath: string,
   name: string,
   sourcesByRootDesc: CatalogSourceInput[],
-  addCopy: (raw: RawCopy) => void,
+  addCopy: (raw: Omit<RawCopy, "key">) => void,
 ): void {
-  const source = sourcesByRootDesc.find(
-    (s) => filePath === s.rootPath || filePath.startsWith(`${s.rootPath}${path.sep}`),
-  );
+  const key = norm(filePath);
+  const source = sourcesByRootDesc.find((s) => {
+    const root = norm(s.rootPath);
+    return key === root || key.startsWith(`${root}${path.sep}`);
+  });
   addCopy({ name, filePath, source });
 }
 
@@ -376,10 +377,11 @@ function fallbackSourceLabel(filePath: string): string {
   return root ? `${root} (wired)` : "wired path";
 }
 
-function coveredBy(filePath: string, entries: ResolvedSettingsEntry[]): boolean {
+function coveredBy(key: string, entries: ResolvedSettingsEntry[]): boolean {
   for (const entry of entries) {
-    if (entry.absPath === filePath) return true;
-    if (entry.isDir && filePath.startsWith(`${entry.absPath}${path.sep}`)) return true;
+    const entryKey = norm(entry.absPath);
+    if (entryKey === key) return true;
+    if (entry.isDir && key.startsWith(`${entryKey}${path.sep}`)) return true;
   }
   return false;
 }

@@ -2,6 +2,7 @@
 /**
  * Tests for file classification and path resolution.
  */
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   getSfLspLanguageForFile,
@@ -86,22 +87,22 @@ describe("getSfLspLanguageForFile", () => {
 describe("resolveToolPath", () => {
   it("resolves relative paths against cwd", () => {
     const result = resolveToolPath("classes/MyClass.cls", "/home/user/project");
-    expect(result).toBe("/home/user/project/classes/MyClass.cls");
+    expect(result).toBe(path.resolve("/home/user/project/classes/MyClass.cls"));
   });
 
   it("strips @ prefix before resolving", () => {
     const result = resolveToolPath("@force-app/main/MyClass.cls", "/home/user/project");
-    expect(result).toBe("/home/user/project/force-app/main/MyClass.cls");
+    expect(result).toBe(path.resolve("/home/user/project/force-app/main/MyClass.cls"));
   });
 
   it("preserves absolute paths", () => {
     const result = resolveToolPath("/absolute/path/MyClass.cls", "/home/user/project");
-    expect(result).toBe("/absolute/path/MyClass.cls");
+    expect(result).toBe(path.resolve("/absolute/path/MyClass.cls"));
   });
 
   it("strips @ from absolute paths", () => {
     const result = resolveToolPath("@/absolute/path/MyClass.cls", "/home/user/project");
-    expect(result).toBe("/absolute/path/MyClass.cls");
+    expect(result).toBe(path.resolve("/absolute/path/MyClass.cls"));
   });
 });
 

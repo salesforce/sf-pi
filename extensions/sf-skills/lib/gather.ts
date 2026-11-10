@@ -161,18 +161,20 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
   // the latter produced by expand-minus-one. Using only `isDir` entries here
   // is what made per-file-wired skills show up as "Unknown source".
   const settingsAbs = [...args.settingsGlobal, ...args.settingsProject].map((e) => ({
-    abs: e.absPath,
+    abs: norm(e.absPath),
     isDir: e.isDir,
   }));
-  const isWiredUnder = (rootAbs: string): boolean =>
-    settingsAbs.some((e) => e.abs === rootAbs || e.abs.startsWith(`${rootAbs}${path.sep}`));
+  const isWiredUnder = (rootAbs: string): boolean => {
+    const root = norm(rootAbs);
+    return settingsAbs.some((e) => e.abs === root || e.abs.startsWith(`${root}${path.sep}`));
+  };
 
   // Collect candidate roots keyed by normalized absolute path so we never
   // scan the same dir twice or emit duplicate source rows.
   const byRoot = new Map<string, RootSpec>();
   const add = (spec: RootSpec) => {
     const key = norm(spec.rootPath);
-    if (!byRoot.has(key)) byRoot.set(key, { ...spec, rootPath: key });
+    if (!byRoot.has(key)) byRoot.set(key, { ...spec, rootPath: path.normalize(spec.rootPath) });
   };
 
   // 1. Auto-discovered defaults (always seen, never settings-wired).
@@ -311,7 +313,7 @@ function scanRoot(spec: RootSpec, loadSkillsFromDir: typeof realLoadSkillsFromDi
     const result = loadSkillsFromDir({ dir: spec.rootPath, source: spec.kind });
     return result.skills.map((s) => ({
       name: s.name,
-      filePath: norm(s.filePath),
+      filePath: path.normalize(s.filePath),
       description: s.description,
     }));
   } catch {
@@ -343,7 +345,7 @@ function readSettingsEntries(
   const isProject = settingsPath.includes(`${path.sep}.pi${path.sep}settings.json`);
   for (const value of skills) {
     if (typeof value !== "string") continue;
-    const absPath = norm(resolveValue(value, home, isProject ? cwd : home));
+    const absPath = path.normalize(resolveValue(value, home, isProject ? cwd : home));
     out.push({ raw: value, absPath, isDir: isDirectory(absPath) });
   }
   return out;

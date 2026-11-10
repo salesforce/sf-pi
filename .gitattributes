@@ -1,0 +1,6 @@
+# Keep LF line endings on every platform so Windows checkouts match the
+# repository (generated docs, frontmatter checks, fixtures, and snapshots
+# compare exact text).
+* text=auto eol=lf
+
+*.ttf binary

@@ -66,9 +66,14 @@ export async function makeLwcFixture(options: { withRunner?: boolean } = {}): Pr
 async function writeFakeRunner(root: string): Promise<void> {
   const bin = path.join(root, "node_modules", ".bin");
   await mkdir(bin, { recursive: true });
+  const script = path.join(bin, "lwc-jest.js");
   const runner = path.join(bin, process.platform === "win32" ? "lwc-jest.cmd" : "lwc-jest");
+  if (process.platform === "win32") {
+    // Mirror npm's Windows wrapper: lwc-jest.cmd runs a JavaScript entry with node.
+    await writeFile(runner, '@ECHO off\r\n"%_prog%"  "%dp0%\\lwc-jest.js" %*\r\n');
+  }
   await writeFile(
-    runner,
+    process.platform === "win32" ? script : runner,
     `#!/usr/bin/env node
 const fs = require('fs');
 const args = process.argv.slice(2);
@@ -92,5 +97,5 @@ fs.writeFileSync(out, JSON.stringify({
 console.log('fake lwc-jest passed');
 `,
   );
-  await chmod(runner, 0o755);
+  if (process.platform !== "win32") await chmod(runner, 0o755);
 }

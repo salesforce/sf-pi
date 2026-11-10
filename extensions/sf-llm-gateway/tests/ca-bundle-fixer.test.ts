@@ -11,6 +11,9 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+/** The CA bundle fixer targets macOS; path and openssl expectations are POSIX-only. */
+const describePosix = describe.skipIf(process.platform === "win32");
 import {
   applyZshenvBlock,
   buildCandidatePaths,
@@ -65,7 +68,7 @@ afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
-describe("buildCandidatePaths", () => {
+describePosix("buildCandidatePaths", () => {
   it("returns an absolute, deduped, ordered list with extras first", () => {
     const out = buildCandidatePaths(
       ["/abs/extra.pem", "rel/extra.pem", "/abs/extra.pem"],
@@ -80,7 +83,7 @@ describe("buildCandidatePaths", () => {
   });
 });
 
-describe("validatePemBundle", () => {
+describePosix("validatePemBundle", () => {
   it("accepts a file with the BEGIN CERTIFICATE header", () => {
     const file = path.join(tmpDir, "valid.pem");
     writeFileSync(file, SAMPLE_PEM_BODY);
@@ -137,7 +140,7 @@ describe("buildLaunchAgentPlist", () => {
   });
 });
 
-describe("default paths", () => {
+describePosix("default paths", () => {
   it("anchors the LaunchAgent under ~/Library/LaunchAgents with our label", () => {
     expect(defaultLaunchAgentPath("/Users/test")).toBe(
       `/Users/test/Library/LaunchAgents/${LAUNCH_AGENT_LABEL}.plist`,

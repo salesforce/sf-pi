@@ -194,7 +194,7 @@ describe("Fin SDK reads enable by default", () => {
       path.join(out, "fin-resources.zip"),
     ]);
     expect(d.exec.mock.calls[0]?.[0]).toBe("unzip");
-    expect(result.text).toContain("procedures/refund.yaml");
+    expect(result.text).toContain(path.join("procedures", "refund.yaml"));
   });
 });
 

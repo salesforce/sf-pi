@@ -19,6 +19,7 @@ import {
   constitutionAddendumPath,
   loadConstitution,
   readBundledConstitution,
+  renderGuidePaths,
   shouldInjectConstitution,
 } from "../lib/constitution.ts";
 
@@ -46,6 +47,15 @@ describe("Salesforce Engineering Constitution", () => {
     expect(missing).toContain("<sf_cli_status>");
     expect(missing).not.toContain("brew install");
     expect(CONSTITUTION_ENTRY_TYPE).toBe("sf-brain-constitution");
+  });
+
+  it("renders Windows guide paths with one separator style", () => {
+    const rendered = renderGuidePaths(
+      "Apex → {{SF_PI_PACKAGE_ROOT}}/extensions/sf-apex/AGENT_GUIDE.md",
+      "C:\\tools\\sf-pi",
+      "win32",
+    );
+    expect(rendered).toBe("Apex → C:\\tools\\sf-pi\\extensions\\sf-apex\\AGENT_GUIDE.md");
   });
 
   it("routes every tool owner directly to its installed manifest-declared operating guide", () => {
@@ -113,9 +123,7 @@ describe("Salesforce Engineering Constitution", () => {
 
     const content = loadConstitution({ cliInstalled: true });
     const packageRoot = path.resolve(import.meta.dirname, "../../..");
-    expect(content).toContain(
-      readBundledConstitution().replaceAll("{{SF_PI_PACKAGE_ROOT}}", packageRoot).trim(),
-    );
+    expect(content).toContain(renderGuidePaths(readBundledConstitution(), packageRoot).trim());
     expect(content).toContain("<sf_user_constitution_addendum>");
     expect(content).toContain("Prefer project-specific test suites.");
   });

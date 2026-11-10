@@ -74,10 +74,15 @@ export async function detectJavaVersion(
   const platform = options.platform ?? process.platform;
   const env = options.env ?? process.env;
   const javaHome = env.JAVA_HOME?.trim();
-  const configuredCandidates = [
-    env.SF_LSP_JAVA?.trim(),
-    javaHome ? path.join(javaHome, "bin", "java") : undefined,
-  ].filter((candidate): candidate is string => Boolean(candidate));
+  // Windows JDKs ship bin\java.exe; build that path with Windows rules.
+  const javaFromHome = javaHome
+    ? platform === "win32"
+      ? path.win32.join(javaHome, "bin", "java.exe")
+      : path.posix.join(javaHome, "bin", "java")
+    : undefined;
+  const configuredCandidates = [env.SF_LSP_JAVA?.trim(), javaFromHome].filter(
+    (candidate): candidate is string => Boolean(candidate),
+  );
 
   for (const javaCommand of new Set(configuredCandidates)) {
     const version = await probeJavaVersion(exec, javaCommand);
@@ -96,7 +101,7 @@ async function resolveMacJavaCommand(exec: ExecFn): Promise<string | undefined> 
   try {
     const result = await exec("/usr/libexec/java_home", [], { timeout: 5_000 });
     const home = result.code === 0 ? result.stdout.trim() : "";
-    return home ? path.join(home, "bin", "java") : undefined;
+    return home ? path.posix.join(home, "bin", "java") : undefined;
   } catch {
     return undefined;
   }

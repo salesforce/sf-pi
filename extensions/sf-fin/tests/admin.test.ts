@@ -297,26 +297,31 @@ describe("runAdmin read", () => {
 });
 
 describe("createAdminRunner", () => {
-  it("passes arguments through umask 077 without putting them in the shell string", async () => {
-    const execs: Array<[string, string[]]> = [];
-    const run = createAdminRunner(async (command, args) => {
-      execs.push([command, args]);
-      return { stdout: `- textbox "API key": ${FAKE_KEY}`, stderr: "", code: 0 };
-    });
-    const hostile = "https://app.intercom.com/admins/sign_in;rm -rf ~";
-    const result = await run(["--headed", "open", hostile], {
-      timeoutMs: 1000,
-      ownerOnlyFiles: true,
-    });
-    expect(execs[0]![0]).toBe("sh");
-    expect(execs[0]![1].slice(0, 3)).toEqual(["-c", 'umask 077; exec agent-browser "$@"', "sh"]);
-    expect(execs[0]![1][1]).not.toContain(hostile);
-    expect(execs[0]![1]).toContain(hostile);
-    expect(result.stdout).not.toContain(FAKE_KEY.slice(0, 16));
+  // umask 077 applies on macOS and Linux; Windows runs agent-browser directly
+  // (see agent-browser-command.test.ts).
+  it.skipIf(process.platform === "win32")(
+    "passes arguments through umask 077 without putting them in the shell string",
+    async () => {
+      const execs: Array<[string, string[]]> = [];
+      const run = createAdminRunner(async (command, args) => {
+        execs.push([command, args]);
+        return { stdout: `- textbox "API key": ${FAKE_KEY}`, stderr: "", code: 0 };
+      });
+      const hostile = "https://app.intercom.com/admins/sign_in;rm -rf ~";
+      const result = await run(["--headed", "open", hostile], {
+        timeoutMs: 1000,
+        ownerOnlyFiles: true,
+      });
+      expect(execs[0]![0]).toBe("sh");
+      expect(execs[0]![1].slice(0, 3)).toEqual(["-c", 'umask 077; exec agent-browser "$@"', "sh"]);
+      expect(execs[0]![1][1]).not.toContain(hostile);
+      expect(execs[0]![1]).toContain(hostile);
+      expect(result.stdout).not.toContain(FAKE_KEY.slice(0, 16));
 
-    await run(["get", "url"], { timeoutMs: 1000 });
-    expect(execs[1]![0]).toBe("agent-browser");
-  });
+      await run(["get", "url"], { timeoutMs: 1000 });
+      expect(execs[1]![0]).toBe("agent-browser");
+    },
+  );
 });
 
 describe("service.admin", () => {

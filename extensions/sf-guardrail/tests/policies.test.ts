@@ -78,6 +78,15 @@ describe("matchPath — glob basename vs full path", () => {
     ).toBe("sf-destructive-changes-xml");
   });
 
+  it("matches slash globs against Windows backslash paths", () => {
+    // On Windows, path.relative/resolve return backslash separators. Policy
+    // globs use forward slashes, so protected files must still match.
+    expect(
+      matchPath("force-app\\main\\default\\destructiveChanges.xml", "C:\\project", [destructive])
+        ?.rule.id,
+    ).toBe("sf-destructive-changes-xml");
+  });
+
   it("allowedPatterns short-circuit to allow", () => {
     expect(matchPath("/project/.env.example", cwd, [secretFiles])).toBeUndefined();
     expect(matchPath("/project/.env", cwd, [secretFiles])?.rule.id).toBe("secret-files");

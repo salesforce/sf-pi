@@ -184,16 +184,22 @@ function resolveUncached(name: string, ctx: WindowsSpawnContext): ResolvedSpawnC
 }
 
 /**
- * Resolve a bare command name to a shell-free spawn on Windows. Absolute or
- * relative paths, names with an extension, and every non-Windows platform are
- * returned unchanged.
+ * Resolve a bare command name, or an explicit `.cmd` wrapper path, to a
+ * shell-free spawn on Windows. Other paths, names with an extension, and every
+ * non-Windows platform are returned unchanged.
  */
 export function resolveSpawnCommand(
   name: string,
   ctx: WindowsSpawnContext = defaultWindowsSpawnContext(),
   now: number = Date.now(),
 ): ResolvedSpawnCommand {
-  if (ctx.platform !== "win32" || /[\\/]/.test(name) || W.extname(name)) {
+  if (ctx.platform !== "win32") return { command: name, prefixArgs: [] };
+  // An explicit wrapper path (for example node_modules\.bin\x.cmd) can never be
+  // spawned without a shell, so run the program it points at.
+  if (/[\\/]/.test(name) && /\.cmd$/i.test(name)) {
+    return (ctx.exists(name) && readShimTarget(name, ctx)) || { command: name, prefixArgs: [] };
+  }
+  if (/[\\/]/.test(name) || W.extname(name)) {
     return { command: name, prefixArgs: [] };
   }
   const usesDefaultFs = ctx.exists === existsSync;

@@ -173,7 +173,7 @@
     "entry": "extensions/sf-brain/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 1679
+    "srcLoc": 1695
   },
   {
     "id": "sf-browser",
@@ -630,7 +630,7 @@
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 7953
+    "srcLoc": 7951
   },
   {
     "id": "sf-flow",
@@ -756,7 +756,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6904
+    "srcLoc": 6911
   },
   {
     "id": "sf-herdr",
@@ -972,7 +972,7 @@
     "entry": "extensions/sf-lsp/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4204
+    "srcLoc": 4209
   },
   {
     "id": "sf-lwc",
@@ -1022,7 +1022,7 @@
     "entry": "extensions/sf-lwc/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 2418
+    "srcLoc": 2427
   },
   {
     "id": "sf-mcp",
@@ -1270,7 +1270,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6022
+    "srcLoc": 6026
   },
   {
     "id": "sf-slack",
