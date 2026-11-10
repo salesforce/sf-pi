@@ -123,9 +123,7 @@ describe("Salesforce Engineering Constitution", () => {
 
     const content = loadConstitution({ cliInstalled: true });
     const packageRoot = path.resolve(import.meta.dirname, "../../..");
-    expect(content).toContain(
-      readBundledConstitution().replaceAll("{{SF_PI_PACKAGE_ROOT}}", packageRoot).trim(),
-    );
+    expect(content).toContain(renderGuidePaths(readBundledConstitution(), packageRoot).trim());
     expect(content).toContain("<sf_user_constitution_addendum>");
     expect(content).toContain("Prefer project-specific test suites.");
   });
