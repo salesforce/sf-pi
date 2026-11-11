@@ -18,7 +18,7 @@ registers only capabilities the current token can support.
 | `slack_channel`    | Channel info, listing, and members                              |
 | `slack_user`       | User directory, email lookup, profile, and presence             |
 | `slack_file`       | File metadata and listings                                      |
-| `slack_canvas`     | Read sections or create/edit canvases                           |
+| `slack_canvas`     | Read canvas bodies and section IDs, or create/edit canvases     |
 | `slack_send`       | Human-confirmed channel, DM, or thread posts                    |
 | `slack_schedule`   | Human-confirmed scheduling/deletion and pending-message listing |
 
@@ -124,8 +124,11 @@ already known DM channel id.
 **A fuzzy person/channel resolves incorrectly:** Cancel and retry with an exact
 Slack id or email. Headless low-confidence matches fail with candidates.
 
-**Canvas read cannot find content:** Verify the canvas id and access. Metadata
-reads need `files:read`; section lookup needs `canvases:read`.
+**Canvas read cannot find content:** Verify the canvas id and access. A read
+without criteria needs `files:read`: it calls `files.info` and downloads the
+canvas body from `url_private_download` (sent only to `files.slack.com`). Section
+lookup needs `canvases:read` and returns section IDs only, never text; use the
+IDs for targeted edits.
 
 **Scheduled delivery is absent from the Slack client Scheduled tab:** API queue
 items are exposed by `chat.scheduledMessages.list`, not the client draft UI.

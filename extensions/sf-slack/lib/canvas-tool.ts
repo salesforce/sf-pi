@@ -21,6 +21,7 @@ import { requireAuth } from "./auth.ts";
 import {
   slackApi,
   slackApiJson,
+  downloadSlackFileText,
   errorResult,
   hasScope,
   hasScopeKnown,
@@ -29,6 +30,7 @@ import {
   type SlackTokenType,
 } from "./api.ts";
 import { formatFileInfo, extractStructuredFile } from "./format.ts";
+import { canvasHtmlToMarkdown } from "./canvas-body.ts";
 import { buildSlackTextResult, SLACK_OUTPUT_DESCRIPTION_SUFFIX } from "./truncation.ts";
 
 interface CanvasToolCallArgs {
@@ -50,6 +52,7 @@ interface CanvasToolRenderResult {
     ok?: boolean;
     action?: string;
     mode?: "metadata" | "sections";
+    bodyIncluded?: boolean;
     count?: number;
     canvas_id?: string;
     operation?: string;
@@ -90,7 +93,8 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
     label: "Slack Canvas",
     description:
       "Read, create, and edit Slack canvases. " +
-      "Actions: read — get canvas content or look up section IDs. " +
+      "Actions: read — without criteria, get canvas metadata and its body as markdown; " +
+      "with criteria, look up section IDs for targeted edits (IDs only, no text). " +
       "create — create a new canvas with markdown. edit — modify an existing canvas." +
       SLACK_OUTPUT_DESCRIPTION_SUFFIX,
     promptSnippet: "Read Slack canvas content, create new canvases, or edit existing ones",
@@ -167,6 +171,12 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
         text += "\n  " + theme.fg("muted", "Type:   ") + theme.fg("text", file.type || "canvas");
         text += "\n  " + theme.fg("muted", "Size:   ") + theme.fg("text", file.size || "?");
         text += "\n  " + theme.fg("muted", "Author: ") + theme.fg("warning", file.sharedBy || "?");
+        text +=
+          "\n  " +
+          theme.fg("muted", "Body:   ") +
+          (details.bodyIncluded
+            ? theme.fg("success", "included as markdown")
+            : theme.fg("warning", "not available"));
         text += "\n" + theme.fg("borderMuted", "  ─────────────────────────────────────");
         return new Text(text, 0, 0);
       }
@@ -181,7 +191,6 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
           "\n\n  " +
           theme.fg("accent", `Section ID: ${section.id || "?"}`) +
           theme.fg("dim", ` [${section.type || "?"}]`);
-        text += "\n  " + theme.fg("text", section.content || "(empty)");
       }
       return new Text(text, 0, 0);
     },
@@ -310,13 +319,20 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
             };
           }
 
+          const body = await readCanvasBody(auth.token, file.url_private_download, signal);
+          const bodyReason = body.ok ? "" : (body as CanvasBodyUnavailable).reason;
+          const text = body.ok
+            ? `${formatFileInfo(file)}\n\n--- Canvas body (markdown) ---\n\n${body.markdown}`
+            : `${formatFileInfo(file)}\n\nCanvas body not available: ${bodyReason}.`;
           return buildSlackTextResult(
-            formatFileInfo(file),
+            text,
             {
               ok: true,
               action,
               canvas_id: file.id,
               mode: "metadata",
+              bodyIncluded: body.ok,
+              ...(body.ok ? {} : { bodyUnavailableReason: bodyReason }),
               fileData: extractStructuredFile(file),
             },
             { prefix: "pi-slack-canvas-read" },
@@ -488,6 +504,37 @@ export function registerCanvasTool(pi: ExtensionAPI): void {
   });
 }
 
+/**
+ * Download a canvas body and convert it to markdown. Slack returns the body
+ * only as HTML at `url_private_download`; `files.info` and
+ * `canvases.sections.lookup` never include the text.
+ */
+interface CanvasBodyUnavailable {
+  ok: false;
+  reason: string;
+}
+
+async function readCanvasBody(
+  token: string,
+  downloadUrl: string | undefined,
+  signal?: AbortSignal,
+): Promise<{ ok: true; markdown: string } | CanvasBodyUnavailable> {
+  if (!downloadUrl) return { ok: false, reason: "files.info returned no download URL" };
+  const download = await downloadSlackFileText(downloadUrl, token, signal);
+  if (!download.ok) {
+    return { ok: false, reason: `download failed (${(download as ApiErr).error})` };
+  }
+  if (!/text\/html/i.test(download.data.contentType)) {
+    return {
+      ok: false,
+      reason: `unexpected content type (${download.data.contentType || "none"})`,
+    };
+  }
+  const markdown = canvasHtmlToMarkdown(download.data.text);
+  if (!markdown) return { ok: false, reason: "the canvas body is empty" };
+  return { ok: true, markdown };
+}
+
 function buildCanvasEditChange(
   operation: string,
   markdown?: string,
@@ -620,7 +667,6 @@ function toStructuredCanvasSection(section: SlackCanvasSection): StructuredCanva
 function toCanvasSectionText(section: SlackCanvasSection, index: number): string {
   const lines = [`Section ${index + 1}:`, `  ID: ${section.id || "?"}`];
   if (section.type) lines.push(`  Type: ${section.type}`);
-  if (section.content) lines.push(`  Content: ${section.content}`);
   return lines.join("\n");
 }
 
