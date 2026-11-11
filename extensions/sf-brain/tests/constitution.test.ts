@@ -157,6 +157,9 @@ describe("Salesforce Engineering Constitution", () => {
     expect(content).toContain("Prefer `TD` or `TB`");
     expect(content).toContain("editable or durable Salesforce diagram");
     expect(content).toContain("`tldraw_canvas`");
+    expect(content).toContain("Prefer color when it carries meaning");
+    expect(content).toContain("`classDef`");
+    expect(content).toContain("never use `style` lines");
     expect(content).toContain("✅ done/pass");
     expect(content).not.toContain("<sf_display_capabilities>");
   });

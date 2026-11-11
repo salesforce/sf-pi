@@ -70,6 +70,32 @@ describe("visual response analysis", () => {
     });
   });
 
+  it("renders classDef colors only in the families the color rule names", () => {
+    const fence = (lines: string[]) => ["```mermaid", ...lines, "```"].join("\n");
+    const ok = "classDef ok fill:#2e7d32,color:#fff";
+    const colored = [
+      fence(["flowchart TD", "  A[Plan]:::ok --> B[Ship]", `  ${ok}`]),
+      fence(["stateDiagram-v2", "  [*] --> Draft", "  Draft --> Active:::ok", `  ${ok}`]),
+      fence(["classDiagram", "  Service --> Repository", "  class Service:::ok", `  ${ok}`]),
+    ];
+    const uncolorable = [
+      fence(["erDiagram", "  ACCOUNT ||--o{ CONTACT : has", `  ${ok}`]),
+      fence(["sequenceDiagram", "  A->>B: Ask", `  ${ok}`]),
+    ];
+
+    for (const markdown of colored) {
+      expect(analyzeVisualResponse(markdown, 80).diagrams[0]).toMatchObject({
+        warnings: 0,
+        renderableAtWidth: true,
+      });
+    }
+    for (const markdown of uncolorable) {
+      expect(analyzeVisualResponse(markdown, 80).diagrams[0]).toMatchObject({
+        renderableAtWidth: false,
+      });
+    }
+  });
+
   it("proves when a response must not contain Mermaid", () => {
     const result = evaluateVisualResponseContract(
       { mermaid: "forbidden" },

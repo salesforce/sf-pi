@@ -25,8 +25,10 @@ state on the next turn without replacing the stable constitution.
 Terminal Mermaid guidance prefers the most specific supported family, one
 top-level fence, vertical flowcharts, short labels, and roughly 6–8 nodes.
 Sequence diagrams should stay near four participants; ER and class diagrams
-should stay near four boxes. Editable or durable Salesforce diagrams belong in
-`tldraw_canvas`; Mermaid remains the compact chat overview.
+should stay near four boxes. Flowchart, state, and class diagrams use `classDef`
+colors when color carries meaning (status, ownership, new versus existing).
+Editable or durable Salesforce diagrams belong in `tldraw_canvas`; Mermaid
+remains the compact chat overview.
 
 When the selected model is `sf-llm-gateway/gpt-6-sol`, SF Brain adds a small,
 model-scoped system prompt section asking for a developed explanation with an
