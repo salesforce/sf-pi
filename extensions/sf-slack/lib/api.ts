@@ -322,6 +322,62 @@ export async function slackApi<T>(
   });
 }
 
+/** Only Slack's own file host may receive the token on a file download. */
+const SLACK_FILES_HOST = "files.slack.com";
+/** Canvas exports are small HTML documents; refuse anything far larger. */
+const MAX_FILE_DOWNLOAD_BYTES = 5 * 1024 * 1024;
+
+/**
+ * GET a private Slack file body (for example a canvas's `url_private_download`).
+ *
+ * The token is sent only to `https://files.slack.com/`, and redirects are not
+ * followed, so it can't leak to another host. A Slack sign-in page or any
+ * non-200 response is reported as an error instead of being returned as text.
+ */
+export async function downloadSlackFileText(
+  url: string,
+  token: string,
+  signal?: AbortSignal,
+): Promise<ApiResult<{ text: string; contentType: string }>> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { ok: false, error: "invalid_download_url" };
+  }
+  if (parsed.protocol !== "https:" || parsed.hostname !== SLACK_FILES_HOST) {
+    return { ok: false, error: "untrusted_download_host" };
+  }
+
+  return withSlot(async () => {
+    try {
+      const response = await fetchWithRetry(
+        () => ({
+          url: parsed.toString(),
+          init: {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            redirect: "manual",
+          },
+        }),
+        signal,
+      );
+      if (response.status === 429) return { ok: false, error: "rate_limited" };
+      if (response.status !== 200) return { ok: false, error: `http_${response.status}` };
+      const declared = Number(response.headers.get("content-length") ?? "0");
+      if (declared > MAX_FILE_DOWNLOAD_BYTES) return { ok: false, error: "file_too_large" };
+      const text = await response.text();
+      if (text.length > MAX_FILE_DOWNLOAD_BYTES) return { ok: false, error: "file_too_large" };
+      return {
+        ok: true,
+        data: { text, contentType: response.headers.get("content-type") ?? "" },
+      };
+    } catch (error) {
+      return classifyFetchError<{ text: string; contentType: string }>(error, signal);
+    }
+  });
+}
+
 /** POST with application/json body. */
 export async function slackApiJson<T>(
   endpoint: string,
