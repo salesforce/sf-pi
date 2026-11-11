@@ -12,7 +12,7 @@ import { canvasHtmlToMarkdown } from "../lib/canvas-body.ts";
 import { _resetGrantedScopes, downloadSlackFileText } from "../lib/api.ts";
 
 const CANVAS_ID = "F0EXAMPLE01";
-const DOWNLOAD_URL = `https://files.slack.com/files-pri/T0EXAMPLE-${CANVAS_ID}/canvas`;
+const DOWNLOAD_URL = `https://files.slack.com/files-pri/T00000000-${CANVAS_ID}/canvas`;
 const CANVAS_HTML =
   '<div class="quip-canvas-content">' +
   '<h1 id="temp:C:1">Project plan</h1>' +
