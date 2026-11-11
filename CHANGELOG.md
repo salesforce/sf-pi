@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.354.0](https://github.com/salesforce/sf-pi/compare/v0.353.0...v0.354.0) (2026-11-11)
+
+
+### Features
+
+* **sf-brain:** prefer meaningful color in terminal Mermaid diagrams ([b52f90f](https://github.com/salesforce/sf-pi/commit/b52f90f6ebe78b37e87ec26ce8250d62c8f89821))
+
+
+### Bug Fixes
+
+* **deps:** raise fast-xml-parser to 5.12.0 and tie its override to the direct range ([b52f90f](https://github.com/salesforce/sf-pi/commit/b52f90f6ebe78b37e87ec26ce8250d62c8f89821))
+
 ## [0.353.0](https://github.com/salesforce/sf-pi/compare/v0.352.7...v0.353.0) (2026-11-10)
 
 
