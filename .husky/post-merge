@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Keep a contributor checkout's node_modules in step with package-lock.json
+# after `git pull` / `git merge`.
+#
+# Pi loads a local-path SF Pi package straight from this checkout and never
+# runs npm for it, so a pull that adds a runtime dependency would otherwise
+# break the next Pi start with "Cannot find module". Git installs
+# (`git:github.com/salesforce/sf-pi`) are unaffected: `pi update` installs
+# dependencies itself.
+#
+# Runs only when the merge changed package-lock.json. Uses `npm install`
+# rather than `npm ci` so a Pi session already running from this checkout
+# keeps its node_modules while the update applies in place.
+# A `git pull --rebase` that replays local commits skips post-merge; run
+# `npm install` after it.
+# Skip once: HUSKY=0 git pull
+
+set -eu
+
+git rev-parse -q --verify ORIG_HEAD >/dev/null || exit 0
+if git diff --quiet ORIG_HEAD HEAD -- package-lock.json; then
+  exit 0
+fi
+
+echo "sf-pi: package-lock.json changed; installing dependencies so Pi can load them."
+npm install --no-audit --no-fund
