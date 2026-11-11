@@ -183,14 +183,14 @@
     "@sf-agentscript/agentforce": "2.10.38",
     "@sf-agentscript/language": "3.2.3",
     "@sf-agentscript/lsp": "2.6.33",
-    "fast-xml-parser": "^5.11.2",
+    "fast-xml-parser": "^5.12.0",
     "lovely-mermaid": "0.3.3",
     "node-emoji": "^2.2.0",
     "vscode-languageserver-protocol": "^3.18.5",
     "yaml": "^2.9.1"
   },
   "overridesNotes": {
-    "fast-xml-parser": "Force >= 5.7.0 to clear GHSA-gh4j-gqv2-49f6 (XMLBuilder CDATA injection). Reaches sf-pi through pi-ai -> AWS SDK Bedrock client; remove once upstream AWS SDK resolves the advisory.",
+    "fast-xml-parser": "Pin every transitive copy to the direct dependency range (5.12.0+ clears GHSA-474x-hrwr-fgx4). The $ reference keeps the override in lockstep with the direct dependency, so a version bump edits one range and does not trip npm EOVERRIDE.",
     "form-data": "Force >= 4.0.6 to clear GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field names/filenames). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "csv-parse": "Force >= 7.0.2 to clear GHSA-8cw4-87c7-c6xx (prototype replacement via duplicate __proto__ CSV headers). Reaches sf-pi through @salesforce/core -> @jsforce/jsforce-node; remove once upstream ranges naturally resolve to a patched version.",
     "vite": "Direct dev dependency on the Vite 8 line so Vitest and VitePress resolve one shared, patched Vite. Remove only if docs/test tooling no longer requires a root peer install.",
@@ -200,7 +200,7 @@
     "typescript": "Not an override: typescript stays on 6.x because typescript-eslint and test-only compiler-API callers need the JS API that TypeScript 7 does not ship. Type checking uses the native TypeScript 7 compiler through the @typescript/native alias (npm run check). Move typescript to 7.x once typescript-eslint supports the TypeScript 7.1 API."
   },
   "overrides": {
-    "fast-xml-parser": "^5.11.2",
+    "fast-xml-parser": "$fast-xml-parser",
     "form-data": "^4.0.6",
     "csv-parse": "^7.0.2",
     "minimatch": "^11.0.3",

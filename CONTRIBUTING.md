@@ -69,6 +69,11 @@ npm install
   [Conventional Commits](https://www.conventionalcommits.org/).
 - `pre-push` blocks force-pushes and deletion of `main`; CI remains the source
   of truth for full lint/typecheck/test validation.
+- `post-merge` runs `npm install` when a pull or merge changes
+  `package-lock.json`. Pi never installs dependencies for a local-path package,
+  so this keeps a checkout loaded with `pi install .` startable after a pull
+  that adds a runtime dependency. A rebase pull that replays local commits skips
+  this hook; run `npm install` after it.
 
 Optional local install for manual testing:
 
