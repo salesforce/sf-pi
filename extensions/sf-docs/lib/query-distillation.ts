@@ -133,8 +133,21 @@ export function primaryDistilledSearch(
   plan: DocsQueryDistillationPlan,
   collection = plan.collectionCandidates[0],
 ): DistilledSearchRequest | undefined {
-  const query = plan.variants[0] ?? plan.semanticQuery;
+  // The docs service returns nothing for a raw Help article id
+  // (`ai.some_article_ref`), so a Help URL searches its readable words.
+  const query = isHelpArticlePlan(plan)
+    ? plan.semanticQuery || plan.variants[0]
+    : (plan.variants[0] ?? plan.semanticQuery);
   return collection && query ? { collection, query } : undefined;
+}
+
+function isHelpArticlePlan(plan: DocsQueryDistillationPlan): boolean {
+  if (plan.source !== "url" || plan.host !== "help.salesforce.com") return false;
+  try {
+    return Boolean(new URL(plan.original).searchParams.get("id")?.trim());
+  } catch {
+    return false;
+  }
 }
 
 export function rankDistilledResults(
@@ -430,10 +443,16 @@ function originalUrlMatchesResult(plan: DocsQueryDistillationPlan, resultUrl?: s
   try {
     const original = new URL(plan.original);
     const result = new URL(resultUrl);
-    return (
-      original.hostname.toLowerCase() === result.hostname.toLowerCase() &&
-      normalizeComparable(original.pathname) === normalizeComparable(result.pathname)
-    );
+    if (original.hostname.toLowerCase() !== result.hostname.toLowerCase()) return false;
+    // Help articles all share /s/articleView; the id parameter names the article.
+    const originalArticleId = original.searchParams.get("id")?.trim();
+    if (originalArticleId) {
+      return (
+        normalizeComparable(originalArticleId) ===
+        normalizeComparable(result.searchParams.get("id")?.trim() ?? "")
+      );
+    }
+    return normalizeComparable(original.pathname) === normalizeComparable(result.pathname);
   } catch {
     return false;
   }
