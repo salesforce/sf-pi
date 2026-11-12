@@ -37,6 +37,7 @@ For material Salesforce solution design or architecture review, use the `archite
 - Preserve requested product, locale, release, and document-type constraints; report an evidence gap when results do not satisfy them.
 - Explicit collection arguments are authoritative. `ground` rejects known URL/collection conflicts and uses developer peer fallback only when collection was inferred.
 - Grounded developer-reference queries use underscore-prefixed guide values and can retry the peer `developer` or `legacydeveloper` collection.
+- The service indexes Salesforce Help articles only as `?id=<article>&release=<n>&type=5`. When a pasted Help URL (no `release=`, or extras such as `&language=en_US`) fails, `ground` searches `admin` with the article's readable words and, if no result is the same article, refetches the indexed URL using the current release from those results. Literal `fetch` sends the URL unchanged.
 - Grounded MuleSoft searches add `+latest:true` unless the query requests a specific component release; primitive search sends the caller's query unchanged.
 - Route explicit Well-Architected, decision-guide, and reference-diagram questions to `architect`; do not route on the generic word “architecture” alone.
 - Release-note requests require actual release-note evidence, not merely current-release metadata. Use `admin` or omit the collection for seasonal release-note grounding; query `developer` separately for current technical reference documentation.
