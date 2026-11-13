@@ -11,6 +11,13 @@ export interface EvaluatorCatalogEntry {
   capability: EvaluatorCapability;
   defaultMetricName?: string;
   defaultThreshold?: number;
+  /**
+   * Operators the live Evaluation API accepts for this evaluator. The list is
+   * the enum from the API's own HTTP 422 validation message, so the evaluator
+   * is live-proven only for these operators. Anything else is rejected before
+   * a network call.
+   */
+  allowedOperators?: readonly string[];
 }
 
 const ENTRIES: readonly EvaluatorCatalogEntry[] = [
@@ -20,18 +27,45 @@ const ENTRIES: readonly EvaluatorCatalogEntry[] = [
     family: "assertion",
     capability: "live_proven",
     defaultMetricName: "string_assertion",
+    allowedOperators: [
+      "equals",
+      "contains",
+      "startswith",
+      "endswith",
+      "regex_match",
+      "not_contains",
+      "not_equals",
+    ],
   },
   {
     type: "evaluator.numeric_assertion",
     label: "Numeric assertion",
     family: "assertion",
     capability: "live_proven",
+    allowedOperators: [
+      "equals",
+      "greater_than_or_equal",
+      "greater_than",
+      "less_than",
+      "less_than_or_equal",
+      "not_equals",
+    ],
   },
   {
     type: "evaluator.list_assertion",
     label: "List assertion",
     family: "assertion",
     capability: "live_proven",
+    // `contains` is a string_assertion operator; list_assertion rejects it.
+    allowedOperators: [
+      "exact_match_with_order",
+      "exact_match_without_order",
+      "includes_items",
+      "superset",
+      "item_in",
+      "not_equals",
+      "not_contains",
+    ],
   },
   {
     type: "evaluator.bot_response_rating",
@@ -98,6 +132,11 @@ export const DEFAULT_METRIC_NAMES = Object.fromEntries(
     entry.defaultMetricName ? [[entry.type, entry.defaultMetricName] as const] : [],
   ),
 ) as Readonly<Record<string, string>>;
+
+/** The live-accepted operators for `type`, or undefined when the catalog has none. */
+export function allowedOperatorsFor(type: string | undefined): readonly string[] | undefined {
+  return BY_TYPE.get(type ?? "")?.allowedOperators;
+}
 
 export function evaluatorCatalogEntry(type: string | undefined): EvaluatorCatalogEntry {
   const normalized = type ?? "";

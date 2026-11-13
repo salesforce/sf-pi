@@ -45,6 +45,9 @@ export interface EvalScenario {
   turns: EvalScenarioTurn[];
 }
 
+/** JSONPath suffix that projects action names out of `lastExecution.invokedActions`. */
+export const INVOKED_ACTION_NAMES = "[*][*].function.name";
+
 export function compileEvalScenario(
   scenario: EvalScenario,
   contextVariables: WireContextVariable[] = [],
@@ -66,12 +69,16 @@ export function compileEvalScenario(
       );
     }
     if (turn.action) {
+      // invokedActions is a list of lists of action objects
+      // ({ function: { name, input, output }, … }). Project the names with a
+      // JSONPath wildcard so the assertion compares action names, not objects.
+      // `includes_items` passes when every expected name was invoked.
       steps.push({
         type: "evaluator.list_assertion",
         id: turn.action.id,
-        actual: `{${stateId}.response.planner_response.lastExecution.invokedActions}`,
+        actual: `{${stateId}.response.planner_response.lastExecution.invokedActions}${INVOKED_ACTION_NAMES}`,
         expected: [turn.action.expected],
-        operator: "contains",
+        operator: "includes_items",
       });
     }
     if (turn.response) {
