@@ -270,12 +270,14 @@ describe("generateSpec", () => {
     expect(out.summary.action_tests).toBe(1);
     expect(out.summary.skipped_actions).toEqual(["send_email", "describe_thing"]);
     expect(out.spec.tests.map((t) => t.id)).toEqual(["action_lookup_balance"]);
+    // invokedActions holds action objects, so the check projects their names
+    // and uses list_assertion's includes_items (the API rejects `contains`).
     expect(out.spec.tests[0].steps).toContainEqual({
       type: "evaluator.list_assertion",
       id: "eval_action_lookup_balance",
-      actual: "{state1.response.planner_response.lastExecution.invokedActions}",
+      actual: "{state1.response.planner_response.lastExecution.invokedActions}[*][*].function.name",
       expected: ["lookup_balance"],
-      operator: "contains",
+      operator: "includes_items",
     });
     expect(out.spec.tests[0].steps.some((s) => s.type === "evaluator.bot_response_rating")).toBe(
       false,
