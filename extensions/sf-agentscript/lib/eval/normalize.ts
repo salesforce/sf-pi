@@ -32,6 +32,7 @@ import {
   ASSERTION_EVALUATORS,
   DEFAULT_METRIC_NAMES,
   SCORING_EVALUATORS,
+  allowedOperatorsFor,
 } from "./evaluator-catalog.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -224,10 +225,28 @@ function normalizeAssertionEvaluator(out: Record<string, unknown>, evalType: str
     }
   }
   if (typeof out.operator === "string") out.operator = out.operator.toLowerCase();
+  assertAllowedOperator(out, evalType);
   // string_assertion is the only live-proven assertion that accepts metric_name.
   if (evalType === "evaluator.string_assertion" && !("metric_name" in out)) {
     out.metric_name = "string_assertion";
   }
+}
+
+/**
+ * Reject an operator the live Evaluation API doesn't accept for this evaluator,
+ * before a network call. Otherwise the whole batch fails with HTTP 422 and no
+ * test in it runs.
+ */
+function assertAllowedOperator(out: Record<string, unknown>, evalType: string): void {
+  const allowed = allowedOperatorsFor(evalType);
+  if (!allowed || !("operator" in out)) return;
+  const operator = out.operator;
+  if (typeof operator === "string" && allowed.includes(operator)) return;
+  const stepId = typeof out.id === "string" && out.id ? ` (step "${out.id}")` : "";
+  throw new Error(
+    `${evalType} operator ${JSON.stringify(operator)}${stepId} is not accepted by the live Evaluation API. ` +
+      `Allowed operators: ${allowed.join(", ")}.`,
+  );
 }
 
 export function normalizeEvaluatorFields(steps: EvalStep[]): EvalStep[] {
