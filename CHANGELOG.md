@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.355.1](https://github.com/salesforce/sf-pi/compare/v0.355.0...v0.355.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **sf-fin:** confirm package installs from Installed Packages ([#930](https://github.com/salesforce/sf-pi/issues/930)) ([bc91155](https://github.com/salesforce/sf-pi/commit/bc9115514994268f69bece7f9f3b923fc712f6ca))
+
 ## [0.355.0](https://github.com/salesforce/sf-pi/compare/v0.354.0...v0.355.0) (2026-11-19)
 
 
