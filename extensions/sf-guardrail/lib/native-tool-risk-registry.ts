@@ -42,6 +42,7 @@ export function classifyNativeToolRisk(
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifySfFinInstall(toolName, input) ??
+    classifySfFinSalesforceSetup(toolName, input) ??
     withFinWorkspace(
       input,
       classifySfFinProcedureState(toolName, input) ??
@@ -280,6 +281,63 @@ function classifySfFinInstall(
     fingerprint: `sf_fin|install|${fingerprintText(version)}`,
     approvalLabel: `npm install -g @intercom/cli@${version}`,
     approvalDetail: `package=@intercom/cli; version=${version}; scope=global npm`,
+  };
+}
+
+/**
+ * `sf_fin salesforce package_install|permissions_apply` with
+ * `allow_mutation=true` changes the target Salesforce org: one managed package
+ * install, or one permission set deploy plus the dedicated Fin user and its
+ * assignments. Readiness and plans stay prompt-free. Each execution is an
+ * exact, org-bound approval (no session grant), and production or unknown
+ * targets fail closed, like other native setup mutations.
+ */
+function classifySfFinSalesforceSetup(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "salesforce" || input.allow_mutation !== true) {
+    return undefined;
+  }
+  const operation = stringValue(input.operation);
+  if (operation !== "package_install" && operation !== "permissions_apply") return undefined;
+  const targetOrg = stringValue(input.target_org);
+  const packageVersion = stringValue(input.package_version);
+  const username = stringValue(input.username);
+  const install = operation === "package_install";
+  const target = install
+    ? `package ${packageVersion ?? "unspecified version"}`
+    : `Fin user ${username ?? "default"}`;
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: `salesforce.${operation}`,
+    ruleId: "native-sf-fin-salesforce-setup",
+    subject: `sf_fin salesforce ${operation} ${target}`,
+    reason: install
+      ? `Install the Fin for Salesforce managed package (${packageVersion ?? "unspecified version"}) for all users in the target org.`
+      : `Deploy the Fin access permission set, create or update the dedicated Fin user (${username ?? "default username"}), and assign both Fin permission sets in the target org.`,
+    promptTitle: install
+      ? "⚠ Install Fin for Salesforce package"
+      : "⚠ Fin Salesforce permissions and user",
+    operationFamily: "fin salesforce setup",
+    riskTier: install ? "org_package_install_exact" : "org_user_provisioning_exact",
+    fingerprint: `sf_fin|salesforce-${operation}|${fingerprintText(JSON.stringify({ packageVersion, username, email: stringValue(input.email) }))}`,
+    approvalLabel: install
+      ? `install Fin for Salesforce ${packageVersion ?? ""}`.trim()
+      : `Fin permissions and user ${username ?? "(default)"}`,
+    approvalDetail: [
+      `operation=${operation}`,
+      packageVersion ? `package_version=${packageVersion}` : undefined,
+      username ? `username=${username}` : undefined,
+    ]
+      .filter(Boolean)
+      .join("; "),
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+    allowSession: false,
+    blockProductionOrUnknown: true,
   };
 }
 

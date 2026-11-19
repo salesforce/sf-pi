@@ -124,6 +124,8 @@ import {
   type SdkReadDeps,
   type SdkReadResult,
 } from "./sdk-reads.ts";
+import type { FinSalesforceOrg } from "./salesforce/org.ts";
+import { runSalesforceSetup, type SalesforceOperation } from "./salesforce/setup.ts";
 
 export interface FinService {
   doctor(ctx: ExtensionContext): Promise<{
@@ -161,6 +163,8 @@ export interface FinService {
   workspace(request: WorkspaceRequest): ProcedureResponse;
   /** Fin admin web pages in the shared SF Pi browser (navigate and read only). */
   admin(request: AdminRequest & { workspace?: string; cwd?: string }): Promise<ProcedureResponse>;
+  /** Fin for Salesforce: readiness, package install, permissions and Fin user (explicit org). */
+  salesforce(ctx: ExtensionContext, request: SalesforceRequest): Promise<ProcedureResponse>;
   /** Unified, read-only setup check for one workspace. */
   setup(
     ctx: ExtensionContext & {
@@ -194,6 +198,12 @@ export interface FinServiceDeps {
   readSignin?: (workspace: string) => ReturnType<typeof readStoredSignin>;
   /** Called after a workspace is added, so its Pi sign-ins can be registered. */
   onWorkspaceAdded?: (name: string) => void;
+  /** Test seam: Salesforce org adapter for the Fin for Salesforce setup. */
+  salesforceOrg?: (input: {
+    cwd: string;
+    targetOrg: string;
+    signal?: AbortSignal;
+  }) => Promise<FinSalesforceOrg>;
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
@@ -642,6 +652,31 @@ export function createFinService(deps: FinServiceDeps): FinService {
       };
     },
 
+    async salesforce(ctx, request) {
+      const targetOrg = request.targetOrg?.trim();
+      if (!targetOrg) {
+        return {
+          ok: false,
+          text: "❌ Pass target_org: the Salesforce org alias or username to set up. SF Fin never assumes the default org.",
+          details: { phase: "input", code: "target_org_required" },
+        };
+      }
+      try {
+        const org = await (deps.salesforceOrg ?? connectFinSalesforceOrg)({
+          cwd: ctx.cwd,
+          targetOrg,
+          signal: ctx.signal,
+        });
+        return await runSalesforceSetup(org, { ...request, targetOrg, signal: ctx.signal });
+      } catch (error) {
+        return {
+          ok: false,
+          text: `❌ Salesforce ${request.operation} failed for ${targetOrg}: ${error instanceof Error ? error.message : String(error)}`,
+          details: { phase: "error" },
+        };
+      }
+    },
+
     async setup(ctx, request) {
       const target = ws(request.workspace);
       if (target.ok === false)
@@ -785,6 +820,29 @@ export type ProcedureRequest =
     }
   | { operation: "publish"; procedureId?: string; execute?: boolean; note?: string }
   | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string };
+
+export interface SalesforceRequest {
+  operation: SalesforceOperation;
+  targetOrg?: string;
+  packageVersion?: string;
+  username?: string;
+  email?: string;
+  execute?: boolean;
+}
+
+/** Lazily load the Salesforce SDK path so boot stays free of it. */
+async function connectFinSalesforceOrg(input: {
+  cwd: string;
+  targetOrg: string;
+  signal?: AbortSignal;
+}): Promise<FinSalesforceOrg> {
+  const [{ connectSalesforce }, { createFinSalesforceOrg }] = await Promise.all([
+    import("../../../lib/common/sf-conn/index.ts"),
+    import("./salesforce/org.ts"),
+  ]);
+  const session = await connectSalesforce(input);
+  return createFinSalesforceOrg(session);
+}
 
 export type WorkspaceRequest =
   | { operation: "list" }

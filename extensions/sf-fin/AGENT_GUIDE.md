@@ -46,6 +46,19 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 - `operation='capabilities'` lists the procedures a test user can trigger. It creates no conversation.
 - `operation='run'` starts a real Fin conversation and returns the transcript and whether Fin answered (`answered` or `timed_out`). It takes `procedure_id` (or `message` to ask Fin) plus scripted `replies`. Asking is one-shot: one answer, with no follow-ups. A procedure run sends each scripted reply after each Fin turn. It is Guardrail-mediated, because a conversation Fin resolves is a billable outcome. The procedure must be live and available on the Fin Agent API channel with an API trigger.
 
+## Fin for Salesforce (Salesforce side)
+
+`sf_fin action='salesforce'` sets up the Salesforce half of Fin for Salesforce Cases in one explicit `target_org`. Always pass `target_org`; never assume the default org.
+
+1. `operation='readiness'` is read-only. It reports the package (`finai`), the four Fin Case fields, both permission sets, the Fin External Client App, the audit-field setting, and the dedicated Fin user.
+2. `operation='package_install' package_version=…` takes the `04t` id or the install link from Fin's **Deploy → Salesforce cases → Connect → Install package** dialog. Ask the user for it; Fin requires its latest version, so never reuse an old id. Without `allow_mutation` it returns the plan (version, upgrade or new install, third-party sites). With `allow_mutation=true` it installs for all users, blocks on name conflicts, and verifies the result in Installed Packages. It refuses any package outside the `finai` namespace.
+3. `operation='permissions_apply'` (optional `username`, `email`) plans, then with `allow_mutation=true` deploys the `SF_Fin_Salesforce_Access` permission set, creates the dedicated Fin user (profile Minimum Access - Salesforce, Service Cloud User), and assigns both permission sets. It refuses until the package is installed, and it only fills in what is missing.
+4. The OAuth connection is human-only: the user clicks **Connect to Salesforce** in Fin and approves it. Afterwards, rerun `readiness` and `sf_fin action='admin' operation='read' page='salesforce-cases'`.
+
+- SF Guardrail mediates both executes as `native-sf-fin-salesforce-setup`: exact and org-bound, never session-approved, and blocked on production or unknown orgs.
+- SF Fin never changes the org-wide "Set Audit Fields upon Record Creation" setting. `readiness` reports it as a human step.
+- Fin Messenger live chat (BYOC) is out of scope; it needs Digital Engagement with Partner Messaging.
+
 ## Fin admin pages
 
 - `sf_fin action='admin' operation='pages'` lists the verified pages. `operation='read' page=<id>` opens one for the workspace's verified app and returns a masked summary; `operation='open'` only navigates, for follow-up `sf_browser_snapshot` work.
@@ -77,4 +90,5 @@ Install plan outcomes:
 - Do not run the Fin CLI or `npm install -g @intercom/cli` directly through `bash`. Use `sf_fin`, which keeps the token out of argv and the user's own CLI config, pins exact versions, and routes installs through SF Guardrail.
 - `allow_mutation=true` states intent; it is not approval. Never claim an install was approved unless the tool result shows it ran.
 - `sf_fin action='admin'` never changes Fin; it navigates and reads masked page text.
-- `sf_fin` changes only Fin-as-code resources: procedure drafts, simulations, publish/pause, paused guidance and its state, draft data connectors, and Fin Agent API test conversations. It changes no other workspace configuration, and never publishes a data connector.
+- In Fin, `sf_fin` changes only Fin-as-code resources: procedure drafts, simulations, publish/pause, paused guidance and its state, draft data connectors, and Fin Agent API test conversations. It changes no other workspace configuration, and never publishes a data connector.
+- In Salesforce, `sf_fin action='salesforce'` changes only the target org's Fin for Salesforce package, the `SF_Fin_Salesforce_Access` permission set, the dedicated Fin user, and that user's two permission set assignments.

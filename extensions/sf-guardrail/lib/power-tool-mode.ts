@@ -36,7 +36,7 @@ export const NATIVE_TOOL_FAMILIES: Array<{
     id: "fin",
     label: "Fin CLI and Operator",
     description:
-      "sf_fin install, SDK enable, drafts/simulations, publish/pause, guidance state, Agent API runs; Fin Operator",
+      "sf_fin install, SDK enable, drafts/simulations, publish/pause, guidance state, Agent API runs, Salesforce package and Fin user setup; Fin Operator",
   },
   { id: "soql", label: "SOQL disclosures", description: "export, queryAll, unbounded reads" },
 ];
@@ -111,6 +111,7 @@ export function nativeToolFamilyForDecision(
     family === "fin procedure write" ||
     family === "fin procedure state" ||
     family === "fin agent run" ||
+    family === "fin salesforce setup" ||
     family.startsWith("mcp fin operator ")
   )
     return "fin";

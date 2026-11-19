@@ -29,10 +29,11 @@ const Params = Type.Object({
       "setup",
       "workspace",
       "admin",
+      "salesforce",
     ] as const,
     {
       description:
-        "status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads and authoring (enables the Fin SDK on first use). surfaces: compare the installed Fin CLI, Intercom MCP, and Fin Agent API, and say which SF Fin uses per capability (local, read-only). agent: Fin Agent API test harness (needs granted access and /login sf-fin-agent). setup: read-only check of one workspace's credentials, what they unlock, and what is missing. workspace: list, add, use, or remove named Fin workspace profiles (no credentials). admin: Fin admin web pages in the shared SF Pi browser (pages, open, read, sign_in); navigate and read only, text masked, no screenshots of secret pages.",
+        "salesforce: Fin for Salesforce setup in an explicit target_org (readiness; package_install and permissions_apply plan by default, execute with allow_mutation=true; SF Guardrail mediates). status: cached, no network. doctor: live read-only checks. install: plan (default) or run a global npm install of the Fin CLI. debug: redacted support bundle, or arm/disarm verbose tracing. sdk: Fin-as-code reads and authoring (enables the Fin SDK on first use). surfaces: compare the installed Fin CLI, Intercom MCP, and Fin Agent API, and say which SF Fin uses per capability (local, read-only). agent: Fin Agent API test harness (needs granted access and /login sf-fin-agent). setup: read-only check of one workspace's credentials, what they unlock, and what is missing. workspace: list, add, use, or remove named Fin workspace profiles (no credentials). admin: Fin admin web pages in the shared SF Pi browser (pages, open, read, sign_in); navigate and read only, text masked, no screenshots of secret pages.",
     },
   ),
   operation: Type.Optional(
@@ -59,10 +60,13 @@ const Params = Type.Object({
         "open",
         "read",
         "sign_in",
+        "readiness",
+        "package_install",
+        "permissions_apply",
       ] as const,
       {
         description:
-          "sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
+          "salesforce only: readiness (read-only checklist of package, Fin Case fields, permission sets, dedicated Fin user), package_install (install the exact Fin for Salesforce package_version for all users), permissions_apply (deploy the Fin access permission set, create the dedicated Fin user with Service Cloud User, assign both permission sets). sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
       },
     ),
   ),
@@ -161,6 +165,29 @@ const Params = Type.Object({
   runs: Type.Optional(
     Type.Number({ description: "debug verbose=on only: number of doctor runs to trace (1–5)." }),
   ),
+  target_org: Type.Optional(
+    Type.String({
+      description:
+        "salesforce: explicit Salesforce org alias or username. Required; the default org is never assumed.",
+    }),
+  ),
+  package_version: Type.Optional(
+    Type.String({
+      description:
+        "salesforce package_install/readiness: the 04t package version id or the install link from Fin's Connect page.",
+    }),
+  ),
+  username: Type.Optional(
+    Type.String({
+      description: "salesforce: dedicated Fin user's username. Default fin_agent@<org id>.ext.",
+    }),
+  ),
+  email: Type.Optional(
+    Type.String({
+      description:
+        "salesforce permissions_apply: email for a new Fin user. Default: the connected admin's email (Salesforce verifies it).",
+    }),
+  ),
 });
 
 type Params = {
@@ -174,7 +201,8 @@ type Params = {
     | "agent"
     | "setup"
     | "workspace"
-    | "admin";
+    | "admin"
+    | "salesforce";
   operation?:
     | "manifest"
     | "download"
@@ -196,7 +224,14 @@ type Params = {
     | "pages"
     | "open"
     | "read"
-    | "sign_in";
+    | "sign_in"
+    | "readiness"
+    | "package_install"
+    | "permissions_apply";
+  target_org?: string;
+  package_version?: string;
+  username?: string;
+  email?: string;
   page?: string;
   workspace?: string;
   kind?: "test" | "prod";
@@ -248,6 +283,7 @@ export function registerSfFinTool(
       "Use sf_fin action='surfaces' to decide between the Fin CLI, the Intercom MCP, and the Fin Agent API for a capability.",
       "Use sf_fin action='admin' for Fin admin web pages: operation='pages' lists verified pages, 'open'/'read' take page=<id> and verify the browser is on the workspace's own app. Sign-in is human-only and saved by Pi: on signed_out, signin_expired, or signin_rejected, ask the user to run /login sf-fin-browser (named workspaces: sf-fin-browser-<name>). Never ask for a Fin password or verification code, and never try to reveal or copy a key; the human copies keys into the masked /login prompt.",
       "Use sf_fin action='agent' operation='access' before Fin Agent API runs; never ask for the Fin Agent API key in chat (use /login sf-fin-agent). Runs Fin resolves are billable outcomes.",
+      "For Fin for Salesforce, run sf_fin action='salesforce' operation='readiness' target_org=…, then package_install (package_version from Fin's Connect page) and permissions_apply: each plans first and executes with allow_mutation=true. Connecting Fin to Salesforce (OAuth consent) stays a human step in Fin.",
     ],
     parameters: Params,
     renderCall: (args, theme) => {
@@ -300,6 +336,26 @@ export function registerSfFinTool(
         return {
           content: [{ type: "text", text: result.text }],
           details: { action: "admin", operation, ok: result.ok, ...result.details },
+          ...(result.ok ? {} : { isError: true }),
+        };
+      }
+
+      if (input.action === "salesforce") {
+        const operation =
+          input.operation === "package_install" || input.operation === "permissions_apply"
+            ? input.operation
+            : "readiness";
+        const result = await service.salesforce(ctx, {
+          operation,
+          targetOrg: input.target_org,
+          packageVersion: input.package_version,
+          username: input.username,
+          email: input.email,
+          execute: input.allow_mutation === true,
+        });
+        return {
+          content: [{ type: "text", text: result.text }],
+          details: { action: "salesforce", operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
         };
       }
