@@ -289,6 +289,7 @@ describe("runSalesforceSetup", () => {
       installed: true,
       accessPs: true,
       auditFieldsEnabled: true,
+      digitalExperiences: true,
       user: {
         serviceCloudUser: true,
         assigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
@@ -358,6 +359,58 @@ describe("runSalesforceSetup", () => {
     expect(run).toMatchObject({ ok: false, details: { connected: false } });
   });
 
+  it("readiness flags FeedItem.Visibility and names digital_experiences_enable", async () => {
+    const org = fakeOrg({
+      installed: true,
+      accessPs: true,
+      auditFieldsEnabled: true,
+      accessHasAudit: true,
+      oauthConnected: true,
+      user: {
+        serviceCloudUser: true,
+        assigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+      },
+      integrationAssigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+    });
+    const before = await runSalesforceSetup(org, { operation: "readiness", targetOrg: "DevOrg" });
+    expect(before.ok).toBe(false);
+    expect(before.details).toMatchObject({ connected: true });
+    expect(
+      states((before.details as { checks: Array<{ id: string; state: string }> }).checks),
+    ).toMatchObject({
+      "feed-visibility": "missing",
+    });
+    expect(before.text).toContain("operation='digital_experiences_enable'");
+
+    const plan = await runSalesforceSetup(org, {
+      operation: "digital_experiences_enable",
+      targetOrg: "DevOrg",
+    });
+    expect(plan.details).toMatchObject({ phase: "plan", setting: "enableNetworksEnabled" });
+    expect(plan.text).toMatch(/cannot be turned off|can't be turned off|irreversible/iu);
+    expect(org.writes).toEqual([]);
+
+    const run = await runSalesforceSetup(org, {
+      operation: "digital_experiences_enable",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(run).toMatchObject({ ok: true, details: { verified: true } });
+    expect(org.writes).toEqual(["settings:enableNetworksEnabled=true"]);
+
+    const after = await runSalesforceSetup(org, { operation: "readiness", targetOrg: "DevOrg" });
+    expect(after.ok).toBe(true);
+    expect(after.text).toContain("Salesforce side complete");
+
+    const again = await runSalesforceSetup(org, {
+      operation: "digital_experiences_enable",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(again.details).toMatchObject({ phase: "noop" });
+    expect(org.writes).toHaveLength(1);
+  });
+
   it("refuses an invalid username", async () => {
     const run = await runSalesforceSetup(fakeOrg(), {
       operation: "permissions_apply",
@@ -417,6 +470,7 @@ interface FakeOptions {
   integrationAssigned?: string[];
   oauthConnected?: boolean;
   accessHasAudit?: boolean;
+  digitalExperiences?: boolean;
 }
 
 /** In-memory org: state changes only through the FinSalesforceOrg write methods. */
@@ -436,6 +490,7 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
     integrationAssigned: [...(options.integrationAssigned ?? [])],
     oauthConnected: options.oauthConnected === true,
     accessHasAudit: options.accessHasAudit === true,
+    digitalExperiences: options.digitalExperiences === true,
   };
   return {
     writes,
@@ -475,6 +530,8 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
         },
         oauthConnected: state.oauthConnected,
         accessHasAuditPermission: state.accessHasAudit,
+        digitalExperiencesEnabled: state.digitalExperiences,
+        feedVisibilityAvailable: state.digitalExperiences,
       };
     },
     async availablePermissions() {
@@ -487,6 +544,11 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
         "ViewSetup",
         ...(state.auditFieldsEnabled ? ["CreateAuditFields"] : []),
       ];
+    },
+    async enableDigitalExperiences() {
+      writes.push("settings:enableNetworksEnabled=true");
+      state.digitalExperiences = true;
+      return { ok: true };
     },
     async enableAuditFields() {
       writes.push("settings:enableAuditFieldsInactiveOwner=true");

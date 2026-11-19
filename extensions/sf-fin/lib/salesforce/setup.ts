@@ -6,6 +6,10 @@
  *   package_install      plan by default; execute installs one exact 04t
  *   audit_fields_enable  plan by default; execute deploys SecuritySettings with
  *                        only enableAuditFieldsInactiveOwner=true
+ *   digital_experiences_enable
+ *                        plan by default; execute deploys CommunitiesSettings
+ *                        with only enableNetworksEnabled=true (one-way), so
+ *                        FeedItem.Visibility exists for Fin
  *   permissions_apply    plan by default; execute deploys the access
  *                        permission set, creates or updates the dedicated Fin
  *                        user, and assigns both permission sets to the Fin
@@ -23,6 +27,8 @@ import {
   evaluateSalesforceReadiness,
   FIN_ACCESS_PERMISSION_SET,
   FIN_AUDIT_SETTING,
+  FIN_DIGITAL_EXPERIENCES_SETTING,
+  FIN_FEED_VISIBILITY_FIELD,
   FIN_PACKAGE_NAMESPACE,
   FIN_PACKAGE_PERMISSION_SET,
   FIN_USER_PROFILE,
@@ -37,7 +43,12 @@ import type { FinSalesforceOrg } from "./org.ts";
 import type { ConnectResult, FinEnvironmentCard } from "./connect.ts";
 
 export type SalesforceOperation =
-  "readiness" | "package_install" | "audit_fields_enable" | "permissions_apply" | "connect";
+  | "readiness"
+  | "package_install"
+  | "audit_fields_enable"
+  | "digital_experiences_enable"
+  | "permissions_apply"
+  | "connect";
 
 /** Runs Fin's Connect runbook; supplied by the service (browser + sign-in). */
 export type FinConnectRunner = (input: {
@@ -104,6 +115,9 @@ export async function runSalesforceSetup(
   if (request.operation === "readiness") return readiness(facts, request.targetOrg);
   if (request.operation === "package_install") {
     return packageInstall(org, facts, request, versionId, described, read);
+  }
+  if (request.operation === "digital_experiences_enable") {
+    return digitalExperiencesEnable(org, facts, request, read);
   }
   if (request.operation === "audit_fields_enable")
     return auditFieldsEnable(org, facts, request, read);
@@ -244,6 +258,69 @@ async function auditFieldsEnable(
   };
 }
 
+async function digitalExperiencesEnable(
+  org: FinSalesforceOrg,
+  facts: SalesforceFacts,
+  request: SalesforceSetupRequest,
+  read: () => Promise<SalesforceFacts>,
+): Promise<SalesforceSetupResult> {
+  if (facts.digitalExperiencesEnabled === true && facts.feedVisibilityAvailable === true) {
+    return {
+      ok: true,
+      text: `✅ Digital Experiences is already enabled in ${request.targetOrg} and ${FIN_FEED_VISIBILITY_FIELD} exists. Nothing to do.`,
+      details: { phase: "noop", setting: FIN_DIGITAL_EXPERIENCES_SETTING },
+    };
+  }
+  if (request.execute !== true) {
+    return {
+      ok: true,
+      text: [
+        `Plan: enable Digital Experiences in ${request.targetOrg} (${facts.orgType}) so ${FIN_FEED_VISIBILITY_FIELD} exists for Fin.`,
+        `- Deploy CommunitiesSettings with only ${FIN_DIGITAL_EXPERIENCES_SETTING}=true. No other setting is included.`,
+        "- ⚠️ One-way: Digital Experiences cannot be turned off again, and the org's Lightning Platform domain name can no longer be changed.",
+        "- It creates no site and no external users; it only makes the feature available.",
+        PRODUCTION_LIKE.has(facts.orgType)
+          ? "⚠️ Production or unknown org: SF Guardrail decides whether this may run."
+          : undefined,
+        "",
+        `To execute: sf_fin action='salesforce' operation='digital_experiences_enable' target_org='${request.targetOrg}' allow_mutation=true (SF Guardrail mediates it).`,
+      ]
+        .filter((line): line is string => line !== undefined)
+        .join("\n"),
+      details: {
+        phase: "plan",
+        setting: FIN_DIGITAL_EXPERIENCES_SETTING,
+        value: true,
+        oneWay: true,
+      },
+    };
+  }
+  const deployed = await org.enableDigitalExperiences({ signal: request.signal });
+  const after = await read();
+  const verified =
+    after.digitalExperiencesEnabled === true && after.feedVisibilityAvailable === true;
+  const report = evaluateSalesforceReadiness(after);
+  return {
+    ok: verified,
+    text: [
+      verified
+        ? `✅ Digital Experiences enabled in ${request.targetOrg}; ${FIN_FEED_VISIBILITY_FIELD} now exists (verified).`
+        : `❌ Digital Experiences or ${FIN_FEED_VISIBILITY_FIELD} did not verify in ${request.targetOrg}.`,
+      ...(verified || deployed.ok ? [] : [`  - ${deployed.error ?? "deploy failed"}`]),
+      "",
+      ...renderChecks(report),
+      "",
+      ...nextSteps(report, request.targetOrg),
+    ].join("\n"),
+    details: {
+      phase: "execute",
+      setting: FIN_DIGITAL_EXPERIENCES_SETTING,
+      verified,
+      error: deployed.error,
+    },
+  };
+}
+
 function readiness(facts: SalesforceFacts, targetOrg: string): SalesforceSetupResult {
   const report = evaluateSalesforceReadiness(facts);
   const lines = [
@@ -254,7 +331,7 @@ function readiness(facts: SalesforceFacts, targetOrg: string): SalesforceSetupRe
     ...nextSteps(report, targetOrg),
   ];
   return {
-    ok: report.readyToConnect,
+    ok: report.readyToConnect && report.orgFeaturesReady && report.connected,
     text: lines.join("\n"),
     details: {
       phase: "readiness",
@@ -262,6 +339,8 @@ function readiness(facts: SalesforceFacts, targetOrg: string): SalesforceSetupRe
       packageReady: report.packageReady,
       permissionsReady: report.permissionsReady,
       readyToConnect: report.readyToConnect,
+      orgFeaturesReady: report.orgFeaturesReady,
+      connected: report.connected,
       checks: report.checks,
     },
   };
@@ -538,12 +617,19 @@ function nextSteps(report: ReadinessReport, targetOrg: string): string[] {
   if (!report.packageReady) {
     return [op("package_install", " package_version='<04t id or install link from Fin Connect>'")];
   }
-  if (report.checks.some((check) => check.fix === "audit_fields_enable")) {
-    return [op("audit_fields_enable")];
+  for (const fix of ["audit_fields_enable", "digital_experiences_enable"] as const) {
+    if (report.checks.some((check) => check.fix === fix)) return [op(fix)];
   }
   if (!report.permissionsReady) return [op("permissions_apply")];
   if (!report.connected) return [op("connect")];
-  return ["✅ Salesforce side complete and Fin is connected."];
+  if (!report.orgFeaturesReady) {
+    return [
+      `⚠️ ${FIN_FEED_VISIBILITY_FIELD} is still missing although Digital Experiences is on; check the field in Setup.`,
+    ];
+  }
+  return [
+    "✅ Salesforce side complete and Fin is connected. In Fin, click Retry on Connect → Assign permissions in Salesforce if it still shows errors.",
+  ];
 }
 
 function fail(

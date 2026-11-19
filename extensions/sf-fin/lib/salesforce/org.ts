@@ -5,9 +5,11 @@
  * Every org call crosses the shared SF Pi connection Module (`sf-conn`), so
  * the target org, API version, and bounded requests stay owned in one place.
  * Reads are fixed SOQL against Fin's declared contract; writes are exactly:
- * one Tooling PackageInstallRequest, one SecuritySettings deploy carrying a
- * single field, one PermissionSet deploy, one User create/update, and
- * PermissionSetAssignment inserts. Nothing else changes.
+ * one Tooling PackageInstallRequest, single-field Settings deploys
+ * (SecuritySettings.enableAuditFieldsInactiveOwner and
+ * CommunitiesSettings.enableNetworksEnabled), one PermissionSet deploy, one
+ * User create/update, and PermissionSetAssignment inserts. Nothing else
+ * changes.
  */
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -19,6 +21,7 @@ import {
   FIN_AUDIT_PERMISSIONS,
   FIN_AUDIT_SETTING,
   FIN_CASE_FIELDS,
+  FIN_DIGITAL_EXPERIENCES_SETTING,
   FIN_FIELD_ACCESS,
   FIN_OAUTH_APP_NAME,
   FIN_PACKAGE_NAMESPACE,
@@ -27,6 +30,7 @@ import {
   FIN_USER_ALIAS,
   FIN_USER_PROFILE,
   renderAuditFieldsSecuritySettings,
+  renderDigitalExperiencesSettings,
   type FinUserFacts,
   type PackageVersionFacts,
   type SalesforceFacts,
@@ -52,6 +56,10 @@ export interface FinSalesforceOrg {
   availablePermissions(): Promise<string[]>;
   /** Deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true. */
   enableAuditFields(input: { signal?: AbortSignal }): Promise<{ ok: boolean; error?: string }>;
+  /** Deploy CommunitiesSettings with only enableNetworksEnabled=true. */
+  enableDigitalExperiences(input: {
+    signal?: AbortSignal;
+  }): Promise<{ ok: boolean; error?: string }>;
   installPackage(input: {
     versionId: string;
     enableRss: boolean;
@@ -255,7 +263,26 @@ export function createFinSalesforceOrg(
           licenses && typeof licenses.TotalLicenses === "number"
             ? licenses.TotalLicenses - (licenses.UsedLicenses ?? 0)
             : undefined,
-        auditFieldsEnabled: await readAuditFieldsSetting(session),
+        auditFieldsEnabled: await readSetting(
+          session,
+          "SecuritySettings",
+          "Security",
+          FIN_AUDIT_SETTING,
+        ),
+        digitalExperiencesEnabled: await readSetting(
+          session,
+          "CommunitiesSettings",
+          "Communities",
+          FIN_DIGITAL_EXPERIENCES_SETTING,
+        ),
+        feedVisibilityAvailable:
+          (
+            await query<{ QualifiedApiName: string }>(
+              "SELECT QualifiedApiName FROM EntityParticle WHERE EntityDefinition.QualifiedApiName = 'FeedItem' AND QualifiedApiName = 'Visibility'",
+              "rest",
+              1,
+            ).catch(() => [])
+          ).length > 0,
         instanceUrl: session.target.instanceUrl,
         integrationUser: {
           id: integrationId,
@@ -279,7 +306,16 @@ export function createFinSalesforceOrg(
     },
 
     async enableAuditFields(input) {
-      return deploySecuritySettings(session, renderAuditFieldsSecuritySettings(), input.signal);
+      return deploySettings(session, "Security", renderAuditFieldsSecuritySettings(), input.signal);
+    },
+
+    async enableDigitalExperiences(input) {
+      return deploySettings(
+        session,
+        "Communities",
+        renderDigitalExperiencesSettings(),
+        input.signal,
+      );
     },
 
     async describePackageVersion(id) {
@@ -514,16 +550,17 @@ interface ApiError {
   errorCode?: string;
 }
 
-/** Deploy a single-field Security.settings through SDR; temp dir always removed. */
-async function deploySecuritySettings(
+/** Deploy one single-field `<name>.settings` through SDR; temp dir always removed. */
+async function deploySettings(
   session: SalesforceSession,
+  name: "Security" | "Communities",
   xml: string,
   signal?: AbortSignal,
 ): Promise<{ ok: boolean; error?: string }> {
   const root = await mkdtemp(path.join(tmpdir(), "sf-fin-settings-"));
   try {
     await mkdir(path.join(root, "settings"), { recursive: true });
-    await writeFile(path.join(root, "settings", "Security.settings-meta.xml"), xml, "utf8");
+    await writeFile(path.join(root, "settings", `${name}.settings-meta.xml`), xml, "utf8");
     const { ComponentSet } = await import("@salesforce/source-deploy-retrieve");
     const components = ComponentSet.fromSource(root);
     components.apiVersion = session.target.apiVersion;
@@ -576,17 +613,19 @@ function describeHttp(status: number, body: unknown): string {
   return `HTTP ${status}${first?.errorCode ? ` ${first.errorCode}` : ""}${message ? `: ${message.slice(0, 300)}` : ""}`;
 }
 
-/** SecuritySettings.enableAuditFieldsInactiveOwner; undefined when unreadable. */
-async function readAuditFieldsSetting(session: SalesforceSession): Promise<boolean | undefined> {
+/** One boolean field of a Settings component; undefined when unreadable. */
+async function readSetting(
+  session: SalesforceSession,
+  type: "SecuritySettings" | "CommunitiesSettings",
+  fullName: "Security" | "Communities",
+  field: string,
+): Promise<boolean | undefined> {
   try {
     const metadata = session.connection.metadata as unknown as {
       read(type: string, names: string[]): Promise<unknown>;
     };
-    const result = (await metadata.read("SecuritySettings", ["Security"])) as Record<
-      string,
-      unknown
-    >;
-    const value = (Array.isArray(result) ? result[0] : result)?.[FIN_AUDIT_SETTING];
+    const result = (await metadata.read(type, [fullName])) as Record<string, unknown>;
+    const value = (Array.isArray(result) ? result[0] : result)?.[field];
     if (value === true || value === "true") return true;
     if (value === false || value === "false") return false;
     return undefined;

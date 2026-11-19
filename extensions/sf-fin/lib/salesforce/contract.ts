@@ -90,6 +90,14 @@ export const FIN_AUDIT_PERMISSIONS: readonly string[] = ["CreateAuditFields"];
 /** The org-wide setting Fin asks for, as Metadata API SecuritySettings field. */
 export const FIN_AUDIT_SETTING = "enableAuditFieldsInactiveOwner";
 
+/**
+ * Digital Experiences (CommunitiesSettings.enableNetworksEnabled). Fin needs
+ * it because FeedItem.Visibility, which tells internal case comments from
+ * public ones, exists only once it is on.
+ */
+export const FIN_DIGITAL_EXPERIENCES_SETTING = "enableNetworksEnabled";
+export const FIN_FEED_VISIBILITY_FIELD = "FeedItem.Visibility";
+
 /** OAuth app name the Fin for Salesforce package's External Client App uses. */
 export const FIN_OAUTH_APP_NAME = "Fin for Salesforce";
 
@@ -183,6 +191,10 @@ export interface SalesforceFacts {
   oauthConnected?: boolean;
   /** CreateAuditFields enabled on the access permission set, when the org exposes it. */
   accessHasAuditPermission?: boolean;
+  /** CommunitiesSettings.enableNetworksEnabled, when readable. */
+  digitalExperiencesEnabled?: boolean;
+  /** FeedItem.Visibility exists in the org (what Fin actually checks). */
+  feedVisibilityAvailable?: boolean;
 }
 
 export type CheckState = "ok" | "missing" | "warn" | "blocked";
@@ -193,7 +205,13 @@ export interface ReadinessCheck {
   title: string;
   detail?: string;
   /** Which operation fixes it. */
-  fix?: "package_install" | "audit_fields_enable" | "permissions_apply" | "connect" | "human";
+  fix?:
+    | "package_install"
+    | "audit_fields_enable"
+    | "digital_experiences_enable"
+    | "permissions_apply"
+    | "connect"
+    | "human";
 }
 
 export interface ReadinessReport {
@@ -202,6 +220,8 @@ export interface ReadinessReport {
   permissionsReady: boolean;
   /** Everything Salesforce-side done; only the Fin Connect step remains. */
   readyToConnect: boolean;
+  /** Org features Fin depends on (FeedItem.Visibility via Digital Experiences). */
+  orgFeaturesReady: boolean;
   /** Fin holds an OAuth token in this org. */
   connected: boolean;
 }
@@ -294,6 +314,21 @@ export function evaluateSalesforceReadiness(
         ? undefined
         : 'Fin asks for the org setting behind "Set Audit Fields upon Record Creation".',
     fix: facts.auditFieldsEnabled === true ? undefined : "audit_fields_enable",
+  });
+  checks.push({
+    id: "feed-visibility",
+    state: facts.feedVisibilityAvailable ? "ok" : "missing",
+    title: facts.feedVisibilityAvailable
+      ? `${FIN_FEED_VISIBILITY_FIELD} available (Digital Experiences enabled)`
+      : `${FIN_FEED_VISIBILITY_FIELD} not available (Digital Experiences ${facts.digitalExperiencesEnabled ? "enabled, field still missing" : "not enabled"})`,
+    detail: facts.feedVisibilityAvailable
+      ? undefined
+      : "Fin reads this field to tell internal case comments from public ones; without it Fin's permission check reports errors.",
+    fix: facts.feedVisibilityAvailable
+      ? undefined
+      : facts.digitalExperiencesEnabled
+        ? "human"
+        : "digital_experiences_enable",
   });
   if (facts.auditFieldsEnabled === true && accessPs) {
     checks.push({
@@ -390,6 +425,7 @@ export function evaluateSalesforceReadiness(
   const packageReady = ["package", "case-fields", "package-permission-set"].every(
     (id) => byId(id)?.state === "ok",
   );
+  const orgFeaturesReady = byId("feed-visibility")?.state === "ok";
   const permissionsReady =
     ["access-permission-set", "fin-user", "fin-user-assignments", "service-cloud-user"].every(
       (id) => byId(id)?.state === "ok",
@@ -402,6 +438,7 @@ export function evaluateSalesforceReadiness(
     packageReady,
     permissionsReady,
     readyToConnect: packageReady && permissionsReady,
+    orgFeaturesReady,
     connected: facts.oauthConnected === true,
   };
 }
@@ -508,6 +545,17 @@ export function renderAuditFieldsSecuritySettings(): string {
     '<SecuritySettings xmlns="http://soap.sforce.com/2006/04/metadata">',
     `    <${FIN_AUDIT_SETTING}>true</${FIN_AUDIT_SETTING}>`,
     "</SecuritySettings>",
+    "",
+  ].join("\n");
+}
+
+/** CommunitiesSettings source that turns on Digital Experiences and nothing else. */
+export function renderDigitalExperiencesSettings(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<CommunitiesSettings xmlns="http://soap.sforce.com/2006/04/metadata">',
+    `    <${FIN_DIGITAL_EXPERIENCES_SETTING}>true</${FIN_DIGITAL_EXPERIENCES_SETTING}>`,
+    "</CommunitiesSettings>",
     "",
   ].join("\n");
 }
