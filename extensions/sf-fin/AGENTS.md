@@ -58,4 +58,5 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 - Install: `tests/install.test.ts` (plan states, exact args, EACCES, release-age policy, npm-global detection).
 - Debug: `tests/debug.test.ts` (scrubbing, artifacts, arming, bundle redaction).
 - Salesforce setup: `tests/salesforce-setup.test.ts` (contract, readiness, plan/execute, refusals, verified results against an in-memory org).
+- Salesforce adapter: `tests/salesforce-org.test.ts` (package install completes from Installed Packages when the install request is unreadable).
 - Guardrail classification: `extensions/sf-guardrail/tests/safety-kernel.test.ts` and `power-tool-mode.test.ts`.

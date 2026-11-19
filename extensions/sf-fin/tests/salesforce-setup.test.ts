@@ -153,6 +153,18 @@ describe("runSalesforceSetup", () => {
     expect(run).toMatchObject({ ok: true, details: { phase: "execute", verified: true } });
   });
 
+  it("reports success from the verified org state, not from the install request status", async () => {
+    const org = fakeOrg({ installReportsInProgress: true });
+    const run = await runSalesforceSetup(org, {
+      operation: "package_install",
+      targetOrg: "DevOrg",
+      packageVersion: VERSION,
+      execute: true,
+    });
+    expect(run).toMatchObject({ ok: true, details: { verified: true } });
+    expect(run.text).not.toContain("still running");
+  });
+
   it("reports failure when the install does not verify", async () => {
     const org = fakeOrg({ installSucceeds: false });
     const run = await runSalesforceSetup(org, {
@@ -285,6 +297,8 @@ interface FakeOptions {
   namespace?: string;
   installed?: boolean;
   installSucceeds?: boolean;
+  /** Package installs, but the install request status never reads as Success. */
+  installReportsInProgress?: boolean;
   accessPs?: boolean;
   user?: { serviceCloudUser: boolean; assigned: string[] };
 }
@@ -356,6 +370,14 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
         return { ok: false, requestId: "0Hf1", status: "Error", errors: ["install failed"] };
       }
       state.installed = true;
+      if (options.installReportsInProgress) {
+        return {
+          ok: false,
+          requestId: "0Hf1",
+          status: "InProgress",
+          errors: ["Install still running after 15 minutes."],
+        };
+      }
       return { ok: true, requestId: "0Hf1", status: "Success", errors: [] };
     },
     async deployAccessPermissionSet({ name }) {

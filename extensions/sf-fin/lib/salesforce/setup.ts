@@ -186,16 +186,18 @@ async function packageInstall(
     enableRss: described.remoteSites.length > 0,
     signal: request.signal,
   });
+  // Installed Packages is the verified outcome; the install request status is
+  // only a hint (some orgs cannot read it), so it never overrides the org state.
   const after = await read();
   const verified = after.installed?.versionId === versionId;
   const report = evaluateSalesforceReadiness(after);
   return {
-    ok: result.ok && verified,
+    ok: verified,
     text: [
       verified
         ? `✅ Installed ${described.packageName ?? "Fin for Salesforce"} ${described.version} in ${request.targetOrg} (verified in Installed Packages).`
         : `❌ Install ${result.status}${result.requestId ? ` (request ${result.requestId})` : ""}; the package did not verify as installed.`,
-      ...result.errors.slice(0, 5).map((error) => `  - ${error}`),
+      ...(verified ? [] : result.errors.slice(0, 5).map((error) => `  - ${error}`)),
       "",
       ...renderChecks(report),
       "",
