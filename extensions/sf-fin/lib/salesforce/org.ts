@@ -70,9 +70,30 @@ export interface FinSalesforceOrg {
   ): Promise<{ ok: boolean; assigned: string[]; errors: string[] }>;
 }
 
-export function createFinSalesforceOrg(session: SalesforceSession): FinSalesforceOrg {
+export interface FinSalesforceOrgOptions {
+  /** Wait between install completion checks. */
+  installPollMs?: number;
+  /** Give up waiting for an install after this long. */
+  installTimeoutMs?: number;
+}
+
+export function createFinSalesforceOrg(
+  session: SalesforceSession,
+  options: FinSalesforceOrgOptions = {},
+): FinSalesforceOrg {
+  const pollMs = options.installPollMs ?? INSTALL_POLL_MS;
+  const timeoutMs = options.installTimeoutMs ?? INSTALL_TIMEOUT_MS;
   const query = async <T>(soql: string, api: "rest" | "tooling" = "rest", maxRows = 200) =>
     (await session.query<T>({ soql, api, maxRows })).records;
+
+  /** Installed Packages is the source of truth; the install request may be unreadable. */
+  const isInstalled = async (versionId: string) =>
+    (
+      await query<{ SubscriberPackageVersionId: string }>(
+        "SELECT SubscriberPackageVersionId FROM InstalledSubscriberPackage",
+        "tooling",
+      )
+    ).some((row) => row.SubscriberPackageVersionId === versionId);
 
   const permissionSetIds = async (names: string[]) => {
     const rows = await query<{ Id: string; Name: string; NamespacePrefix: string | null }>(
@@ -266,9 +287,14 @@ export function createFinSalesforceOrg(session: SalesforceSession): FinSalesforc
       if (created.status >= 300 || !requestId) {
         return { ok: false, status: "Error", errors: [describeHttp(created.status, created.body)] };
       }
-      const deadline = Date.now() + INSTALL_TIMEOUT_MS;
+      // Some orgs reject reads of the install request (for example
+      // INVALID_CROSS_REFERENCE_KEY) while the install proceeds, so each poll
+      // also checks Installed Packages and completes as soon as it shows the
+      // exact version.
+      const deadline = Date.now() + timeoutMs;
+      let unreadable: string | undefined;
       while (Date.now() < deadline) {
-        await sleep(INSTALL_POLL_MS, input.signal);
+        await sleep(pollMs, input.signal);
         const polled = await session.request<{
           Status?: string;
           Errors?: { errors?: Array<{ message?: string }> } | null;
@@ -277,7 +303,8 @@ export function createFinSalesforceOrg(session: SalesforceSession): FinSalesforc
           path: `/tooling/sobjects/PackageInstallRequest/${encodeURIComponent(requestId)}`,
           signal: input.signal,
         });
-        const status = polled.body?.Status ?? "Unknown";
+        const status = polled.status < 300 ? (polled.body?.Status ?? "Unknown") : "Unreadable";
+        if (status === "Unreadable") unreadable = describeHttp(polled.status, polled.body);
         if (status === "Success") return { ok: true, requestId, status, errors: [] };
         if (status === "Error" || status === "Canceled") {
           const errors = (polled.body?.Errors?.errors ?? [])
@@ -285,12 +312,18 @@ export function createFinSalesforceOrg(session: SalesforceSession): FinSalesforc
             .filter((m): m is string => Boolean(m));
           return { ok: false, requestId, status, errors };
         }
+        if (await isInstalled(input.versionId)) {
+          return { ok: true, requestId, status: "Success", errors: [] };
+        }
       }
       return {
         ok: false,
         requestId,
         status: "InProgress",
-        errors: [`Install still running after ${INSTALL_TIMEOUT_MS / 60_000} minutes.`],
+        errors: [
+          `Install not confirmed after ${Math.round(timeoutMs / 1_000)} seconds.`,
+          ...(unreadable ? [`Install request status unreadable: ${unreadable}`] : []),
+        ],
       };
     },
 
