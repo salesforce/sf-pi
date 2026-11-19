@@ -125,7 +125,18 @@ import {
   type SdkReadResult,
 } from "./sdk-reads.ts";
 import type { FinSalesforceOrg } from "./salesforce/org.ts";
-import { runSalesforceSetup, type SalesforceOperation } from "./salesforce/setup.ts";
+import {
+  runSalesforceSetup,
+  type FinConnectRunner,
+  type SalesforceOperation,
+} from "./salesforce/setup.ts";
+import {
+  runFinConnect,
+  type ConnectBrowser,
+  type FinEnvironmentCard,
+} from "./salesforce/connect.ts";
+import { createConnectBrowser } from "./salesforce/connect-browser.ts";
+import { spawnAgentBrowser } from "./signin-browser.ts";
 
 export interface FinService {
   doctor(ctx: ExtensionContext): Promise<{
@@ -204,6 +215,10 @@ export interface FinServiceDeps {
     targetOrg: string;
     signal?: AbortSignal;
   }) => Promise<FinSalesforceOrg>;
+  /** Test seam: browser for the Fin Connect runbook. */
+  connectBrowser?: ConnectBrowser;
+  /** Test seam: frontdoor URL builder for a Salesforce path. */
+  frontdoor?: (input: { cwd: string; targetOrg: string; path: string }) => Promise<string>;
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
@@ -667,7 +682,48 @@ export function createFinService(deps: FinServiceDeps): FinService {
           targetOrg,
           signal: ctx.signal,
         });
-        return await runSalesforceSetup(org, { ...request, targetOrg, signal: ctx.signal });
+        const connect: FinConnectRunner = async (input) => {
+          const target = ws(request.workspace);
+          if (target.ok === false) return { ok: false, code: "workspace", steps: [target.message] };
+          const appId = appIdFor(target.profile);
+          const region = target.profile.region;
+          if (!appId || !region) {
+            return { ok: false, code: "app_unbound", steps: ["Run /sf-fin setup first."] };
+          }
+          const signin = createAdminSignin(
+            target.profile.name,
+            deps.signinBrowser ?? createSigninBrowser(),
+            deps.readSignin ?? ((name) => readStoredSignin(name)),
+          );
+          const restored = await signin.restore();
+          if (restored !== "restored") {
+            return {
+              ok: false,
+              code: restored === "expired" ? "signin_expired" : "signed_out",
+              steps: [`Run /login ${signin.loginId} and sign in to Fin, then retry.`],
+            };
+          }
+          try {
+            return await runFinConnect(
+              deps.connectBrowser ?? createConnectBrowser(spawnAgentBrowser),
+              {
+                ...input,
+                appId,
+                region,
+                frontdoor: (path) =>
+                  (deps.frontdoor ?? frontdoorUrl)({ cwd: ctx.cwd, targetOrg, path }),
+              },
+            );
+          } finally {
+            await signin.finish();
+          }
+        };
+        return await runSalesforceSetup(org, {
+          ...request,
+          targetOrg,
+          signal: ctx.signal,
+          connect,
+        });
       } catch (error) {
         return {
           ok: false,
@@ -827,7 +883,18 @@ export interface SalesforceRequest {
   packageVersion?: string;
   username?: string;
   email?: string;
+  environment?: FinEnvironmentCard;
+  workspace?: string;
   execute?: boolean;
+}
+
+async function frontdoorUrl(input: {
+  cwd: string;
+  targetOrg: string;
+  path: string;
+}): Promise<string> {
+  const { generateSalesforceFrontdoorUrl } = await import("../../../lib/common/sf-conn/index.ts");
+  return generateSalesforceFrontdoorUrl(input);
 }
 
 /** Lazily load the Salesforce SDK path so boot stays free of it. */

@@ -165,7 +165,7 @@ export const SF_PI_REGISTRY: readonly SfPiExtension[] = [
   {
     id: "sf-fin",
     name: "SF Fin",
-    description: "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness, and Fin for Salesforce setup (package install, permission set, dedicated Fin user) in an explicit org.",
+    description: "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness, and end-to-end Fin for Salesforce setup (package install, audit-field setting, permission set, dedicated Fin user, and Fin's Connect flow) in an explicit org.",
     file: "extensions/sf-fin/index.ts",
     category: "agent-tool",
     maturity: "experimental",

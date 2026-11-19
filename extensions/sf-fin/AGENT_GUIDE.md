@@ -48,15 +48,16 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 
 ## Fin for Salesforce (Salesforce side)
 
-`sf_fin action='salesforce'` sets up the Salesforce half of Fin for Salesforce Cases in one explicit `target_org`. Always pass `target_org`; never assume the default org.
+`sf_fin action='salesforce'` sets up Fin for Salesforce Cases end to end in one explicit `target_org`. Always pass `target_org`; never assume the default org. Run the operation that `readiness` names in its **Next** line, in this order:
 
-1. `operation='readiness'` is read-only. It reports the package (`finai`), the four Fin Case fields, both permission sets, the Fin External Client App, the audit-field setting, and the dedicated Fin user.
-2. `operation='package_install' package_version=…` takes the `04t` id or the install link from Fin's **Deploy → Salesforce cases → Connect → Install package** dialog. Ask the user for it; Fin requires its latest version, so never reuse an old id. Without `allow_mutation` it returns the plan (version, upgrade or new install, third-party sites). With `allow_mutation=true` it installs for all users, blocks on name conflicts, and verifies the result in Installed Packages, which decides success even when the org cannot report the install request's own status. It refuses any package outside the `finai` namespace.
-3. `operation='permissions_apply'` (optional `username`, `email`) plans, then with `allow_mutation=true` deploys the `SF_Fin_Salesforce_Access` permission set, creates the dedicated Fin user (profile Minimum Access - Salesforce, Service Cloud User), and assigns both permission sets. It refuses until the package is installed, and it only fills in what is missing.
-4. The OAuth connection is human-only: the user clicks **Connect to Salesforce** in Fin and approves it. Afterwards, rerun `readiness` and `sf_fin action='admin' operation='read' page='salesforce-cases'`.
+1. `operation='readiness'` is read-only. It reports the package (`finai`), the four Fin Case fields, the audit-field setting, both permission sets, the Fin External Client App, the dedicated Fin user, the integration user, and whether Fin holds an OAuth token in the org.
+2. `operation='package_install' package_version=…` takes the `04t` id or install link from Fin's **Connect → environment → Install package** dialog (Fin requires its latest version, so never reuse an old id). It installs for all users, blocks on name conflicts, refuses packages outside `finai`, and verifies the result in Installed Packages, which decides success even when the org cannot report the install request's own status.
+3. `operation='audit_fields_enable'` deploys SecuritySettings with only `enableAuditFieldsInactiveOwner=true` and verifies it. It grants the audit permissions to nobody.
+4. `operation='permissions_apply'` (optional `username`, `email`) deploys `SF_Fin_Salesforce_Access` (including `CreateAuditFields` once step 3 is done, and only permissions the org exposes), creates the dedicated Fin user (profile Minimum Access - Salesforce, Service Cloud User), and assigns both permission sets to the Fin user and to the integration user (the user holding Fin's OAuth token, or before connect the CLI user). It only fills gaps.
+5. `operation='connect'` (optional `environment='live'|'test'`, default from the org type: live for production and Developer Edition, test for sandboxes) runs Fin's Connect flow in the shared SF Pi browser with the saved Fin admin sign-in: environment card → Connect to Salesforce → approves **Fin for Salesforce** on the target org's own My Domain as the CLI user (it refuses any other host, app, or user) → sets Fin's Salesforce user to the dedicated Fin user. It then verifies Fin's OAuth token in the org.
 
-- SF Guardrail mediates both executes as `native-sf-fin-salesforce-setup`: exact and org-bound, never session-approved, and blocked on production or unknown orgs.
-- SF Fin never changes the org-wide "Set Audit Fields upon Record Creation" setting. `readiness` reports it as a human step.
+- Every change plans without `allow_mutation` and executes with `allow_mutation=true`. SF Guardrail mediates each execute as `native-sf-fin-salesforce-setup`: exact and org-bound, never session-approved, and blocked on production or unknown orgs.
+- `connect` needs `/login sf-fin-browser`; on `signed_out` or `signin_expired`, ask the user to run it.
 - Fin Messenger live chat (BYOC) is out of scope; it needs Digital Engagement with Partner Messaging.
 
 ## Fin admin pages
@@ -91,4 +92,4 @@ Install plan outcomes:
 - `allow_mutation=true` states intent; it is not approval. Never claim an install was approved unless the tool result shows it ran.
 - `sf_fin action='admin'` never changes Fin; it navigates and reads masked page text.
 - In Fin, `sf_fin` changes only Fin-as-code resources: procedure drafts, simulations, publish/pause, paused guidance and its state, draft data connectors, and Fin Agent API test conversations. It changes no other workspace configuration, and never publishes a data connector.
-- In Salesforce, `sf_fin action='salesforce'` changes only the target org's Fin for Salesforce package, the `SF_Fin_Salesforce_Access` permission set, the dedicated Fin user, and that user's two permission set assignments.
+- In Salesforce, `sf_fin action='salesforce'` changes only the target org's Fin for Salesforce package, the one `enableAuditFieldsInactiveOwner` security setting, the `SF_Fin_Salesforce_Access` permission set, the dedicated Fin user, the two Fin permission set assignments (Fin user and integration user), and, through `connect`, Fin's OAuth connection and Salesforce user choice.

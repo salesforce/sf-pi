@@ -763,23 +763,61 @@ describe("Safety Kernel", () => {
     );
   });
 
+  it("mediates sf_fin audit_fields_enable and connect as exact org mutations; plans stay prompt-free", async () => {
+    mockedEnv = env("FinDev", "developer");
+    lookupOrg("FinDev", "developer");
+    const evaluate = (input: Record<string, unknown>) =>
+      evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+    const base = { action: "salesforce", target_org: "FinDev" };
+    for (const operation of ["audit_fields_enable", "connect"]) {
+      expect(await evaluate({ ...base, operation })).toBeUndefined();
+      expect(await evaluate({ ...base, operation, allow_mutation: true })).toMatchObject({
+        action: "confirm",
+        feature: "nativeToolGate",
+        ruleId: "native-sf-fin-salesforce-setup",
+        orgType: "developer",
+        approvalScope: { operationFamily: "fin salesforce setup", allowSession: false },
+      });
+    }
+    const live = await evaluate({
+      ...base,
+      operation: "connect",
+      environment: "live",
+      allow_mutation: true,
+    });
+    const test = await evaluate({
+      ...base,
+      operation: "connect",
+      environment: "test",
+      allow_mutation: true,
+    });
+    expect(live?.approvalScope?.fingerprint).not.toBe(test?.approvalScope?.fingerprint);
+  });
+
   it("blocks sf_fin Salesforce setup on production and unknown orgs", async () => {
     mockedEnv = env("FinProd", "production");
     lookupOrg("FinProd", "production");
     for (const target_org of ["FinProd", "UnresolvedFinOrg"]) {
-      const decision = await evaluateSafety({
-        toolName: "sf_fin",
-        input: {
-          action: "salesforce",
-          operation: "package_install",
-          target_org,
-          package_version: "04t000000000001AAA",
-          allow_mutation: true,
-        },
-        cwd: "/project",
-        config: readBundledConfig(),
-      });
-      expect(decision).toMatchObject({ action: "block", feature: "nativeToolGate" });
+      for (const operation of [
+        "package_install",
+        "audit_fields_enable",
+        "permissions_apply",
+        "connect",
+      ]) {
+        const decision = await evaluateSafety({
+          toolName: "sf_fin",
+          input: {
+            action: "salesforce",
+            operation,
+            target_org,
+            package_version: "04t000000000001AAA",
+            allow_mutation: true,
+          },
+          cwd: "/project",
+          config: readBundledConfig(),
+        });
+        expect(decision).toMatchObject({ action: "block", feature: "nativeToolGate" });
+      }
     }
   });
 
