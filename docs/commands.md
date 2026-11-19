@@ -91,7 +91,7 @@ _Salesforce documentation lookup for agents and humans, with Pi-native bearer au
 
 ### [SF Fin](./extensions/sf-fin)
 
-_Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness._
+_Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness, and Fin for Salesforce setup (package install, permission set, dedicated Fin user) in an explicit org._
 
 - Default: **on**
 - Commands: `/sf-fin`

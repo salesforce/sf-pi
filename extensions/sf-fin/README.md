@@ -97,6 +97,22 @@ For Fin Agent API runs (optional):
 `FIN_AGENT_API_KEY` is the automation fallback for the Fin Agent API key.
 `INTERCOM_APP_ID` is forwarded only for legacy Basic-auth API keys.
 
+### Fin for Salesforce
+
+The agent sets up the Salesforce half of Fin for Salesforce Cases with
+`sf_fin action='salesforce'` in one explicit `target_org`:
+
+| Operation           | What it does                                                                                                                                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readiness`         | Read-only checklist: Fin package (`finai`), the four Fin Case fields, both permission sets, the Fin External Client App, the audit-field setting, and the dedicated Fin user                   |
+| `package_install`   | Installs the exact package version from Fin's Connect page (`package_version`: the `04t` id or the install link) for all users, then verifies it in Installed Packages                         |
+| `permissions_apply` | Deploys the `SF_Fin_Salesforce_Access` permission set from Fin's documented requirements, creates the dedicated Fin user (Service Cloud User), assigns both permission sets, and verifies them |
+
+Both changes plan first and run only with `allow_mutation=true`. Connecting
+Fin to Salesforce (the OAuth consent in Fin's **Connect** page) stays with you.
+SF Fin does not change the org-wide "Set Audit Fields upon Record Creation"
+setting; `readiness` reports it. Fin Messenger live chat (BYOC) is not covered.
+
 ### Fin admin pages
 
 Some Fin setup has no API: Agent API keys, Help Center sites, data connector
@@ -192,6 +208,13 @@ app. It refuses if it lands somewhere else.
   conversation Fin resolves is a billable outcome. Access checks and capability
   listing create no conversation.
 - `surfaces` runs only local `--help` commands, with no token and no network.
+- `salesforce package_install` and `permissions_apply` are SF Guardrail
+  mutations (`native-sf-fin-salesforce-setup`). Each approval covers exactly
+  one org, package version, or username, is never granted for the session,
+  and production or unknown orgs are blocked. Salesforce calls go through SF
+  Pi's shared connection module. The package install never renames or
+  overwrites components on a name conflict, and SF Fin refuses any package
+  outside the `finai` namespace.
 - Agent-initiated installs are SF Guardrail native mutations in the
   **Fin CLI install** family. They ask for approval by default and are
   auto-approved only when Guardrail Power Tool Mode includes that family (or

@@ -28,6 +28,9 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 | Fin admin pages in the shared SF Pi browser (navigate, verify app, masked read) | `lib/admin.ts`                                   |
 | Pi-persisted Fin admin sign-in (cookies) and its agent-browser boundary         | `lib/browser-signin.ts`, `lib/signin-browser.ts` |
 | Manager install confirm page                                                    | `lib/manager-action-panels.ts`                   |
+| Fin for Salesforce contract: declared fields, permissions, readiness, XML       | `lib/salesforce/contract.ts`                     |
+| Salesforce org adapter (shared sf-conn; reads and the exact writes)             | `lib/salesforce/org.ts`                          |
+| Salesforce readiness, package install, permissions and Fin user orchestration   | `lib/salesforce/setup.ts`                        |
 | One `sf_fin` family tool                                                        | `lib/sf_fin-tool.ts`                             |
 | Cache-first status file and text                                                | `lib/status.ts`                                  |
 | Command metadata/help                                                           | `lib/command-surface.ts`                         |
@@ -45,6 +48,7 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 8. **Cache-first boot and aggregate doctor.** Factory and `session_start` do no network, subprocess, or credential work. The `/sf-pi doctor` provider reads only cached state.
 9. **Verbose traces are one-shot artifacts.** Arming is bounded (1–5 runs) and self-disarming; traces are `0600` files with retention; only paths reach the model.
 10. **Public-safe.** Tests and docs use synthetic workspace ids, names, emails, and token sentinels only.
+11. **Salesforce setup is explicit and verified.** `sf_fin action='salesforce'` requires an explicit `target_org`, reaches Salesforce only through `lib/common/sf-conn`, and loads it lazily. Executes (`allow_mutation=true`) are classified `native-sf-fin-salesforce-setup` (exact, org-bound, never session-approved, blocked on production or unknown). Never hardcode a package version id; refuse packages outside the `finai` namespace; never change org-wide settings; re-read org state after every execute and report only the verified result.
 
 ## Testing
 
@@ -53,4 +57,5 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 - Doctor: `tests/doctor.test.ts` (injected exec/registry/runner).
 - Install: `tests/install.test.ts` (plan states, exact args, EACCES, release-age policy, npm-global detection).
 - Debug: `tests/debug.test.ts` (scrubbing, artifacts, arming, bundle redaction).
+- Salesforce setup: `tests/salesforce-setup.test.ts` (contract, readiness, plan/execute, refusals, verified results against an in-memory org).
 - Guardrail classification: `extensions/sf-guardrail/tests/safety-kernel.test.ts` and `power-tool-mode.test.ts`.

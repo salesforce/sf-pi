@@ -57,7 +57,7 @@ describe("sf-fin", () => {
     expect(values("deb")).toEqual(["debug"]);
   });
 
-  it("exposes every sf_fin tool action, including setup, workspace, and admin", async () => {
+  it("exposes every sf_fin tool action, including setup, workspace, admin, and salesforce", async () => {
     const mod = await import("../index.ts");
     const pi = fakePi();
     mod.default(pi as never);
@@ -73,6 +73,7 @@ describe("sf-fin", () => {
       "setup",
       "workspace",
       "admin",
+      "salesforce",
     ]);
   });
 

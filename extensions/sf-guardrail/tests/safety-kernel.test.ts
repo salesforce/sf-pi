@@ -711,6 +711,78 @@ describe("Safety Kernel", () => {
     expect(apply?.approvalScope?.allowSession).toBe(false);
   });
 
+  it("mediates sf_fin Salesforce setup as exact org mutations; readiness and plans stay prompt-free", async () => {
+    mockedEnv = env("FinDev", "developer");
+    lookupOrg("FinDev", "developer");
+    const evaluate = (input: Record<string, unknown>) =>
+      evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+    const base = { action: "salesforce", target_org: "FinDev" };
+
+    expect(await evaluate({ ...base, operation: "readiness" })).toBeUndefined();
+    expect(
+      await evaluate({
+        ...base,
+        operation: "package_install",
+        package_version: "04t000000000001AAA",
+      }),
+    ).toBeUndefined();
+    expect(await evaluate({ ...base, operation: "permissions_apply" })).toBeUndefined();
+
+    const install = await evaluate({
+      ...base,
+      operation: "package_install",
+      package_version: "04t000000000001AAA",
+      allow_mutation: true,
+    });
+    const other = await evaluate({
+      ...base,
+      operation: "package_install",
+      package_version: "04t000000000002AAA",
+      allow_mutation: true,
+    });
+    const permissions = await evaluate({
+      ...base,
+      operation: "permissions_apply",
+      allow_mutation: true,
+    });
+    expect(install).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-fin-salesforce-setup",
+      orgType: "developer",
+      approvalScope: { operationFamily: "fin salesforce setup", allowSession: false },
+    });
+    expect(install?.approvalScope?.fingerprint).not.toBe(other?.approvalScope?.fingerprint);
+    expect(permissions).toMatchObject({
+      action: "confirm",
+      ruleId: "native-sf-fin-salesforce-setup",
+      approvalScope: { operationFamily: "fin salesforce setup" },
+    });
+    expect(shouldPowerToolAutoApprove(install!, { mode: "native", nativeFamilies: ["fin"] })).toBe(
+      true,
+    );
+  });
+
+  it("blocks sf_fin Salesforce setup on production and unknown orgs", async () => {
+    mockedEnv = env("FinProd", "production");
+    lookupOrg("FinProd", "production");
+    for (const target_org of ["FinProd", "UnresolvedFinOrg"]) {
+      const decision = await evaluateSafety({
+        toolName: "sf_fin",
+        input: {
+          action: "salesforce",
+          operation: "package_install",
+          target_org,
+          package_version: "04t000000000001AAA",
+          allow_mutation: true,
+        },
+        cwd: "/project",
+        config: readBundledConfig(),
+      });
+      expect(decision).toMatchObject({ action: "block", feature: "nativeToolGate" });
+    }
+  });
+
   it("mediates sf_fin procedure draft upload and simulate; validate stays prompt-free", async () => {
     const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-proc-"));
     const previous = process.env.PI_CODING_AGENT_DIR;
