@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.357.0](https://github.com/salesforce/sf-pi/compare/v0.356.0...v0.357.0) (2026-11-19)
+
+
+### Features
+
+* **sf-fin:** enable Digital Experiences and check FeedItem.Visibility in readiness ([#934](https://github.com/salesforce/sf-pi/issues/934)) ([94a1b8a](https://github.com/salesforce/sf-pi/commit/94a1b8a3426a4727da61d5293bdc0a0994f262c8))
+
 ## [0.356.0](https://github.com/salesforce/sf-pi/compare/v0.355.1...v0.356.0) (2026-11-19)
 
 
