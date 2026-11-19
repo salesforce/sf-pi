@@ -99,19 +99,21 @@ For Fin Agent API runs (optional):
 
 ### Fin for Salesforce
 
-The agent sets up the Salesforce half of Fin for Salesforce Cases with
-`sf_fin action='salesforce'` in one explicit `target_org`:
+The agent sets up Fin for Salesforce Cases end to end with
+`sf_fin action='salesforce'` in one explicit `target_org`. `readiness` names
+the next operation:
 
-| Operation           | What it does                                                                                                                                                                                   |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `readiness`         | Read-only checklist: Fin package (`finai`), the four Fin Case fields, both permission sets, the Fin External Client App, the audit-field setting, and the dedicated Fin user                   |
-| `package_install`   | Installs the exact package version from Fin's Connect page (`package_version`: the `04t` id or the install link) for all users, then verifies it in Installed Packages                         |
-| `permissions_apply` | Deploys the `SF_Fin_Salesforce_Access` permission set from Fin's documented requirements, creates the dedicated Fin user (Service Cloud User), assigns both permission sets, and verifies them |
+| Operation             | What it does                                                                                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `readiness`           | Read-only checklist: Fin package (`finai`), Fin Case fields, audit-field setting, both permission sets, Fin External Client App, dedicated Fin user, integration user, and Fin's OAuth connection                  |
+| `package_install`     | Installs the exact package version from Fin's Connect page (`package_version`: the `04t` id or the install link) for all users, then verifies it in Installed Packages                                             |
+| `audit_fields_enable` | Deploys SecuritySettings with only `enableAuditFieldsInactiveOwner=true` (the "Set Audit Fields upon Record Creation" org setting Fin asks for) and verifies it                                                    |
+| `permissions_apply`   | Deploys `SF_Fin_Salesforce_Access` from Fin's documented requirements, creates the dedicated Fin user (Service Cloud User), and assigns both permission sets to it and to the integration user, then verifies them |
+| `connect`             | Runs Fin's Connect flow in the shared SF Pi browser: approves Fin for Salesforce on the org's own My Domain as the CLI user, sets the Fin user in Fin, and verifies Fin's OAuth token                              |
 
-Both changes plan first and run only with `allow_mutation=true`. Connecting
-Fin to Salesforce (the OAuth consent in Fin's **Connect** page) stays with you.
-SF Fin does not change the org-wide "Set Audit Fields upon Record Creation"
-setting; `readiness` reports it. Fin Messenger live chat (BYOC) is not covered.
+Each change plans first and runs only with `allow_mutation=true`. `connect`
+uses the Fin admin sign-in saved by `/login sf-fin-browser`. Fin Messenger
+live chat (BYOC) is not covered.
 
 ### Fin admin pages
 
@@ -208,8 +210,8 @@ app. It refuses if it lands somewhere else.
   conversation Fin resolves is a billable outcome. Access checks and capability
   listing create no conversation.
 - `surfaces` runs only local `--help` commands, with no token and no network.
-- `salesforce package_install` and `permissions_apply` are SF Guardrail
-  mutations (`native-sf-fin-salesforce-setup`). Each approval covers exactly
+- `salesforce package_install`, `audit_fields_enable`, `permissions_apply`, and
+  `connect` are SF Guardrail mutations (`native-sf-fin-salesforce-setup`). Each approval covers exactly
   one org, package version, or username, is never granted for the session,
   and production or unknown orgs are blocked. Salesforce calls go through SF
   Pi's shared connection module. The package install never renames or

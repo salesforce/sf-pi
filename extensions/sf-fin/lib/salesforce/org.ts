@@ -5,19 +5,28 @@
  * Every org call crosses the shared SF Pi connection Module (`sf-conn`), so
  * the target org, API version, and bounded requests stay owned in one place.
  * Reads are fixed SOQL against Fin's declared contract; writes are exactly:
- * one Tooling PackageInstallRequest, one PermissionSet deploy, one User
- * create/update, and PermissionSetAssignment inserts. Nothing else changes.
+ * one Tooling PackageInstallRequest, one SecuritySettings deploy carrying a
+ * single field, one PermissionSet deploy, one User create/update, and
+ * PermissionSetAssignment inserts. Nothing else changes.
  */
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import type { SalesforceSession } from "../../../../lib/common/sf-conn/index.ts";
 import { deployPermissionSet } from "../../../sf-agentscript/lib/agent-user/deploy.ts";
 import {
   FIN_ACCESS_PERMISSION_SET,
+  FIN_AUDIT_PERMISSIONS,
+  FIN_AUDIT_SETTING,
   FIN_CASE_FIELDS,
   FIN_FIELD_ACCESS,
+  FIN_OAUTH_APP_NAME,
   FIN_PACKAGE_NAMESPACE,
   FIN_PACKAGE_PERMISSION_SET,
+  FIN_SYSTEM_PERMISSIONS,
   FIN_USER_ALIAS,
   FIN_USER_PROFILE,
+  renderAuditFieldsSecuritySettings,
   type FinUserFacts,
   type PackageVersionFacts,
   type SalesforceFacts,
@@ -25,6 +34,7 @@ import {
 
 const INSTALL_POLL_MS = 5_000;
 const INSTALL_TIMEOUT_MS = 15 * 60_000;
+const SETTINGS_DEPLOY_TIMEOUT_MS = 5 * 60_000;
 
 /** Narrow seam the setup orchestration depends on (faked in tests). */
 export interface FinSalesforceOrg {
@@ -38,6 +48,10 @@ export interface FinSalesforceOrg {
   ): Promise<(PackageVersionFacts & { remoteSites: string[] }) | undefined>;
   /** Fields that exist and accept field permissions in this org (`Object.Field`). */
   permissionableFields(): Promise<string[]>;
+  /** Fin system permissions this org's PermissionSet exposes (Metadata API names). */
+  availablePermissions(): Promise<string[]>;
+  /** Deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true. */
+  enableAuditFields(input: { signal?: AbortSignal }): Promise<{ ok: boolean; error?: string }>;
   installPackage(input: {
     versionId: string;
     enableRss: boolean;
@@ -109,6 +123,19 @@ export function createFinSalesforceOrg(
     return new Map(rows.map((row) => [qualified(row.NamespacePrefix, row.Name), row.Id]));
   };
 
+  const assignedPermissionSets = async (userId: string) =>
+    (
+      await query<{ PermissionSet?: { Name?: string; NamespacePrefix?: string | null } | null }>(
+        `SELECT PermissionSet.Name, PermissionSet.NamespacePrefix FROM PermissionSetAssignment WHERE AssigneeId = '${soql(userId)}'`,
+      )
+    )
+      .map((a) =>
+        a.PermissionSet?.Name
+          ? qualified(a.PermissionSet.NamespacePrefix ?? null, a.PermissionSet.Name)
+          : undefined,
+      )
+      .filter((name): name is string => Boolean(name));
+
   return {
     async orgId() {
       return session.target.orgId ?? (await session.identity()).org_id;
@@ -154,37 +181,60 @@ export function createFinSalesforceOrg(
         const rows = await query<{
           Id: string;
           Username: string;
+          Name?: string;
           IsActive: boolean;
           UserPermissionsSupportUser: boolean;
           Profile?: { UserLicense?: { Name?: string } | null } | null;
         }>(
-          `SELECT Id, Username, IsActive, UserPermissionsSupportUser, Profile.UserLicense.Name FROM User WHERE Username = '${soql(username)}'`,
+          `SELECT Id, Username, Name, IsActive, UserPermissionsSupportUser, Profile.UserLicense.Name FROM User WHERE Username = '${soql(username)}'`,
           "rest",
           1,
         );
         const row = rows[0];
         if (row) {
-          const assignments = await query<{
-            PermissionSet?: { Name?: string; NamespacePrefix?: string | null } | null;
-          }>(
-            `SELECT PermissionSet.Name, PermissionSet.NamespacePrefix FROM PermissionSetAssignment WHERE AssigneeId = '${soql(row.Id)}'`,
-          );
           user = {
             id: row.Id,
             username: row.Username,
+            name: row.Name,
             isActive: row.IsActive,
             serviceCloudUser: row.UserPermissionsSupportUser === true,
             licenseName: row.Profile?.UserLicense?.Name,
-            assignedPermissionSets: assignments
-              .map((a) =>
-                a.PermissionSet?.Name
-                  ? qualified(a.PermissionSet.NamespacePrefix ?? null, a.PermissionSet.Name)
-                  : undefined,
-              )
-              .filter((name): name is string => Boolean(name)),
+            assignedPermissionSets: await assignedPermissionSets(row.Id),
           };
         }
       }
+
+      // The integration user is whoever authorized Fin's OAuth connection;
+      // before connect it is the CLI user, who is the one connect runs as.
+      const tokens = await query<{ UserId: string; User?: { Username?: string } | null }>(
+        `SELECT UserId, User.Username FROM OauthToken WHERE AppName = '${soql(FIN_OAUTH_APP_NAME)}' ORDER BY CreatedDate DESC`,
+        "rest",
+        1,
+      ).catch(() => []);
+      const tokenUser = tokens[0];
+      const identity = await session.identity();
+      const integrationId = tokenUser?.UserId ?? identity.user_id;
+      const integrationUsername =
+        tokenUser?.User?.Username ??
+        (
+          await query<{ Username: string }>(
+            `SELECT Username FROM User WHERE Id = '${soql(integrationId)}'`,
+            "rest",
+            1,
+          )
+        )[0]?.Username ??
+        integrationId;
+
+      const accessPermission = FIN_AUDIT_PERMISSIONS[0] ?? "CreateAuditFields";
+      const accessHasAuditPermission = permissionSets.includes(access)
+        ? await query<Record<string, unknown>>(
+            `SELECT Permissions${accessPermission} FROM PermissionSet WHERE Name = '${soql(access)}' AND NamespacePrefix = null`,
+            "rest",
+            1,
+          )
+            .then((rows) => rows[0]?.[`Permissions${accessPermission}`] === true)
+            .catch(() => false)
+        : false;
 
       return {
         orgId: await this.orgId(),
@@ -206,7 +256,30 @@ export function createFinSalesforceOrg(
             ? licenses.TotalLicenses - (licenses.UsedLicenses ?? 0)
             : undefined,
         auditFieldsEnabled: await readAuditFieldsSetting(session),
+        instanceUrl: session.target.instanceUrl,
+        integrationUser: {
+          id: integrationId,
+          username: integrationUsername,
+          assignedPermissionSets: await assignedPermissionSets(integrationId),
+        },
+        oauthConnected: Boolean(tokenUser),
+        accessHasAuditPermission,
       };
+    },
+
+    async availablePermissions() {
+      const described = await session.request<{ fields?: Array<{ name?: string }> }>({
+        method: "GET",
+        path: "/sobjects/PermissionSet/describe",
+      });
+      const names = new Set((described.body?.fields ?? []).map((field) => field.name));
+      return [...FIN_SYSTEM_PERMISSIONS, ...FIN_AUDIT_PERMISSIONS].filter((permission) =>
+        names.has(`Permissions${permission}`),
+      );
+    },
+
+    async enableAuditFields(input) {
+      return deploySecuritySettings(session, renderAuditFieldsSecuritySettings(), input.signal);
     },
 
     async describePackageVersion(id) {
@@ -441,6 +514,43 @@ interface ApiError {
   errorCode?: string;
 }
 
+/** Deploy a single-field Security.settings through SDR; temp dir always removed. */
+async function deploySecuritySettings(
+  session: SalesforceSession,
+  xml: string,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; error?: string }> {
+  const root = await mkdtemp(path.join(tmpdir(), "sf-fin-settings-"));
+  try {
+    await mkdir(path.join(root, "settings"), { recursive: true });
+    await writeFile(path.join(root, "settings", "Security.settings-meta.xml"), xml, "utf8");
+    const { ComponentSet } = await import("@salesforce/source-deploy-retrieve");
+    const components = ComponentSet.fromSource(root);
+    components.apiVersion = session.target.apiVersion;
+    components.sourceApiVersion = session.target.apiVersion;
+    const job = await components.deploy({
+      usernameOrConnection: session.connection,
+      apiOptions: { rollbackOnError: true, testLevel: "NoTestRun" },
+    });
+    const abort = () => void job.cancel?.();
+    signal?.addEventListener("abort", abort, { once: true });
+    try {
+      const result = await job.pollStatus(1_000, SETTINGS_DEPLOY_TIMEOUT_MS / 1_000);
+      if (result.response.success === true) return { ok: true };
+      const raw = result.response.details?.componentFailures as unknown;
+      const failures = raw ? (Array.isArray(raw) ? raw : [raw]) : [];
+      const problem = (failures[0] as { problem?: string } | undefined)?.problem;
+      return { ok: false, error: problem ?? `deploy ${result.response.status}` };
+    } finally {
+      signal?.removeEventListener("abort", abort);
+    }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
 function versionText(parts: VersionParts): string {
   const nums = [parts.MajorVersion, parts.MinorVersion, parts.PatchVersion, parts.BuildNumber];
   return nums.every((n) => typeof n === "number") ? nums.join(".") : "unknown version";
@@ -476,7 +586,7 @@ async function readAuditFieldsSetting(session: SalesforceSession): Promise<boole
       string,
       unknown
     >;
-    const value = (Array.isArray(result) ? result[0] : result)?.enableAuditFieldsInactiveOwner;
+    const value = (Array.isArray(result) ? result[0] : result)?.[FIN_AUDIT_SETTING];
     if (value === true || value === "true") return true;
     if (value === false || value === "false") return false;
     return undefined;

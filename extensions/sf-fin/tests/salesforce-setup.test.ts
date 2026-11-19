@@ -52,10 +52,18 @@ describe("access permission set rendering", () => {
     expect(a.xml).not.toMatch(/<allowDelete>true/);
     expect(a.xml).not.toMatch(/<(?:viewAllRecords|modifyAllRecords)>true/);
     expect(a.xml).toContain("<name>ViewSetup</name>");
-    expect(a.xml).not.toContain("InsertFeedSystemFields");
+    expect(a.xml).toContain("<name>CanInsertFeedSystemFields</name>");
+    expect(a.xml).not.toContain("CreateAuditFields");
     expect(renderAccessPermissionSet({ includeAuditPermissions: true }).xml).toContain(
-      "<name>InsertFeedSystemFields</name>",
+      "<name>CreateAuditFields</name>",
     );
+    // Only permissions the org exposes are rendered.
+    expect(
+      renderAccessPermissionSet({
+        includeAuditPermissions: true,
+        availablePermissions: ["ApiEnabled"],
+      }).userPermissions,
+    ).toEqual(["ApiEnabled"]);
   });
 
   it("refuses an unsafe API name", () => {
@@ -223,9 +231,11 @@ describe("runSalesforceSetup", () => {
       `deploy:${FIN_ACCESS_PERMISSION_SET}`,
       `createUser:${USERNAME}:admin@example.com`,
       `assign:005FIN:${FIN_PACKAGE_PERMISSION_SET},${FIN_ACCESS_PERMISSION_SET}`,
+      `assign:005ADMIN:${FIN_PACKAGE_PERMISSION_SET},${FIN_ACCESS_PERMISSION_SET}`,
     ]);
     expect(run).toMatchObject({ ok: true, details: { permissionsReady: true } });
-    expect(run.text).toContain("Connect to Salesforce");
+    // Audit fields are still off, so readiness points there next.
+    expect(run.text).toContain("operation='audit_fields_enable'");
   });
 
   it("permissions_apply on an existing user only fills the gaps", async () => {
@@ -243,7 +253,109 @@ describe("runSalesforceSetup", () => {
       `deploy:${FIN_ACCESS_PERMISSION_SET}`,
       "serviceCloud:005FIN",
       `assign:005FIN:${FIN_ACCESS_PERMISSION_SET}`,
+      `assign:005ADMIN:${FIN_PACKAGE_PERMISSION_SET},${FIN_ACCESS_PERMISSION_SET}`,
     ]);
+  });
+
+  it("audit_fields_enable plans, deploys only the one setting, verifies, and is idempotent", async () => {
+    const org = fakeOrg({ installed: true });
+    const plan = await runSalesforceSetup(org, {
+      operation: "audit_fields_enable",
+      targetOrg: "DevOrg",
+    });
+    expect(plan.details).toMatchObject({
+      phase: "plan",
+      setting: "enableAuditFieldsInactiveOwner",
+    });
+    expect(org.writes).toEqual([]);
+    const run = await runSalesforceSetup(org, {
+      operation: "audit_fields_enable",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(run).toMatchObject({ ok: true, details: { verified: true } });
+    expect(org.writes).toEqual(["settings:enableAuditFieldsInactiveOwner=true"]);
+    const again = await runSalesforceSetup(org, {
+      operation: "audit_fields_enable",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(again.details).toMatchObject({ phase: "noop" });
+    expect(org.writes).toHaveLength(1);
+  });
+
+  it("after audit_fields_enable, permissions_apply adds CreateAuditFields and readiness says connect next", async () => {
+    const org = fakeOrg({
+      installed: true,
+      accessPs: true,
+      auditFieldsEnabled: true,
+      user: {
+        serviceCloudUser: true,
+        assigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+      },
+      integrationAssigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+    });
+    const before = await runSalesforceSetup(org, { operation: "readiness", targetOrg: "DevOrg" });
+    expect(before.text).toContain("operation='permissions_apply'");
+    const run = await runSalesforceSetup(org, {
+      operation: "permissions_apply",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(run).toMatchObject({ ok: true, details: { permissionsReady: true } });
+    expect(run.text).toContain("operation='connect'");
+  });
+
+  it("connect refuses until the Salesforce side is ready", async () => {
+    const run = await runSalesforceSetup(fakeOrg({ installed: true }), {
+      operation: "connect",
+      targetOrg: "DevOrg",
+      execute: true,
+      connect: async () => ({ ok: true, steps: [] }),
+    });
+    expect(run.details).toMatchObject({ code: "not_ready" });
+  });
+
+  it("connect plans with the live card for Developer Edition, runs the runbook, and verifies the token", async () => {
+    const org = fakeOrg({
+      installed: true,
+      accessPs: true,
+      auditFieldsEnabled: true,
+      accessHasAudit: true,
+      user: {
+        serviceCloudUser: true,
+        assigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+      },
+      integrationAssigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+    });
+    const plan = await runSalesforceSetup(org, { operation: "connect", targetOrg: "DevOrg" });
+    expect(plan.details).toMatchObject({
+      phase: "plan",
+      environment: "live",
+      orgHost: "example.my.salesforce.com",
+      integrationUser: "admin@example.com",
+      finUser: "Fin AI Agent",
+    });
+    const calls: unknown[] = [];
+    const run = await runSalesforceSetup(org, {
+      operation: "connect",
+      targetOrg: "DevOrg",
+      execute: true,
+      connect: async (input) => {
+        calls.push(input);
+        return { ok: true, steps: ["done"] };
+      },
+    });
+    // The runbook ran, but the org shows no Fin token: not verified.
+    expect(calls).toEqual([
+      {
+        card: "live",
+        orgHost: "example.my.salesforce.com",
+        integrationUsername: "admin@example.com",
+        finUserName: "Fin AI Agent",
+      },
+    ]);
+    expect(run).toMatchObject({ ok: false, details: { connected: false } });
   });
 
   it("refuses an invalid username", async () => {
@@ -301,6 +413,10 @@ interface FakeOptions {
   installReportsInProgress?: boolean;
   accessPs?: boolean;
   user?: { serviceCloudUser: boolean; assigned: string[] };
+  auditFieldsEnabled?: boolean;
+  integrationAssigned?: string[];
+  oauthConnected?: boolean;
+  accessHasAudit?: boolean;
 }
 
 /** In-memory org: state changes only through the FinSalesforceOrg write methods. */
@@ -316,6 +432,10 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
           assigned: [...options.user.assigned],
         }
       : (undefined as undefined | { id: string; serviceCloudUser: boolean; assigned: string[] }),
+    auditFieldsEnabled: options.auditFieldsEnabled === true,
+    integrationAssigned: [...(options.integrationAssigned ?? [])],
+    oauthConnected: options.oauthConnected === true,
+    accessHasAudit: options.accessHasAudit === true,
   };
   return {
     writes,
@@ -338,6 +458,7 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
           ? {
               id: state.user.id,
               username,
+              name: "Fin AI Agent",
               isActive: true,
               serviceCloudUser: state.user.serviceCloudUser,
               assignedPermissionSets: [...state.user.assigned],
@@ -345,8 +466,32 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
           : undefined,
         profileExists: true,
         profileLicensesAvailable: 2,
-        auditFieldsEnabled: false,
+        auditFieldsEnabled: state.auditFieldsEnabled,
+        instanceUrl: "https://example.my.salesforce.com",
+        integrationUser: {
+          id: "005ADMIN",
+          username: "admin@example.com",
+          assignedPermissionSets: [...state.integrationAssigned],
+        },
+        oauthConnected: state.oauthConnected,
+        accessHasAuditPermission: state.accessHasAudit,
       };
+    },
+    async availablePermissions() {
+      return [
+        "ApiEnabled",
+        "CanInsertFeedSystemFields",
+        "EditTask",
+        "ViewAllUsers",
+        "ViewRoles",
+        "ViewSetup",
+        ...(state.auditFieldsEnabled ? ["CreateAuditFields"] : []),
+      ];
+    },
+    async enableAuditFields() {
+      writes.push("settings:enableAuditFieldsInactiveOwner=true");
+      state.auditFieldsEnabled = true;
+      return { ok: true };
     },
     async describePackageVersion(id) {
       return {
@@ -380,9 +525,10 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
       }
       return { ok: true, requestId: "0Hf1", status: "Success", errors: [] };
     },
-    async deployAccessPermissionSet({ name }) {
+    async deployAccessPermissionSet({ name, xml }) {
       writes.push(`deploy:${name}`);
       state.accessPs = true;
+      state.accessHasAudit = xml.includes("<name>CreateAuditFields</name>");
       return { ok: true };
     },
     async connectedUser() {
@@ -407,7 +553,8 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
     },
     async assignPermissionSets(userId, names) {
       writes.push(`assign:${userId}:${names.join(",")}`);
-      state.user?.assigned.push(...names);
+      if (userId === "005ADMIN") state.integrationAssigned.push(...names);
+      else state.user?.assigned.push(...names);
       return { ok: true, assigned: names, errors: [] };
     },
   };

@@ -68,21 +68,30 @@ export const FIN_FIELD_ACCESS: readonly string[] = [
 ];
 
 /**
- * System permissions Fin documents (Metadata API names). `Can Insert Feed
- * System Fields` (InsertFeedSystemFields) also needs the org's audit-field
- * setting and a license that offers it, so it is reported separately rather
- * than deployed blindly; see FIN_AUDIT_PERMISSIONS.
+ * System permissions Fin documents (Metadata API names; the PermissionSet
+ * describe exposes each as `Permissions<Name>`). Only the ones the target org
+ * exposes are rendered, so a deploy never names an unknown permission.
  */
 export const FIN_SYSTEM_PERMISSIONS: readonly string[] = [
   "ApiEnabled",
+  "CanInsertFeedSystemFields",
   "EditTask",
   "ViewAllUsers",
   "ViewRoles",
   "ViewSetup",
 ];
 
-/** Permissions that depend on SecuritySettings.enableAuditFieldsInactiveOwner. */
-export const FIN_AUDIT_PERMISSIONS: readonly string[] = ["InsertFeedSystemFields"];
+/**
+ * "Set Audit Fields upon Record Creation". The org exposes it only after
+ * SecuritySettings.enableAuditFieldsInactiveOwner is on (audit_fields_enable).
+ */
+export const FIN_AUDIT_PERMISSIONS: readonly string[] = ["CreateAuditFields"];
+
+/** The org-wide setting Fin asks for, as Metadata API SecuritySettings field. */
+export const FIN_AUDIT_SETTING = "enableAuditFieldsInactiveOwner";
+
+/** OAuth app name the Fin for Salesforce package's External Client App uses. */
+export const FIN_OAUTH_APP_NAME = "Fin for Salesforce";
 
 /** Salesforce package version ids are 04t + 12 or 15 characters. */
 const PACKAGE_VERSION_ID_RE = /^04t[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?$/u;
@@ -132,6 +141,8 @@ export interface InstalledPackageFacts {
 export interface FinUserFacts {
   id: string;
   username: string;
+  /** Display name; Fin lists users by it. */
+  name?: string;
   isActive: boolean;
   serviceCloudUser: boolean;
   licenseName?: string;
@@ -160,6 +171,18 @@ export interface SalesforceFacts {
   profileExists: boolean;
   /** SecuritySettings.enableAuditFieldsInactiveOwner, when readable. */
   auditFieldsEnabled?: boolean;
+  /** Target org instance URL (Fin shows it on a connected environment). */
+  instanceUrl?: string;
+  /**
+   * The integration user Fin checks permission sets on: the user holding the
+   * Fin OAuth token, or (before connect) the target org's CLI user, who is the
+   * one `connect` authorizes as.
+   */
+  integrationUser?: { id: string; username: string; assignedPermissionSets: string[] };
+  /** True when a Fin for Salesforce OAuth token exists in the org. */
+  oauthConnected?: boolean;
+  /** CreateAuditFields enabled on the access permission set, when the org exposes it. */
+  accessHasAuditPermission?: boolean;
 }
 
 export type CheckState = "ok" | "missing" | "warn" | "blocked";
@@ -170,7 +193,7 @@ export interface ReadinessCheck {
   title: string;
   detail?: string;
   /** Which operation fixes it. */
-  fix?: "package_install" | "permissions_apply" | "connect" | "human";
+  fix?: "package_install" | "audit_fields_enable" | "permissions_apply" | "connect" | "human";
 }
 
 export interface ReadinessReport {
@@ -179,6 +202,8 @@ export interface ReadinessReport {
   permissionsReady: boolean;
   /** Everything Salesforce-side done; only the Fin Connect step remains. */
   readyToConnect: boolean;
+  /** Fin holds an OAuth token in this org. */
+  connected: boolean;
 }
 
 export function evaluateSalesforceReadiness(
@@ -257,7 +282,7 @@ export function evaluateSalesforceReadiness(
 
   checks.push({
     id: "audit-fields",
-    state: facts.auditFieldsEnabled === true ? "ok" : "warn",
+    state: facts.auditFieldsEnabled === true ? "ok" : "missing",
     title:
       facts.auditFieldsEnabled === true
         ? "Audit fields on record creation enabled"
@@ -267,9 +292,19 @@ export function evaluateSalesforceReadiness(
     detail:
       facts.auditFieldsEnabled === true
         ? undefined
-        : 'Fin asks for "Set Audit Fields upon Record Creation"; SF Fin leaves this org-wide setting to the admin (Setup → User Interface).',
-    fix: facts.auditFieldsEnabled === true ? undefined : "human",
+        : 'Fin asks for the org setting behind "Set Audit Fields upon Record Creation".',
+    fix: facts.auditFieldsEnabled === true ? undefined : "audit_fields_enable",
   });
+  if (facts.auditFieldsEnabled === true && accessPs) {
+    checks.push({
+      id: "access-audit-permission",
+      state: facts.accessHasAuditPermission ? "ok" : "missing",
+      title: facts.accessHasAuditPermission
+        ? `${access} grants Set Audit Fields upon Record Creation`
+        : `${access} does not grant Set Audit Fields upon Record Creation yet`,
+      fix: facts.accessHasAuditPermission ? undefined : "permissions_apply",
+    });
+  }
 
   if (!facts.profileExists) {
     checks.push({
@@ -324,20 +359,50 @@ export function evaluateSalesforceReadiness(
       fix: user.serviceCloudUser ? undefined : "permissions_apply",
     });
   }
+  const integration = facts.integrationUser;
+  if (integration && integration.id !== user?.id) {
+    const needs = [FIN_PACKAGE_PERMISSION_SET, access].filter(
+      (ps) => !integration.assignedPermissionSets.includes(ps),
+    );
+    checks.push({
+      id: "integration-user-assignments",
+      state: needs.length === 0 ? "ok" : "missing",
+      title:
+        needs.length === 0
+          ? `Integration user ${integration.username} has both permission sets`
+          : `Integration user ${integration.username} missing: ${needs.join(", ")}`,
+      detail: facts.oauthConnected
+        ? "Fin checks the permission sets of the user that authorized its connection."
+        : "This user authorizes Fin during connect, and Fin checks its permission sets.",
+      fix: needs.length === 0 ? undefined : "permissions_apply",
+    });
+  }
+  checks.push({
+    id: "oauth-connection",
+    state: facts.oauthConnected ? "ok" : "missing",
+    title: facts.oauthConnected
+      ? `Fin is connected to this org (${FIN_OAUTH_APP_NAME} OAuth token present)`
+      : "Fin is not connected to this org yet",
+    fix: facts.oauthConnected ? undefined : "connect",
+  });
+
   const byId = (id: string) => checks.find((check) => check.id === id);
   const packageReady = ["package", "case-fields", "package-permission-set"].every(
     (id) => byId(id)?.state === "ok",
   );
   const permissionsReady =
-    byId("access-permission-set")?.state === "ok" &&
-    byId("fin-user")?.state === "ok" &&
-    byId("fin-user-assignments")?.state === "ok" &&
-    byId("service-cloud-user")?.state === "ok";
+    ["access-permission-set", "fin-user", "fin-user-assignments", "service-cloud-user"].every(
+      (id) => byId(id)?.state === "ok",
+    ) &&
+    ["access-audit-permission", "integration-user-assignments"].every(
+      (id) => byId(id) === undefined || byId(id)?.state === "ok",
+    );
   return {
     checks,
     packageReady,
     permissionsReady,
     readyToConnect: packageReady && permissionsReady,
+    connected: facts.oauthConnected === true,
   };
 }
 
@@ -350,6 +415,11 @@ export interface AccessPermissionSetInput {
   permissionableFields?: readonly string[];
   /** Include FIN_AUDIT_PERMISSIONS (only when the org setting is on). */
   includeAuditPermissions?: boolean;
+  /**
+   * System permission names the org exposes (from the PermissionSet describe).
+   * When given, only these are rendered.
+   */
+  availablePermissions?: readonly string[];
 }
 
 export interface RenderedPermissionSet {
@@ -378,10 +448,13 @@ export function renderAccessPermissionSet(
   const allowed = input.permissionableFields ? new Set(input.permissionableFields) : undefined;
   const fields = FIN_FIELD_ACCESS.filter((field) => !allowed || allowed.has(field));
   const skippedFields = FIN_FIELD_ACCESS.filter((field) => allowed && !allowed.has(field));
+  const available = input.availablePermissions ? new Set(input.availablePermissions) : undefined;
   const userPermissions = [
     ...FIN_SYSTEM_PERMISSIONS,
     ...(input.includeAuditPermissions ? FIN_AUDIT_PERMISSIONS : []),
-  ].sort();
+  ]
+    .filter((permission) => !available || available.has(permission))
+    .sort();
 
   const lines = [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -422,6 +495,21 @@ export function renderAccessPermissionSet(
   }
   lines.push("</PermissionSet>", "");
   return { name, label, xml: lines.join("\n"), fields, skippedFields, userPermissions };
+}
+
+/**
+ * Deterministic Settings source for the one SecuritySettings field Fin needs.
+ * A Settings deploy updates only the fields present in the file, so no other
+ * security setting is touched.
+ */
+export function renderAuditFieldsSecuritySettings(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<SecuritySettings xmlns="http://soap.sforce.com/2006/04/metadata">',
+    `    <${FIN_AUDIT_SETTING}>true</${FIN_AUDIT_SETTING}>`,
+    "</SecuritySettings>",
+    "",
+  ].join("\n");
 }
 
 /**

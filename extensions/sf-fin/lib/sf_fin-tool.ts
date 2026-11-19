@@ -62,11 +62,13 @@ const Params = Type.Object({
         "sign_in",
         "readiness",
         "package_install",
+        "audit_fields_enable",
         "permissions_apply",
+        "connect",
       ] as const,
       {
         description:
-          "salesforce only: readiness (read-only checklist of package, Fin Case fields, permission sets, dedicated Fin user), package_install (install the exact Fin for Salesforce package_version for all users), permissions_apply (deploy the Fin access permission set, create the dedicated Fin user with Service Cloud User, assign both permission sets). sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
+          "salesforce only: readiness (read-only checklist: package, Fin Case fields, audit-field setting, permission sets, Fin user, integration user, Fin OAuth connection), package_install (install the exact Fin for Salesforce package_version for all users), audit_fields_enable (deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true), permissions_apply (deploy the Fin access permission set, create the dedicated Fin user with Service Cloud User, assign both permission sets to the Fin user and the integration user), connect (run Fin's Connect flow in the shared browser: approve Fin for Salesforce as the CLI user, pick the Fin user, verify the OAuth token). Each change plans first and executes with allow_mutation=true. sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (Fin only simulates live procedures). publish / pause: set a procedure_id live or paused; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
       },
     ),
   ),
@@ -182,6 +184,12 @@ const Params = Type.Object({
       description: "salesforce: dedicated Fin user's username. Default fin_agent@<org id>.ext.",
     }),
   ),
+  environment: Type.Optional(
+    StringEnum(["live", "test"] as const, {
+      description:
+        "salesforce connect: Fin environment card. live = login.salesforce.com (production, Developer Edition); test = sandboxes. Default from the org type.",
+    }),
+  ),
   email: Type.Optional(
     Type.String({
       description:
@@ -227,11 +235,14 @@ type Params = {
     | "sign_in"
     | "readiness"
     | "package_install"
-    | "permissions_apply";
+    | "audit_fields_enable"
+    | "permissions_apply"
+    | "connect";
   target_org?: string;
   package_version?: string;
   username?: string;
   email?: string;
+  environment?: "live" | "test";
   page?: string;
   workspace?: string;
   kind?: "test" | "prod";
@@ -283,7 +294,7 @@ export function registerSfFinTool(
       "Use sf_fin action='surfaces' to decide between the Fin CLI, the Intercom MCP, and the Fin Agent API for a capability.",
       "Use sf_fin action='admin' for Fin admin web pages: operation='pages' lists verified pages, 'open'/'read' take page=<id> and verify the browser is on the workspace's own app. Sign-in is human-only and saved by Pi: on signed_out, signin_expired, or signin_rejected, ask the user to run /login sf-fin-browser (named workspaces: sf-fin-browser-<name>). Never ask for a Fin password or verification code, and never try to reveal or copy a key; the human copies keys into the masked /login prompt.",
       "Use sf_fin action='agent' operation='access' before Fin Agent API runs; never ask for the Fin Agent API key in chat (use /login sf-fin-agent). Runs Fin resolves are billable outcomes.",
-      "For Fin for Salesforce, run sf_fin action='salesforce' operation='readiness' target_org=…, then package_install (package_version from Fin's Connect page) and permissions_apply: each plans first and executes with allow_mutation=true. Connecting Fin to Salesforce (OAuth consent) stays a human step in Fin.",
+      "For Fin for Salesforce, run sf_fin action='salesforce' operation='readiness' target_org=…, then package_install (package_version from Fin's Connect page), audit_fields_enable, permissions_apply, and connect, in the order readiness's Next line names. Each plans first and executes with allow_mutation=true (SF Guardrail mediates). connect uses the saved Fin admin sign-in.",
     ],
     parameters: Params,
     renderCall: (args, theme) => {
@@ -342,7 +353,10 @@ export function registerSfFinTool(
 
       if (input.action === "salesforce") {
         const operation =
-          input.operation === "package_install" || input.operation === "permissions_apply"
+          input.operation === "package_install" ||
+          input.operation === "audit_fields_enable" ||
+          input.operation === "permissions_apply" ||
+          input.operation === "connect"
             ? input.operation
             : "readiness";
         const result = await service.salesforce(ctx, {
@@ -351,6 +365,8 @@ export function registerSfFinTool(
           packageVersion: input.package_version,
           username: input.username,
           email: input.email,
+          environment: input.environment,
+          workspace,
           execute: input.allow_mutation === true,
         });
         return {
