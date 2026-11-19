@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.356.0](https://github.com/salesforce/sf-pi/compare/v0.355.1...v0.356.0) (2026-11-19)
+
+
+### Features
+
+* **sf-fin:** automate the audit-field setting and Fin's Connect flow ([#932](https://github.com/salesforce/sf-pi/issues/932)) ([7c3b1cb](https://github.com/salesforce/sf-pi/commit/7c3b1cbcdebfd26819d0bdace0c2d315662b051c))
+
 ## [0.355.1](https://github.com/salesforce/sf-pi/compare/v0.355.0...v0.355.1) (2026-11-19)
 
 
