@@ -34,7 +34,7 @@ Each extension owns one focused Salesforce workflow. Pick an outcome, then open 
 <a class="sfpi-extension-card" href="./extensions/sf-fin">
   <span class="sfpi-card-kicker">Agent Tool · on</span>
   <strong>SF Fin</strong>
-  <span>Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness, and end-to-end Fin for Salesforce setup (package install, audit-field setting, permission set, dedicated Fin user, and Fin's Connect flow) in an explicit org.</span>
+  <span>Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness, and end-to-end Fin for Salesforce setup (package install, audit-field setting, Digital Experiences, permission set, dedicated Fin user, and Fin's Connect flow) in an explicit org.</span>
   <span class="sfpi-card-meta"><code class="sfpi-code-chip">/sf-fin</code></span>
 </a>
 <a class="sfpi-extension-card" href="./extensions/sf-lsp">

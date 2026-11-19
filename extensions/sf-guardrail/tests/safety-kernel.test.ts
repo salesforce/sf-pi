@@ -769,7 +769,7 @@ describe("Safety Kernel", () => {
     const evaluate = (input: Record<string, unknown>) =>
       evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
     const base = { action: "salesforce", target_org: "FinDev" };
-    for (const operation of ["audit_fields_enable", "connect"]) {
+    for (const operation of ["audit_fields_enable", "digital_experiences_enable", "connect"]) {
       expect(await evaluate({ ...base, operation })).toBeUndefined();
       expect(await evaluate({ ...base, operation, allow_mutation: true })).toMatchObject({
         action: "confirm",
@@ -801,6 +801,7 @@ describe("Safety Kernel", () => {
       for (const operation of [
         "package_install",
         "audit_fields_enable",
+        "digital_experiences_enable",
         "permissions_apply",
         "connect",
       ]) {

@@ -288,7 +288,8 @@ function classifySfFinInstall(
  * `sf_fin salesforce <operation>` with `allow_mutation=true` changes the
  * target Salesforce org (and, for connect, Fin's connection to it):
  * package_install (one managed package), audit_fields_enable (one
- * SecuritySettings field), permissions_apply (permission set, Fin user, and
+ * SecuritySettings field), digital_experiences_enable (one
+ * CommunitiesSettings field; one-way), permissions_apply (permission set, Fin user, and
  * assignments), and connect (Fin OAuth consent as the CLI user plus Fin's
  * Salesforce user choice). Readiness and plans stay prompt-free. Each
  * execution is an exact, org-bound approval (no session grant), and
@@ -309,6 +310,12 @@ const FIN_SALESFORCE_SETUP: Record<
     tier: "org_settings_change_exact",
     reason: () =>
       'Enable the org-wide setting behind "Set Audit Fields upon Record Creation" (SecuritySettings.enableAuditFieldsInactiveOwner) in the target org.',
+  },
+  digital_experiences_enable: {
+    title: "⚠ Enable Digital Experiences (one-way)",
+    tier: "org_settings_change_exact",
+    reason: () =>
+      "Enable Digital Experiences (CommunitiesSettings.enableNetworksEnabled) in the target org so FeedItem.Visibility exists for Fin. Salesforce does not allow turning it off again, and the org's Lightning Platform domain name can no longer be changed.",
   },
   permissions_apply: {
     title: "⚠ Fin Salesforce permissions and user",
@@ -345,7 +352,9 @@ function classifySfFinSalesforceSetup(
         ? `Fin user ${username ?? "default"}`
         : operation === "connect"
           ? `environment ${environment ?? "default"}`
-          : "audit fields";
+          : operation === "digital_experiences_enable"
+            ? "digital experiences"
+            : "audit fields";
   return {
     kind: "nativeTool",
     toolName,
