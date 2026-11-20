@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.362.1](https://github.com/salesforce/sf-pi/compare/v0.362.0...v0.362.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sf-fin:** observe counts Fin's stored resolution values, and explains channel timing ([#949](https://github.com/salesforce/sf-pi/issues/949)) ([803bbbb](https://github.com/salesforce/sf-pi/commit/803bbbb799d42f75e94efe657a16b9ba0967025d))
+
 ## [0.362.0](https://github.com/salesforce/sf-pi/compare/v0.361.0...v0.362.0) (2026-11-20)
 
 
