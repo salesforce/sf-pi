@@ -204,6 +204,41 @@ describe("conversation card", () => {
   });
 });
 
+describe("conversation card with expectations", () => {
+  it("fails the card when an expectation is missing, and shows citations and handoffs", () => {
+    const card = buildFinCard({
+      text: "⚠ Fin answered, but an expectation failed",
+      ok: false,
+      details: {
+        action: "agent",
+        operation: "run",
+        phase: "run",
+        conversationId: "sf-pi-x",
+        status: "answered",
+        transcript: [
+          { role: "user", text: "Talk to a human" },
+          { role: "fin", text: "Connecting you to an agent now [1]." },
+        ],
+        signals: { citations: 1, handoff: true },
+        expectations: {
+          passed: false,
+          results: [
+            { expect: "agent", found: true },
+            { expect: "refund", found: false },
+          ],
+        },
+      },
+    });
+    expect(card.status).toBe("error");
+    expect(card.chips?.map((c) => c.label)).toEqual(
+      expect.arrayContaining(["1/2 expected", "📎 1 cited", "🙋 handed off", "💲 billable"]),
+    );
+    expect(card.sections?.find((s) => s.title === "Expectations")?.rows.map((r) => r.icon)).toEqual(
+      ["✅", "❌"],
+    );
+  });
+});
+
 describe("model packet", () => {
   it("keeps the model text bounded and secret-free", () => {
     const long = `${"x".repeat(MODEL_PACKET_MAX_CHARS * 2)} token=abc`;

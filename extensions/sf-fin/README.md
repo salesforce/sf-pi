@@ -123,6 +123,7 @@ the next operation:
 | `enhanced_email_enable`      | Deploys EmailAdministrationSettings with only `enableEnhancedEmailEnabled=true` so Fin can sync each case's email history, and verifies it. Org-wide                                                                                                                                                                                                                                                           |
 | `permissions_apply`          | Deploys `SF_Fin_Salesforce_Access` from Fin's documented requirements, creates the dedicated Fin user (Service Cloud User), and assigns both permission sets to it and to the integration user, then verifies them                                                                                                                                                                                             |
 | `connect`                    | Runs Fin's Connect flow in the shared SF Pi browser: approves Fin for Salesforce on the org's own My Domain as the CLI user, sets the Fin user in Fin, and verifies Fin's OAuth token                                                                                                                                                                                                                          |
+| `observe`                    | Read-only: Fin-involved cases, resolved and routed counts with a resolution rate, counts by origin, cases the Fin user owns now, and recent cases (no descriptions or email bodies)                                                                                                                                                                                                                            |
 
 Each change plans first and runs only with `allow_mutation=true`. `connect`
 uses the Fin admin sign-in saved by `/login sf-fin-browser`. Case routing is
@@ -236,6 +237,9 @@ app. It refuses if it lands somewhere else.
     source and last access result, never its value.
   - `/sf-fin disconnect agent` prepares `/logout sf-fin-agent`. Revoke or
     regenerate the key in Fin if it may have been exposed.
+- `agent run` takes optional `expect=[…]` phrases, so a run works as a test:
+  any phrase missing from Fin's replies fails it. Its card shows the
+  conversation turn by turn, expectations, citations, and handoffs.
 - `agent run` is an SF Guardrail mutation (`native-sf-fin-agent-run`), because a
   conversation Fin resolves is a billable outcome. Access checks and capability
   listing create no conversation.

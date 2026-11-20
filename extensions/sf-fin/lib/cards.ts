@@ -66,6 +66,7 @@ export function buildFinCard(input: CardInput): SfPiResultCard {
   if (action === "salesforce" && Array.isArray(d.checks) && phase === "readiness") {
     return readinessCard(input);
   }
+  if (action === "salesforce" && phase === "observe") return observeCard(input);
   if (phase === "plan") return planCard(input);
   if (phase === "noop") return noopCard(input);
   if (
@@ -447,30 +448,156 @@ function conversationCard(input: CardInput): SfPiResultCard {
     ? (d.transcript as Array<{ role: string; text: string }>)
     : [];
   const status = str(d.status);
+  const signals = (isRecord(d.signals) ? d.signals : {}) as {
+    citations?: number;
+    handoff?: boolean;
+  };
+  const expectations = isRecord(d.expectations)
+    ? (d.expectations as { passed: boolean; results: Array<{ expect: string; found: boolean }> })
+    : undefined;
+  const answered = status === "answered";
   return {
     tool: TOOL,
     title: `Fin conversation${d.conversationId ? ` · ${String(d.conversationId)}` : ""}`,
-    status: input.ok ? "success" : "warning",
-    summary: status === "answered" ? "Fin answered." : "Fin did not reply within the poll limit.",
+    status: input.ok ? "success" : answered ? "error" : "warning",
+    summary: !answered
+      ? "Fin did not reply within the poll limit."
+      : expectations && !expectations.passed
+        ? "Fin answered, but an expectation failed."
+        : `Fin answered${d.procedureId ? ` (procedure ${String(d.procedureId)})` : ""}.`,
     chips: [
-      { label: status ?? "unknown", tone: input.ok ? "success" : "warning" },
+      { label: status ?? "unknown", tone: answered ? "success" : "warning" },
+      ...(expectations
+        ? [
+            {
+              label: `${expectations.results.filter((r) => r.found).length}/${expectations.results.length} expected`,
+              tone: expectations.passed ? ("success" as const) : ("error" as const),
+            },
+          ]
+        : []),
+      ...(signals.citations
+        ? [{ label: `📎 ${signals.citations} cited`, tone: "info" as const }]
+        : []),
+      ...(signals.handoff ? [{ label: "🙋 handed off", tone: "warning" as const }] : []),
       { label: "💲 billable", tone: "warning" },
     ],
-    sections: transcript.length
-      ? [
-          {
-            title: "Conversation",
-            icon: "💬",
-            rows: transcript.map((t) => ({
-              icon: t.role === "user" ? "👤" : "🤖",
-              label: t.role === "user" ? "User" : "Fin",
-              value: t.text,
-              tone: t.role === "user" ? ("muted" as const) : ("info" as const),
-            })),
-            collapsedLimit: 6,
-          },
-        ]
-      : [],
+    sections: [
+      ...(transcript.length
+        ? [
+            {
+              title: "Conversation",
+              icon: "💬",
+              rows: transcript.map((t) => ({
+                icon: t.role === "user" ? "👤" : "🤖",
+                label: t.role === "user" ? "User" : "Fin",
+                value: t.text,
+                tone: t.role === "user" ? ("muted" as const) : ("info" as const),
+              })),
+              collapsedLimit: 6,
+            },
+          ]
+        : []),
+      ...(expectations
+        ? [
+            {
+              title: "Expectations",
+              icon: "🧪",
+              rows: expectations.results.map((r) => ({
+                icon: r.found ? "✅" : "❌",
+                label: r.found ? "found" : "missing",
+                value: r.expect,
+                tone: r.found ? ("success" as const) : ("error" as const),
+              })),
+            },
+          ]
+        : []),
+    ],
+    next:
+      expectations && !expectations.passed
+        ? [
+            "Check the procedure's wording or the connector's data (sdk connector_logs), then run again.",
+          ]
+        : [],
+  };
+}
+
+// ─── Observe ───────────────────────────────────────────────────────────────
+
+function observeCard(input: CardInput): SfPiResultCard {
+  const d = input.details;
+  const involved = num(d.involved) ?? 0;
+  const owned = num(d.finUserOwned) ?? 0;
+  const rate = num(d.resolutionRate);
+  const recent = Array.isArray(d.recent)
+    ? (d.recent as Array<{
+        caseNumber: string;
+        status?: string;
+        resolution?: string;
+        origin?: string;
+        subject?: string;
+        ownedByFin?: boolean;
+      }>)
+    : [];
+  const byResolution = isRecord(d.byResolution) ? (d.byResolution as Record<string, number>) : {};
+  const resolutionIcon = (state?: string) =>
+    state === "Hard Resolution"
+      ? "✅"
+      : state === "Soft Resolution"
+        ? "🟢"
+        : state === "Routed to team"
+          ? "🙋"
+          : "•";
+  return {
+    tool: TOOL,
+    title: `Fin on Salesforce Cases${str(d.targetOrg) ? ` · ${str(d.targetOrg)}` : ""}`,
+    status: involved === 0 && owned === 0 ? "info" : "success",
+    summary:
+      involved === 0 && owned === 0
+        ? "No case has been worked by Fin yet."
+        : `${involved} Fin-involved case${involved === 1 ? "" : "s"}${rate !== undefined ? ` · ${Math.round(rate * 100)}% resolved` : ""} · ${owned} owned by Fin now.`,
+    chips: [
+      ...(rate !== undefined
+        ? [{ label: `${Math.round(rate * 100)}% resolved`, tone: "success" as const }]
+        : []),
+      ...(num(d.routed) ? [{ label: `🙋 ${num(d.routed)} routed`, tone: "warning" as const }] : []),
+    ],
+    scope: scope(d),
+    rails: [{ label: "API", items: [{ verb: "READ", target: "Case (Fin package fields)" }] }],
+    sections: [
+      ...(Object.keys(byResolution).length
+        ? [
+            {
+              title: "By resolution",
+              icon: "📊",
+              rows: Object.entries(byResolution)
+                .sort((a, b) => b[1] - a[1])
+                .map(([state, n]) => ({
+                  icon: resolutionIcon(state),
+                  label: String(n),
+                  value: state,
+                })),
+            },
+          ]
+        : []),
+      ...(recent.length
+        ? [
+            {
+              title: "Recent cases",
+              icon: "🗂️",
+              rows: recent.map((c) => ({
+                icon: resolutionIcon(c.resolution),
+                label: c.caseNumber,
+                value: `${c.status ?? "?"} · ${c.resolution ?? "no Fin state"}${c.ownedByFin ? " · owned by Fin" : ""}${c.subject ? ` · ${c.subject}` : ""}`,
+              })),
+              collapsedLimit: 5,
+            },
+          ]
+        : []),
+    ],
+    next:
+      involved === 0 && owned === 0
+        ? ["Assign one test case to the Fin user, then observe again."]
+        : [],
   };
 }
 

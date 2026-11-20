@@ -653,6 +653,9 @@ export function createFinService(deps: FinServiceDeps): FinService {
             conversationId: result.conversationId,
             status: result.status,
             turns: result.transcript.length,
+            signals: result.signals,
+            ...(result.expectations ? { expectations: result.expectations } : {}),
+            procedureId: request.run.procedureId,
             // Bounded per turn; the model text already carries the same turns.
             transcript: result.transcript.map((t) => ({
               role: t.role,

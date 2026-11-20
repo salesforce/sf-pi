@@ -49,6 +49,7 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 - Results `not_granted`, `wrong_key`, `auth_failed`, and `same_as_personal_token` each name the fix; relay it, and never retry with a different credential.
 - `operation='capabilities'` lists the procedures a test user can trigger. It creates no conversation.
 - `operation='run'` starts a real Fin conversation and returns the transcript and whether Fin answered (`answered` or `timed_out`). It takes `procedure_id` (or `message` to ask Fin) plus scripted `replies`. Asking is one-shot: one answer, with no follow-ups. A procedure run sends each scripted reply after each Fin turn. It is Guardrail-mediated, because a conversation Fin resolves is a billable outcome. The procedure must be live and available on the Fin Agent API channel with an API trigger.
+- Pass `expect=[…]` (up to 10 phrases) to make a run a test: each phrase must appear in Fin's replies (case-insensitive; the user's own words never count), and any miss fails the run even when Fin answered. The result also reports citations (`[n]` markers) and whether Fin handed off to a teammate.
 
 ## Fin for Salesforce (Salesforce side)
 
@@ -64,6 +65,7 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 
 - Every change plans without `allow_mutation` and executes with `allow_mutation=true`. SF Guardrail mediates each execute as `native-sf-fin-salesforce-setup`: exact and org-bound, never session-approved, and blocked on production or unknown orgs.
 - `connect` needs `/login sf-fin-browser`; on `signed_out` or `signin_expired`, ask the user to run it.
+- `operation='observe'` (read-only, never prompts) shows how Fin has worked Cases in the org: Fin-involved cases, resolved (Soft or Hard Resolution) and routed counts with a resolution rate, counts by origin, cases the Fin user owns now, and the most recent cases (no descriptions or email bodies). Use it after go-live, or after assigning a test case.
 - Case routing: when readiness reports no active Case Flow, build one with `sf_flow` (record-triggered, after-save, create, sets `OwnerId` to the Fin user found by username), activate it with `sf_flow`, then create one matching test case and run readiness again.
 - Email-to-Case stays guided: enabling it is one-way and Salesforce emails a verification link for each routing address. Not needed for Web-to-Case or manually created cases.
 - Fin Messenger live chat (BYOC) is out of scope; it needs Digital Engagement with Partner Messaging.
