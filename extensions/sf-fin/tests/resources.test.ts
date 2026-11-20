@@ -196,7 +196,7 @@ describe("uploadResource", () => {
       schemaPath: DC_SCHEMA,
     });
     expect(result.ok).toBe(true);
-    expect(result.text).toContain("publish the draft in the Intercom web UI");
+    expect(result.text).toContain("operation='connector_state' connector_id='77' state='live'");
     expect((run.mock.calls[0]?.[0] as string[]).slice(0, 3)).toEqual([
       "fin",
       "procedures",

@@ -22,7 +22,8 @@ import {
   type AdminSleep,
 } from "./admin.ts";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { parse as parseYaml } from "yaml";
 import { homedir } from "node:os";
 import path from "node:path";
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
@@ -99,6 +100,15 @@ import {
   uploadResource,
   validateResourceFile,
 } from "./sdk-resources.ts";
+import {
+  agentStatus,
+  deleteSimulation,
+  listAuthTokens,
+  readConnectorLogs,
+  referenceDir,
+  referenceIssues,
+  setConnectorState,
+} from "./sdk-workspace.ts";
 import { runFinCli } from "./cli-runner.ts";
 import {
   cliHelpRunner,
@@ -367,7 +377,10 @@ export function createFinService(deps: FinServiceDeps): FinService {
         };
       }
       if (request.operation === "validate") {
-        const result = validateProcedureFile(resolveFile(ctx.cwd, request.file), schemaPath);
+        const result = withReferenceIssues(
+          validateProcedureFile(resolveFile(ctx.cwd, request.file), schemaPath),
+          referenceDir(sdkDir),
+        );
         return {
           ok: result.ok,
           text: formatValidation(result),
@@ -393,6 +406,56 @@ export function createFinService(deps: FinServiceDeps): FinService {
             schemaPath: resourceSchemaPath(sdkDir, kind),
             note: request.note,
           },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "auth_tokens") {
+        return listAuthTokens(credential.credential, sdkDeps, ctx.signal);
+      }
+      if (request.operation === "connector_state") {
+        if (request.state !== "live" && request.state !== "draft") {
+          return {
+            ok: false,
+            text: "connector_state requires state='live' or state='draft'.",
+            details: { phase: "input" },
+          };
+        }
+        return setConnectorState(
+          credential.credential,
+          sdkDeps,
+          {
+            connectorId: request.connectorId ?? "",
+            target: request.state,
+            execute: request.execute === true,
+          },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "connector_logs") {
+        return readConnectorLogs(
+          credential.credential,
+          sdkDeps,
+          { connectorId: request.connectorId ?? "", sinceHours: request.sinceHours },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "simulations_delete") {
+        return deleteSimulation(
+          credential.credential,
+          sdkDeps,
+          {
+            procedureId: request.procedureId ?? "",
+            testId: request.testId ?? "",
+            execute: request.execute === true,
+          },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "agent_status") {
+        return agentStatus(
+          credential.credential,
+          sdkDeps,
+          { procedureId: request.procedureId ?? "" },
           ctx.signal,
         );
       }
@@ -455,7 +518,7 @@ export function createFinService(deps: FinServiceDeps): FinService {
           ctx.signal,
         );
       }
-      if (!request.procedureId) {
+      if (request.operation !== "simulate" || !request.procedureId) {
         return {
           ok: false,
           text: "simulate requires procedure_id (from the upload result).",
@@ -888,7 +951,21 @@ export type ProcedureRequest =
       execute?: boolean;
     }
   | { operation: "publish"; procedureId?: string; execute?: boolean; note?: string }
-  | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string };
+  | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string }
+  | {
+      operation:
+        | "auth_tokens"
+        | "connector_state"
+        | "connector_logs"
+        | "simulations_delete"
+        | "agent_status";
+      connectorId?: string;
+      procedureId?: string;
+      testId?: string;
+      state?: string;
+      sinceHours?: number;
+      execute?: boolean;
+    };
 
 export interface SalesforceRequest {
   operation: SalesforceOperation;
@@ -969,6 +1046,25 @@ async function probeMcpIdentity(
   } catch {
     return { state: "not_configured" };
   }
+}
+
+/**
+ * Add `<use action>` / `<escalate to>` names the workspace does not have (from
+ * the downloaded `.fin/` rosters). Fin rejects such a save, so they are issues.
+ */
+function withReferenceIssues(
+  result: ReturnType<typeof validateProcedureFile>,
+  finDir: string,
+): ReturnType<typeof validateProcedureFile> {
+  if (!result.ok) return result;
+  let doc: unknown;
+  try {
+    doc = parseYaml(readFileSync(result.file, "utf8"));
+  } catch {
+    return result;
+  }
+  const issues = referenceIssues(doc, finDir);
+  return issues.length ? { ...result, ok: false, issues: [...result.issues, ...issues] } : result;
 }
 
 function resolveFile(cwd: string, file: string | undefined): string {

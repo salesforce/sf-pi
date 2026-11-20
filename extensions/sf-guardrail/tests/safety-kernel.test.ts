@@ -863,6 +863,69 @@ describe("Safety Kernel", () => {
     }
   });
 
+  it("mediates sf_fin connector_state and simulations_delete as exact Fin state changes; reads stay prompt-free", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-ws-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      writeFinSdkState({ state: "enabled", appId: "example" });
+      const evaluate = (input: Record<string, unknown>) =>
+        evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+      const live = await evaluate({
+        action: "sdk",
+        operation: "connector_state",
+        connector_id: "77",
+        state: "live",
+        allow_mutation: true,
+      });
+      const draft = await evaluate({
+        action: "sdk",
+        operation: "connector_state",
+        connector_id: "77",
+        state: "draft",
+        allow_mutation: true,
+      });
+      const del = await evaluate({
+        action: "sdk",
+        operation: "simulations_delete",
+        procedure_id: "4242",
+        test_id: "9",
+        allow_mutation: true,
+      });
+      for (const decision of [live, draft, del]) {
+        expect(decision).toMatchObject({
+          action: "confirm",
+          ruleId: "native-sf-fin-procedure-state",
+          approvalScope: { operationFamily: "fin procedure state", allowSession: false },
+        });
+        expect(
+          shouldPowerToolAutoApprove(decision!, { mode: "native", nativeFamilies: ["fin"] }),
+        ).toBe(true);
+      }
+      expect(live?.approvalScope?.fingerprint).not.toBe(draft?.approvalScope?.fingerprint);
+      for (const operation of ["connector_state", "simulations_delete"]) {
+        expect(
+          await evaluate({
+            action: "sdk",
+            operation,
+            connector_id: "77",
+            procedure_id: "1",
+            test_id: "2",
+          }),
+        ).toBeUndefined();
+      }
+      for (const operation of ["auth_tokens", "connector_logs", "agent_status"]) {
+        expect(
+          await evaluate({ action: "sdk", operation, connector_id: "77", procedure_id: "1" }),
+        ).toBeUndefined();
+      }
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
   it("mediates sf_fin publish/pause as exact, never session-approved; planning stays prompt-free", async () => {
     const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-state-"));
     const previous = process.env.PI_CODING_AGENT_DIR;

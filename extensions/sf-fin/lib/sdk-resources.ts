@@ -68,7 +68,7 @@ export function dataConnectorRuleIssues(record: Record<string, unknown>): Valida
     issues.push({
       path: "/state",
       message:
-        "Remove `state`. Data connectors upload as drafts; publish them in the Intercom web UI.",
+        "Remove `state`. Data connectors upload as drafts; set one live with sdk operation='connector_state'.",
     });
   }
   if (typeof record.id !== "number") {
@@ -256,7 +256,7 @@ export async function uploadResource(
           : `✅ Uploaded data connector "${label}" (${id}) as a draft.`,
         input.kind === "guidance"
           ? `To make it live: sf_fin action='sdk' operation='guidance_state' guidance_id='${id}' state='live' (plan first; SF Guardrail mediates execution). Set \`id: ${id}\` in the file before editing again.`
-          : "Fin saved it as an unpublished draft. `data-connectors get` keeps showing the published version until you publish the draft in the Intercom web UI (Settings → Data connectors); drafts are not available to Fin.",
+          : `Fin saved it as an unpublished draft; drafts are not available to Fin. Set it live with sdk operation='connector_state' connector_id='${id}' state='live' (plans first; SF Guardrail mediates execution).`,
         ensured.enabledNow ? `🔓 ${ensured.message}` : undefined,
       ]
         .filter(Boolean)

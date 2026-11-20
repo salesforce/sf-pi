@@ -631,7 +631,7 @@
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11811
+    "srcLoc": 12698
   },
   {
     "id": "sf-flow",
@@ -757,7 +757,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 7038
+    "srcLoc": 7099
   },
   {
     "id": "sf-herdr",

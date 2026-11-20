@@ -51,6 +51,11 @@ const Params = Type.Object({
         "pause",
         "create_data_connector",
         "guidance_state",
+        "auth_tokens",
+        "connector_state",
+        "connector_logs",
+        "simulations_delete",
+        "agent_status",
         "access",
         "capabilities",
         "run",
@@ -72,7 +77,7 @@ const Params = Type.Object({
       ] as const,
       {
         description:
-          "salesforce only: readiness (read-only checklist: package, Fin Case fields, audit-field setting, Digital Experiences / FeedItem.Visibility, permission sets, Fin user, integration user, Fin OAuth connection), package_install (install the exact Fin for Salesforce package_version for all users), audit_fields_enable (deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true), digital_experiences_enable (deploy CommunitiesSettings with only enableNetworksEnabled=true so FeedItem.Visibility exists; one-way), enhanced_email_enable (deploy EmailAdministrationSettings with only enableEnhancedEmailEnabled=true; org-wide), permissions_apply (deploy the Fin access permission set, create the dedicated Fin user with Service Cloud User, assign both permission sets to the Fin user and the integration user), connect (run Fin's Connect flow in the shared browser: approve Fin for Salesforce as the CLI user, pick the Fin user, verify the OAuth token). Each change plans first and executes with allow_mutation=true. sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (tests the draft by default; live=true tests the live version). publish / pause: publish a procedure's draft (draft, paused, or live with unpublished changes) or pause a live one; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
+          "salesforce only: readiness (read-only checklist: package, Fin Case fields, audit-field setting, Digital Experiences / FeedItem.Visibility, permission sets, Fin user, integration user, Fin OAuth connection), package_install (install the exact Fin for Salesforce package_version for all users), audit_fields_enable (deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true), digital_experiences_enable (deploy CommunitiesSettings with only enableNetworksEnabled=true so FeedItem.Visibility exists; one-way), enhanced_email_enable (deploy EmailAdministrationSettings with only enableEnhancedEmailEnabled=true; org-wide), permissions_apply (deploy the Fin access permission set, create the dedicated Fin user with Service Cloud User, assign both permission sets to the Fin user and the integration user), connect (run Fin's Connect flow in the shared browser: approve Fin for Salesforce as the CLI user, pick the Fin user, verify the OAuth token). Each change plans first and executes with allow_mutation=true. sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (tests the draft by default; live=true tests the live version). publish / pause: publish a procedure's draft (draft, paused, or live with unpublished changes) or pause a live one; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). auth_tokens: list auth token metadata and which connectors use each (never secret values). connector_state: set connector_id live or draft through the public API (plans by default; allow_mutation=true executes; verified). connector_logs: recent runs of connector_id without bodies. simulations_delete: delete exactly one simulation (procedure_id, test_id; plans by default). agent_status: one procedure's chain (state, channels, connectors and tokens, simulations) and the next step. agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
       },
     ),
   ),
@@ -134,9 +139,20 @@ const Params = Type.Object({
   guidance_id: Type.Optional(
     Type.String({ description: "sdk guidance_state: numeric Fin guidance id." }),
   ),
+  connector_id: Type.Optional(
+    Type.String({ description: "sdk connector_state/connector_logs: numeric data connector id." }),
+  ),
+  test_id: Type.Optional(
+    Type.String({ description: "sdk simulations_delete: numeric simulation test id." }),
+  ),
+  since_hours: Type.Optional(
+    Type.Number({
+      description: "sdk connector_logs: look-back window in hours (1–720). Default 24.",
+    }),
+  ),
   state: Type.Optional(
-    StringEnum(["live", "paused"] as const, {
-      description: "sdk guidance_state: target state.",
+    StringEnum(["live", "paused", "draft"] as const, {
+      description: "sdk guidance_state: live or paused. sdk connector_state: live or draft.",
     }),
   ),
   message: Type.Optional(
@@ -232,6 +248,11 @@ type Params = {
     | "pause"
     | "create_data_connector"
     | "guidance_state"
+    | "auth_tokens"
+    | "connector_state"
+    | "connector_logs"
+    | "simulations_delete"
+    | "agent_status"
     | "access"
     | "capabilities"
     | "run"
@@ -262,6 +283,9 @@ type Params = {
   file?: string;
   name?: string;
   guidance_id?: string;
+  connector_id?: string;
+  test_id?: string;
+  since_hours?: number;
   state?: "live" | "paused";
   message?: string;
   replies?: string[];
@@ -303,7 +327,8 @@ export function registerSfFinTool(
       "Use sf_fin action='debug' for a redacted support bundle; arm verbose='on' only when a doctor failure needs the CLI's HTTP trace.",
       "Use sf_fin action='sdk' operation='manifest' or 'download' for Fin-as-code reads; SF Fin enables the Fin SDK on first use (Guardrail-mediated) and never runs `intercom fin …` through bash.",
       "For a procedure, run sf_fin sdk operation='validate' file=…, then operation='upload' (unpublished draft, round-trip verified), then operation='simulate' procedure_id=… (tests the draft, nothing goes live); uploads never set state, and publishing is separate.",
-      "Guidance and data connectors use the same sdk validate/upload (by file `type`); guidance uploads paused and goes live only through sdk operation='guidance_state' (plan, then allow_mutation=true); data connectors upload as drafts and are published in the Intercom UI.",
+      "Guidance and data connectors use the same sdk validate/upload (by file `type`); guidance uploads paused and goes live only through sdk operation='guidance_state' (plan, then allow_mutation=true); data connectors upload as drafts and go live through sdk operation='connector_state' state='live' (plan, then allow_mutation=true).",
+      "Use sf_fin sdk operation='agent_status' procedure_id=… to see one agent's whole chain and its next step; auth_tokens and connector_logs are read-only.",
       "Use sf_fin action='surfaces' to decide between the Fin CLI, the Intercom MCP, and the Fin Agent API for a capability.",
       "Use sf_fin action='admin' for Fin admin web pages: operation='pages' lists verified pages, 'open'/'read' take page=<id> and verify the browser is on the workspace's own app. Sign-in is human-only and saved by Pi: on signed_out, signin_expired, or signin_rejected, ask the user to run /login sf-fin-browser (named workspaces: sf-fin-browser-<name>). Never ask for a Fin password or verification code, and never try to reveal or copy a key; the human copies keys into the masked /login prompt.",
       "Use sf_fin action='agent' operation='access' before Fin Agent API runs; never ask for the Fin Agent API key in chat (use /login sf-fin-agent). Runs Fin resolves are billable outcomes.",
@@ -495,6 +520,34 @@ export function registerSfFinTool(
         return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "agent", operation, ok: result.ok, ...result.details },
+          ...(result.ok ? {} : { isError: true }),
+        });
+      }
+
+      if (
+        input.action === "sdk" &&
+        (input.operation === "auth_tokens" ||
+          input.operation === "connector_state" ||
+          input.operation === "connector_logs" ||
+          input.operation === "simulations_delete" ||
+          input.operation === "agent_status")
+      ) {
+        const result = await service.procedure(
+          ctx,
+          {
+            operation: input.operation,
+            connectorId: input.connector_id,
+            procedureId: input.procedure_id,
+            testId: input.test_id,
+            state: input.state,
+            sinceHours: input.since_hours,
+            execute: input.allow_mutation === true,
+          },
+          workspace,
+        );
+        return done({
+          content: [{ type: "text", text: result.text }],
+          details: { action: "sdk", operation: input.operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
         });
       }

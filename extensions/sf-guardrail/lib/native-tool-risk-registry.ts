@@ -47,6 +47,7 @@ export function classifyNativeToolRisk(
       input,
       classifySfFinProcedureState(toolName, input) ??
         classifySfFinGuidanceState(toolName, input) ??
+        classifySfFinWorkspaceState(toolName, input) ??
         classifySfFinAgentRun(toolName, input) ??
         classifySfFinProcedureWrite(toolName, input) ??
         classifySfFinSdkEnable(toolName, input),
@@ -484,6 +485,67 @@ function classifySfFinProcedureState(
     approvalDetail: `procedure=${procedureId}; state→${target}`,
     allowSession: false,
   };
+}
+
+/**
+ * `sf_fin sdk connector_state` sets a data connector live or draft through the
+ * public data connectors API (a live connector is callable from live
+ * procedures and workflows), and `sdk simulations_delete` removes exactly one
+ * simulation. Both are exact approvals with no session grant; planning and
+ * the read operations (auth_tokens, connector_logs, agent_status) stay
+ * prompt-free.
+ */
+function classifySfFinWorkspaceState(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "sdk" || input.allow_mutation !== true) {
+    return undefined;
+  }
+  const operation = stringValue(input.operation);
+  if (operation === "connector_state") {
+    const connectorId = stringValue(input.connector_id) ?? "unspecified connector";
+    const target = stringValue(input.state) ?? "unspecified";
+    return {
+      kind: "nativeTool",
+      toolName,
+      action: "sdk.connector_state",
+      ruleId: "native-sf-fin-procedure-state",
+      subject: `sf_fin sdk connector_state ${connectorId} ${target}`,
+      reason:
+        target === "live"
+          ? `Set Fin data connector ${connectorId} live: live procedures and workflows can call it immediately.`
+          : `Set Fin data connector ${connectorId} to ${target}: Fin stops calling it.`,
+      promptTitle:
+        target === "live" ? "⚠ Set Fin data connector live" : "⚠ Take Fin data connector offline",
+      operationFamily: "fin procedure state",
+      riskTier: "fin_procedure_state_exact",
+      fingerprint: `sf_fin|sdk-connector_state|${fingerprintText(JSON.stringify({ connectorId, target }))}`,
+      approvalLabel: `connector ${connectorId} → ${target}`,
+      approvalDetail: `connector=${connectorId}; state→${target}`,
+      allowSession: false,
+    };
+  }
+  if (operation === "simulations_delete") {
+    const procedureId = stringValue(input.procedure_id) ?? "unspecified procedure";
+    const testId = stringValue(input.test_id) ?? "unspecified test";
+    return {
+      kind: "nativeTool",
+      toolName,
+      action: "sdk.simulations_delete",
+      ruleId: "native-sf-fin-procedure-state",
+      subject: `sf_fin sdk simulations_delete ${procedureId} ${testId}`,
+      reason: `Delete simulation ${testId} from Fin procedure ${procedureId}. It cannot be undone; re-upload the test to recreate it.`,
+      promptTitle: "⚠ Delete Fin simulation",
+      operationFamily: "fin procedure state",
+      riskTier: "fin_procedure_state_exact",
+      fingerprint: `sf_fin|sdk-simulations_delete|${fingerprintText(JSON.stringify({ procedureId, testId }))}`,
+      approvalLabel: `delete simulation ${testId} of ${procedureId}`,
+      approvalDetail: `procedure=${procedureId}; test=${testId}`,
+      allowSession: false,
+    };
+  }
+  return undefined;
 }
 
 /**

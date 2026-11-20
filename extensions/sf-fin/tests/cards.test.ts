@@ -300,3 +300,76 @@ describe("no-op results", () => {
     expect(card.summary).not.toMatch(/^✅/u);
   });
 });
+
+describe("Fin-as-code depth cards", () => {
+  it("renders an agent's chain with connector state and tokens, and the next step", () => {
+    const card = buildFinCard({
+      text: "Agent: …",
+      ok: true,
+      details: {
+        action: "sdk",
+        operation: "agent_status",
+        phase: "status",
+        procedure: { id: "4242", name: "Order status", state: "paused", unpublished: true },
+        channels: ["fin_agent_api"],
+        connectors: [{ id: "77", name: "Find order", state: "live", tokens: ["Example OAuth"] }],
+        simulations: 4,
+        next: "run sdk simulate procedure_id='4242'",
+      },
+    });
+    const chain = card.sections?.find((s) => s.title === "Chain");
+    expect(chain?.rows.map((r) => r.label)).toEqual(["channels", "procedure", "connector"]);
+    expect(chain?.rows[2]?.value).toContain("🔑 Example OAuth");
+    expect(card.next?.[0]).toContain("simulate");
+    expect(card.status).toBe("success");
+  });
+
+  it("shows a connector_state plan as reversible with the exact Guardrail rule", () => {
+    const card = buildFinCard({
+      text: "Plan: set data connector \"Find order\" (77) draft → live through the public data connectors API.\nTo proceed, call sf_fin action='sdk' operation='connector_state' connector_id='77' state='live' allow_mutation=true (SF Guardrail mediates it).",
+      ok: true,
+      details: { action: "sdk", operation: "connector_state", phase: "plan" },
+    });
+    expect(card.chips?.map((c) => c.label)).toEqual(
+      expect.arrayContaining(["↩ reversible", "🔒 native-sf-fin-procedure-state"]),
+    );
+    expect(card.next?.[0]).toContain("allow_mutation=true");
+  });
+
+  it("lists auth tokens with usage and connector runs with failures", () => {
+    const tokens = buildFinCard({
+      text: "x",
+      ok: true,
+      details: {
+        action: "sdk",
+        operation: "auth_tokens",
+        tokens: [{ id: "11", name: "Example OAuth", type: "oauth", connectors: ["Lookup (77)"] }],
+      },
+    });
+    expect(tokens.sections?.[0]?.rows[0]?.value).toContain("used by Lookup (77)");
+    const logs = buildFinCard({
+      text: "x",
+      ok: true,
+      details: {
+        action: "sdk",
+        operation: "connector_logs",
+        connectorId: "77",
+        hours: 24,
+        failed: 1,
+        runs: [
+          { success: true, status: 200, ms: 100, source: "fin 4242", at: "t1" },
+          {
+            success: false,
+            status: 500,
+            ms: 80,
+            source: "fin 4242",
+            at: "t2",
+            error: "http_error",
+          },
+        ],
+      },
+    });
+    expect(logs.status).toBe("warning");
+    expect(logs.chips?.map((c) => c.label)).toEqual(["1 ok", "1 failed"]);
+  });
+});
