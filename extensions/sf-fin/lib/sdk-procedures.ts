@@ -747,6 +747,8 @@ export async function simulateProcedure(
       total: runs.length,
       procedureState: state.state,
       tested,
+      // Per-run results (names, status, failed assertions) for the card and the model.
+      runs,
     },
   };
 }

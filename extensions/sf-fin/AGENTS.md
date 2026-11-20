@@ -33,6 +33,7 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 | Salesforce readiness, install, audit fields, Digital Experiences, permissions, connect | `lib/salesforce/setup.ts`                         |
 | Fin Connect browser runbook and its agent-browser adapter                              | `lib/salesforce/connect.ts`, `connect-browser.ts` |
 | One `sf_fin` family tool                                                               | `lib/sf_fin-tool.ts`                              |
+| Result Cards (human) and bounded model packets (LLM)                                   | `lib/cards.ts`, `lib/render.ts`                   |
 | Cache-first status file and text                                                       | `lib/status.ts`                                   |
 | Command metadata/help                                                                  | `lib/command-surface.ts`                          |
 | Shared constants/types                                                                 | `lib/types.ts`                                    |
@@ -50,6 +51,7 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 9. **Verbose traces are one-shot artifacts.** Arming is bounded (1–5 runs) and self-disarming; traces are `0600` files with retention; only paths reach the model.
 10. **Public-safe.** Tests and docs use synthetic workspace ids, names, emails, and token sentinels only.
 11. **Salesforce setup is explicit and verified.** `sf_fin action='salesforce'` requires an explicit `target_org`, reaches Salesforce only through `lib/common/sf-conn`, and loads it lazily. Executes (`allow_mutation=true`) are classified `native-sf-fin-salesforce-setup` (exact, org-bound, never session-approved, blocked on production or unknown). Never hardcode a package version id; refuse packages outside the `finai` namespace; change no org-wide setting except the single `enableAuditFieldsInactiveOwner` field (`audit_fields_enable`) and the single one-way `enableNetworksEnabled` field (`digital_experiences_enable`, whose plan states it is one-way); `connect` approves only the Fin for Salesforce app on the target org's own My Domain for the CLI user and opens OAuth/frontdoor URLs only through the browser's stdin channel; re-read org state after every execute and report only the verified result.
+12. **Cards for people, packets for the model.** Every `sf_fin` result leaves through `finish()` in `lib/sf_fin-tool.ts`: `details.card` is an `SfPiResultCard` built from structured details (never by parsing secrets or URLs), and `content` is the model packet bounded by `MODEL_PACKET_MAX_CHARS` with session-bearing URLs removed. Plans and executes show the Guardrail rule and reversibility. Long operations stream `details.progress`.
 
 ## Testing
 
@@ -58,6 +60,7 @@ SF Fin owns the Fin (formerly Intercom) workspace credential, Fin CLI install li
 - Doctor: `tests/doctor.test.ts` (injected exec/registry/runner).
 - Install: `tests/install.test.ts` (plan states, exact args, EACCES, release-age policy, npm-global detection).
 - Debug: `tests/debug.test.ts` (scrubbing, artifacts, arming, bundle redaction).
+- Result Cards and model packets: `tests/cards.test.ts`.
 - Salesforce setup: `tests/salesforce-setup.test.ts` (contract, readiness, plan/execute, refusals, verified results against an in-memory org).
 - Fin Connect runbook: `tests/salesforce-connect.test.ts` (scripted fake Fin + Salesforce: host, app, and user checks; secret URLs only on the secret channel).
 - Salesforce adapter: `tests/salesforce-org.test.ts` (package install completes from Installed Packages when the install request is unreadable).
