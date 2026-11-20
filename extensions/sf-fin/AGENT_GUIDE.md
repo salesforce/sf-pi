@@ -33,7 +33,11 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 
 - Guidance (`type: guidance`) and data connectors (`type: data_connector`) use the same `operation='validate'` / `operation='upload'`; SF Fin routes by the file's `type` and validates against the workspace `guidance.json` / `data-connector.json`.
 - Guidance has no draft state, and live guidance changes every answer at once. Upload always saves it **paused**. To make it live, call `operation='guidance_state' guidance_id=… state='live'` for the plan, ask the user, then repeat with `allow_mutation=true`.
-- Data connectors: first `operation='create_data_connector' name=…` to get a numeric id. Then write the JSON with that `id`, an `https://` request URL, only the inputs the request uses (`<read attr='…' />`), and a `mock_response`, and upload it. It saves as a draft. Publishing is done by the user in the Intercom web UI.
+- Data connectors: first `operation='create_data_connector' name=…` to get a numeric id. Then write the JSON with that `id`, an `https://` request URL, only the inputs the request uses (`<read attr='…' />`), and a `mock_response`, and upload it. It saves as a draft. Check its token with `operation='auth_tokens'` (metadata only), then set it live with `operation='connector_state' connector_id=… state='live'`: it plans first; ask the user, then repeat with `allow_mutation=true`. A connector with no request URL is refused.
+- `operation='agent_status' procedure_id=…` shows one agent's chain: procedure state and channels, each `<use action>` connector with its state and auth token, simulation count, and the next step.
+- `operation='connector_logs' connector_id=…` (optional `since_hours`) lists recent runs without bodies; use it when a procedure step or simulation fails on a connector.
+- `operation='simulations_delete' procedure_id=… test_id=…` deletes exactly one simulation (plan first; it cannot be undone).
+- `validate` also checks `<use action="…">` against live connectors and `<escalate to="…">` against teams and teammates from the downloaded `.fin/` rosters, because Fin rejects a save that names one that does not exist.
 
 ### Choosing a surface
 
@@ -95,5 +99,5 @@ Install plan outcomes:
 - Do not run the Fin CLI or `npm install -g @intercom/cli` directly through `bash`. Use `sf_fin`, which keeps the token out of argv and the user's own CLI config, pins exact versions, and routes installs through SF Guardrail.
 - `allow_mutation=true` states intent; it is not approval. Never claim an install was approved unless the tool result shows it ran.
 - `sf_fin action='admin'` never changes Fin; it navigates and reads masked page text.
-- In Fin, `sf_fin` changes only Fin-as-code resources: procedure drafts, simulations, publish/pause, paused guidance and its state, draft data connectors, and Fin Agent API test conversations. It changes no other workspace configuration, and never publishes a data connector.
+- In Fin, `sf_fin` changes only Fin-as-code resources: procedure drafts, simulations, publish/pause, paused guidance and its state, data connectors (draft upload and connector state), and Fin Agent API test conversations. It changes no other workspace configuration.
 - In Salesforce, `sf_fin action='salesforce'` changes only the target org's Fin for Salesforce package, the one `enableAuditFieldsInactiveOwner` security setting, the one `enableNetworksEnabled` communities setting, the `SF_Fin_Salesforce_Access` permission set, the dedicated Fin user, the two Fin permission set assignments (Fin user and integration user), and, through `connect`, Fin's OAuth connection and Salesforce user choice.

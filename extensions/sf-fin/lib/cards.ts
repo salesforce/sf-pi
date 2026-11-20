@@ -69,7 +69,11 @@ export function buildFinCard(input: CardInput): SfPiResultCard {
   if (phase === "plan") return planCard(input);
   if (phase === "noop") return noopCard(input);
   if (
-    (action === "salesforce" || operation === "publish" || operation === "pause") &&
+    (action === "salesforce" ||
+      operation === "publish" ||
+      operation === "pause" ||
+      operation === "connector_state" ||
+      operation === "simulations_delete") &&
     phase === "execute"
   ) {
     return executeCard(input);
@@ -79,6 +83,15 @@ export function buildFinCard(input: CardInput): SfPiResultCard {
     return procedureCard(input);
   }
   if (action === "agent" && operation === "run") return conversationCard(input);
+  if (action === "sdk" && operation === "agent_status" && isRecord(d.procedure)) {
+    return agentStatusCard(input);
+  }
+  if (action === "sdk" && operation === "auth_tokens" && Array.isArray(d.tokens)) {
+    return authTokensCard(input);
+  }
+  if (action === "sdk" && operation === "connector_logs" && Array.isArray(d.runs)) {
+    return connectorLogsCard(input);
+  }
   if (action === "sdk" && operation === "manifest" && isRecord(d.summary)) {
     return manifestCard(input);
   }
@@ -199,6 +212,8 @@ const MUTATIONS: Record<
   audit_fields_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "org-wide" },
   digital_experiences_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "one-way" },
   enhanced_email_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "org-wide" },
+  connector_state: { rule: "native-sf-fin-procedure-state", reversible: "reversible" },
+  simulations_delete: { rule: "native-sf-fin-procedure-state", reversible: "one-way" },
   permissions_apply: { rule: "native-sf-fin-salesforce-setup", reversible: "reversible" },
   connect: { rule: "native-sf-fin-salesforce-setup", reversible: "reversible" },
   publish: { rule: "native-sf-fin-procedure-state", reversible: "reversible" },
@@ -453,6 +468,127 @@ function conversationCard(input: CardInput): SfPiResultCard {
               tone: t.role === "user" ? ("muted" as const) : ("info" as const),
             })),
             collapsedLimit: 6,
+          },
+        ]
+      : [],
+  };
+}
+
+// ─── Agent status, auth tokens, connector logs ─────────────────────────────
+
+function agentStatusCard(input: CardInput): SfPiResultCard {
+  const d = input.details;
+  const p = d.procedure as { id: string; name: string; state: string; unpublished?: boolean };
+  const channels = Array.isArray(d.channels) ? (d.channels as string[]) : [];
+  const connectors = Array.isArray(d.connectors)
+    ? (d.connectors as Array<{ id?: string; name: string; state: string; tokens: string[] }>)
+    : [];
+  const sims = num(d.simulations);
+  const stateIcon = (state: string) =>
+    state === "live" ? "🟢" : state === "draft" ? "🟡" : state === "paused" ? "⏸️" : "❌";
+  const allLive = connectors.every((c) => c.state === "live");
+  return {
+    tool: TOOL,
+    title: `Fin agent · ${p.name}`,
+    status: allLive && (sims ?? 0) > 0 ? "success" : "warning",
+    summary: `Procedure ${p.id} is ${p.state}${p.unpublished ? " with an unpublished draft" : ""}.`,
+    chips: [
+      { label: p.state, tone: p.state === "live" ? "warning" : "info" },
+      ...(p.unpublished ? [{ label: "draft changes", tone: "info" as const }] : []),
+      {
+        label: `${sims ?? "?"} simulation${sims === 1 ? "" : "s"}`,
+        tone: sims ? "success" : "warning",
+      },
+    ],
+    sections: [
+      {
+        title: "Chain",
+        icon: "🔗",
+        rows: [
+          {
+            icon: "📣",
+            label: "channels",
+            value: channels.length ? channels.join(", ") : "all channels",
+          },
+          {
+            icon: stateIcon(p.state),
+            label: "procedure",
+            value: `${p.name} (${p.id}) · ${p.state}`,
+          },
+          ...connectors.map((c) => ({
+            icon: stateIcon(c.state),
+            label: "connector",
+            value: `${c.name}${c.id ? ` (${c.id})` : ""} · ${c.state}${c.tokens.length ? ` · 🔑 ${c.tokens.join(", ")}` : c.state === "missing" ? "" : " · no auth token"}`,
+            tone: c.state === "live" ? ("success" as const) : ("warning" as const),
+          })),
+        ],
+        collapsedLimit: 8,
+      },
+    ],
+    next: str(d.next) ? [str(d.next) as string] : [],
+  };
+}
+
+function authTokensCard(input: CardInput): SfPiResultCard {
+  const tokens = input.details.tokens as Array<{
+    id: string;
+    name: string;
+    type?: string;
+    connectors: string[];
+  }>;
+  return {
+    tool: TOOL,
+    title: "Fin auth tokens",
+    status: "info",
+    summary: `${tokens.length} token${tokens.length === 1 ? "" : "s"}; secret values are never read.`,
+    rails: [
+      { label: "API", items: [{ verb: "READ", target: "auth-tokens list (metadata only)" }] },
+    ],
+    sections: [
+      {
+        title: "Tokens",
+        icon: "🔑",
+        rows: tokens.map((t) => ({
+          label: t.id,
+          value: `${t.name}${t.type ? ` · ${t.type}` : ""} · ${t.connectors.length ? `used by ${t.connectors.join(", ")}` : "unused"}`,
+        })),
+      },
+    ],
+  };
+}
+
+function connectorLogsCard(input: CardInput): SfPiResultCard {
+  const d = input.details;
+  const runs = d.runs as Array<{
+    success: boolean;
+    status?: number;
+    error?: string;
+    ms?: number;
+    source?: string;
+    at?: string;
+  }>;
+  const failed = num(d.failed) ?? runs.filter((r) => !r.success).length;
+  return {
+    tool: TOOL,
+    title: `Connector runs · ${String(d.connectorId ?? "")}`,
+    status: failed > 0 ? "warning" : "success",
+    summary: `${runs.length} run${runs.length === 1 ? "" : "s"} in the last ${String(d.hours ?? 24)}h, ${failed} failed. Bodies are not read.`,
+    chips: [
+      { label: `${runs.length - failed} ok`, tone: "success" },
+      ...(failed ? [{ label: `${failed} failed`, tone: "error" as const }] : []),
+    ],
+    sections: runs.length
+      ? [
+          {
+            title: "Recent runs",
+            icon: "🧾",
+            rows: runs.slice(0, 20).map((r) => ({
+              icon: r.success ? "✅" : "❌",
+              label: String(r.status ?? "?"),
+              value: `${r.at ?? "?"} · ${r.ms ?? "?"}ms · ${r.source || "unknown"}${r.error ? ` · ${r.error}` : ""}`,
+              tone: r.success ? ("success" as const) : ("error" as const),
+            })),
+            collapsedLimit: 5,
           },
         ]
       : [],

@@ -42,6 +42,9 @@ For Fin as code, SF Fin authors and tests procedures (validation, draft upload, 
 | `/sf-fin sdk publish <id>`                          | Set a procedure live after confirmation                                        |
 | `/sf-fin sdk pause <id>`                            | Take a live procedure offline after confirmation                               |
 | `/sf-fin sdk create_data_connector <name>`          | Create a named draft data connector                                            |
+| `/sf-fin sdk agent_status <procedure_id>`           | One agent's chain: procedure, connectors and tokens, simulations, next step    |
+| `/sf-fin sdk auth_tokens`                           | Auth token metadata and which connectors use each (never secret values)        |
+| `/sf-fin sdk connector_logs <connector_id>`         | Recent data connector runs, without request or response bodies                 |
 | `/sf-fin sdk guidance_state <id> live\|paused`      | Set guidance live or paused after confirmation                                 |
 | `/sf-fin surfaces`                                  | Compare Fin CLI, Intercom MCP, and Fin Agent API                               |
 | `/sf-fin agent`                                     | Check Fin Agent API access                                                     |
@@ -214,8 +217,9 @@ app. It refuses if it lands somewhere else.
 - Guidance uploads are always saved `paused`, because live guidance changes
   every answer at once. `sdk guidance_state` plans by default; executing it is
   an exact SF Guardrail mutation that is never session-approved. Data
-  connectors upload only as drafts, and publishing them stays in the Intercom
-  web UI.
+  connectors upload as drafts; `sdk connector_state` sets one live or back to
+  draft through the public data connectors API (an exact SF Guardrail
+  approval, never session-approved) and verifies the result.
 - The Fin Agent API key is a separate Pi credential (`sf-fin-agent`). Pi alone
   persists it, in `~/.pi/agent/auth.json` (owner-only), and SF Fin writes no
   second copy.
