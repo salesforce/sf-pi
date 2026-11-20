@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.358.0](https://github.com/salesforce/sf-pi/compare/v0.357.1...v0.358.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** adopt Fin CLI 0.16 — draft simulations, draft publish, full surface map ([#938](https://github.com/salesforce/sf-pi/issues/938)) ([7be10d9](https://github.com/salesforce/sf-pi/commit/7be10d9ef0c3383524d2f7b45063f5a6f409d531))
+
 ## [0.357.1](https://github.com/salesforce/sf-pi/compare/v0.357.0...v0.357.1) (2026-11-20)
 
 
