@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.359.0](https://github.com/salesforce/sf-pi/compare/v0.358.0...v0.359.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** Result Cards for every sf_fin call, with live progress ([#940](https://github.com/salesforce/sf-pi/issues/940)) ([7bc68bb](https://github.com/salesforce/sf-pi/commit/7bc68bb5fbe48917cf9a9257dbb9abf3b17cbf94))
+
 ## [0.358.0](https://github.com/salesforce/sf-pi/compare/v0.357.1...v0.358.0) (2026-11-20)
 
 
