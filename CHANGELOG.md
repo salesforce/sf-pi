@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.361.0](https://github.com/salesforce/sf-pi/compare/v0.360.0...v0.361.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** connector lifecycle, auth tokens, agent status, and reference checks ([#945](https://github.com/salesforce/sf-pi/issues/945)) ([06a583e](https://github.com/salesforce/sf-pi/commit/06a583ea7271012d36d9507dbb0b67bf7e2190d9))
+
 ## [0.360.0](https://github.com/salesforce/sf-pi/compare/v0.359.0...v0.360.0) (2026-11-20)
 
 
