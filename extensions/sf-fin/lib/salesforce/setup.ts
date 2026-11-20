@@ -384,9 +384,22 @@ async function enhancedEmailEnable(
   };
 }
 
-/** Fin's resolution states (finai__FinResolutionState__c), from Fin's Cases guide. */
-const RESOLVED_STATES = new Set(["Soft Resolution", "Hard Resolution"]);
-const ROUTED_STATES = new Set(["Routed to team"]);
+/**
+ * Fin's resolution states (finai__FinResolutionState__c). The org stores the
+ * picklist API values; the labels are what Fin's guide and UI show.
+ */
+const RESOLUTION_LABELS: Record<string, string> = {
+  soft_resolution: "Soft Resolution",
+  hard_resolution: "Hard Resolution",
+  routed_to_team: "Routed to Team",
+  abandoned_negative_feedback: "Abandoned",
+};
+const RESOLVED_STATES = new Set(["soft_resolution", "hard_resolution"]);
+const ROUTED_STATES = new Set(["routed_to_team"]);
+
+function resolutionLabel(value: string | undefined): string | undefined {
+  return value ? (RESOLUTION_LABELS[value] ?? value) : undefined;
+}
 
 async function observe(
   org: FinSalesforceOrg,
@@ -414,19 +427,29 @@ async function observe(
           `Fin on Salesforce Cases — ${targetOrg}`,
           "",
           "No case has been worked by Fin yet (finai__FinInvolved__c is false on every case, and the Fin user owns none).",
-          "Next: assign one test case to the Fin user (or create one your routing Flow matches), then observe again.",
+          "Next: make sure Fin's Salesforce cases channel is live (Fin → Deploy → Salesforce cases), then create one case your routing Flow matches and observe again. Fin works cases assigned while the channel is live.",
         ]
       : [
           `Fin on Salesforce Cases — ${targetOrg}`,
           "",
           `Fin-involved cases: ${activity.involved}${rate !== undefined ? ` · resolved ${resolved} (${pct(rate)})` : ""} · routed to team ${routed} · owned by Fin now ${activity.finUserOwned}`,
-          `By resolution: ${formatCounts(activity.byResolution)}`,
+          `By resolution: ${formatCounts(
+            Object.fromEntries(
+              Object.entries(activity.byResolution).map(([k, n]) => [resolutionLabel(k) ?? k, n]),
+            ),
+          )}`,
           `By origin: ${formatCounts(activity.byOrigin)}`,
           "",
+          ...(activity.finUserOwned > activity.involved
+            ? [
+                `⚠ ${activity.finUserOwned - activity.involved} case(s) owned by the Fin user have no Fin activity. Fin works a case only when it is assigned while Fin's Salesforce cases channel is live; reassign such a case (or create a new one) to have Fin pick it up.`,
+                "",
+              ]
+            : []),
           "Recent:",
           ...activity.recent.map(
             (c) =>
-              `- ${c.caseNumber} · ${c.status ?? "?"} · ${c.resolution ?? "no Fin state"}${c.ownedByFin ? " · owned by Fin" : ""}${c.origin ? ` · ${c.origin}` : ""}${c.subject ? ` · ${c.subject.slice(0, 80)}` : ""}`,
+              `- ${c.caseNumber} · ${c.status ?? "?"} · ${resolutionLabel(c.resolution) ?? "no Fin state"}${c.ownedByFin ? " · owned by Fin" : ""}${c.origin ? ` · ${c.origin}` : ""}${c.subject ? ` · ${c.subject.slice(0, 80)}` : ""}`,
           ),
         ];
   return {
@@ -439,9 +462,11 @@ async function observe(
       resolved,
       routed,
       ...(rate !== undefined ? { resolutionRate: Math.round(rate * 100) / 100 } : {}),
-      byResolution: activity.byResolution,
+      byResolution: Object.fromEntries(
+        Object.entries(activity.byResolution).map(([k, n]) => [resolutionLabel(k) ?? k, n]),
+      ),
       byOrigin: activity.byOrigin,
-      recent: activity.recent,
+      recent: activity.recent.map((c) => ({ ...c, resolution: resolutionLabel(c.resolution) })),
     },
   };
 }
