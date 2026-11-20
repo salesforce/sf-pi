@@ -11,9 +11,18 @@
  * - a one-element `then`/`else` list ≡ its single element;
  * - strings compare with trimmed trailing whitespace and collapsed spaces,
  *   which absorbs YAML block-scalar chomping (`|` vs `|-`) and line folding;
- * - documented defaults are dropped (`condition_type: natural_language`);
+ * - documented defaults are dropped (`condition_type: natural_language`,
+ *   an empty `triggers` list);
  * - server-owned fields (`id`, `version`, `state`, `has_unpublished_changes`,
  *   `draft_hidden_by_release`, `agentic_switch`) are ignored.
+ *
+ * The `procedures upload` response holds Fin's internal form, which differs
+ * from the `procedures get` form, so it is normalized too:
+ *
+ * - `{ instructions: "text", id }` ≡ the string `"text"`;
+ * - step `id`s and tool-tag `id="…"` attributes are server-assigned;
+ * - `<read … type="attribute" />` ≡ `<read … />` (the documented default for
+ *   attributes such as `temporary.x` or `user.email`).
  *
  * Real changes, such as removed steps, altered conditions, or dropped
  * triggers, still surface as drift.
@@ -57,6 +66,8 @@ export function normalizeProcedure(doc: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(doc)) {
     if (SERVER_OWNED_KEYS.has(key)) continue;
+    // Fin omits an empty `triggers:` list on save.
+    if (key === "triggers" && Array.isArray(value) && value.length === 0) continue;
     out[key] = key === "procedure" ? normalizeSections(value) : normalizeValue(value);
   }
   return out;
@@ -78,6 +89,15 @@ function normalizeStep(step: unknown): unknown {
   if (!isRecord(step)) return normalizeValue(step);
 
   const rest: Record<string, unknown> = { ...step };
+  // Step ids are server-assigned (the upload response includes them).
+  if (typeof rest.id === "string") delete rest.id;
+  // `{ instructions: "text" }` is the internal form of the string step "text".
+  if (
+    typeof rest.instructions === "string" &&
+    Object.keys(rest).every((k) => k === "instructions" || (k === "type" && rest.type === k))
+  ) {
+    return normalizeText(rest.instructions);
+  }
   if (typeof rest.type === "string" && Object.keys(rest).some((k) => STEP_TYPE_KEYS.has(k))) {
     delete rest.type;
   }
@@ -123,7 +143,12 @@ function normalizeValue(value: unknown): unknown {
 }
 
 function normalizeText(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/(<(?:use|execute_code_block)\b[^>]*?)\s+id="[^"]*"/g, "$1")
+    .replace(/(<read\b[^>]*?)\s+type="attribute"/g, "$1")
+    .replace(/\s*\/>/g, " />")
+    .trim();
 }
 
 /** Paths whose normalized values differ between sent and saved. */

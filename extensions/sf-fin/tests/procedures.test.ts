@@ -10,6 +10,7 @@ import { procedureDrift } from "../lib/procedure-normalize.ts";
 import { readProcedureVersions } from "../lib/sdk-gate.ts";
 import {
   draftRuleIssues,
+  formatValidation,
   setProcedureState,
   simulationSetRuleIssues,
   simulationTestRuleIssues,
@@ -102,6 +103,21 @@ describe("validateProcedureFile", () => {
     const withState = validateProcedureFile(file("s.yaml", `${GOOD}state: live\n`), SCHEMA);
     expect(withState.ok).toBe(false);
     expect(withState.issues.some((i) => i.path === "/state")).toBe(true);
+  });
+
+  it("warns, without failing, that api, inbox, and button_click triggers need Fin UI settings", () => {
+    const schema = file(
+      "open-schema.json",
+      JSON.stringify({ type: "object", required: ["name"], additionalProperties: true }),
+    );
+    const result = validateProcedureFile(
+      file("t.yaml", `${GOOD}triggers:\n  - type: api\n  - type: event\n`),
+      schema,
+    );
+    expect(result.ok).toBe(true);
+    expect(result.warnings?.map((w) => w.path)).toEqual(["/triggers/0"]);
+    expect(formatValidation(result)).toContain("Fin behavior");
+    expect(validateProcedureFile(file("n.yaml", GOOD), schema).warnings ?? []).toEqual([]);
   });
 
   it("explains a missing workspace schema", () => {
@@ -240,6 +256,67 @@ describe("procedureDrift (semantic normalization)", () => {
 
   it("treats Fin's canonical form as identical", () => {
     expect(procedureDrift(sent, saved)).toEqual([]);
+  });
+
+  it("treats the upload response's internal form as identical", () => {
+    // `procedures upload` returns Fin's internal form, unlike `procedures get`:
+    // instruction steps are `{ instructions, id }` objects with step ids, tools
+    // carry ids, and `<read>` gains `type="attribute"`.
+    const file = {
+      id: 1,
+      version: 2,
+      name: "N",
+      triggers: [],
+      procedure: {
+        main: [
+          'Store it in <write attr="temporary.x" />.',
+          'Look it up with <use action="Find thing" /> for <read attr="temporary.x" />.',
+          {
+            type: "decide",
+            condition_type: "natural_language",
+            if: "nothing was found",
+            then: ["Say so.", { end: "procedure" }],
+          },
+          {
+            type: "decide",
+            decide: [{ if: "one was found", then: ["Share it."] }],
+            else: ["Hand off <escalate />."],
+          },
+        ],
+      },
+    };
+    const internal = {
+      id: 1,
+      version: 3,
+      name: "N",
+      procedure: {
+        main: [
+          { instructions: 'Store it in <write attr="temporary.x" />.', id: "a1" },
+          {
+            instructions:
+              'Look it up with <use action="Find thing" id="t-1" /> for <read attr="temporary.x" type="attribute" />.',
+            id: "a2",
+          },
+          {
+            id: "a3",
+            if: "nothing was found",
+            then: [
+              { instructions: "Say so.", id: "a4" },
+              { end: "procedure", id: "a5" },
+            ],
+          },
+          {
+            decide: [{ if: "one was found", then: { instructions: "Share it.", id: "a6" } }],
+            else: { instructions: "Hand off <escalate />.", id: "a7" },
+            id: "a8",
+          },
+        ],
+      },
+    };
+    expect(procedureDrift(file, internal)).toEqual([]);
+    const changed = structuredClone(internal);
+    (changed.procedure.main[0] as { instructions: string }).instructions = "Different.";
+    expect(procedureDrift(file, changed)).toEqual(["procedure.main[0]"]);
   });
 
   it("still flags real changes", () => {
@@ -395,18 +472,20 @@ tests:
   it("validates each test and uploads the set with simulations upload", async () => {
     const saved =
       "type: simulation_set\nprocedure_id: 4242\ntests:\n- type: simulation_test\n  id: 9\n  name: Forgot password happy path\n";
-    const run = vi.fn(async (_a: string[], _o: unknown) =>
-      cli(JSON.stringify({ id: 4242, type: "simulation_set", new_file_content: saved })),
+    const run = vi.fn(async (a: string[], _o: unknown) =>
+      a[2] === "list"
+        ? cli("type: simulation_set\nprocedure_id: 4242\ntests: []\n")
+        : cli(JSON.stringify({ id: 4242, type: "simulation_set", new_file_content: saved })),
     );
     const result = await uploadSimulationSet(credential, deps(run), {
       file: file("set.yaml", SET),
       schemaPath: SIM_SCHEMA,
     });
     expect(result).toMatchObject({ ok: true, procedureId: "4242" });
-    expect((run.mock.calls[0]?.[0] as string[]).slice(0, 3)).toEqual([
-      "fin",
-      "simulations",
-      "upload",
+    // Reads the current tests first (duplicate guard), then uploads the set.
+    expect(run.mock.calls.map((c) => (c[0] as string[]).slice(0, 4))).toEqual([
+      ["fin", "simulations", "list", "4242"],
+      ["fin", "simulations", "upload", expect.any(String)],
     ]);
     expect(result.text).toContain("Forgot password happy path [9]");
   });
@@ -414,8 +493,10 @@ tests:
   it("warns when tests without ids were appended as duplicates", async () => {
     const saved =
       "type: simulation_set\nprocedure_id: 4242\ntests:\n- id: 1\n  name: Same\n- id: 2\n  name: Same\n";
-    const run = vi.fn(async (_a: string[], _o: unknown) =>
-      cli(JSON.stringify({ id: 4242, new_file_content: saved })),
+    const run = vi.fn(async (a: string[], _o: unknown) =>
+      a[2] === "list"
+        ? cli("type: simulation_set\nprocedure_id: 4242\ntests: []\n")
+        : cli(JSON.stringify({ id: 4242, new_file_content: saved })),
     );
     const result = await uploadSimulationSet(credential, deps(run), {
       file: file("set.yaml", SET),
@@ -424,6 +505,75 @@ tests:
     expect(result.ok).toBe(true);
     expect(result.text).toContain("appear more than once: Same");
     expect(result.details).toMatchObject({ duplicates: ["Same"] });
+  });
+
+  it("refuses id-less tests whose name already exists, before uploading anything", async () => {
+    // Fin saves tests one by one, so a failed upload can leave earlier tests
+    // saved; re-uploading the same file without ids would then duplicate them.
+    const existing =
+      "type: simulation_set\nprocedure_id: 4242\ntests:\n- type: simulation_test\n  id: 9\n  name: Forgot password happy path\n";
+    const run = vi.fn(async (args: string[]) =>
+      args[2] === "list" ? cli(existing) : cli(JSON.stringify({ id: 4242 })),
+    );
+    const result = await uploadSimulationSet(credential, deps(run), {
+      file: file("set.yaml", SET),
+      schemaPath: SIM_SCHEMA,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.details).toMatchObject({
+      phase: "duplicates",
+      matches: [{ name: "Forgot password happy path", ids: ["9"] }],
+    });
+    expect(result.text).toContain("id: 9");
+    expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["list"]);
+  });
+
+  it("does not upload when the current tests cannot be read", async () => {
+    const run = vi.fn(async (args: string[]) =>
+      args[2] === "list" ? cli("", 4, "Error: not found") : cli("{}"),
+    );
+    const result = await uploadSimulationSet(credential, deps(run), {
+      file: file("set.yaml", SET),
+      schemaPath: SIM_SCHEMA,
+    });
+    expect(result).toMatchObject({ ok: false, details: { phase: "list" } });
+    expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["list"]);
+  });
+
+  it("uploads when id-less test names are new or tests carry their ids", async () => {
+    const existing =
+      "type: simulation_set\nprocedure_id: 4242\ntests:\n- type: simulation_test\n  id: 9\n  name: Forgot password happy path\n";
+    const saved = `${existing}`;
+    const run = vi.fn(async (args: string[]) =>
+      args[2] === "list"
+        ? cli(existing)
+        : cli(JSON.stringify({ id: 4242, new_file_content: saved })),
+    );
+    const withId = SET.replace(
+      "  - type: simulation_test\n",
+      "  - type: simulation_test\n    id: 9\n",
+    );
+    const result = await uploadSimulationSet(credential, deps(run), {
+      file: file("set-id.yaml", withId),
+      schemaPath: SIM_SCHEMA,
+    });
+    expect(result.ok).toBe(true);
+    expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["list", "upload"]);
+  });
+
+  it("requires exactly one outcome assertion per test", () => {
+    const base = { type: "simulation_test", procedure_id: 1 };
+    const none = simulationTestRuleIssues({ ...base, assertions: [{ agent_response: "x" }] }, 1);
+    expect(none.map((i) => i.path)).toEqual(["/assertions"]);
+    expect(none[0]?.message).toContain("exactly one outcome");
+    const two = simulationTestRuleIssues(
+      { ...base, assertions: [{ outcome: "finished" }, { escalated_to: "DEFAULT" }] },
+      1,
+    );
+    expect(two.map((i) => i.path)).toEqual(["/assertions"]);
+    expect(
+      simulationTestRuleIssues({ ...base, assertions: [{ escalated_to: "DEFAULT" }] }, 1),
+    ).toEqual([]);
   });
 
   it("rejects single tests, temporary attribute assertions, and mismatched ids before upload", async () => {
@@ -435,11 +585,11 @@ tests:
         {
           type: "simulation_test",
           procedure_id: 1,
-          assertions: [{ attribute: "temporary.x", eq: "y" }],
+          assertions: [{ outcome: "finished" }, { attribute: "temporary.x", eq: "y" }],
         },
         2,
       ).map((i) => i.path),
-    ).toEqual(["/procedure_id", "/assertions/0/attribute"]);
+    ).toEqual(["/procedure_id", "/assertions/1/attribute"]);
     const run = vi.fn(async () => cli("{}"));
     const bad = await uploadSimulationSet(credential, deps(run), {
       file: file(
@@ -568,6 +718,32 @@ describe("setProcedureState (publish / pause)", () => {
     for (const run of [live, draft]) {
       expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["get"]);
     }
+  });
+
+  it("explains a generic publish failure for procedures with UI-configured triggers", async () => {
+    const withApi = `id: 4242\nversion: 7\nname: Example\nstate: draft\ntriggers:\n- type: api\nprocedure:\n  main: [Step]\n`;
+    const run = vi.fn(async (args: string[]) => {
+      if (args[2] === "get") return cli(withApi);
+      return cli(
+        "",
+        1,
+        JSON.stringify({
+          error: { code: "error", message: "An unexpected error occurred during upload" },
+        }),
+      );
+    });
+    const result = await setProcedureState(credential, deps(run), {
+      procedureId: "4242",
+      target: "live",
+      execute: true,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.text).toContain("An unexpected error occurred during upload");
+    expect(result.text).toContain("api trigger");
+    expect(result.text).toContain("Fin behavior");
+    expect(result.details).toMatchObject({ phase: "execute", uiConfiguredTriggers: ["api"] });
+    // The failed publish is never retried.
+    expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["get", "publish"]);
   });
 
   it("rejects a non-numeric procedure id before any call", async () => {

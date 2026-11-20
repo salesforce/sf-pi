@@ -21,9 +21,9 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 ### Procedure draft loop
 
 1. Write `procedure.yaml` following the downloaded workspace `AGENTS.md`, `docs/PROCEDURES.md`, and the procedure-generator skill.
-2. `sf_fin action='sdk' operation='validate' file=…`, and fix every issue it reports.
+2. `sf_fin action='sdk' operation='validate' file=…`, and fix every issue it reports. Run it after the command that writes the file has finished, not in the same parallel batch. A `⚠` warning does not block upload; an `api`, `inbox`, or `button_click` trigger needs Fin behavior settings in the Fin web UI before Fin will publish the procedure.
 3. `operation='upload' file=…`. New files use `id: new`; after the first upload, set `id` and the returned `version` before editing again. Never add `state`. Upload saves a draft only, and the result reports whether the saved copy is semantically identical.
-4. Write a `simulation_set` (`type: simulation_set`, `procedure_id`, `tests:` of `type: simulation_test`). Assert on `outcome`, `agent_response`, or `escalated_to` (use `DEFAULT` for the default inbox), never on `temporary.*` attributes. Then `operation='upload_simulations' file=…`.
+4. Write a `simulation_set` (`type: simulation_set`, `procedure_id`, `tests:` of `type: simulation_test`). Give each test exactly one outcome assertion (`outcome` or `escalated_to`; use `DEFAULT` for the default inbox), plus any `agent_response` checks, and never assert on `temporary.*` attributes. Then `operation='upload_simulations' file=…`. Fin saves tests one by one, so a failed upload can leave some saved; SF Fin refuses a re-upload whose id-less tests already exist by name and lists their ids to add.
 5. `operation='simulate' procedure_id=…`. Fin simulates **live** procedures only; on a draft, runs ignore the procedure's steps and SF Fin warns. Read each failed assertion's reasoning, fix the procedure or the test, and repeat from step 2.
 6. To test or release, `operation='publish' procedure_id=…` returns a plan; ask the user, then repeat with `allow_mutation=true`. `operation='pause'` takes it offline again. A procedure never returns to draft, so after testing, pause it unless the user wants it live.
 

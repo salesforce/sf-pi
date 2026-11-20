@@ -48,7 +48,28 @@ export interface ProcedureValidation {
   name?: string;
   id?: string | number;
   issues: ValidationIssue[];
+  /** Non-blocking findings: the file is valid but a later step needs attention. */
+  warnings?: ValidationIssue[];
   schemaPath?: string;
+}
+
+/**
+ * Discrete trigger kinds that Fin refuses to publish until their "Fin
+ * behavior" settings exist. Those settings are configured only in the Fin web
+ * UI (procedure → Triggers → the trigger), not through Fin-as-code.
+ */
+const UI_CONFIGURED_TRIGGERS = new Set(["api", "inbox", "button_click"]);
+
+function uiConfiguredTriggers(record: Record<string, unknown> | undefined): string[] {
+  const triggers = Array.isArray(record?.triggers) ? record.triggers : [];
+  return triggers
+    .map((t) => (t && typeof t === "object" ? (t as { type?: unknown }).type : undefined))
+    .filter((type): type is string => typeof type === "string" && UI_CONFIGURED_TRIGGERS.has(type));
+}
+
+function uiTriggerAdvice(types: string[]): string {
+  const list = [...new Set(types)].join(", ");
+  return `Fin publishes a procedure with an ${list} trigger only after that trigger's Fin behavior settings exist, and those are set only in the Fin web UI (procedure → Triggers → ${list}). Configure them there, or remove the trigger: the Fin Agent API still runs the procedure by id, and procedures targeting \`fin_agent_api\` still match by intent.`;
 }
 
 /** Locate the downloaded workspace schema: `<sdk dir>/resources/.fin/schema/procedure.json`. */
@@ -61,7 +82,17 @@ export function simulationSchemaPath(sdkDir: string): string {
 }
 
 export function validateProcedureFile(file: string, schemaPath: string): ProcedureValidation {
-  return validateYamlFile(file, schemaPath, draftRuleIssues);
+  const result = validateYamlFile(file, schemaPath, draftRuleIssues);
+  if (!result.ok || !existsSync(file)) return result;
+  const record = parseYamlSafe(readFileSync(file, "utf8")) as Record<string, unknown> | undefined;
+  const triggers = Array.isArray(record?.triggers) ? record.triggers : [];
+  const warnings = triggers.flatMap((t, index) => {
+    const type = t && typeof t === "object" ? (t as { type?: unknown }).type : undefined;
+    return typeof type === "string" && UI_CONFIGURED_TRIGGERS.has(type)
+      ? [{ path: `/triggers/${index}`, message: uiTriggerAdvice([type]) }]
+      : [];
+  });
+  return warnings.length > 0 ? { ...result, warnings } : result;
 }
 
 /**
@@ -151,6 +182,18 @@ export function simulationTestRuleIssues(
   const assertions = Array.isArray(record.assertions) ? record.assertions : [];
   if (assertions.length === 0)
     issues.push({ path: "/assertions", message: "Add at least one assertion." });
+  else {
+    // Fin requires exactly one outcome assertion (`outcome:` or `escalated_to:`).
+    const outcomes = assertions.filter(
+      (a) => a && typeof a === "object" && ("outcome" in a || "escalated_to" in a),
+    ).length;
+    if (outcomes !== 1) {
+      issues.push({
+        path: "/assertions",
+        message: `Fin requires exactly one outcome assertion per test (\`outcome:\` or \`escalated_to:\`); found ${outcomes}.`,
+      });
+    }
+  }
   assertions.forEach((assertion, index) => {
     const attr = (assertion as { attribute?: unknown })?.attribute;
     if (typeof attr === "string" && attr.startsWith("temporary.")) {
@@ -279,7 +322,10 @@ function schemaIssues(
 
 export function formatValidation(result: ProcedureValidation): string {
   if (result.ok) {
-    return `✅ ${result.name ?? path.basename(result.file)} is valid against the workspace schema and SF Fin rules.`;
+    return [
+      `✅ ${result.name ?? path.basename(result.file)} is valid against the workspace schema and SF Fin rules.`,
+      ...(result.warnings ?? []).map((w) => `⚠ ${w.path} — ${w.message}`),
+    ].join("\n");
   }
   return [
     `❌ ${result.issues.length} issue${result.issues.length === 1 ? "" : "s"} in ${result.file}`,
@@ -381,6 +427,7 @@ export async function uploadProcedureDraft(
       savedVersion
         ? `Next edit: set \`id: ${procedureId}\` and \`version: ${savedVersion}\` in the file.`
         : undefined,
+      ...(validation.warnings ?? []).map((w) => `⚠ ${w.path} — ${w.message}`),
       ensured.enabledNow ? `🔓 ${ensured.message}` : undefined,
     ]
       .filter(Boolean)
@@ -420,7 +467,44 @@ export async function uploadSimulationSet(
   }
   const ensured = await ensureFinSdkEnabled(credential, deps, signal);
   if (!ensured.ok) return { ok: false, text: ensured.message, details: { phase: "enable" } };
-  // Tests carrying an `id` update that test; tests without one are added.
+  // Tests carrying an `id` update that test; tests without one are added. Fin
+  // saves tests one by one, so an upload that fails partway can leave earlier
+  // tests saved. Refuse id-less tests whose name already exists so a retry
+  // updates them instead of adding duplicates.
+  const doc = parse(readFileSync(input.file, "utf8")) as {
+    procedure_id?: unknown;
+    tests?: Array<{ id?: unknown; name?: unknown }>;
+  };
+  const existing = await listSimulationTests(credential, deps, String(doc.procedure_id), signal);
+  if (existing.ok === false) {
+    return {
+      ok: false,
+      text: `❌ Could not read the procedure's current simulations before upload: ${existing.error}`,
+      details: { phase: "list" },
+    };
+  }
+  const matches = (doc.tests ?? [])
+    .filter((t) => t.id === undefined || t.id === null)
+    .map((t) => ({
+      name: stringValue(t.name) ?? "",
+      ids: existing.tests.filter((e) => e.name === stringValue(t.name)).map((e) => e.id),
+    }))
+    .filter((m) => m.name && m.ids.length > 0);
+  if (matches.length > 0) {
+    return {
+      ok: false,
+      text: [
+        `❌ Not uploaded: ${matches.length} test${matches.length === 1 ? "" : "s"} without an \`id\` already exist${matches.length === 1 ? "s" : ""} on procedure ${String(doc.procedure_id)}, so uploading would add duplicates. Add the existing id to each test to update it in place:`,
+        ...matches.map((m) => `  • ${m.name} → id: ${m.ids.join(" or id: ")}`),
+        matches.some((m) => m.ids.length > 1)
+          ? "Tests listed with several ids are already duplicated; keep one id and delete the extras in Fin (procedure → Test)."
+          : undefined,
+      ]
+        .filter((line): line is string => Boolean(line))
+        .join("\n"),
+      details: { phase: "duplicates", matches },
+    };
+  }
   const result = await deps.run(
     ["fin", "simulations", "upload", realpathSync(input.file), "--json"],
     {
@@ -462,6 +546,34 @@ export async function uploadSimulationSet(
       .filter((line): line is string => Boolean(line))
       .join("\n"),
     details: { phase: "upload", tests, duplicates, message: stringValue(response?.message) },
+  };
+}
+
+/** Current tests on a procedure (`simulations list` prints the YAML set). */
+async function listSimulationTests(
+  credential: FinCredential,
+  deps: SdkReadDeps,
+  procedureId: string,
+  signal?: AbortSignal,
+): Promise<
+  { ok: true; tests: Array<{ id: string; name?: string }> } | { ok: false; error: string }
+> {
+  const listed = await deps.run(["fin", "simulations", "list", procedureId], {
+    credential,
+    signal,
+    timeoutMs: 60_000,
+  });
+  if (classifyCliResult(listed) !== "ok") {
+    return { ok: false, error: readCliErrorMessage(listed) ?? "simulations list failed." };
+  }
+  const set = parseYamlSafe(listed.stdout) as { tests?: unknown } | null | undefined;
+  const tests = Array.isArray(set?.tests) ? (set.tests as Array<Record<string, unknown>>) : [];
+  return {
+    ok: true,
+    tests: tests.flatMap((t) => {
+      const id = stringId(t?.id);
+      return id ? [{ id, name: stringValue(t.name) }] : [];
+    }),
   };
 }
 
@@ -636,6 +748,7 @@ export async function readProcedureState(
   state?: ProcedureState;
   version?: string;
   name?: string;
+  uiConfiguredTriggers?: string[];
   error?: string;
 }> {
   const result = await deps.run(["fin", "procedures", "get", procedureId], {
@@ -656,6 +769,7 @@ export async function readProcedureState(
     state: state === "draft" || state === "live" || state === "paused" ? state : undefined,
     version: stringId(doc?.version),
     name: stringValue(doc?.name),
+    uiConfiguredTriggers: uiConfiguredTriggers(doc),
   };
 }
 
@@ -733,10 +847,25 @@ export async function setProcedureState(
   if (input.note?.trim()) args.push("--note", input.note.trim());
   const result = await deps.run(args, { credential, signal, timeoutMs: 120_000 });
   if (classifyCliResult(result) !== "ok") {
+    // On a server validation failure the CLI reports only a generic message
+    // (the reason is in the HTTP body, shown only with --verbose). The publish
+    // is never retried; explain the known cause from the procedure itself.
+    const triggers = input.target === "live" ? (current.uiConfiguredTriggers ?? []) : [];
     return {
       ok: false,
-      text: `❌ ${verb} failed: ${readCliErrorMessage(result) ?? `intercom fin procedures ${verb} failed.`}`,
-      details: { phase: "execute", ...base },
+      text: [
+        `❌ ${verb} failed: ${readCliErrorMessage(result) ?? `intercom fin procedures ${verb} failed.`}`,
+        triggers.length > 0
+          ? `Likely cause: the procedure has an ${[...new Set(triggers)].join(", ")} trigger. ${uiTriggerAdvice(triggers)}`
+          : undefined,
+      ]
+        .filter((line): line is string => Boolean(line))
+        .join("\n"),
+      details: {
+        phase: "execute",
+        ...base,
+        ...(triggers.length > 0 ? { uiConfiguredTriggers: triggers } : {}),
+      },
     };
   }
   const saved = parseYamlSafe(stringValue(parseJson(result.stdout)?.new_file_content) ?? "") as

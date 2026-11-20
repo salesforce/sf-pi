@@ -178,6 +178,15 @@ app. It refuses if it lands somewhere else.
   `state`, so it keeps a procedure's current state. Upload, simulation-set
   upload, and simulate are SF Guardrail mutations
   (`native-sf-fin-procedure-write`); `validate` is local.
+- Upload compares the copy Fin saved with the file, in either of Fin's two
+  saved forms, and reports only real changes.
+- Simulation-set upload reads the procedure's current tests first and refuses
+  id-less tests whose name already exists. Fin saves tests one by one, so a
+  failed upload can leave some saved, and re-uploading without ids would add
+  duplicates. Each test needs exactly one outcome assertion.
+- Fin publishes a procedure with an `api`, `inbox`, or `button_click` trigger
+  only after that trigger's Fin behavior settings are configured in the Fin
+  web UI. `validate` warns about it, and a failed `publish` names it.
 - Fin simulates **live** procedures only. A draft runs without its steps, and
   `sdk simulate` warns about it. Publish the procedure to test it, then pause it
   again. A procedure never returns to draft.

@@ -371,7 +371,11 @@ export function createFinService(deps: FinServiceDeps): FinService {
         return {
           ok: result.ok,
           text: formatValidation(result),
-          details: { phase: "validate", issues: result.issues },
+          details: {
+            phase: "validate",
+            issues: result.issues,
+            ...(result.warnings ? { warnings: result.warnings } : {}),
+          },
         };
       }
       const credential = await getFinCredential(ctx, target.profile.name);
