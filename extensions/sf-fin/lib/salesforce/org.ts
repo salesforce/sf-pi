@@ -6,10 +6,11 @@
  * the target org, API version, and bounded requests stay owned in one place.
  * Reads are fixed SOQL against Fin's declared contract; writes are exactly:
  * one Tooling PackageInstallRequest, single-field Settings deploys
- * (SecuritySettings.enableAuditFieldsInactiveOwner and
- * CommunitiesSettings.enableNetworksEnabled), one PermissionSet deploy, one
- * User create/update, and PermissionSetAssignment inserts. Nothing else
- * changes.
+ * (SecuritySettings.enableAuditFieldsInactiveOwner,
+ * CommunitiesSettings.enableNetworksEnabled, and
+ * EmailAdministrationSettings.enableEnhancedEmailEnabled), one PermissionSet
+ * deploy, one User create/update, and PermissionSetAssignment inserts.
+ * Nothing else changes.
  */
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -22,6 +23,7 @@ import {
   FIN_AUDIT_SETTING,
   FIN_CASE_FIELDS,
   FIN_DIGITAL_EXPERIENCES_SETTING,
+  FIN_ENHANCED_EMAIL_SETTING,
   FIN_FIELD_ACCESS,
   FIN_OAUTH_APP_NAME,
   FIN_PACKAGE_NAMESPACE,
@@ -31,6 +33,7 @@ import {
   FIN_USER_PROFILE,
   renderAuditFieldsSecuritySettings,
   renderDigitalExperiencesSettings,
+  renderEnhancedEmailSettings,
   type FinUserFacts,
   type PackageVersionFacts,
   type SalesforceFacts,
@@ -56,6 +59,8 @@ export interface FinSalesforceOrg {
   availablePermissions(): Promise<string[]>;
   /** Deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true. */
   enableAuditFields(input: { signal?: AbortSignal }): Promise<{ ok: boolean; error?: string }>;
+  /** Deploy EmailAdministrationSettings with only enableEnhancedEmailEnabled=true. */
+  enableEnhancedEmail(input: { signal?: AbortSignal }): Promise<{ ok: boolean; error?: string }>;
   /** Deploy CommunitiesSettings with only enableNetworksEnabled=true. */
   enableDigitalExperiences(input: {
     signal?: AbortSignal;
@@ -143,6 +148,61 @@ export function createFinSalesforceOrg(
           : undefined,
       )
       .filter((name): name is string => Boolean(name));
+
+  /** Union of object permissions across the user's profile and permission sets. */
+  const effectiveAccess = async (userId: string) => {
+    const rows = await query<{
+      SobjectType: string;
+      PermissionsCreate: boolean;
+      PermissionsRead: boolean;
+      PermissionsEdit: boolean;
+    }>(
+      `SELECT SobjectType, PermissionsCreate, PermissionsRead, PermissionsEdit FROM ObjectPermissions WHERE SobjectType IN ('Case', 'Contact') AND ParentId IN (SELECT PermissionSetId FROM PermissionSetAssignment WHERE AssigneeId = '${soql(userId)}')`,
+      "rest",
+      200,
+    ).catch(() => []);
+    const out: Record<string, { create: boolean; read: boolean; edit: boolean }> = {};
+    for (const row of rows) {
+      const current = out[row.SobjectType] ?? { create: false, read: false, edit: false };
+      out[row.SobjectType] = {
+        create: current.create || row.PermissionsCreate,
+        read: current.read || row.PermissionsRead,
+        edit: current.edit || row.PermissionsEdit,
+      };
+    }
+    return out;
+  };
+
+  /** Active record-triggered Case Flows, the active Case assignment rule, and Fin-owned cases. */
+  const readCaseRouting = async (finUserId: string) => {
+    const flows = await query<{ ApiName: string; TriggerType?: string }>(
+      "SELECT ApiName, TriggerType FROM FlowDefinitionView WHERE TriggerObjectOrEventLabel = 'Case' AND IsActive = true",
+      "rest",
+      50,
+    ).catch(() => undefined);
+    if (!flows) return undefined;
+    const rule = await query<{ Name: string }>(
+      "SELECT Name FROM AssignmentRule WHERE SobjectType = 'Case' AND Active = true",
+      "rest",
+      1,
+    ).catch(() => []);
+    const owned = await session
+      .query<{ expr0?: number }>({
+        soql: `SELECT COUNT() FROM Case WHERE OwnerId = '${soql(finUserId)}'`,
+        api: "rest",
+        maxRows: 1,
+      })
+      .then((r) => r.totalSize ?? 0)
+      .catch(() => 0);
+    return {
+      // A Flow that runs on Case records may assign them; record-triggered only.
+      activeFlows: flows
+        .filter((f) => !f.TriggerType || /^Record/.test(f.TriggerType))
+        .map((f) => f.ApiName),
+      activeAssignmentRule: rule[0]?.Name,
+      casesOwnedByFin: owned,
+    };
+  };
 
   return {
     async orgId() {
@@ -291,6 +351,27 @@ export function createFinSalesforceOrg(
         },
         oauthConnected: Boolean(tokenUser),
         accessHasAuditPermission,
+        enhancedEmailEnabled: await readSetting(
+          session,
+          "EmailAdministrationSettings",
+          "EmailAdministration",
+          FIN_ENHANCED_EMAIL_SETTING,
+        ),
+        emailToCaseEnabled: await readEmailToCase(session),
+        caseRouting: user ? await readCaseRouting(user.id) : undefined,
+        caseQueues: await query<{ Queue?: { Name?: string } | null }>(
+          "SELECT Queue.Name FROM QueueSobject WHERE SobjectType = 'Case'",
+          "rest",
+          20,
+        )
+          .then((rows) => rows.map((row) => row.Queue?.Name).filter((n): n is string => Boolean(n)))
+          .catch(() => undefined),
+        effectiveAccess: user
+          ? {
+              fin: await effectiveAccess(user.id),
+              integration: await effectiveAccess(integrationId),
+            }
+          : undefined,
       };
     },
 
@@ -307,6 +388,15 @@ export function createFinSalesforceOrg(
 
     async enableAuditFields(input) {
       return deploySettings(session, "Security", renderAuditFieldsSecuritySettings(), input.signal);
+    },
+
+    async enableEnhancedEmail(input) {
+      return deploySettings(
+        session,
+        "EmailAdministration",
+        renderEnhancedEmailSettings(),
+        input.signal,
+      );
     },
 
     async enableDigitalExperiences(input) {
@@ -553,7 +643,7 @@ interface ApiError {
 /** Deploy one single-field `<name>.settings` through SDR; temp dir always removed. */
 async function deploySettings(
   session: SalesforceSession,
-  name: "Security" | "Communities",
+  name: "Security" | "Communities" | "EmailAdministration",
   xml: string,
   signal?: AbortSignal,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -616,8 +706,8 @@ function describeHttp(status: number, body: unknown): string {
 /** One boolean field of a Settings component; undefined when unreadable. */
 async function readSetting(
   session: SalesforceSession,
-  type: "SecuritySettings" | "CommunitiesSettings",
-  fullName: "Security" | "Communities",
+  type: "SecuritySettings" | "CommunitiesSettings" | "EmailAdministrationSettings",
+  fullName: "Security" | "Communities" | "EmailAdministration",
   field: string,
 ): Promise<boolean | undefined> {
   try {
@@ -626,6 +716,24 @@ async function readSetting(
     };
     const result = (await metadata.read(type, [fullName])) as Record<string, unknown>;
     const value = (Array.isArray(result) ? result[0] : result)?.[field];
+    if (value === true || value === "true") return true;
+    if (value === false || value === "false") return false;
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** CaseSettings.emailToCase.enableEmailToCase; undefined when unreadable. */
+async function readEmailToCase(session: SalesforceSession): Promise<boolean | undefined> {
+  try {
+    const metadata = session.connection.metadata as unknown as {
+      read(type: string, names: string[]): Promise<unknown>;
+    };
+    const result = (await metadata.read("CaseSettings", ["Case"])) as Record<string, unknown>;
+    const record = (Array.isArray(result) ? result[0] : result) as Record<string, unknown>;
+    const e2c = record?.emailToCase as Record<string, unknown> | undefined;
+    const value = e2c?.enableEmailToCase;
     if (value === true || value === "true") return true;
     if (value === false || value === "false") return false;
     return undefined;

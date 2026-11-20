@@ -44,9 +44,26 @@ export const FIN_OBJECT_ACCESS: ReadonlyArray<{
   edit: true;
 }> = [
   { object: "Case", create: true, read: true, edit: true },
-  { object: "Contact", create: false, read: true, edit: true },
+  // Fin creates a Contact when a case's sender has none (Fin's permission matrix).
+  { object: "Contact", create: true, read: true, edit: true },
   { object: "Account", create: false, read: true, edit: true },
 ];
+
+/**
+ * Object access Fin's published permission matrix requires, per user. Case
+ * child records (EmailMessage, FeedItem, CaseFeed) follow Case access, so
+ * the effective-access check reads Case and Contact.
+ */
+export const FIN_REQUIRED_ACCESS: Record<
+  "fin" | "integration",
+  Record<string, Array<"create" | "read" | "edit">>
+> = {
+  fin: { Case: ["create", "read", "edit"] },
+  integration: { Case: ["create", "read", "edit"], Contact: ["create", "read"] },
+};
+
+/** EmailAdministrationSettings.enableEnhancedEmailEnabled (Fin syncs case email history through it). */
+export const FIN_ENHANCED_EMAIL_SETTING = "enableEnhancedEmailEnabled";
 
 /**
  * Standard field permissions (read + edit) Fin documents. The four `finai__`
@@ -195,6 +212,26 @@ export interface SalesforceFacts {
   digitalExperiencesEnabled?: boolean;
   /** FeedItem.Visibility exists in the org (what Fin actually checks). */
   feedVisibilityAvailable?: boolean;
+  /** EmailAdministrationSettings.enableEnhancedEmailEnabled, when readable. */
+  enhancedEmailEnabled?: boolean;
+  /** CaseSettings.emailToCase.enableEmailToCase, when readable. */
+  emailToCaseEnabled?: boolean;
+  /**
+   * How cases reach the Fin user: active record-triggered Case Flows, the
+   * active Case assignment rule, and how many cases the Fin user owns.
+   */
+  caseRouting?: {
+    activeFlows: string[];
+    activeAssignmentRule?: string;
+    casesOwnedByFin: number;
+  };
+  /** Queues that accept Cases (Fin hands off to one). */
+  caseQueues?: string[];
+  /** Effective object access per user, from their assigned permission sets and profile. */
+  effectiveAccess?: Record<
+    "fin" | "integration",
+    Record<string, { create: boolean; read: boolean; edit: boolean }>
+  >;
 }
 
 export type CheckState = "ok" | "missing" | "warn" | "blocked";
@@ -209,6 +246,7 @@ export interface ReadinessCheck {
     | "package_install"
     | "audit_fields_enable"
     | "digital_experiences_enable"
+    | "enhanced_email_enable"
     | "permissions_apply"
     | "connect"
     | "human";
@@ -224,6 +262,12 @@ export interface ReadinessReport {
   orgFeaturesReady: boolean;
   /** Fin holds an OAuth token in this org. */
   connected: boolean;
+  /**
+   * Connected, and every go-live check the org could be read for passes
+   * (routing, email, handoff queue, effective access). Unreadable checks are
+   * omitted rather than guessed.
+   */
+  goLiveReady: boolean;
 }
 
 export function evaluateSalesforceReadiness(
@@ -421,6 +465,8 @@ export function evaluateSalesforceReadiness(
     fix: facts.oauthConnected ? undefined : "connect",
   });
 
+  checks.push(...goLiveChecks(facts));
+
   const byId = (id: string) => checks.find((check) => check.id === id);
   const packageReady = ["package", "case-fields", "package-permission-set"].every(
     (id) => byId(id)?.state === "ok",
@@ -440,7 +486,112 @@ export function evaluateSalesforceReadiness(
     readyToConnect: packageReady && permissionsReady,
     orgFeaturesReady,
     connected: facts.oauthConnected === true,
+    goLiveReady:
+      facts.oauthConnected === true &&
+      packageReady &&
+      permissionsReady &&
+      orgFeaturesReady &&
+      checks.filter((c) => GO_LIVE_IDS.has(c.id)).every((c) => c.state === "ok"),
   };
+}
+
+const GO_LIVE_IDS = new Set([
+  "enhanced-email",
+  "email-to-case",
+  "case-routing",
+  "handoff-queue",
+  "effective-access",
+]);
+
+/** Checks that decide whether Fin can actually work cases, from Fin's Cases setup guide. */
+function goLiveChecks(facts: SalesforceFacts): ReadinessCheck[] {
+  const checks: ReadinessCheck[] = [];
+  if (facts.enhancedEmailEnabled !== undefined) {
+    checks.push({
+      id: "enhanced-email",
+      state: facts.enhancedEmailEnabled ? "ok" : "missing",
+      title: facts.enhancedEmailEnabled ? "Enhanced Email enabled" : "Enhanced Email is off",
+      detail: facts.enhancedEmailEnabled
+        ? undefined
+        : "Fin syncs a case's email history through the Emails relationship, which needs Enhanced Email.",
+      fix: facts.enhancedEmailEnabled ? undefined : "enhanced_email_enable",
+    });
+  }
+  if (facts.emailToCaseEnabled !== undefined) {
+    checks.push({
+      id: "email-to-case",
+      state: facts.emailToCaseEnabled ? "ok" : "warn",
+      title: facts.emailToCaseEnabled
+        ? "Email-to-Case enabled"
+        : "Email-to-Case is off (Fin replies to cases over email only with it)",
+      detail: facts.emailToCaseEnabled
+        ? "Fin's reply address must be a verified, active routing address; replies thread back with Lightning threading."
+        : "Not needed for Web-to-Case or manually created cases. To reply by email: enable Email-to-Case, add and verify a routing address in Setup (Salesforce emails a confirmation link), then select it in Fin. Enabling it cannot be undone.",
+      fix: facts.emailToCaseEnabled ? undefined : "human",
+    });
+  }
+  const routing = facts.caseRouting;
+  if (routing) {
+    const routed = routing.activeFlows.length > 0;
+    checks.push({
+      id: "case-routing",
+      state: !routed ? "missing" : routing.casesOwnedByFin > 0 ? "ok" : "warn",
+      title: !routed
+        ? "No active Case Flow assigns cases to the Fin user"
+        : routing.casesOwnedByFin > 0
+          ? `Cases reach the Fin user (${routing.activeFlows.join(", ")}; ${routing.casesOwnedByFin} owned)`
+          : `Active Case Flow ${routing.activeFlows.join(", ")}, but no case is owned by the Fin user yet`,
+      detail: !routed
+        ? `Fin only works cases assigned to its user. Build a record-triggered Case Flow with sf_flow that sets Owner to the Fin user${routing.activeAssignmentRule ? ` (it runs after the active assignment rule "${routing.activeAssignmentRule}", so its owner wins)` : ""}, or assign cases by hand to test.`
+        : routing.casesOwnedByFin > 0
+          ? undefined
+          : "Create one test case that matches the Flow and check that its owner becomes the Fin user.",
+      fix: routed && routing.casesOwnedByFin > 0 ? undefined : "human",
+    });
+  }
+  if (facts.caseQueues) {
+    checks.push({
+      id: "handoff-queue",
+      state: facts.caseQueues.length > 0 ? "ok" : "warn",
+      title:
+        facts.caseQueues.length > 0
+          ? `Case queues available for Fin's handoff: ${facts.caseQueues.slice(0, 3).join(", ")}`
+          : "No queue accepts Cases",
+      detail:
+        facts.caseQueues.length > 0
+          ? undefined
+          : 'When Fin hands off ("Routed to team"), it assigns the case to a queue or user you pick in Fin. Create a Case queue in Setup, or pick a user.',
+      fix: facts.caseQueues.length > 0 ? undefined : "human",
+    });
+  }
+  if (facts.effectiveAccess) {
+    const gaps: string[] = [];
+    for (const who of ["fin", "integration"] as const) {
+      for (const [object, needs] of Object.entries(FIN_REQUIRED_ACCESS[who])) {
+        const has = facts.effectiveAccess[who]?.[object];
+        const missing = needs.filter((op) => !has?.[op]);
+        if (missing.length) {
+          gaps.push(
+            `${who === "fin" ? "Fin user" : "integration user"}: ${object} ${missing.join("/")}`,
+          );
+        }
+      }
+    }
+    checks.push({
+      id: "effective-access",
+      state: gaps.length === 0 ? "ok" : "missing",
+      title:
+        gaps.length === 0
+          ? "Object access matches Fin's permission matrix"
+          : `Missing object access — ${gaps.join("; ")}`,
+      detail:
+        gaps.length === 0
+          ? undefined
+          : "Fin's published matrix needs Case create/read/edit for both users and Contact create/read for the integration user.",
+      fix: gaps.length === 0 ? undefined : "permissions_apply",
+    });
+  }
+  return checks;
 }
 
 // ─── Metadata rendering ─────────────────────────────────────────────────────
@@ -545,6 +696,17 @@ export function renderAuditFieldsSecuritySettings(): string {
     '<SecuritySettings xmlns="http://soap.sforce.com/2006/04/metadata">',
     `    <${FIN_AUDIT_SETTING}>true</${FIN_AUDIT_SETTING}>`,
     "</SecuritySettings>",
+    "",
+  ].join("\n");
+}
+
+/** EmailAdministrationSettings source that turns on Enhanced Email and nothing else. */
+export function renderEnhancedEmailSettings(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<EmailAdministrationSettings xmlns="http://soap.sforce.com/2006/04/metadata">',
+    `    <${FIN_ENHANCED_EMAIL_SETTING}>true</${FIN_ENHANCED_EMAIL_SETTING}>`,
+    "</EmailAdministrationSettings>",
     "",
   ].join("\n");
 }
