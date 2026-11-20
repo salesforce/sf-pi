@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.357.1](https://github.com/salesforce/sf-pi/compare/v0.357.0...v0.357.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sf-fin:** accurate procedure round-trip, safe simulation re-uploads, and publish trigger guidance ([#936](https://github.com/salesforce/sf-pi/issues/936)) ([802658f](https://github.com/salesforce/sf-pi/commit/802658ffade71bfaaff06b9ae23539205da6a9dd))
+
 ## [0.357.0](https://github.com/salesforce/sf-pi/compare/v0.356.0...v0.357.0) (2026-11-19)
 
 
