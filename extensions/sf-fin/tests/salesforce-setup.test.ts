@@ -101,6 +101,141 @@ describe("readiness", () => {
   });
 });
 
+describe("go-live readiness (routing, email, handoff, effective access)", () => {
+  const connected = (): SalesforceFacts => ({
+    ...readyFacts(),
+    auditFieldsEnabled: true,
+    accessHasAuditPermission: true,
+    feedVisibilityAvailable: true,
+    digitalExperiencesEnabled: true,
+    oauthConnected: true,
+    integrationUser: {
+      id: "005ADMIN",
+      username: "admin@example.com",
+      assignedPermissionSets: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+    },
+  });
+
+  it("checks Enhanced Email, Email-to-Case, routing, handoff queue, and effective access", () => {
+    const facts: SalesforceFacts = {
+      ...connected(),
+      enhancedEmailEnabled: false,
+      emailToCaseEnabled: false,
+      caseRouting: { activeFlows: [], activeAssignmentRule: "Standard", casesOwnedByFin: 0 },
+      caseQueues: [],
+      // Fin's matrix needs Case create/read/edit for both users and Contact create/read for the
+      // integration user; EmailMessage and FeedItem follow Case access.
+      effectiveAccess: {
+        fin: { Case: { create: true, read: true, edit: false } },
+        integration: {
+          Case: { create: true, read: true, edit: true },
+          Contact: { create: false, read: true, edit: true },
+        },
+      },
+    };
+    const report = evaluateSalesforceReadiness(facts);
+    const byId = Object.fromEntries(report.checks.map((c) => [c.id, c]));
+    expect(byId["enhanced-email"]).toMatchObject({
+      state: "missing",
+      fix: "enhanced_email_enable",
+    });
+    expect(byId["email-to-case"]).toMatchObject({ state: "warn", fix: "human" });
+    expect(byId["case-routing"]).toMatchObject({ state: "missing", fix: "human" });
+    expect(byId["case-routing"]?.detail).toContain("sf_flow");
+    expect(byId["handoff-queue"]).toMatchObject({ state: "warn" });
+    expect(byId["effective-access"]).toMatchObject({ state: "missing", fix: "permissions_apply" });
+    expect(byId["effective-access"]?.title).toContain("Fin user: Case edit");
+    expect(byId["effective-access"]?.title).toContain("integration user: Contact create");
+    // Connection stays the gate for "connected"; go-live gaps are reported separately.
+    expect(report.connected).toBe(true);
+    expect(report.goLiveReady).toBe(false);
+  });
+
+  it("is go-live ready when routing reaches the Fin user, email works, and access matches Fin's matrix", () => {
+    const facts: SalesforceFacts = {
+      ...connected(),
+      enhancedEmailEnabled: true,
+      emailToCaseEnabled: true,
+      caseRouting: {
+        activeFlows: ["Case_Assign_To_Fin"],
+        activeAssignmentRule: "Standard",
+        casesOwnedByFin: 3,
+      },
+      caseQueues: ["Support"],
+      effectiveAccess: {
+        fin: { Case: { create: true, read: true, edit: true } },
+        integration: {
+          Case: { create: true, read: true, edit: true },
+          Contact: { create: true, read: true, edit: true },
+        },
+      },
+    };
+    const report = evaluateSalesforceReadiness(facts);
+    const byId = Object.fromEntries(report.checks.map((c) => [c.id, c.state]));
+    expect(byId).toMatchObject({
+      "enhanced-email": "ok",
+      "email-to-case": "ok",
+      "case-routing": "ok",
+      "handoff-queue": "ok",
+      "effective-access": "ok",
+    });
+    expect(report.goLiveReady).toBe(true);
+  });
+
+  it("warns when an active Flow exists but no case has reached the Fin user yet", () => {
+    const facts: SalesforceFacts = {
+      ...connected(),
+      caseRouting: { activeFlows: ["Case_Assign_To_Fin"], casesOwnedByFin: 0 },
+    };
+    const check = evaluateSalesforceReadiness(facts).checks.find((c) => c.id === "case-routing");
+    expect(check).toMatchObject({ state: "warn" });
+    expect(check?.detail).toContain("test case");
+  });
+
+  it("omits go-live checks the org could not read instead of guessing", () => {
+    const ids = evaluateSalesforceReadiness(connected()).checks.map((c) => c.id);
+    for (const id of [
+      "enhanced-email",
+      "email-to-case",
+      "case-routing",
+      "handoff-queue",
+      "effective-access",
+    ]) {
+      expect(ids).not.toContain(id);
+    }
+  });
+});
+
+describe("enhanced_email_enable", () => {
+  it("plans a single EmailAdministrationSettings field, executes, and verifies it", async () => {
+    const org = fakeOrg({ installed: true, enhancedEmail: false });
+    const plan = await runSalesforceSetup(org, {
+      operation: "enhanced_email_enable",
+      targetOrg: "DevOrg",
+    });
+    expect(plan.details).toMatchObject({
+      phase: "plan",
+      setting: "enableEnhancedEmailEnabled",
+      value: true,
+    });
+    expect(plan.text).toContain("EmailAdministrationSettings");
+    expect(org.writes).toEqual([]);
+    const run = await runSalesforceSetup(org, {
+      operation: "enhanced_email_enable",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(run.ok).toBe(true);
+    expect(org.writes).toEqual(["settings:enableEnhancedEmailEnabled=true"]);
+    const again = await runSalesforceSetup(org, {
+      operation: "enhanced_email_enable",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(again.details).toMatchObject({ phase: "noop" });
+  });
+});
+
 describe("runSalesforceSetup", () => {
   it("readiness is read-only", async () => {
     const org = fakeOrg();
@@ -471,6 +606,8 @@ interface FakeOptions {
   oauthConnected?: boolean;
   accessHasAudit?: boolean;
   digitalExperiences?: boolean;
+  enhancedEmail?: boolean;
+  goLive?: Pick<SalesforceFacts, "emailToCaseEnabled" | "caseRouting" | "caseQueues">;
 }
 
 /** In-memory org: state changes only through the FinSalesforceOrg write methods. */
@@ -491,6 +628,7 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
     oauthConnected: options.oauthConnected === true,
     accessHasAudit: options.accessHasAudit === true,
     digitalExperiences: options.digitalExperiences === true,
+    enhancedEmail: options.enhancedEmail,
   };
   return {
     writes,
@@ -532,7 +670,14 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
         accessHasAuditPermission: state.accessHasAudit,
         digitalExperiencesEnabled: state.digitalExperiences,
         feedVisibilityAvailable: state.digitalExperiences,
+        enhancedEmailEnabled: state.enhancedEmail,
+        ...options.goLive,
       };
+    },
+    async enableEnhancedEmail() {
+      writes.push("settings:enableEnhancedEmailEnabled=true");
+      state.enhancedEmail = true;
+      return { ok: true };
     },
     async availablePermissions() {
       return [
@@ -621,3 +766,30 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
     },
   };
 }
+
+describe("go-live next step", () => {
+  it("names routing before the handoff queue and Email-to-Case once Fin is connected", async () => {
+    const org = fakeOrg({
+      installed: true,
+      accessPs: true,
+      user: {
+        serviceCloudUser: true,
+        assigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+      },
+      auditFieldsEnabled: true,
+      accessHasAudit: true,
+      digitalExperiences: true,
+      oauthConnected: true,
+      integrationAssigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+      goLive: {
+        emailToCaseEnabled: false,
+        caseRouting: { activeFlows: [], casesOwnedByFin: 0 },
+        caseQueues: [],
+      },
+    });
+    const result = await runSalesforceSetup(org, { operation: "readiness", targetOrg: "DevOrg" });
+    const next = result.text.split("\n").at(-1) ?? "";
+    expect(next).toContain("No active Case Flow assigns cases to the Fin user");
+    expect(result.details).toMatchObject({ connected: true, goLiveReady: false });
+  });
+});

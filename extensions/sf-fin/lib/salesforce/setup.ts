@@ -28,6 +28,7 @@ import {
   FIN_ACCESS_PERMISSION_SET,
   FIN_AUDIT_SETTING,
   FIN_DIGITAL_EXPERIENCES_SETTING,
+  FIN_ENHANCED_EMAIL_SETTING,
   FIN_FEED_VISIBILITY_FIELD,
   FIN_PACKAGE_NAMESPACE,
   FIN_PACKAGE_PERMISSION_SET,
@@ -47,6 +48,7 @@ export type SalesforceOperation =
   | "package_install"
   | "audit_fields_enable"
   | "digital_experiences_enable"
+  | "enhanced_email_enable"
   | "permissions_apply"
   | "connect";
 
@@ -121,6 +123,9 @@ export async function runSalesforceSetup(
   }
   if (request.operation === "audit_fields_enable")
     return auditFieldsEnable(org, facts, request, read);
+  if (request.operation === "enhanced_email_enable") {
+    return enhancedEmailEnable(org, facts, request, read);
+  }
   if (request.operation === "connect") return connect(facts, request, read);
   return permissionsApply(org, facts, request, username, read);
 }
@@ -321,6 +326,62 @@ async function digitalExperiencesEnable(
   };
 }
 
+async function enhancedEmailEnable(
+  org: FinSalesforceOrg,
+  facts: SalesforceFacts,
+  request: SalesforceSetupRequest,
+  read: () => Promise<SalesforceFacts>,
+): Promise<SalesforceSetupResult> {
+  if (facts.enhancedEmailEnabled === true) {
+    return {
+      ok: true,
+      text: `✅ Enhanced Email is already enabled in ${request.targetOrg}. Nothing to do.`,
+      details: { phase: "noop", setting: FIN_ENHANCED_EMAIL_SETTING },
+    };
+  }
+  if (request.execute !== true) {
+    return {
+      ok: true,
+      text: [
+        `Plan: enable Enhanced Email in ${request.targetOrg} (${facts.orgType}) so Fin can sync each case's email history.`,
+        `- Deploy EmailAdministrationSettings with only ${FIN_ENHANCED_EMAIL_SETTING}=true. No other email setting is included.`,
+        "- 🌐 Org-wide: emails are stored as EmailMessage records for every user, not only Fin's cases.",
+        PRODUCTION_LIKE.has(facts.orgType)
+          ? "⚠️ Production or unknown org: SF Guardrail decides whether this may run."
+          : undefined,
+        "",
+        `To execute: sf_fin action='salesforce' operation='enhanced_email_enable' target_org='${request.targetOrg}' allow_mutation=true (SF Guardrail mediates it).`,
+      ]
+        .filter((line): line is string => line !== undefined)
+        .join("\n"),
+      details: { phase: "plan", setting: FIN_ENHANCED_EMAIL_SETTING, value: true },
+    };
+  }
+  const deployed = await org.enableEnhancedEmail({ signal: request.signal });
+  const after = await read();
+  const verified = after.enhancedEmailEnabled === true;
+  const report = evaluateSalesforceReadiness(after);
+  return {
+    ok: verified,
+    text: [
+      verified
+        ? `✅ Enhanced Email enabled in ${request.targetOrg} (verified in EmailAdministrationSettings).`
+        : `❌ Enhanced Email did not verify as enabled in ${request.targetOrg}.`,
+      ...(verified || deployed.ok ? [] : [`  - ${deployed.error ?? "deploy failed"}`]),
+      "",
+      ...renderChecks(report),
+      "",
+      ...nextSteps(report, request.targetOrg),
+    ].join("\n"),
+    details: {
+      phase: "execute",
+      setting: FIN_ENHANCED_EMAIL_SETTING,
+      verified,
+      error: deployed.error,
+    },
+  };
+}
+
 function readiness(facts: SalesforceFacts, targetOrg: string): SalesforceSetupResult {
   const report = evaluateSalesforceReadiness(facts);
   const lines = [
@@ -341,6 +402,7 @@ function readiness(facts: SalesforceFacts, targetOrg: string): SalesforceSetupRe
       readyToConnect: report.readyToConnect,
       orgFeaturesReady: report.orgFeaturesReady,
       connected: report.connected,
+      goLiveReady: report.goLiveReady,
       checks: report.checks,
     },
   };
@@ -503,7 +565,7 @@ async function permissionsApply(
     ? both.filter((ps) => !integration.assignedPermissionSets.includes(ps))
     : [];
   const steps = [
-    `- Deploy permission set ${rendered.name}: Case create/read/edit; Contact and Account read/edit; ${rendered.fields.length} field permissions; system permissions ${rendered.userPermissions.join(", ")}. No delete, no View All / Modify All.`,
+    `- Deploy permission set ${rendered.name}: Case create/read/edit; Contact create/read/edit; Account read/edit; ${rendered.fields.length} field permissions; system permissions ${rendered.userPermissions.join(", ")}. No delete, no View All / Modify All.`,
     rendered.skippedFields.length
       ? `  Skipped (not permissionable in this org): ${rendered.skippedFields.join(", ")}`
       : undefined,
@@ -617,7 +679,11 @@ function nextSteps(report: ReadinessReport, targetOrg: string): string[] {
   if (!report.packageReady) {
     return [op("package_install", " package_version='<04t id or install link from Fin Connect>'")];
   }
-  for (const fix of ["audit_fields_enable", "digital_experiences_enable"] as const) {
+  for (const fix of [
+    "audit_fields_enable",
+    "digital_experiences_enable",
+    "enhanced_email_enable",
+  ] as const) {
     if (report.checks.some((check) => check.fix === fix)) return [op(fix)];
   }
   if (!report.permissionsReady) return [op("permissions_apply")];
@@ -627,8 +693,18 @@ function nextSteps(report: ReadinessReport, targetOrg: string): string[] {
       `⚠️ ${FIN_FEED_VISIBILITY_FIELD} is still missing although Digital Experiences is on; check the field in Setup.`,
     ];
   }
+  // Go-live gaps in order of impact: access, routing, handoff, then email.
+  const goLive = ["effective-access", "case-routing", "handoff-queue", "email-to-case"]
+    .map((id) => report.checks.find((check) => check.id === id))
+    .find((check) => check !== undefined && check.state !== "ok");
+  if (goLive?.fix === "permissions_apply") return [op("permissions_apply")];
+  if (goLive) {
+    return [
+      `⏳ Fin is connected. Before go-live: ${goLive.title}.${goLive.detail ? ` ${goLive.detail}` : ""}`,
+    ];
+  }
   return [
-    "✅ Salesforce side complete and Fin is connected. In Fin, click Retry on Connect → Assign permissions in Salesforce if it still shows errors.",
+    "✅ Salesforce side complete, Fin is connected, and cases reach the Fin user. In Fin, click Retry on Connect → Assign permissions in Salesforce if it still shows errors.",
   ];
 }
 

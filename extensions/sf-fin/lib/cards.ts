@@ -158,7 +158,9 @@ function readinessCard(input: CardInput): SfPiResultCard {
           `sf_fin action='salesforce' operation='${firstFix}'${target ? ` target_org='${target}'` : ""} (plan first)`,
         ]
       : open.length
-        ? ["Resolve the remaining item in Fin or Salesforce Setup, then run readiness again."]
+        ? (nextFromText(input.text) ?? [
+            "Resolve the remaining item in Fin or Salesforce Setup, then run readiness again.",
+          ])
         : ["Assign a test case to the Fin user and watch Fin reply."],
     renderHints: { collapsedLines: 28 },
   };
@@ -170,6 +172,12 @@ const CHECK_LABEL: Record<CheckState, string> = {
   warn: "review",
   blocked: "blocked",
 };
+
+/** The operation's own next step ("Next: …" or "⏳ …" line), when it names one. */
+function nextFromText(text: string): string[] | undefined {
+  const line = textLines(text).find((l) => /^(Next:|⏳)/u.test(l.trimStart()));
+  return line ? [line.replace(/^\s*(Next:|⏳)\s*/u, "")] : undefined;
+}
 
 function checkRow(check: Check): SfPiFact {
   return {
@@ -190,6 +198,7 @@ const MUTATIONS: Record<
   package_install: { rule: "native-sf-fin-salesforce-setup", reversible: "reversible" },
   audit_fields_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "org-wide" },
   digital_experiences_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "one-way" },
+  enhanced_email_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "org-wide" },
   permissions_apply: { rule: "native-sf-fin-salesforce-setup", reversible: "reversible" },
   connect: { rule: "native-sf-fin-salesforce-setup", reversible: "reversible" },
   publish: { rule: "native-sf-fin-procedure-state", reversible: "reversible" },

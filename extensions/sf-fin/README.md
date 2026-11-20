@@ -111,18 +111,23 @@ The agent sets up Fin for Salesforce Cases end to end with
 `sf_fin action='salesforce'` in one explicit `target_org`. `readiness` names
 the next operation:
 
-| Operation                    | What it does                                                                                                                                                                                                                                   |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `readiness`                  | Read-only checklist: Fin package (`finai`), Fin Case fields, audit-field setting, Digital Experiences (`FeedItem.Visibility`), both permission sets, Fin External Client App, dedicated Fin user, integration user, and Fin's OAuth connection |
-| `package_install`            | Installs the exact package version from Fin's Connect page (`package_version`: the `04t` id or the install link) for all users, then verifies it in Installed Packages                                                                         |
-| `audit_fields_enable`        | Deploys SecuritySettings with only `enableAuditFieldsInactiveOwner=true` (the "Set Audit Fields upon Record Creation" org setting Fin asks for) and verifies it                                                                                |
-| `digital_experiences_enable` | Deploys CommunitiesSettings with only `enableNetworksEnabled=true` so `FeedItem.Visibility` exists for Fin, and verifies the field. One-way: Digital Experiences cannot be turned off again                                                    |
-| `permissions_apply`          | Deploys `SF_Fin_Salesforce_Access` from Fin's documented requirements, creates the dedicated Fin user (Service Cloud User), and assigns both permission sets to it and to the integration user, then verifies them                             |
-| `connect`                    | Runs Fin's Connect flow in the shared SF Pi browser: approves Fin for Salesforce on the org's own My Domain as the CLI user, sets the Fin user in Fin, and verifies Fin's OAuth token                                                          |
+| Operation                    | What it does                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readiness`                  | Read-only checklist: Fin package (`finai`), Fin Case fields, audit-field setting, Digital Experiences (`FeedItem.Visibility`), Enhanced Email, both permission sets, Fin External Client App, dedicated Fin user, integration user, Fin's OAuth connection, and go-live checks: Email-to-Case, case routing to the Fin user, a Case handoff queue, and effective object access against Fin's permission matrix |
+| `package_install`            | Installs the exact package version from Fin's Connect page (`package_version`: the `04t` id or the install link) for all users, then verifies it in Installed Packages                                                                                                                                                                                                                                         |
+| `audit_fields_enable`        | Deploys SecuritySettings with only `enableAuditFieldsInactiveOwner=true` (the "Set Audit Fields upon Record Creation" org setting Fin asks for) and verifies it                                                                                                                                                                                                                                                |
+| `digital_experiences_enable` | Deploys CommunitiesSettings with only `enableNetworksEnabled=true` so `FeedItem.Visibility` exists for Fin, and verifies the field. One-way: Digital Experiences cannot be turned off again                                                                                                                                                                                                                    |
+| `enhanced_email_enable`      | Deploys EmailAdministrationSettings with only `enableEnhancedEmailEnabled=true` so Fin can sync each case's email history, and verifies it. Org-wide                                                                                                                                                                                                                                                           |
+| `permissions_apply`          | Deploys `SF_Fin_Salesforce_Access` from Fin's documented requirements, creates the dedicated Fin user (Service Cloud User), and assigns both permission sets to it and to the integration user, then verifies them                                                                                                                                                                                             |
+| `connect`                    | Runs Fin's Connect flow in the shared SF Pi browser: approves Fin for Salesforce on the org's own My Domain as the CLI user, sets the Fin user in Fin, and verifies Fin's OAuth token                                                                                                                                                                                                                          |
 
 Each change plans first and runs only with `allow_mutation=true`. `connect`
-uses the Fin admin sign-in saved by `/login sf-fin-browser`. Fin Messenger
-live chat (BYOC) is not covered.
+uses the Fin admin sign-in saved by `/login sf-fin-browser`. Case routing is
+built with SF Flow (a record-triggered Case Flow that sets Owner to the Fin
+user); readiness verifies an active Case Flow exists and that cases reach the
+Fin user. Email-to-Case and its routing address stay guided, because enabling
+it cannot be undone and Salesforce emails a verification link to a human. Fin
+Messenger live chat (BYOC) is not covered.
 
 ### Fin admin pages
 
@@ -232,7 +237,7 @@ app. It refuses if it lands somewhere else.
   listing create no conversation.
 - `surfaces` runs only local `--help` commands, with no token and no network.
 - `salesforce package_install`, `audit_fields_enable`, `digital_experiences_enable`,
-  `permissions_apply`, and `connect` are SF Guardrail mutations (`native-sf-fin-salesforce-setup`). Each approval covers exactly
+  `enhanced_email_enable`, `permissions_apply`, and `connect` are SF Guardrail mutations (`native-sf-fin-salesforce-setup`). Each approval covers exactly
   one org, package version, or username, is never granted for the session,
   and production or unknown orgs are blocked. Salesforce calls go through SF
   Pi's shared connection module. The package install never renames or
