@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.360.0](https://github.com/salesforce/sf-pi/compare/v0.359.0...v0.360.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** go-live readiness for Fin for Salesforce Cases and Enhanced Email ([#942](https://github.com/salesforce/sf-pi/issues/942)) ([a398e36](https://github.com/salesforce/sf-pi/commit/a398e366304bfb130bd70966c85533529a1b0dc4))
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** a slow openssl check no longer rejects a valid CA bundle ([#944](https://github.com/salesforce/sf-pi/issues/944)) ([d7d8fad](https://github.com/salesforce/sf-pi/commit/d7d8fad11eb5ab5a7a6aa1276f52286f334ed0d4))
+
 ## [0.359.0](https://github.com/salesforce/sf-pi/compare/v0.358.0...v0.359.0) (2026-11-20)
 
 
