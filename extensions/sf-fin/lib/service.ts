@@ -465,7 +465,11 @@ export function createFinService(deps: FinServiceDeps): FinService {
       return simulateProcedure(
         credential.credential,
         sdkDeps,
-        { procedureId: request.procedureId, generate: request.generate !== false },
+        {
+          procedureId: request.procedureId,
+          generate: request.generate !== false,
+          live: request.live === true,
+        },
         ctx.signal,
       );
     },
@@ -870,7 +874,7 @@ export type ProcedureRequest =
   | { operation: "validate"; file?: string }
   | { operation: "upload"; file?: string; note?: string }
   | { operation: "upload_simulations"; file?: string }
-  | { operation: "simulate"; procedureId?: string; generate?: boolean }
+  | { operation: "simulate"; procedureId?: string; generate?: boolean; live?: boolean }
   | { operation: "create_data_connector"; name?: string }
   | {
       operation: "guidance_state";

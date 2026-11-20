@@ -251,7 +251,7 @@ describe("service.setup", () => {
     const service = createFinService({
       exec: vi.fn(async () => ({
         code: 0,
-        stdout: "/usr/local/bin/intercom\n0.14.1\n",
+        stdout: "/usr/local/bin/intercom\n0.16.1\n",
         stderr: "",
       })) as never,
       fetch: f as never,

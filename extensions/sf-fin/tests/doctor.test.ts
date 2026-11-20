@@ -39,7 +39,7 @@ function cli(exitCode: number, stdout = "", stderr = ""): CliRunResult {
 /** Fake host: `which`, `intercom --version`, `npm root -g`. */
 function fakeExec(opts: { installed?: boolean; version?: string; npmGlobal?: boolean } = {}) {
   const installed = opts.installed ?? true;
-  const version = opts.version ?? "0.14.1";
+  const version = opts.version ?? "0.16.1";
   return vi.fn(async (command: string, args: string[]) => {
     if (command === "which") {
       return installed
@@ -73,7 +73,7 @@ function deps(
     run: vi.fn(async () => overrides.meResponse ?? cli(0, ME)),
     exec: overrides.exec ?? fakeExec(),
     fetchRegistry:
-      overrides.fetchRegistry ?? (async () => ({ latest: "0.14.1", latestNodeEngine: ">=20.6.0" })),
+      overrides.fetchRegistry ?? (async () => ({ latest: "0.16.1", latestNodeEngine: ">=20.6.0" })),
     now: () => new Date("2026-01-01T00:00:00.000Z"),
     nodeVersion: overrides.nodeVersion ?? "22.0.0",
     userCliConfigExists: overrides.userCliConfigExists ?? (() => false),
@@ -97,7 +97,7 @@ describe("runDoctor (live)", () => {
     // Only `me --json` receives the credential; no `fin …` SDK command is run.
     expect(d.run.mock.calls.map(([args]) => args)).toEqual([["me", "--json"]]);
     expect(report.snapshot.identity).toMatchObject({ appId: "abc123de", region: "us" });
-    expect(report.snapshot.latestVersion).toBe("0.14.1");
+    expect(report.snapshot.latestVersion).toBe("0.16.1");
     expect(JSON.stringify(report)).not.toContain(SENTINEL);
   });
 
@@ -116,7 +116,7 @@ describe("runDoctor (live)", () => {
   });
 
   it("reports an available update as a warning, not a failure", async () => {
-    const d = deps({ fetchRegistry: async () => ({ latest: "0.15.0" }) });
+    const d = deps({ fetchRegistry: async () => ({ latest: "0.17.0" }) });
     const report = await runDoctor(ctx, d);
     expect(report.outcome).toBe("ok");
     expect(report.checks.find((c) => c.id === "fin.cli-version")).toMatchObject({

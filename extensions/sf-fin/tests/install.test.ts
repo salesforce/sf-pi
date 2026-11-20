@@ -42,19 +42,19 @@ function detection(overrides: Partial<CliDetection> = {}): CliDetection {
 }
 
 const registry = {
-  latest: "0.15.0",
-  time: { "0.14.1": "2026-01-01T00:00:00.000Z", "0.15.0": "2026-03-01T00:00:00.000Z" },
+  latest: "0.17.0",
+  time: { "0.16.1": "2026-01-01T00:00:00.000Z", "0.17.0": "2026-03-01T00:00:00.000Z" },
 };
 
 describe("planCliInstall", () => {
   it("installs the exact latest version when missing", () => {
     const plan = planCliInstall({ detection: detection(), registry });
-    expect(plan).toMatchObject({ kind: "install", version: "0.15.0" });
+    expect(plan).toMatchObject({ kind: "install", version: "0.17.0" });
     if (plan.kind !== "install") throw new Error("expected install");
     expect(plan.args).toEqual([
       "install",
       "-g",
-      "@intercom/cli@0.15.0",
+      "@intercom/cli@0.17.0",
       "--no-audit",
       "--no-fund",
       "--loglevel=error",
@@ -66,17 +66,17 @@ describe("planCliInstall", () => {
     const outdated = detection({
       installed: true,
       installSource: "npm-global",
-      installedVersion: "0.14.1",
+      installedVersion: "0.16.1",
       state: "outdated",
     });
     expect(planCliInstall({ detection: outdated, registry })).toMatchObject({
       kind: "update",
-      version: "0.15.0",
+      version: "0.17.0",
     });
     const current = detection({
       installed: true,
       installSource: "npm-global",
-      installedVersion: "0.15.0",
+      installedVersion: "0.17.0",
       state: "current",
     });
     expect(planCliInstall({ detection: current, registry })).toMatchObject({ kind: "noop" });
@@ -87,7 +87,7 @@ describe("planCliInstall", () => {
       installed: true,
       installSource: "other",
       binaryPath: "/opt/brew/bin/intercom",
-      installedVersion: "0.14.1",
+      installedVersion: "0.16.1",
     });
     const plan = planCliInstall({ detection: other, registry });
     expect(plan).toMatchObject({ kind: "refused" });
@@ -98,15 +98,15 @@ describe("planCliInstall", () => {
     expect(planCliInstall({ detection: detection(), requestedVersion: "latest" })).toMatchObject({
       kind: "refused",
     });
-    expect(planCliInstall({ detection: detection(), requestedVersion: "^0.14" })).toMatchObject({
+    expect(planCliInstall({ detection: detection(), requestedVersion: "^0.16" })).toMatchObject({
       kind: "refused",
     });
     expect(planCliInstall({ detection: detection(), requestedVersion: "0.9.0" })).toMatchObject({
       kind: "refused",
     });
-    expect(planCliInstall({ detection: detection(), requestedVersion: "0.14.1" })).toMatchObject({
+    expect(planCliInstall({ detection: detection(), requestedVersion: "0.16.1" })).toMatchObject({
       kind: "install",
-      version: "0.14.1",
+      version: "0.16.1",
     });
   });
 
@@ -117,7 +117,7 @@ describe("planCliInstall", () => {
       npmPolicy: { minReleaseAge: "30" },
       now: new Date("2026-03-10T00:00:00.000Z"),
     });
-    expect(plan).toMatchObject({ kind: "install", version: "0.14.1" });
+    expect(plan).toMatchObject({ kind: "install", version: "0.16.1" });
   });
 
   it("refuses when the registry is unreachable and no version is given", () => {
@@ -133,7 +133,7 @@ describe("runCliInstall", () => {
     const result = await runCliInstall(exec, plan);
     expect(result.ok).toBe(true);
     expect(exec).toHaveBeenCalledTimes(1);
-    expect(exec.mock.calls[0]).toEqual(["npm", buildInstallArgs("0.15.0"), { timeout: 180_000 }]);
+    expect(exec.mock.calls[0]).toEqual(["npm", buildInstallArgs("0.17.0"), { timeout: 180_000 }]);
   });
 
   it("explains EACCES without retrying or using sudo", async () => {
@@ -174,24 +174,24 @@ describe("detectCli", () => {
 
     const exec = vi.fn(async (command: string) => {
       if (command === "which") return { code: 0, stdout: `${link}\n`, stderr: "" };
-      if (command === "intercom") return { code: 0, stdout: "0.14.1\n", stderr: "" };
+      if (command === "intercom") return { code: 0, stdout: "0.16.1\n", stderr: "" };
       return { code: 0, stdout: `${root}\n`, stderr: "" };
     });
-    await expect(detectCli(exec, { latestVersion: "0.15.0" }, POSIX_SPAWN)).resolves.toMatchObject({
+    await expect(detectCli(exec, { latestVersion: "0.17.0" }, POSIX_SPAWN)).resolves.toMatchObject({
       installed: true,
       installSource: "npm-global",
-      installedVersion: "0.14.1",
+      installedVersion: "0.16.1",
       state: "outdated",
     });
   });
 
   it("classifies install state", () => {
-    expect(classifyInstallState(undefined, false, "0.14.1")).toBe("missing");
-    expect(classifyInstallState(undefined, true, "0.14.1")).toBe("unknown");
-    expect(classifyInstallState("0.9.0", true, "0.14.1")).toBe("below-minimum");
-    expect(classifyInstallState("0.14.0", true, "0.14.1")).toBe("outdated");
-    expect(classifyInstallState("0.14.1", true, "0.14.1")).toBe("current");
-    expect(classifyInstallState("0.14.1", true, undefined)).toBe("current");
+    expect(classifyInstallState(undefined, false, "0.16.1")).toBe("missing");
+    expect(classifyInstallState(undefined, true, "0.16.1")).toBe("unknown");
+    expect(classifyInstallState("0.9.0", true, "0.16.1")).toBe("below-minimum");
+    expect(classifyInstallState("0.16.0", true, "0.16.1")).toBe("outdated");
+    expect(classifyInstallState("0.16.1", true, "0.16.1")).toBe("current");
+    expect(classifyInstallState("0.16.1", true, undefined)).toBe("current");
   });
 });
 
@@ -227,15 +227,15 @@ describe("Windows install detection", () => {
     const calls: string[] = [];
     const exec = vi.fn(async (command: string, args: string[]) => {
       calls.push([command, ...args].join(" "));
-      if (command === "intercom") return { code: 0, stdout: "0.15.0\n", stderr: "" };
+      if (command === "intercom") return { code: 0, stdout: "0.17.0\n", stderr: "" };
       if (command === "npm")
         return { code: 0, stdout: `${W.join(PREFIX, "node_modules")}\n`, stderr: "" };
       return { code: 1, stdout: "", stderr: "spawn ENOENT" };
     });
-    await expect(detectCli(exec, { latestVersion: "0.15.0" }, spawnCtx)).resolves.toMatchObject({
+    await expect(detectCli(exec, { latestVersion: "0.17.0" }, spawnCtx)).resolves.toMatchObject({
       installed: true,
       binaryPath: intercomJs,
-      installedVersion: "0.15.0",
+      installedVersion: "0.17.0",
       installSource: "npm-global",
       state: "current",
     });

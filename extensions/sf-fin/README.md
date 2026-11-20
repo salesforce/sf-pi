@@ -56,7 +56,7 @@ SF Guardrail (see below).
 
 ## Configuration
 
-1. Run `/sf-fin install`, or `npm install -g @intercom/cli` (0.14.0 or later).
+1. Run `/sf-fin install`, or `npm install -g @intercom/cli` (0.15.4 or later).
 2. In Fin, open **Settings → Personal → API tokens** and create a token. The
    token acts with your teammate permissions, including your conversation
    access.
@@ -187,9 +187,12 @@ app. It refuses if it lands somewhere else.
 - Fin publishes a procedure with an `api`, `inbox`, or `button_click` trigger
   only after that trigger's Fin behavior settings are configured in the Fin
   web UI. `validate` warns about it, and a failed `publish` names it.
-- Fin simulates **live** procedures only. A draft runs without its steps, and
-  `sdk simulate` warns about it. Publish the procedure to test it, then pause it
-  again. A procedure never returns to draft.
+- `sdk simulate` tests the procedure's **draft** by default, so an uploaded
+  edit can be checked before anything goes live. A procedure with no
+  unpublished draft is tested as it is live; `live=true` tests the live version.
+- `sdk publish` makes the procedure's draft live: a draft, a paused procedure,
+  or a live procedure with unpublished changes. `sdk pause` takes a live
+  procedure out of use and saves no version. A procedure never returns to draft.
 - `sdk publish|pause` only plans unless you pass `allow_mutation=true`. Executing
   it is an exact SF Guardrail mutation (`native-sf-fin-procedure-state`, Power
   Tool family **Fin CLI and Operator**) that is never session-approved, because

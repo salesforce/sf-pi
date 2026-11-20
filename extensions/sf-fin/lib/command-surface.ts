@@ -141,7 +141,7 @@ export function renderHelp(): string {
     `- \`/${COMMAND_NAME} sdk validate <procedure.yaml>\` — local schema and draft-rule check.`,
     `- \`/${COMMAND_NAME} sdk upload <procedure.yaml>\` — upload an unpublished draft (round-trip verified).`,
     `- \`/${COMMAND_NAME} sdk upload_simulations <simulations.yaml>\` — upload a simulation_set (tests with an id update; without one, add).`,
-    `- \`/${COMMAND_NAME} sdk simulate <procedure_id>\` — generate and run simulations (live procedures only).`,
+    `- \`/${COMMAND_NAME} sdk simulate <procedure_id>\` — generate and run simulations against the procedure's draft.`,
     `- \`/${COMMAND_NAME} sdk publish|pause <procedure_id>\` — set a procedure live or paused after confirmation.`,
     `- \`/${COMMAND_NAME} sdk validate|upload <guidance.yaml|connector.json>\` — guidance uploads paused; data connectors upload as drafts.`,
     `- \`/${COMMAND_NAME} sdk create_data_connector <name>\` — create a named draft data connector and print its id.`,

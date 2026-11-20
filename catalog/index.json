@@ -631,7 +631,7 @@
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 10385
+    "srcLoc": 10816
   },
   {
     "id": "sf-flow",

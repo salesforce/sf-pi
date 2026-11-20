@@ -16,6 +16,7 @@ import {
 } from "../lib/surfaces.ts";
 import { INTERCOM_MCP_TOOLS } from "../../sf-mcp/lib/tool-contracts-intercom.ts";
 import { createFinService } from "../lib/service.ts";
+import { CLI_0_16_4 } from "./fixtures/cli-0.16.4-commands.ts";
 
 const ROOT_HELP = `Usage: intercom [options] [command]
 
@@ -100,7 +101,7 @@ describe("surfaces", () => {
     const pagesFor = (extra: string[]) => {
       const all = [...leaves, ...extra];
       return async (p: string[]) => {
-        if (p[0] === "--version") return "0.14.1\n";
+        if (p[0] === "--version") return "0.16.1\n";
         const prefix = p.join(" ");
         const children = [
           ...new Set(
@@ -115,13 +116,37 @@ describe("surfaces", () => {
     };
     const clean = await createFinService({ exec: vi.fn(), helpRunner: pagesFor([]) }).surfaces();
     expect(clean.ok).toBe(true);
-    expect(clean.details).toMatchObject({ cliVersion: "0.14.1", cliCommands: leaves.length });
+    expect(clean.details).toMatchObject({ cliVersion: "0.16.1", cliCommands: leaves.length });
     const drift = await createFinService({
       exec: vi.fn(),
       helpRunner: pagesFor(["fin brand-new"]),
     }).surfaces();
     expect(drift.ok).toBe(false);
     expect(drift.text).toContain("New CLI commands: fin brand-new");
+  });
+
+  it("maps the reviewed Fin CLI 0.16.4 command set with no drift", () => {
+    // Leaf commands crawled from `intercom --help` on 0.16.4 (local, no token).
+    const report = compareSurfaces({ cliCommands: [...CLI_0_16_4], cliVersion: "0.16.4" });
+    expect(report.unmappedCli).toEqual([]);
+    expect(report.missingCli).toEqual([]);
+  });
+
+  it("names the 0.16 capabilities SF Fin builds on", () => {
+    const byId = new Map(CAPABILITIES.map((c) => [c.id, c]));
+    expect(byId.get("auth-token")?.cli).toEqual(
+      expect.arrayContaining(["auth-tokens list", "auth-tokens get"]),
+    );
+    expect(byId.get("data-connector")?.cli).toEqual(
+      expect.arrayContaining(["data-connectors update", "data-connectors list-execution-results"]),
+    );
+    expect(byId.get("simulation")?.cli).toContain("fin simulations delete");
+    expect(byId.get("handoff-target")?.cli).toEqual(
+      expect.arrayContaining(["teams list", "admins list"]),
+    );
+    expect(byId.get("fin-runtime")?.cli).toEqual(
+      expect.arrayContaining(["fin-agent start", "fin-agent reply"]),
+    );
   });
 
   it("gives every capability an SF Fin decision", () => {

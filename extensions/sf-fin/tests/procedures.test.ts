@@ -644,13 +644,21 @@ tests:
 });
 
 describe("setProcedureState (publish / pause)", () => {
-  const proc = (state: string, version = 7) =>
-    `id: 4242\nversion: ${version}\nname: Example\nstate: ${state}\nprocedure:\n  main: [Step]\n`;
-  function stateRun(current: string, savedState = "live") {
+  const proc = (state: string, version = 7, unpublished = false) =>
+    `id: 4242\nversion: ${version}\nname: Example\nstate: ${state}\nhas_unpublished_changes: ${unpublished}\nprocedure:\n  main: [Step]\n`;
+  /**
+   * CLI 0.16 `publish`/`pause` call POST /fin-sdk/procedures/{id}/publish|pause
+   * and return only a short status; SF Fin reads the state back with `get`.
+   */
+  function stateRun(current: string, savedState = "live", unpublished = false) {
+    let changed = false;
     return vi.fn(async (args: string[]) => {
-      if (args[2] === "get") return cli(proc(current));
-      if (args[2] === "publish" || args[2] === "pause")
-        return cli(JSON.stringify({ id: 4242, new_file_content: proc(savedState, 8) }));
+      if (args[2] === "get")
+        return cli(changed ? proc(savedState, 8) : proc(current, 7, unpublished));
+      if (args[2] === "publish" || args[2] === "pause") {
+        changed = true;
+        return cli(JSON.stringify({ message: "ok" }));
+      }
       return cli("{}", 1);
     });
   }
@@ -687,6 +695,28 @@ describe("setProcedureState (publish / pause)", () => {
       "--note",
       "go live",
     ]);
+    // The state is read back after the change, because 0.16 returns no saved file.
+    expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["get", "publish", "get"]);
+  });
+
+  it("publishes a live procedure's unpublished draft, and pauses without a note", async () => {
+    const run = stateRun("live", "live", true);
+    const result = await setProcedureState(credential, deps(run), {
+      procedureId: "4242",
+      target: "live",
+      execute: false,
+    });
+    expect(result.details).toMatchObject({ phase: "plan", from: "live", unpublished: true });
+    expect(result.text).toContain("unpublished draft");
+    const paused = stateRun("live", "paused");
+    const pause = await setProcedureState(credential, deps(paused), {
+      procedureId: "4242",
+      target: "paused",
+      execute: true,
+      note: "ignored by Fin",
+    });
+    expect(pause.ok).toBe(true);
+    expect(paused.mock.calls[1]?.[0]).toEqual(["fin", "procedures", "pause", "4242", "--json"]);
   });
 
   it("fails closed when Fin reports a different state after the change", async () => {
@@ -700,7 +730,7 @@ describe("setProcedureState (publish / pause)", () => {
     expect(result.details).toMatchObject({ phase: "verify", observed: "live" });
   });
 
-  it("is a no-op when already in the target state, and refuses to pause a draft", async () => {
+  it("is a no-op when already in the target state with nothing unpublished, and refuses to pause a draft", async () => {
     const live = stateRun("live");
     const noop = await setProcedureState(credential, deps(live), {
       procedureId: "4242",
@@ -757,7 +787,7 @@ describe("setProcedureState (publish / pause)", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it("warns when simulating a draft, because Fin only simulates live procedures", async () => {
+  it("tests the draft by default and says which version ran", async () => {
     const run = vi.fn(async (args: string[]) => {
       if (args[2] === "get") return cli(proc("draft"));
       if (args[2] === "list") return cli("tests: []\n");
@@ -769,8 +799,11 @@ describe("setProcedureState (publish / pause)", () => {
       procedureId: "4242",
       generate: false,
     });
-    expect(draft.text).toContain("is a draft");
-    expect(draft.details).toMatchObject({ procedureState: "draft" });
+    expect(draft.text).not.toContain("Publish it");
+    expect(draft.text).toContain("Tested the draft");
+    expect(draft.details).toMatchObject({ procedureState: "draft", tested: "draft" });
+    const runArgs = run.mock.calls.find((c) => (c[0] as string[])[2] === "run")?.[0] as string[];
+    expect(runArgs).not.toContain("--live");
 
     const liveRun = vi.fn(async (args: string[]) =>
       args[2] === "get" ? cli(proc("live")) : run(args),
@@ -778,8 +811,11 @@ describe("setProcedureState (publish / pause)", () => {
     const live = await simulateProcedure(credential, deps(liveRun), {
       procedureId: "4242",
       generate: false,
+      live: true,
     });
-    expect(live.text).not.toContain("is a draft");
+    expect(live.text).toContain("Tested the live version");
+    const liveArgs = liveRun.mock.calls.filter((c) => (c[0] as string[])[2] === "run").at(-1)?.[0];
+    expect(liveArgs).toContain("--live");
   });
 });
 

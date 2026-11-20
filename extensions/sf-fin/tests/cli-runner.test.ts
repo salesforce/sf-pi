@@ -201,8 +201,11 @@ describe("cli-runner helpers", () => {
   it("parses and compares CLI versions", () => {
     expect(parseCliVersion("0.14.1\n")).toBe("0.14.1");
     expect(parseCliVersion("garbage")).toBeUndefined();
-    expect(isCliVersionSupported("0.14.1")).toBe(true);
-    expect(isCliVersionSupported("0.14.0")).toBe(true);
+    expect(isCliVersionSupported("0.16.4")).toBe(true);
+    expect(isCliVersionSupported("0.15.4")).toBe(true);
+    // 0.15.4 is the minimum: it simulates drafts and adds the public REST commands.
+    expect(isCliVersionSupported("0.15.3")).toBe(false);
+    expect(isCliVersionSupported("0.14.1")).toBe(false);
     expect(isCliVersionSupported("0.13.9")).toBe(false);
     expect(isCliVersionSupported("1.0.0")).toBe(true);
   });
