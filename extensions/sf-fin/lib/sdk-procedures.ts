@@ -596,7 +596,14 @@ export interface SimulateResult {
 export async function simulateProcedure(
   credential: FinCredential,
   deps: SdkReadDeps & { sleep?: (ms: number) => Promise<void> },
-  input: { procedureId: string; generate: boolean; maxWaitMs?: number; generateSettleMs?: number },
+  input: {
+    procedureId: string;
+    generate: boolean;
+    /** Test the live version even when an unpublished draft exists. */
+    live?: boolean;
+    maxWaitMs?: number;
+    generateSettleMs?: number;
+  },
   signal?: AbortSignal,
 ): Promise<SimulateResult> {
   if (!/^[A-Za-z0-9_-]+$/.test(input.procedureId)) {
@@ -632,18 +639,27 @@ export async function simulateProcedure(
     }
   };
 
-  // Fin only runs live procedures in simulations. A draft (never published)
-  // produces "no procedure instructions" runs, so warn before spending runs.
+  // Since CLI 0.15.4, runs and generation test the procedure's draft by
+  // default; a procedure with no unpublished draft is tested as it is live.
   const state = await readProcedureState(credential, deps, input.procedureId, signal);
-  if (state.state === "draft") {
-    lines.push(
-      `⚠ Procedure ${input.procedureId} is a draft. Fin only runs live procedures in simulations, so these runs will not follow its steps. Publish it with sdk operation='publish' (and pause it again afterwards) to test it.`,
-    );
-  }
+  const hasDraft = state.state === "draft" || state.unpublished === true;
+  const tested = input.live || !hasDraft ? "live" : "draft";
+  lines.push(
+    tested === "draft"
+      ? `🧪 Tested the draft of procedure ${input.procedureId} (unpublished changes; nothing goes live).`
+      : `🧪 Tested the live version of procedure ${input.procedureId}${input.live && hasDraft ? " (its unpublished draft was not tested)" : ""}.`,
+  );
+  const liveFlag = input.live ? ["--live"] : [];
 
   const before = await countTests();
   if (input.generate) {
-    const generated = await call(["fin", "simulations", "generate", input.procedureId]);
+    const generated = await call([
+      "fin",
+      "simulations",
+      "generate",
+      input.procedureId,
+      ...liveFlag,
+    ]);
     if (classifyCliResult(generated) !== "ok") {
       return failure("generate", generated, lines);
     }
@@ -665,7 +681,7 @@ export async function simulateProcedure(
     );
   }
 
-  const started = await call(["fin", "simulations", "run", input.procedureId]);
+  const started = await call(["fin", "simulations", "run", input.procedureId, ...liveFlag]);
   if (classifyCliResult(started) !== "ok") return failure("run", started, lines);
   const startedJson = parseJson(started.stdout) ?? {};
   const enqueued = Array.isArray(startedJson.enqueued)
@@ -730,6 +746,7 @@ export async function simulateProcedure(
       passed,
       total: runs.length,
       procedureState: state.state,
+      tested,
     },
   };
 }
@@ -749,6 +766,8 @@ export async function readProcedureState(
   version?: string;
   name?: string;
   uiConfiguredTriggers?: string[];
+  /** True when the procedure has a saved draft that is not live yet. */
+  unpublished?: boolean;
   error?: string;
 }> {
   const result = await deps.run(["fin", "procedures", "get", procedureId], {
@@ -770,6 +789,7 @@ export async function readProcedureState(
     version: stringId(doc?.version),
     name: stringValue(doc?.name),
     uiConfiguredTriggers: uiConfiguredTriggers(doc),
+    unpublished: doc?.has_unpublished_changes === true,
   };
 }
 
@@ -813,7 +833,8 @@ export async function setProcedureState(
   }
   const label = `"${current.name ?? input.procedureId}" (${input.procedureId})`;
   const base = { procedureId: input.procedureId, from: current.state, to: input.target };
-  if (current.state === input.target) {
+  const publishesDraft = input.target === "live" && current.unpublished === true;
+  if (current.state === input.target && !publishesDraft) {
     return {
       ok: true,
       text: `Procedure ${label} is already ${current.state}; nothing to change.`,
@@ -829,22 +850,33 @@ export async function setProcedureState(
   }
   const effect =
     input.target === "live"
-      ? "Fin will start using it for matching customer conversations on its targeted channels."
+      ? publishesDraft && current.state === "live"
+        ? "Fin will replace the live version with the unpublished draft for matching customer conversations on its targeted channels."
+        : "Fin will start using it for matching customer conversations on its targeted channels."
       : "Fin will stop using it for customer conversations. It can be published again later; it cannot return to draft.";
   if (!input.execute) {
     return {
       ok: true,
       text: [
-        `Plan: ${verb} procedure ${label} — ${current.state} → ${input.target}.`,
+        publishesDraft && current.state === "live"
+          ? `Plan: ${verb} the unpublished draft of procedure ${label} (live → live with the draft's changes).`
+          : `Plan: ${verb} procedure ${label} — ${current.state} → ${input.target}.`,
         effect,
         `To proceed, call sf_fin action='sdk' operation='${verb}' procedure_id='${input.procedureId}' allow_mutation=true (SF Guardrail mediates it).`,
       ].join("\n"),
-      details: { phase: "plan", ...base, version: current.version },
+      details: {
+        phase: "plan",
+        ...base,
+        version: current.version,
+        ...(publishesDraft ? { unpublished: true } : {}),
+      },
     };
   }
 
+  // CLI 0.16 publish/pause call the editor's own endpoints. Pausing saves no
+  // version, so it takes no note.
   const args = ["fin", "procedures", verb, input.procedureId, "--json"];
-  if (input.note?.trim()) args.push("--note", input.note.trim());
+  if (verb === "publish" && input.note?.trim()) args.push("--note", input.note.trim());
   const result = await deps.run(args, { credential, signal, timeoutMs: 120_000 });
   if (classifyCliResult(result) !== "ok") {
     // On a server validation failure the CLI reports only a generic message
@@ -868,10 +900,10 @@ export async function setProcedureState(
       },
     };
   }
-  const saved = parseYamlSafe(stringValue(parseJson(result.stdout)?.new_file_content) ?? "") as
-    Record<string, unknown> | undefined;
-  const after = stringValue(saved?.state);
-  const version = stringId(saved?.version);
+  // The response carries no saved file in CLI 0.16; read the state back.
+  const reread = await readProcedureState(credential, deps, input.procedureId, signal);
+  const after = reread.state;
+  const version = reread.version;
   if (after !== input.target) {
     return {
       ok: false,
