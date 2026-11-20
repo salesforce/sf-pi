@@ -12,6 +12,8 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { buildFinCard, modelPacket } from "./cards.ts";
+import { renderFinResult } from "./render.ts";
 import type { FinService } from "./service.ts";
 import { statusText } from "./service.ts";
 import { COMMAND_NAME, PROVIDER_NAME, TOOL_NAME } from "./types.ts";
@@ -319,9 +321,13 @@ export function registerSfFinTool(
         0,
       );
     },
-    async execute(_id, params, _signal, _onUpdate, ctx) {
+    renderResult: (result, options, theme) =>
+      renderFinResult(result as Parameters<typeof renderFinResult>[0], options, theme),
+    async execute(_id, params, _signal, onUpdate, ctx) {
       const input = params as Params;
       const workspace = input.workspace?.trim() || undefined;
+      const progress = (current: string) => emitProgress(onUpdate, input, current);
+      const done = (raw: ToolReturn) => finish(raw, input);
 
       if (input.action === "workspace") {
         const operation =
@@ -335,11 +341,11 @@ export function registerSfFinTool(
               ? { operation, name: input.name, kind: input.kind }
               : { operation, name: input.name },
         );
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "workspace", operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "admin") {
@@ -353,14 +359,19 @@ export function registerSfFinTool(
           workspace,
           cwd: ctx.cwd,
         });
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "admin", operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "salesforce") {
+        if (input.allow_mutation === true) {
+          progress(`Applying ${input.operation ?? "change"} in ${input.target_org ?? "the org"}…`);
+        } else {
+          progress(`Reading ${input.target_org ?? "the org"}…`);
+        }
         const operation =
           input.operation === "package_install" ||
           input.operation === "audit_fields_enable" ||
@@ -379,11 +390,11 @@ export function registerSfFinTool(
           workspace,
           execute: input.allow_mutation === true,
         });
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "salesforce", operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "setup") {
@@ -391,16 +402,16 @@ export function registerSfFinTool(
           { ...ctx, executeTool: (name, args) => ctx.executeTool(name, args) },
           { workspace, wants: input.wants },
         );
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "setup", ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "doctor") {
         const result = await service.doctor(ctx);
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: {
             action: "doctor",
@@ -412,7 +423,7 @@ export function registerSfFinTool(
             ...(result.outcome === "ok" ? {} : { recover_via: recoverVia(result.outcome) }),
           },
           ...(result.outcome === "ok" ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "install") {
@@ -424,14 +435,15 @@ export function registerSfFinTool(
               : [plan.reason, plan.kind === "refused" ? plan.manual : undefined]
                   .filter(Boolean)
                   .join("\n");
-          return {
+          return done({
             content: [{ type: "text", text }],
             details: { action: "install", phase: "plan", plan },
             ...(plan.kind === "refused" ? { isError: true } : {}),
-          };
+          });
         }
+        progress(`Installing ${plan.command}…`);
         const result = await service.install(plan);
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: {
             action: "install",
@@ -441,19 +453,20 @@ export function registerSfFinTool(
             cliVersion: result.snapshot?.cliVersion,
           },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "surfaces") {
         const result = await service.surfaces();
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "surfaces", ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "agent") {
+        if (input.operation === "run") progress("Talking to Fin through the Fin Agent API…");
         const operation =
           input.operation === "capabilities" || input.operation === "run"
             ? input.operation
@@ -476,11 +489,11 @@ export function registerSfFinTool(
               : { operation },
           workspace,
         );
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "agent", operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (
@@ -499,11 +512,11 @@ export function registerSfFinTool(
               },
           workspace,
         );
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "sdk", operation: input.operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (
@@ -515,6 +528,9 @@ export function registerSfFinTool(
           input.operation === "publish" ||
           input.operation === "pause")
       ) {
+        if (input.operation === "simulate") {
+          progress(`Running simulations for procedure ${input.procedure_id ?? "?"}…`);
+        }
         const result = await service.procedure(
           ctx,
           input.operation === "publish" || input.operation === "pause"
@@ -538,17 +554,17 @@ export function registerSfFinTool(
                   : { operation: "validate", file: input.file },
           workspace,
         );
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: { action: "sdk", operation: input.operation, ok: result.ok, ...result.details },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "sdk") {
         const operation = input.operation === "download" ? "download" : "manifest";
         const result = await service.sdk(ctx, operation, workspace);
-        return {
+        return done({
           content: [{ type: "text", text: result.text }],
           details: {
             action: "sdk",
@@ -558,29 +574,75 @@ export function registerSfFinTool(
             ...result.details,
           },
           ...(result.ok ? {} : { isError: true }),
-        };
+        });
       }
 
       if (input.action === "debug") {
         if (input.verbose) {
           const text = service.setVerbose(input.verbose === "on", input.runs);
-          return {
+          return done({
             content: [{ type: "text", text }],
             details: { action: "debug", verbose: input.verbose },
-          };
+          });
         }
-        return {
+        return done({
           content: [{ type: "text", text: service.debugBundle(meta()) }],
           details: { action: "debug", phase: "bundle" },
-        };
+        });
       }
 
-      return {
+      return done({
         content: [{ type: "text", text: statusText() }],
         details: { action: "status" },
-      };
+      });
     },
   });
+}
+
+interface ToolReturn {
+  content: Array<{ type: "text"; text: string }>;
+  details: Record<string, unknown>;
+  isError?: boolean;
+}
+
+/**
+ * Every sf_fin result leaves through here: the human card goes into
+ * `details.card` (drawn by renderResult) and the model gets the bounded,
+ * sanitized packet in `content`.
+ */
+function finish(raw: ToolReturn, input: Params): ToolReturn {
+  const text = raw.content.map((item) => item.text).join("\n");
+  const details: Record<string, unknown> = {
+    ...raw.details,
+    ...(input.target_org && raw.details.targetOrg === undefined
+      ? { targetOrg: input.target_org }
+      : {}),
+  };
+  const ok = raw.isError !== true && details.ok !== false;
+  const card = buildFinCard({ text, ok, details });
+  return {
+    ...raw,
+    content: [{ type: "text", text: modelPacket(text, {}) }],
+    details: { ...details, card },
+  };
+}
+
+/** Live progress for long operations (package install, connect, simulations, agent runs). */
+function emitProgress(onUpdate: unknown, input: Params, current: string): void {
+  if (typeof onUpdate !== "function") return;
+  try {
+    (onUpdate as (value: unknown) => void)({
+      content: [{ type: "text", text: current }],
+      details: {
+        progress: {
+          phase: [input.action, input.operation].filter(Boolean).join(" · "),
+          current,
+        },
+      },
+    });
+  } catch {
+    // Progress is best effort; the final result is authoritative.
+  }
 }
 
 function recoverVia(outcome: string): Record<string, string> {

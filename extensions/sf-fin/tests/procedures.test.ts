@@ -401,6 +401,11 @@ describe("simulateProcedure", () => {
     expect(result.text).toContain("Generated 2 simulations");
     expect(result.text).toContain('agent_response "reset" failed — Agent never mentioned a reset.');
     expect(result.text).toContain("outcome failed");
+    // Runs are structured in details so failures can be read without re-running.
+    expect((result.details.runs as Array<{ name: string }>).map((r) => r.name)).toEqual([
+      "Happy path",
+      "Escalation",
+    ]);
   });
 
   it("retries transient network errors while polling, then gives up", async () => {
