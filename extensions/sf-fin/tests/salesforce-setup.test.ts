@@ -11,7 +11,7 @@ import {
   renderAccessPermissionSet,
   type SalesforceFacts,
 } from "../lib/salesforce/contract.ts";
-import type { FinSalesforceOrg } from "../lib/salesforce/org.ts";
+import type { FinCaseActivity, FinSalesforceOrg } from "../lib/salesforce/org.ts";
 import { runSalesforceSetup } from "../lib/salesforce/setup.ts";
 
 const ORG_ID = "00D000000000001AAA";
@@ -608,6 +608,7 @@ interface FakeOptions {
   digitalExperiences?: boolean;
   enhancedEmail?: boolean;
   goLive?: Pick<SalesforceFacts, "emailToCaseEnabled" | "caseRouting" | "caseQueues">;
+  observe?: FinCaseActivity;
 }
 
 /** In-memory org: state changes only through the FinSalesforceOrg write methods. */
@@ -673,6 +674,17 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
         enhancedEmailEnabled: state.enhancedEmail,
         ...options.goLive,
       };
+    },
+    async readFinCaseActivity() {
+      return (
+        options.observe ?? {
+          finUserOwned: 0,
+          involved: 0,
+          byResolution: {},
+          byOrigin: {},
+          recent: [],
+        }
+      );
     },
     async enableEnhancedEmail() {
       writes.push("settings:enableEnhancedEmailEnabled=true");
@@ -766,6 +778,62 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
     },
   };
 }
+
+describe("observe (cases Fin worked)", () => {
+  it("summarizes Fin's resolution states, origins, and recent cases without writing", async () => {
+    const org = fakeOrg({
+      installed: true,
+      observe: {
+        finUserOwned: 3,
+        involved: 5,
+        byResolution: { "Soft Resolution": 2, "Hard Resolution": 1, "Routed to team": 2 },
+        byOrigin: { Web: 4, Email: 1 },
+        recent: [
+          {
+            caseNumber: "00000001",
+            subject: "Example question",
+            status: "New",
+            origin: "Web",
+            resolution: "Soft Resolution",
+            ownedByFin: true,
+            lastModified: "2026-01-02T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+    const result = await runSalesforceSetup(org, { operation: "observe", targetOrg: "DevOrg" });
+    expect(result.ok).toBe(true);
+    expect(result.details).toMatchObject({
+      phase: "observe",
+      involved: 5,
+      resolved: 3,
+      routed: 2,
+      resolutionRate: 0.6,
+    });
+    expect(result.text).toContain("60%");
+    expect(result.text).toContain("00000001");
+    expect(org.writes).toEqual([]);
+  });
+
+  it("explains an empty picture instead of reporting a 0% rate", async () => {
+    const org = fakeOrg({
+      installed: true,
+      observe: { finUserOwned: 0, involved: 0, byResolution: {}, byOrigin: {}, recent: [] },
+    });
+    const result = await runSalesforceSetup(org, { operation: "observe", targetOrg: "DevOrg" });
+    expect(result.details).toMatchObject({ involved: 0 });
+    expect(result.details.resolutionRate).toBeUndefined();
+    expect(result.text).toContain("No case has been worked by Fin yet");
+  });
+
+  it("refuses without the Fin package (no Fin fields to read)", async () => {
+    const result = await runSalesforceSetup(fakeOrg(), {
+      operation: "observe",
+      targetOrg: "DevOrg",
+    });
+    expect(result).toMatchObject({ ok: false, details: { code: "package_missing" } });
+  });
+});
 
 describe("go-live next step", () => {
   it("names routing before the handoff queue and Email-to-Case once Fin is connected", async () => {

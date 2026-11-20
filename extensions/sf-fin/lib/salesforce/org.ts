@@ -43,8 +43,32 @@ const INSTALL_POLL_MS = 5_000;
 const INSTALL_TIMEOUT_MS = 15 * 60_000;
 const SETTINGS_DEPLOY_TIMEOUT_MS = 5 * 60_000;
 
+/** How Fin has worked Cases in this org, from the Fin package's Case fields. */
+export interface FinCaseActivity {
+  /** Cases currently owned by the Fin user. */
+  finUserOwned: number;
+  /** Cases with finai__FinInvolved__c = true. */
+  involved: number;
+  /** finai__FinResolutionState__c counts among Fin-involved cases. */
+  byResolution: Record<string, number>;
+  /** Case Origin counts among Fin-involved cases. */
+  byOrigin: Record<string, number>;
+  /** Most recently modified Fin-involved cases (no description or body fields). */
+  recent: Array<{
+    caseNumber: string;
+    subject?: string;
+    status?: string;
+    origin?: string;
+    resolution?: string;
+    ownedByFin: boolean;
+    lastModified?: string;
+  }>;
+}
+
 /** Narrow seam the setup orchestration depends on (faked in tests). */
 export interface FinSalesforceOrg {
+  /** Read-only: how Fin has worked Cases (needs the Fin package's Case fields). */
+  readFinCaseActivity(input: { finUserId?: string }): Promise<FinCaseActivity>;
   /** 18-character org id of the target org. */
   orgId(): Promise<string>;
   /** Org state for Fin's contract; `requested` is filled in by the caller. */
@@ -204,7 +228,59 @@ export function createFinSalesforceOrg(
     };
   };
 
+  const groupCounts = async (field: string, where: string) =>
+    Object.fromEntries(
+      (
+        await query<Record<string, unknown>>(
+          `SELECT ${field} k, COUNT(Id) n FROM Case WHERE ${where} GROUP BY ${field}`,
+          "rest",
+          50,
+        ).catch(() => [])
+      ).map((row) => [typeof row.k === "string" && row.k ? row.k : "(none)", Number(row.n ?? 0)]),
+    );
+
   return {
+    async readFinCaseActivity(input) {
+      const involvedWhere = "finai__FinInvolved__c = true";
+      const count = (where: string) =>
+        session
+          .query<unknown>({
+            soql: `SELECT COUNT() FROM Case WHERE ${where}`,
+            api: "rest",
+            maxRows: 1,
+          })
+          .then((r) => r.totalSize ?? 0)
+          .catch(() => 0);
+      const recentRows = await query<{
+        CaseNumber: string;
+        Subject?: string;
+        Status?: string;
+        Origin?: string;
+        OwnerId?: string;
+        LastModifiedDate?: string;
+        finai__FinResolutionState__c?: string;
+      }>(
+        `SELECT CaseNumber, Subject, Status, Origin, OwnerId, LastModifiedDate, finai__FinResolutionState__c FROM Case WHERE ${involvedWhere}${input.finUserId ? ` OR OwnerId = '${soql(input.finUserId)}'` : ""} ORDER BY LastModifiedDate DESC`,
+        "rest",
+        10,
+      ).catch(() => []);
+      return {
+        finUserOwned: input.finUserId ? await count(`OwnerId = '${soql(input.finUserId)}'`) : 0,
+        involved: await count(involvedWhere),
+        byResolution: await groupCounts("finai__FinResolutionState__c", involvedWhere),
+        byOrigin: await groupCounts("Origin", involvedWhere),
+        recent: recentRows.map((row) => ({
+          caseNumber: row.CaseNumber,
+          subject: row.Subject,
+          status: row.Status,
+          origin: row.Origin,
+          resolution: row.finai__FinResolutionState__c,
+          ownedByFin: Boolean(input.finUserId) && row.OwnerId === input.finUserId,
+          lastModified: row.LastModifiedDate,
+        })),
+      };
+    },
+
     async orgId() {
       return session.target.orgId ?? (await session.identity()).org_id;
     },

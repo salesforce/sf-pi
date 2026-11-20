@@ -799,6 +799,26 @@ describe("Safety Kernel", () => {
     expect(live?.approvalScope?.fingerprint).not.toBe(test?.approvalScope?.fingerprint);
   });
 
+  it("never prompts for sf_fin salesforce observe, which only reads", async () => {
+    mockedEnv = env("FinDev", "developer");
+    lookupOrg("FinDev", "developer");
+    for (const allow_mutation of [false, true]) {
+      expect(
+        await evaluateSafety({
+          toolName: "sf_fin",
+          input: {
+            action: "salesforce",
+            operation: "observe",
+            target_org: "FinDev",
+            allow_mutation,
+          },
+          cwd: "/project",
+          config: readBundledConfig(),
+        }),
+      ).toBeUndefined();
+    }
+  });
+
   it("blocks sf_fin Salesforce setup on production and unknown orgs", async () => {
     mockedEnv = env("FinProd", "production");
     lookupOrg("FinProd", "production");

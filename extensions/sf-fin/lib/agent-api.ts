@@ -162,6 +162,51 @@ export interface ScriptedRun {
   replies?: string[];
   /** Test user external id; a unique synthetic id is generated when omitted. */
   userId?: string;
+  /**
+   * Phrases Fin's replies must contain (case-insensitive, whitespace-normalized).
+   * A miss fails the run even when Fin answered, so runs work as tests.
+   */
+  expect?: string[];
+}
+
+export interface ExpectationResult {
+  passed: boolean;
+  results: Array<{ expect: string; found: boolean }>;
+}
+
+/** What the reply text shows: `[n]` citation markers and a handoff to a teammate. */
+export interface RunSignals {
+  citations: number;
+  handoff: boolean;
+}
+
+/** Check each expected phrase against Fin's turns only (never the user's own words). */
+export function checkExpectations(
+  transcript: RunTranscriptTurn[],
+  expected: string[],
+): ExpectationResult {
+  const norm = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
+  const fin = norm(
+    transcript
+      .filter((t) => t.role === "fin")
+      .map((t) => t.text)
+      .join("\n"),
+  );
+  const results = expected
+    .filter((e) => e.trim())
+    .map((e) => ({ expect: e, found: fin.includes(norm(e)) }));
+  return { passed: results.every((r) => r.found), results };
+}
+
+const HANDOFF =
+  /\b(connecting you (to|with)|hand(ing)? (you )?(over|off)|transfer(ring)? you|a (teammate|team member|human|agent) will)/i;
+
+function signalsOf(transcript: RunTranscriptTurn[]): RunSignals {
+  const fin = transcript.filter((t) => t.role === "fin").map((t) => t.text);
+  return {
+    citations: new Set(fin.flatMap((t) => [...t.matchAll(/\[(\d{1,2})\]/g)].map((m) => m[1]))).size,
+    handoff: fin.some((t) => HANDOFF.test(t)),
+  };
 }
 
 export interface RunTranscriptTurn {
@@ -174,6 +219,8 @@ export interface RunResult {
   conversationId: string;
   status: string;
   transcript: RunTranscriptTurn[];
+  signals: RunSignals;
+  expectations?: ExpectationResult;
   text: string;
 }
 
@@ -241,12 +288,16 @@ export async function runScriptedConversation(
       user_id: userId,
     });
   }
+  const signals = signalsOf(transcript);
+  const expectations = run.expect?.length ? checkExpectations(transcript, run.expect) : undefined;
   return {
-    ok: status === "answered",
+    ok: status === "answered" && (expectations?.passed ?? true),
     conversationId,
     status,
     transcript,
-    text: formatRun(conversationId, status, transcript),
+    signals,
+    ...(expectations ? { expectations } : {}),
+    text: formatRun(conversationId, status, transcript, signals, expectations),
   };
 }
 
@@ -302,10 +353,15 @@ function formatRun(
   conversationId: string,
   status: RunStatus,
   transcript: RunTranscriptTurn[],
+  signals: RunSignals,
+  expectations?: ExpectationResult,
 ): string {
+  const passed = status === "answered" && (expectations?.passed ?? true);
   return [
-    `${status === "answered" ? "✅" : "⚠"} Fin Agent API run ${conversationId} — ${status === "answered" ? "Fin answered" : "no reply within the poll limit"}`,
+    `${passed ? "✅" : "⚠"} Fin Agent API run ${conversationId} — ${status === "answered" ? (expectations && !expectations.passed ? "Fin answered, but an expectation failed" : "Fin answered") : "no reply within the poll limit"}`,
     ...transcript.map((t) => `${t.role === "user" ? "User" : "Fin"}: ${t.text.slice(0, 600)}`),
+    `Signals: ${signals.citations} citation${signals.citations === 1 ? "" : "s"}${signals.handoff ? " · handed off to a teammate" : ""}`,
+    ...(expectations?.results ?? []).map((r) => `${r.found ? "✓" : "✗"} expected "${r.expect}"`),
   ].join("\n");
 }
 

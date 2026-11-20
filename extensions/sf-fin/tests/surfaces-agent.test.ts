@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   accessText,
+  checkExpectations,
   createAgentApiClient,
   probeAgentApiAccess,
   runScriptedConversation,
@@ -309,6 +310,64 @@ describe("Fin Agent API harness", () => {
     );
     expect(result).toMatchObject({ ok: false, status: "timed_out" });
     expect(f.mock.calls.length).toBe(1 + 30);
+  });
+
+  it("checks expected phrases in Fin's replies, case-insensitively, and reports misses", () => {
+    const transcript = [
+      { role: "user" as const, text: "Status of case 1024?" },
+      { role: "fin" as const, text: "Case 00001024 is New. Subject: Design issue [1]" },
+      { role: "fin" as const, text: "Anything else?" },
+    ];
+    // Matching is on Fin's turns only, case-insensitive, whitespace-normalized.
+    expect(checkExpectations(transcript, ["case 00001024 IS new", "anything  else"])).toEqual({
+      passed: true,
+      results: [
+        { expect: "case 00001024 IS new", found: true },
+        { expect: "anything  else", found: true },
+      ],
+    });
+    // The user's own words never satisfy an expectation.
+    expect(checkExpectations(transcript, ["case 1024?"]).passed).toBe(false);
+    expect(checkExpectations(transcript, []).passed).toBe(true);
+  });
+
+  it("marks citations and handoffs it can see in Fin's reply text", async () => {
+    const f = rpcFetch((_m, params) =>
+      params?.name === "ask_fin"
+        ? { body: text("<p>Reset it from the sign-in page [1].</p>") }
+        : { body: text("unexpected") },
+    );
+    const client = createAgentApiClient({ key: KEY, region: "us", deps: deps(f) });
+    const cited = await runScriptedConversation(
+      client,
+      deps(f),
+      { message: "Reset password?", expect: ["sign-in page"] },
+      { conversationId: "c", userId: "u" },
+    );
+    expect(cited).toMatchObject({
+      ok: true,
+      signals: { citations: 1, handoff: false },
+      expectations: { passed: true },
+    });
+    const handoff = rpcFetch((_m, params) =>
+      params?.name === "ask_fin"
+        ? { body: text("Connecting you to an agent now.") }
+        : { body: text("unexpected") },
+    );
+    const routed = await runScriptedConversation(
+      createAgentApiClient({ key: KEY, region: "us", deps: deps(handoff) }),
+      deps(handoff),
+      { message: "Talk to a human", expect: ["refund"] },
+      { conversationId: "c2", userId: "u" },
+    );
+    expect(routed.signals).toMatchObject({ handoff: true });
+    // An expectation miss fails the run even though Fin answered.
+    expect(routed).toMatchObject({
+      ok: false,
+      status: "answered",
+      expectations: { passed: false },
+    });
+    expect(routed.text).toContain('✗ expected "refund"');
   });
 
   it("surfaces a real tool error instead of polling forever", async () => {

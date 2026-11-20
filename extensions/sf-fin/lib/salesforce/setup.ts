@@ -50,7 +50,8 @@ export type SalesforceOperation =
   | "digital_experiences_enable"
   | "enhanced_email_enable"
   | "permissions_apply"
-  | "connect";
+  | "connect"
+  | "observe";
 
 /** Runs Fin's Connect runbook; supplied by the service (browser + sign-in). */
 export type FinConnectRunner = (input: {
@@ -115,6 +116,7 @@ export async function runSalesforceSetup(
   const facts = await read();
 
   if (request.operation === "readiness") return readiness(facts, request.targetOrg);
+  if (request.operation === "observe") return observe(org, facts, request.targetOrg);
   if (request.operation === "package_install") {
     return packageInstall(org, facts, request, versionId, described, read);
   }
@@ -380,6 +382,73 @@ async function enhancedEmailEnable(
       error: deployed.error,
     },
   };
+}
+
+/** Fin's resolution states (finai__FinResolutionState__c), from Fin's Cases guide. */
+const RESOLVED_STATES = new Set(["Soft Resolution", "Hard Resolution"]);
+const ROUTED_STATES = new Set(["Routed to team"]);
+
+async function observe(
+  org: FinSalesforceOrg,
+  facts: SalesforceFacts,
+  targetOrg: string,
+): Promise<SalesforceSetupResult> {
+  if (!evaluateSalesforceReadiness(facts).packageReady) {
+    return fail(
+      "The Fin for Salesforce package is not installed, so there are no Fin Case fields to read. Run readiness first.",
+      "package_missing",
+    );
+  }
+  const activity = await org.readFinCaseActivity({ finUserId: facts.user?.id });
+  const sum = (filter: Set<string>) =>
+    Object.entries(activity.byResolution)
+      .filter(([state]) => filter.has(state))
+      .reduce((total, [, n]) => total + n, 0);
+  const resolved = sum(RESOLVED_STATES);
+  const routed = sum(ROUTED_STATES);
+  const rate = activity.involved > 0 ? resolved / activity.involved : undefined;
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const lines =
+    activity.involved === 0 && activity.finUserOwned === 0
+      ? [
+          `Fin on Salesforce Cases — ${targetOrg}`,
+          "",
+          "No case has been worked by Fin yet (finai__FinInvolved__c is false on every case, and the Fin user owns none).",
+          "Next: assign one test case to the Fin user (or create one your routing Flow matches), then observe again.",
+        ]
+      : [
+          `Fin on Salesforce Cases — ${targetOrg}`,
+          "",
+          `Fin-involved cases: ${activity.involved}${rate !== undefined ? ` · resolved ${resolved} (${pct(rate)})` : ""} · routed to team ${routed} · owned by Fin now ${activity.finUserOwned}`,
+          `By resolution: ${formatCounts(activity.byResolution)}`,
+          `By origin: ${formatCounts(activity.byOrigin)}`,
+          "",
+          "Recent:",
+          ...activity.recent.map(
+            (c) =>
+              `- ${c.caseNumber} · ${c.status ?? "?"} · ${c.resolution ?? "no Fin state"}${c.ownedByFin ? " · owned by Fin" : ""}${c.origin ? ` · ${c.origin}` : ""}${c.subject ? ` · ${c.subject.slice(0, 80)}` : ""}`,
+          ),
+        ];
+  return {
+    ok: true,
+    text: lines.join("\n"),
+    details: {
+      phase: "observe",
+      involved: activity.involved,
+      finUserOwned: activity.finUserOwned,
+      resolved,
+      routed,
+      ...(rate !== undefined ? { resolutionRate: Math.round(rate * 100) / 100 } : {}),
+      byResolution: activity.byResolution,
+      byOrigin: activity.byOrigin,
+      recent: activity.recent,
+    },
+  };
+}
+
+function formatCounts(counts: Record<string, number>): string {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return entries.length ? entries.map(([k, n]) => `${k} ${n}`).join(" · ") : "none";
 }
 
 function readiness(facts: SalesforceFacts, targetOrg: string): SalesforceSetupResult {
