@@ -786,7 +786,8 @@ describe("observe (cases Fin worked)", () => {
       observe: {
         finUserOwned: 3,
         involved: 5,
-        byResolution: { "Soft Resolution": 2, "Hard Resolution": 1, "Routed to team": 2 },
+        // Fin stores the picklist API values (labels are Soft Resolution, …).
+        byResolution: { soft_resolution: 2, hard_resolution: 1, routed_to_team: 2 },
         byOrigin: { Web: 4, Email: 1 },
         recent: [
           {
@@ -794,7 +795,7 @@ describe("observe (cases Fin worked)", () => {
             subject: "Example question",
             status: "New",
             origin: "Web",
-            resolution: "Soft Resolution",
+            resolution: "soft_resolution",
             ownedByFin: true,
             lastModified: "2026-01-02T00:00:00.000Z",
           },
@@ -812,7 +813,26 @@ describe("observe (cases Fin worked)", () => {
     });
     expect(result.text).toContain("60%");
     expect(result.text).toContain("00000001");
+    // Shown with Fin's labels, not raw API values.
+    expect(result.text).toContain("Soft Resolution 2");
+    expect(result.text).not.toContain("soft_resolution");
     expect(org.writes).toEqual([]);
+  });
+
+  it("flags Fin-owned cases with no Fin activity (assigned before the channel was live)", async () => {
+    const org = fakeOrg({
+      installed: true,
+      observe: {
+        finUserOwned: 2,
+        involved: 1,
+        byResolution: { soft_resolution: 1 },
+        byOrigin: { Web: 1 },
+        recent: [],
+      },
+    });
+    const result = await runSalesforceSetup(org, { operation: "observe", targetOrg: "DevOrg" });
+    expect(result.text).toContain("1 case(s) owned by the Fin user have no Fin activity");
+    expect(result.text).toContain("channel is live");
   });
 
   it("explains an empty picture instead of reporting a 0% rate", async () => {

@@ -545,7 +545,7 @@ function goLiveChecks(facts: SalesforceFacts): ReadinessCheck[] {
         ? `Fin only works cases assigned to its user. Build a record-triggered Case Flow with sf_flow that sets Owner to the Fin user${routing.activeAssignmentRule ? ` (it runs after the active assignment rule "${routing.activeAssignmentRule}", so its owner wins)` : ""}, or assign cases by hand to test.`
         : routing.casesOwnedByFin > 0
           ? undefined
-          : "Create one test case that matches the Flow and check that its owner becomes the Fin user.",
+          : "Create one test case that matches the Flow and check that its owner becomes the Fin user. Fin works a case only when it is assigned while Fin's Salesforce cases channel is live (Fin → Deploy → Salesforce cases → Go live); cases assigned earlier are not picked up.",
       fix: routed && routing.casesOwnedByFin > 0 ? undefined : "human",
     });
   }

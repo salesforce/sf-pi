@@ -544,7 +544,7 @@ function observeCard(input: CardInput): SfPiResultCard {
       ? "✅"
       : state === "Soft Resolution"
         ? "🟢"
-        : state === "Routed to team"
+        : state === "Routed to Team"
           ? "🙋"
           : "•";
   return {
