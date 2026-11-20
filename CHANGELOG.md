@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.362.0](https://github.com/salesforce/sf-pi/compare/v0.361.0...v0.362.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** conversation tests with expectations, and observe for Fin on Salesforce Cases ([#947](https://github.com/salesforce/sf-pi/issues/947)) ([f26757a](https://github.com/salesforce/sf-pi/commit/f26757a9c3848cae6141adb29ed0d6d60f89a326))
+
 ## [0.361.0](https://github.com/salesforce/sf-pi/compare/v0.360.0...v0.361.0) (2026-11-20)
 
 
