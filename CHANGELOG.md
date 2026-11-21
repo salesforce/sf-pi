@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.365.1](https://github.com/salesforce/sf-pi/compare/v0.365.0...v0.365.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-slack:** return the canvas body from slack_canvas read ([#921](https://github.com/salesforce/sf-pi/issues/921)) ([542cfa2](https://github.com/salesforce/sf-pi/commit/542cfa297d6a089a62276f52874a7b0270cef204))
+
 ## [0.365.0](https://github.com/salesforce/sf-pi/compare/v0.364.5...v0.365.0) (2026-11-21)
 
 
