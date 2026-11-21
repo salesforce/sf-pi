@@ -360,6 +360,8 @@ const plannerActionCases = [
     name: "planner action missing input",
     absentLocalRule: "deterministic-action-missing-input" as const,
     expectedUpstreamCode: "action-missing-input",
+    // Official lint treats an input as required only when it is explicitly
+    // is_required: True, matching the compiled required flag.
     source: agentSource(`start_agent main:
     description: "Main"
     actions:
@@ -367,6 +369,7 @@ const plannerActionCases = [
             description: "Lookup"
             inputs:
                 query: string
+                    is_required: True
             target: "flow://Lookup"
     reasoning:
         instructions: ->

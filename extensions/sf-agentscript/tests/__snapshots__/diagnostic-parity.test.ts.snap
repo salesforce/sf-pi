@@ -25,23 +25,6 @@ exports[`local hardening diagnostic parity > @inputs reference outside action wi
   ],
   "upstream": [
     {
-      "code": "action-missing-input",
-      "data": undefined,
-      "message": "Input 'station_name' on action 'get_status' has no \`with\` clause and will be filled by the LLM at runtime",
-      "range": {
-        "end": {
-          "character": 37,
-          "line": 21,
-        },
-        "start": {
-          "character": 18,
-          "line": 21,
-        },
-      },
-      "severity": 3,
-      "source": "agentscript-lint",
-    },
-    {
       "code": undefined,
       "data": undefined,
       "message": "Connection input 'station_name' not in a connection context, defaulting to empty namespace",
@@ -127,25 +110,7 @@ exports[`local hardening diagnostic parity > bare numeric action inputs and outp
   "decision": "historical-no-local-projection",
   "execution_context": "planner-selected numeric action binding",
   "local": [],
-  "upstream": [
-    {
-      "code": "action-missing-input",
-      "data": undefined,
-      "message": "Input 'amount' on action 'calc' has no \`with\` clause and will be filled by the LLM at runtime",
-      "range": {
-        "end": {
-          "character": 31,
-          "line": 21,
-        },
-        "start": {
-          "character": 18,
-          "line": 21,
-        },
-      },
-      "severity": 3,
-      "source": "agentscript-lint",
-    },
-  ],
+  "upstream": [],
   "upstream_quick_fixes": [],
 }
 `;
@@ -190,23 +155,6 @@ exports[`local hardening diagnostic parity > object action I/O without contract 
       "severity": 2,
       "source": "agentscript-lint",
     },
-    {
-      "code": "action-missing-input",
-      "data": undefined,
-      "message": "Input 'filter' on action 'find_order' has no \`with\` clause and will be filled by the LLM at runtime",
-      "range": {
-        "end": {
-          "character": 37,
-          "line": 21,
-        },
-        "start": {
-          "character": 18,
-          "line": 21,
-        },
-      },
-      "severity": 3,
-      "source": "agentscript-lint",
-    },
   ],
   "upstream_quick_fixes": [],
 }
@@ -231,6 +179,10 @@ exports[`local hardening diagnostic parity > procedural statements inside litera
             "line": 10,
           },
         },
+        "target": {
+          "name": "verified",
+          "type": "variable",
+        },
       },
       "message": "Variable 'verified' is declared but never used",
       "range": {
@@ -248,7 +200,9 @@ exports[`local hardening diagnostic parity > procedural statements inside litera
     },
     {
       "code": "instruction-template-syntax",
-      "data": undefined,
+      "data": {
+        "replacement": "{!@variables.verified}",
+      },
       "message": "'@variables.verified' should be wrapped in template syntax — did you mean {!@variables.verified}? Variable references require {! ... } for interpolation.",
       "range": {
         "end": {
@@ -285,6 +239,27 @@ exports[`local hardening diagnostic parity > procedural statements inside litera
       ],
       "preferred": true,
       "title": "Remove unused variable",
+    },
+    {
+      "diagnostic_code": "instruction-template-syntax",
+      "diagnostic_line": 16,
+      "edits": [
+        {
+          "newText": "{!@variables.verified}",
+          "range": {
+            "end": {
+              "character": 34,
+              "line": 16,
+            },
+            "start": {
+              "character": 15,
+              "line": 16,
+            },
+          },
+        },
+      ],
+      "preferred": true,
+      "title": "Change to '{!@variables.verified}'",
     },
   ],
 }
