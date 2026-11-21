@@ -254,7 +254,8 @@ export class SkillToggleViewComponent implements Focusable {
       container.addChild(new Text(line, 1, 0));
     }
     container.addChild(new DynamicBorder((s: string) => t.fg("borderAccent", s)));
-    return container.render(width);
+    // Pi 1.6+ returns a read-only array it may cache and reuse; copy it.
+    return [...container.render(width)];
   }
 
   invalidate(): void {}

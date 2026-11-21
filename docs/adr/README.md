@@ -124,7 +124,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0148: Guardrail owns Integration and Flow org-sensitive safety](./0148-guardrail-owns-integration-and-flow-org-safety.md) — 2026-10-16
 - [0153: SF Fin uses a Pi-owned token and the installed Fin CLI](./0153-sf-fin-pi-owned-token-and-installed-cli.md) — 2026-11-03
 - [0154: SF MCP Intercom preset and Fin Operator mediation](./0154-sf-mcp-intercom-preset-and-fin-operator-mediation.md) — 2026-11-03
-- [0155: Pi 1.5.1 floor and Pi 1.5.2 audit edge](./0155-pi-151-floor-and-152-audit-edge.md) — 2026-11-10
+- [0156: Pi 1.6.0 audit edge and read-only component render](./0156-pi-160-audit-edge-and-read-only-render.md) — 2026-11-21
 
 ## Proposed
 
@@ -168,6 +168,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0150: Pi 1.4.0 audit edge and native runtime fixes](./0150-pi-140-audit-edge-and-native-runtime-fixes.md) — 2026-10-22 — superseded by [ADR 0151](./0151-pi-140-floor-and-native-gateway-compaction.md)
 - [0151: Pi 1.4.0 floor and native Gateway compaction](./0151-pi-140-floor-and-native-gateway-compaction.md) — 2026-10-22 — superseded by [ADR 0155](./0155-pi-151-floor-and-152-audit-edge.md)
 - [0152: Pi 1.5.0 audit edge and extension type view](./0152-pi-150-audit-edge-and-extension-type-view.md) — 2026-11-02 — superseded by [ADR 0155](./0155-pi-151-floor-and-152-audit-edge.md)
+- [0155: Pi 1.5.1 floor and Pi 1.5.2 audit edge](./0155-pi-151-floor-and-152-audit-edge.md) — 2026-11-10 — superseded by [ADR 0156](./0156-pi-160-audit-edge-and-read-only-render.md)
 
 ### Rejected
 

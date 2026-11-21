@@ -13,7 +13,7 @@ const theme = {
   bg: (_color: string, text: string) => text,
 } as unknown as Theme;
 
-function render(component: { render(width: number): string[] }): string {
+function render(component: { render(width: number): readonly string[] }): string {
   return component.render(120).join("\n");
 }
 
