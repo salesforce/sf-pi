@@ -516,7 +516,7 @@
     "entry": "extensions/sf-docs/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 4980
+    "srcLoc": 4996
   },
   {
     "id": "sf-feedback",

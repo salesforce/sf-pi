@@ -684,6 +684,39 @@ describe("sf_docs deterministic ground workflow", () => {
     expect(result.details).toMatchObject({ ok: false, reason: "no_recovery_candidate" });
   });
 
+  it("does not ground a non-article Help page on an unrelated article", async () => {
+    const calls: string[] = [];
+    const requestedUrl = "https://help.salesforce.com/s/products/sample_product";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      const name = String(body.params.name);
+      calls.push(name);
+      if (name === "list") return docsResponse(catalog());
+      if (name === "fetch") {
+        return docsResponse({ documents: [{ url: requestedUrl, error: "not_found" }] });
+      }
+      if (name === "search") {
+        return docsResponse({
+          results: [
+            {
+              id: "neighbor",
+              title: "Sample Product Adaptive Websites",
+              url: "https://help.salesforce.com/s/articleView?id=mktg.sample_product_adaptive_websites.htm&release=264.0.0&type=5",
+            },
+          ],
+          totalCount: 1,
+        });
+      }
+      throw new Error(`Unexpected call: ${name}`);
+    }) as unknown as typeof fetch;
+    const tool = await loadTool(fetchMock);
+
+    const result = await execute(tool, { action: "ground", query: requestedUrl });
+
+    expect(calls).toEqual(["list", "fetch", "search"]);
+    expect(result.details).toMatchObject({ ok: false, reason: "no_recovery_candidate" });
+  });
+
   it("fails when a URL recovery candidate still has no usable body", async () => {
     const requestedUrl =
       "https://help.salesforce.com/s/articleView?id=platform.sample_article.htm&type=5";

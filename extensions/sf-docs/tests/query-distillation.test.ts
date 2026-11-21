@@ -200,6 +200,25 @@ describe("Docs Query Distillation", () => {
     expect(isHighConfidenceDistilledResult(ranked[0])).toBe(true);
   });
 
+  it("does not treat a word from a non-article Help page as a match for an article", () => {
+    // A Help page outside /s/articleView names no article, so a result that
+    // only shares a word with its path is not the page that was asked for.
+    const plan = distillDocsQuery("https://help.salesforce.com/s/products/sample_product", {
+      defaultCollection: "developer",
+    })!;
+    const request = primaryDistilledSearch(plan)!;
+    const ranked = rankDistilledResults(plan, request, [
+      {
+        id: "neighbor",
+        title: "Sample Product Adaptive Websites",
+        url: "https://help.salesforce.com/s/articleView?id=mktg.sample_product_adaptive_websites.htm&release=264.0.0&type=5",
+      },
+    ]);
+
+    expect(ranked[0]?.matchedByUrl).toBe(false);
+    expect(isHighConfidenceDistilledResult(ranked[0])).toBe(false);
+  });
+
   it("ranks an exact original URL above neighboring documents", () => {
     const plan = distillDocsQuery(
       "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
