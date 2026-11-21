@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.364.3](https://github.com/salesforce/sf-pi/compare/v0.364.2...v0.364.3) (2026-11-21)
+
+
+### Bug Fixes
+
+* **deps:** bump the actions-minor-and-patch group with 2 updates ([#925](https://github.com/salesforce/sf-pi/issues/925)) ([e553b94](https://github.com/salesforce/sf-pi/commit/e553b9477e6cfdcd2393ea06396ecbbd3cc0f164))
+
 ## [0.364.2](https://github.com/salesforce/sf-pi/compare/v0.364.1...v0.364.2) (2026-11-21)
 
 
