@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.365.5](https://github.com/salesforce/sf-pi/compare/v0.365.4...v0.365.5) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** accept additional_configs in nested voice blocks ([#977](https://github.com/salesforce/sf-pi/issues/977)) ([a4afb98](https://github.com/salesforce/sf-pi/commit/a4afb98b081fdee17d7accb740c2aa01fc386a37)), closes [#919](https://github.com/salesforce/sf-pi/issues/919)
+
 ## [0.365.4](https://github.com/salesforce/sf-pi/compare/v0.365.3...v0.365.4) (2026-11-21)
 
 
