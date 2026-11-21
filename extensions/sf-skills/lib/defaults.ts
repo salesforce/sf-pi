@@ -349,6 +349,12 @@ export function rewireCloneToEffective(cwd?: string): void {
   }
 }
 
+/** Is the managed effective skill tree wired in the given scope's settings? */
+export function isEffectiveTreeWired(scope: SkillSourceScope, cwd?: string): boolean {
+  if (scope === "project" && !cwd) return false;
+  return isManagedWired(scope, cwd, managedEffectiveSkillsPath());
+}
+
 /** Is the managed skills dir wired in the given scope's settings? */
 function isManagedWired(
   scope: SkillSourceScope,
@@ -399,11 +405,14 @@ export interface UpdateOptions {
 }
 
 /**
- * Fast-forward update on a managed clone. Refuses to touch a non-managed
- * checkout (no sentinel) — those are the user's working tree.
+ * Update the managed clone. Refuses to touch a non-managed checkout (no
+ * sentinel) — those are the user's working tree.
+ *
+ * Like install, the content is always the one GLOBAL clone shared across
+ * projects; `scope` only chooses which settings get the effective-tree wiring.
  */
 export async function updateDefaults(options: UpdateOptions): Promise<UpdateResult> {
-  const clone = inspectManagedClone(options.scope, options.cwd);
+  const clone = inspectManagedClone("global");
   if (!clone.exists) {
     return {
       ok: false,

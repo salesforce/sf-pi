@@ -28,6 +28,7 @@ import {
   managedClonePath,
   unlinkCheckout,
   updateDefaults,
+  isEffectiveTreeWired,
 } from "./defaults.ts";
 
 // -------------------------------------------------------------------------------------------------
@@ -218,8 +219,20 @@ function renderStatus(cwd: string, opts: { includeProject: boolean }): string {
       continue;
     }
 
-    const targetPath = managedClonePath(scope, cwd);
-    const clone = inspectManagedClone(scope, cwd);
+    // One global content clone is shared by every scope; a scope differs only
+    // in whether its settings wire the effective tree. A per-project clone is
+    // shown only where a legacy install left one.
+    const legacyProjectPath = scope === "project" ? managedClonePath("project", cwd) : undefined;
+    const legacyProjectClone =
+      legacyProjectPath && inspectManagedClone("project", cwd).exists
+        ? inspectManagedClone("project", cwd)
+        : undefined;
+    const shared = inspectManagedClone("global");
+    const clone = legacyProjectClone ?? {
+      ...shared,
+      wired: isEffectiveTreeWired(scope, cwd),
+    };
+    const targetPath = clone.rootPath;
     lines.push(`${scope.toUpperCase()}`);
     lines.push(`  path:    ${targetPath}`);
     lines.push(
