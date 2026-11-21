@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.364.4](https://github.com/salesforce/sf-pi/compare/v0.364.3...v0.364.4) (2026-11-21)
+
+
+### Bug Fixes
+
+* **deps:** refresh dependencies to the latest releases past the update cooldown ([#965](https://github.com/salesforce/sf-pi/issues/965)) ([cf47df6](https://github.com/salesforce/sf-pi/commit/cf47df6966309f27283c1c2330448fbdc191a129))
+
 ## [0.364.3](https://github.com/salesforce/sf-pi/compare/v0.364.2...v0.364.3) (2026-11-21)
 
 
