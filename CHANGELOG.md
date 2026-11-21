@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.365.3](https://github.com/salesforce/sf-pi/compare/v0.365.2...v0.365.3) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-agentscript:** use live list_assertion operators and compare action names ([#923](https://github.com/salesforce/sf-pi/issues/923)) ([4b4c4ce](https://github.com/salesforce/sf-pi/commit/4b4c4ced1c8a9900515543227e37cc2338555f96))
+
 ## [0.365.2](https://github.com/salesforce/sf-pi/compare/v0.365.1...v0.365.2) (2026-11-21)
 
 
