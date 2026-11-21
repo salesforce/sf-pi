@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.362.2](https://github.com/salesforce/sf-pi/compare/v0.362.1...v0.362.2) (2026-11-21)
+
+
+### Security
+
+* **deps:** raise the basic-ftp override to the fixed 6.2.4 ([#951](https://github.com/salesforce/sf-pi/issues/951)) ([1b15e02](https://github.com/salesforce/sf-pi/commit/1b15e02e508a68f85f58478a1e9db0cbea1a9510))
+
 ## [0.362.1](https://github.com/salesforce/sf-pi/compare/v0.362.0...v0.362.1) (2026-11-20)
 
 
