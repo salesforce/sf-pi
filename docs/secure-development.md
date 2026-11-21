@@ -98,6 +98,28 @@ sf code-analyzer run --rule-selector Recommended --target extensions/sf-guardrai
 - Package overrides in `package.json` include notes explaining why patched
   transitive dependency versions are pinned.
 
+### Update cooldown and its fast path
+
+Dependabot waits before proposing a newly published version (3 days for a
+patch, 7 for a minor, 14 for a major; see `.github/dependabot.yml`), so a
+compromised release has time to be found and pulled upstream. A maintainer may
+take a version inside its cooldown only when every changed package version
+meets all of these:
+
+1. `npm audit signatures` verifies every installed package's registry
+   signature.
+2. The version is the latest stable release, is not deprecated, and has the
+   same publisher as the previous version. When the previous version had
+   signed build provenance, the new one does too.
+3. It adds no install-time lifecycle script and no new third-party
+   dependency; changed dependencies stay within the same project.
+4. The complete local gate passes (`npm run validate:ci`), plus a
+   production-only install, `npm audit --omit=dev`, and the license scan.
+
+The pull request lists each fast-pathed version with this evidence. Pi
+packages never take the fast path alone: they still need their own Pi Runtime
+Audit Edge change.
+
 ## Local file and cryptography controls
 
 - Pi settings writes use a private staging directory and exclusive mode-0600
