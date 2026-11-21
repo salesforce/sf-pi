@@ -269,6 +269,13 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
     });
   }
 
+  // The managed library's effective tree is stamped from the global clone.
+  // When the effective tree is wired, the clone is its origin, not a rival.
+  const effectiveRoot = path.join(args.agentDir, "sf-skills", "effective", "skills");
+  const globalCloneRoot = path.join(args.agentDir, "sf-skills", "forcedotcom", "skills");
+  const effectiveSpec = byRoot.get(norm(effectiveRoot));
+  const effectiveWired = isWiredUnder(effectiveRoot);
+
   // Scan each existing root once and build the CatalogSourceInput.
   const out: CatalogSourceInput[] = [];
   for (const spec of byRoot.values()) {
@@ -282,6 +289,10 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
         ? "seen"
         : spec.gate;
     const skills = scanRoot(spec, args.loadSkillsFromDir);
+    const originOf =
+      effectiveWired && effectiveSpec && norm(spec.rootPath) === norm(globalCloneRoot)
+        ? effectiveSpec.id
+        : undefined;
     out.push({
       id: spec.id,
       rootPath: spec.rootPath,
@@ -289,6 +300,7 @@ function buildSources(args: BuildSourcesArgs): CatalogSourceInput[] {
       label: spec.label,
       gate,
       autoDefault: spec.autoDefault,
+      ...(originOf ? { originOf } : {}),
       skills,
     });
   }

@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { buildSkillCatalog } from "../lib/catalog.ts";
 import { gatherCatalogInput, type GatherDeps } from "../lib/gather.ts";
 import { upsertSource } from "../../../lib/common/skill-sources/source-registry.ts";
 
@@ -210,6 +211,90 @@ describe("gatherCatalogInput", () => {
     expect(afv).toBeDefined();
     expect(afv!.gate).toBe("seen"); // managed install on disk stays visible
     expect(afv!.skills.map((s) => s.name)).toContain("generating-apex");
+  });
+
+  it("does not count the managed clone as a conflict with its own effective tree (#920)", () => {
+    const home = tmp("sf-gather-home-");
+    const cwd = tmp("sf-gather-cwd-");
+    const agentDir = path.join(home, ".pi", "agent");
+    process.env[AGENT_DIR_ENV] = agentDir;
+
+    // The effective tree is stamped from the clone; only the effective tree is wired.
+    const cloneRoot = path.join(agentDir, "sf-skills", "forcedotcom", "skills");
+    const effectiveRoot = path.join(agentDir, "sf-skills", "effective", "skills");
+    for (const name of ["generating-apex", "deploying-metadata"]) {
+      writeSkill(cloneRoot, name);
+      writeSkill(effectiveRoot, name);
+    }
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(
+      path.join(agentDir, "settings.json"),
+      JSON.stringify({ skills: ["~/.pi/agent/sf-skills/effective/skills"] }),
+    );
+    const effectiveFiles = ["generating-apex", "deploying-metadata"].map((name) =>
+      path.join(effectiveRoot, name, "SKILL.md"),
+    );
+
+    const input = gatherCatalogInput({
+      cwd,
+      deps: fakeDeps({
+        home,
+        agentDir,
+        loadSkills: vi.fn(() => ({
+          skills: effectiveFiles.map((filePath) => ({
+            name: path.basename(path.dirname(filePath)),
+            filePath,
+          })),
+          diagnostics: [],
+        })) as unknown as GatherDeps["loadSkills"],
+      }),
+    });
+    const catalog = buildSkillCatalog(input);
+
+    expect(catalog.conflicts).toEqual([]);
+    // The clone stays visible as the library's source, but out of conflicts.
+    const clone = catalog.sources.find((s) => s.rootPath === path.normalize(cloneRoot));
+    expect(clone?.counts.total).toBe(2);
+    expect(clone?.counts.conflictLosers).toBe(0);
+  });
+
+  it("still reports a real conflict beside the managed library", () => {
+    const home = tmp("sf-gather-home-");
+    const cwd = tmp("sf-gather-cwd-");
+    const agentDir = path.join(home, ".pi", "agent");
+    process.env[AGENT_DIR_ENV] = agentDir;
+
+    const cloneRoot = path.join(agentDir, "sf-skills", "forcedotcom", "skills");
+    const effectiveRoot = path.join(agentDir, "sf-skills", "effective", "skills");
+    writeSkill(cloneRoot, "generating-apex");
+    const winner = writeSkill(effectiveRoot, "generating-apex");
+    // A user copy of the same skill in an auto-discovered root is a real conflict.
+    writeSkill(path.join(agentDir, "skills"), "generating-apex");
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(
+      path.join(agentDir, "settings.json"),
+      JSON.stringify({ skills: ["~/.pi/agent/sf-skills/effective/skills"] }),
+    );
+
+    const input = gatherCatalogInput({
+      cwd,
+      deps: fakeDeps({
+        home,
+        agentDir,
+        loadSkills: vi.fn(() => ({
+          skills: [{ name: "generating-apex", filePath: winner }],
+          diagnostics: [],
+        })) as unknown as GatherDeps["loadSkills"],
+      }),
+    });
+    const catalog = buildSkillCatalog(input);
+
+    expect(catalog.conflicts.map((c) => c.name)).toEqual(["generating-apex"]);
+    const copies = catalog.conflicts[0]!.copies.map((c) => path.normalize(c.filePath));
+    expect(copies).not.toContain(
+      path.normalize(path.join(cloneRoot, "generating-apex", "SKILL.md")),
+    );
+    expect(copies).toHaveLength(2);
   });
 
   it("passes loadSkills collisions through verbatim", () => {
