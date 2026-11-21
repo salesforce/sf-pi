@@ -460,11 +460,28 @@ function originalUrlMatchesResult(plan: DocsQueryDistillationPlan, resultUrl?: s
 
 function locatorIsInUrl(plan: DocsQueryDistillationPlan, url?: string): boolean {
   if (!url) return false;
+  // A Help result names its page only by its article id. A word from the
+  // request's path appearing inside some article id is not that page, so a
+  // Help result matches only through the exact article id comparison.
+  if (isHelpArticleResultUrl(url)) return originalUrlMatchesResult(plan, url);
   const normalizedUrl = normalizeComparable(url);
   return plan.locatorAliases
     .map(normalizeComparable)
     .filter((alias) => alias.length >= 8)
     .some((alias) => normalizedUrl.includes(alias));
+}
+
+function isHelpArticleResultUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname.toLowerCase() === "help.salesforce.com" &&
+      parsed.pathname.toLowerCase() === "/s/articleview" &&
+      Boolean(parsed.searchParams.get("id")?.trim())
+    );
+  } catch {
+    return false;
+  }
 }
 
 function overlapRatio(needles: string[], haystack: string): number {
