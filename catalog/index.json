@@ -1271,7 +1271,7 @@
     "entry": "extensions/sf-skills/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6027
+    "srcLoc": 6108
   },
   {
     "id": "sf-slack",
