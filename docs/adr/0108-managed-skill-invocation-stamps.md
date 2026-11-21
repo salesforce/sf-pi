@@ -35,7 +35,11 @@ ADR 0017. This ADR only covers prompt visibility for the managed library.
 
 ## Consequences
 
-- `git pull --ff-only` on the clone remains valid.
+- Updating the clone from upstream remains valid because the clone is
+  pristine. Update fetches the branch tip at depth 1 and resets to it, so it
+  also works after upstream rewrites history; it refuses when tracked files in
+  the clone were edited by hand (originally `git pull --ff-only`, changed for
+  issue #920).
 - Toggles survive updates because the sidecar is restamped after each pull.
 - `/skill:name` still works for hidden skills.
 - Wave 1 stamps apply to every cwd. Per-project effective trees are future work.
