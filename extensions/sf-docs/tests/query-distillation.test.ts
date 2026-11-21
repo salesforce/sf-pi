@@ -25,10 +25,20 @@ describe("Docs Query Distillation", () => {
       "agent connect rep other voice calls sample",
       "agent connect rep other voice calls",
     ]);
+    // The docs service returns nothing for a raw Help article id, so a Help
+    // URL's recovery search uses its readable words instead.
     expect(primaryDistilledSearch(plan!)).toEqual({
       collection: "admin",
-      query: "ai.agent_connect_rep_other_voice_calls_sample",
+      query: "agent connect rep other voice calls sample",
     });
+  });
+
+  it("keeps the raw locator as the primary search for non-Help URLs", () => {
+    const plan = distillDocsQuery(
+      "https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/customobject.htm",
+      { defaultCollection: "developer" },
+    )!;
+    expect(primaryDistilledSearch(plan)?.query).toBe(plan.variants[0]);
   });
 
   it("retains an explicit collection as mismatch evidence without changing the primary", () => {
@@ -153,6 +163,41 @@ describe("Docs Query Distillation", () => {
     expect(ranked.find((result) => result.id === "patch")?.score).toBeGreaterThanOrEqual(
       ranked.find((result) => result.id === "main")!.score - 25,
     );
+  });
+
+  it("does not treat a different Help article as the original URL", () => {
+    // Every Help article shares the /s/articleView path; only the id names it.
+    const plan = distillDocsQuery(
+      "https://help.salesforce.com/s/articleView?id=ai.sample_action_ref_lookup.htm&type=5",
+      { defaultCollection: "developer" },
+    )!;
+    const request = primaryDistilledSearch(plan)!;
+    const ranked = rankDistilledResults(plan, request, [
+      {
+        id: "unrelated",
+        title: "Unrelated Article",
+        url: "https://help.salesforce.com/s/articleView?id=ind.unrelated_topic.htm&release=264.0.0&type=5",
+      },
+    ]);
+
+    expect(isHighConfidenceDistilledResult(ranked[0])).toBe(false);
+  });
+
+  it("matches the same Help article whatever its extra parameters", () => {
+    const plan = distillDocsQuery(
+      "https://help.salesforce.com/s/articleView?id=ai.sample_action_ref_lookup.htm&type=5&language=en_US",
+      { defaultCollection: "developer" },
+    )!;
+    const request = primaryDistilledSearch(plan)!;
+    const ranked = rankDistilledResults(plan, request, [
+      {
+        id: "same",
+        title: "Sample Action",
+        url: "https://help.salesforce.com/s/articleView?id=ai.sample_action_ref_lookup.htm&release=264.0.0&type=5",
+      },
+    ]);
+
+    expect(isHighConfidenceDistilledResult(ranked[0])).toBe(true);
   });
 
   it("ranks an exact original URL above neighboring documents", () => {

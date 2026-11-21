@@ -27,6 +27,7 @@ import {
   type DocsQueryDistillationPlan,
 } from "./query-distillation.ts";
 import { evaluateReleaseNoteEvidence } from "./release-notes.ts";
+import { indexedHelpArticleUrl, releaseFromSearchResults } from "./help-article-url.ts";
 import type { DocsCollection, DocsDocument, DocsSearchResult } from "./types.ts";
 
 export interface GroundInput {
@@ -323,6 +324,14 @@ async function groundUrl(context: GroundContext): Promise<GroundWorkflowResult> 
   const ranked = rankDistilledResults(context.distilled, request, search.results);
   const best = ranked[0];
   if (!best?.id || !isHighConfidenceDistilledResult(best)) {
+    // Help article URLs are indexed only as ?id=<article>&release=<n>&type=5.
+    // When the search can't find the article itself, its results still carry
+    // the indexed release, so the one allowed refetch uses that exact form.
+    const release = releaseFromSearchResults(search.results);
+    const indexedUrl = release ? indexedHelpArticleUrl(context.input.query, release) : undefined;
+    if (indexedUrl) {
+      return fetchGroundedUrl(context, indexedUrl);
+    }
     return groundFailure(
       "no_recovery_candidate",
       "The URL fetch failed and no high-confidence recovery candidate was found.",
@@ -344,6 +353,27 @@ async function groundUrl(context: GroundContext): Promise<GroundWorkflowResult> 
     resolvedUrl: best.url,
     score: best.score,
   });
+}
+
+async function fetchGroundedUrl(
+  context: GroundContext,
+  indexedUrl: string,
+): Promise<GroundWorkflowResult> {
+  const resolution = {
+    status: "recovered",
+    method: "indexed_help_url",
+    resolvedUrl: indexedUrl,
+  };
+  const fetched = await fetchDocuments(context, { urls: [indexedUrl], slice: context.slice });
+  if (isGroundFailure(fetched)) return fetched;
+  if (fetched.outcome.retrievalStatus === "failed") {
+    return groundFailure(
+      "recovery_fetch_failed",
+      "The URL fetch failed, and the indexed Help article URL returned no usable document.",
+      { ...baseDetails(context), resolution: { ...resolution, status: "failed" } },
+    );
+  }
+  return groundedResult(context, fetched.docs, fetched.slice, fetched.outcome, resolution);
 }
 
 async function searchOnce(
