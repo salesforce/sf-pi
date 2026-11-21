@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.364.2](https://github.com/salesforce/sf-pi/compare/v0.364.1...v0.364.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-fin:** document Error logs diagnosis and token_transfer safety in the README ([#961](https://github.com/salesforce/sf-pi/issues/961)) ([5af62ee](https://github.com/salesforce/sf-pi/commit/5af62eeeaa58cd79a56f2038684d4a3272045475))
+
 ## [0.364.1](https://github.com/salesforce/sf-pi/compare/v0.364.0...v0.364.1) (2026-11-21)
 
 
