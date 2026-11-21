@@ -39,6 +39,8 @@ export interface VoiceProfile {
   advisories: VoiceProfileAdvisory[];
 }
 
+// additional_configs is shared by the legacy and nested formats, so it is in
+// neither list and never decides the format.
 const LEGACY_FIELDS = new Set([
   "voice_id",
   "outbound_speed",
@@ -49,7 +51,6 @@ const LEGACY_FIELDS = new Set([
   "inbound_filler_words_detection",
   "inbound_keywords.keywords",
   "pronunciation_dict",
-  "additional_configs",
 ]);
 
 export function buildVoiceProfile(inspect: InspectResult): VoiceProfile | undefined {
