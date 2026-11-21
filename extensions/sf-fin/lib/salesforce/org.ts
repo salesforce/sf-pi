@@ -792,7 +792,16 @@ async function deploySource(
     const abort = () => void job.cancel?.();
     signal?.addEventListener("abort", abort, { once: true });
     try {
-      const result = await job.pollStatus(1_000, SETTINGS_DEPLOY_TIMEOUT_MS / 1_000);
+      let result: Awaited<ReturnType<typeof job.pollStatus>>;
+      try {
+        result = await job.pollStatus(1_000, SETTINGS_DEPLOY_TIMEOUT_MS / 1_000);
+      } catch (error) {
+        // Timed out waiting: the deploy can still be queued and apply later.
+        // Ask Salesforce to cancel it so a late apply does not surprise anyone;
+        // callers verify the resulting state either way.
+        await job.cancel?.().catch(() => undefined);
+        throw error;
+      }
       if (result.response.success === true) return { ok: true };
       const raw = result.response.details?.componentFailures as unknown;
       const failures = raw ? (Array.isArray(raw) ? raw : [raw]) : [];

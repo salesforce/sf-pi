@@ -154,24 +154,96 @@ export function diagnoseFinError(input: { code: string; object?: string }): FinE
   return { code, object, known: true, fix: hit.fix, advice: hit.advice };
 }
 
-const CODE = /^[A-Z][A-Z0-9_]{3,}$/u;
-const OBJECT = /^[A-Z][A-Za-z0-9_]*(?:__[a-z]+)?$/u;
+// ─── Fin's Error logs page (observed live) ─────────────────────────────────
+//
+// The list shows one row per error: a date cell, the organization, and a
+// generic message. Salesforce's error code and object appear only in each
+// row's "Error details" dialog, as label/value cell pairs.
 
-/**
- * Error entries from a masked Error logs snapshot: each Salesforce-style code
- * cell, with the next object-like cell as its object. Returns [] for Fin's
- * empty state ("No API errors").
- */
-export function errorsFromSnapshot(lines: string[]): Array<{ code: string; object?: string }> {
-  const cells = lines
-    .map((line) => /^cell "([^"]+)"/u.exec(line)?.[1]?.trim())
-    .filter((v): v is string => Boolean(v));
-  const out: Array<{ code: string; object?: string }> = [];
-  for (const [i, cell] of cells.entries()) {
-    if (!CODE.test(cell)) continue;
-    const next = cells[i + 1];
-    const object = next && !CODE.test(next) && OBJECT.test(next) ? next : undefined;
-    out.push({ code: cell, object });
+export interface ErrorLogEntry {
+  when?: string;
+  org?: string;
+  message?: string;
+  code?: string;
+  object?: string;
+  feature?: string;
+  method?: string;
+  status?: string;
+}
+
+export interface ErrorLogBrowser {
+  /** Full (not interactive-only) masked snapshot. */
+  snapshot(): Promise<string>;
+  click(ref: string): Promise<void>;
+  /** Close the details dialog. */
+  close(): Promise<void>;
+}
+
+const CELL = /- cell "((?:[^"\\]|\\.)*)" \[ref=(e\d+)\]/gu;
+const DATE_CELL = /^\d{1,2}:\d{2} – /u;
+
+function cellsOf(snapshot: string): Array<{ text: string; ref: string }> {
+  return [...snapshot.matchAll(CELL)].flatMap((m) =>
+    m[1] !== undefined && m[2] ? [{ text: m[1].replace(/\\(.)/gu, "$1"), ref: m[2] }] : [],
+  );
+}
+
+/** List rows: each date cell starts a row of date, organization, message. */
+export function errorLogRows(
+  snapshot: string,
+): Array<{ when: string; org?: string; message?: string; ref: string }> {
+  const list = snapshot.split('dialog "Error details"')[0] ?? snapshot;
+  const cells = cellsOf(list);
+  const rows: Array<{ when: string; org?: string; message?: string; ref: string }> = [];
+  cells.forEach((cell, i) => {
+    if (!DATE_CELL.test(cell.text)) return;
+    const message = cells[i + 2];
+    rows.push({
+      when: cell.text,
+      org: cells[i + 1]?.text,
+      message: message?.text,
+      ref: message?.ref ?? cell.ref,
+    });
+  });
+  return rows;
+}
+
+/** Label/value pairs from an open "Error details" dialog (no System error text). */
+export function errorDetailFields(snapshot: string): Partial<ErrorLogEntry> {
+  const at = snapshot.indexOf('dialog "Error details"');
+  if (at < 0) return {};
+  const cells = cellsOf(snapshot.slice(at));
+  const value = (label: string) => {
+    const i = cells.findIndex((c) => c.text === label);
+    return i >= 0 ? cells[i + 1]?.text : undefined;
+  };
+  return {
+    code: value("Error code"),
+    object: value("Object type"),
+    feature: value("Product feature"),
+    method: value("Request method"),
+    status: value("Status code"),
+  };
+}
+
+/** Open each row's details (up to `max`) and collect its code and object. */
+export async function readErrorLogEntries(
+  browser: ErrorLogBrowser,
+  options: { max: number },
+): Promise<ErrorLogEntry[]> {
+  const rows = errorLogRows(await browser.snapshot()).slice(0, options.max);
+  const entries: ErrorLogEntry[] = [];
+  for (const row of rows) {
+    let detail: Partial<ErrorLogEntry>;
+    try {
+      await browser.click(row.ref);
+      detail = errorDetailFields(await browser.snapshot());
+    } catch {
+      detail = {};
+    } finally {
+      await browser.close().catch(() => undefined);
+    }
+    entries.push({ when: row.when, org: row.org, message: row.message, ...detail });
   }
-  return out;
+  return entries;
 }

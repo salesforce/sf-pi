@@ -11,14 +11,36 @@ import { maskFinSecrets } from "../../../../lib/common/fin-admin-surface.ts";
 import type { SpawnAgentBrowser } from "../signin-browser.ts";
 import type { TokenTransferBrowser } from "./token-transfer.ts";
 
-const LABEL: Record<"name" | "description" | "clientId" | "clientSecret", string> = {
-  name: "Enter a token title",
-  description: "Description",
-  clientId: "Client ID",
-  clientSecret: "Client secret",
+/**
+ * How each field is located (observed live): the title input has only a
+ * placeholder; the others have a <label for>. A locator that matches nothing
+ * is an error, never a silent no-op.
+ */
+const LOCATOR: Record<
+  "name" | "description" | "clientId" | "clientSecret",
+  ["placeholder" | "label", string]
+> = {
+  name: ["placeholder", "Enter a token title"],
+  description: ["label", "Description"],
+  clientId: ["label", "Client ID"],
+  clientSecret: ["label", "Client secret"],
 };
 const POLLS = 15;
 const POLL_MS = 1_000;
+
+/**
+ * Fin's Test request result from a snapshot. The text sits in a quoted
+ * StaticText whose own quotes are escaped (`\"access_token\"`), so read the
+ * whole quoted value and unescape it. A pass needs 200 and a found token.
+ */
+export function testRequestOutcome(snapshot: string): { ok: boolean; message: string } {
+  const quoted = /StaticText "(Response: (?:[^"\\]|\\.)*)"/u.exec(snapshot)?.[1];
+  const message = quoted?.replace(/\\(.)/gu, "$1") ?? "no response shown";
+  return {
+    ok: /^Response: 200\b/u.test(message) && /Found token under the path/u.test(message),
+    message,
+  };
+}
 
 export function createTokenTransferBrowser(
   spawn: SpawnAgentBrowser,
@@ -51,7 +73,7 @@ export function createTokenTransferBrowser(
       await clickText("button", "Add token");
       if (!(await waitFor((s) => s.includes('menuitem "Custom"')))) return false;
       await clickText("menuitem", "Custom");
-      return (await waitFor((s) => s.includes(`textbox "${LABEL.name}"`))) !== undefined;
+      return (await waitFor((s) => s.includes(`textbox "${LOCATOR.name[1]}"`))) !== undefined;
     },
     async fill(field, value) {
       if (field === "url") {
@@ -61,10 +83,15 @@ export function createTokenTransferBrowser(
         const after = snap.slice(Math.max(0, snap.indexOf('button "OAuth"')));
         const ref = /- textbox \[ref=(e\d+)\]/u.exec(after)?.[1];
         if (!ref) throw new Error("Fin's HTTPS URL field was not found.");
-        await batch([["fill", `@${ref}`, value]]);
+        if (!(await batch([["fill", `@${ref}`, value]]))) {
+          throw new Error("Could not fill Fin's HTTPS URL field.");
+        }
         return;
       }
-      await batch([["find", "label", LABEL[field], "fill", value]]);
+      const [locator, label] = LOCATOR[field];
+      if (!(await batch([["find", locator, label, "fill", value]]))) {
+        throw new Error(`Could not fill Fin's "${label}" field.`);
+      }
     },
     async chooseOAuth() {
       await clickText("button", "Text");
@@ -79,14 +106,17 @@ export function createTokenTransferBrowser(
     },
     async testRequest() {
       await clickText("button", "Test request");
-      const done = await waitFor((s) => /Response: \d{3}/u.test(s));
-      const message = /Response: [^"\n]*/u.exec(done ?? "")?.[0] ?? "no response shown";
-      return { ok: /Response: 200\b/u.test(message) && /access_token/u.test(message), message };
+      return testRequestOutcome((await waitFor((s) => /Response: \d{3}/u.test(s))) ?? "");
     },
     async save() {
+      // Save stays disabled until the form is complete; clicking it then does
+      // nothing, so check it first and say why.
+      const ready = await waitFor((s) => /button "Save"(?! \[disabled)/u.test(s));
+      if (!ready) throw new Error("Fin's Save button stayed disabled (a required field is empty).");
       await clickText("button", "Save");
-      const back = await waitFor((s) => s.includes('button "Add token"'));
-      return back !== undefined;
+      // Fin then opens the saved token's page (Save disabled again).
+      const settled = await waitFor((s) => /button "Save" \[disabled/u.test(s));
+      return settled !== undefined;
     },
     async listTokenNames() {
       await run(["open", `${finBase}/settings/app-settings/authentication`]);

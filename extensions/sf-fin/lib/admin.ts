@@ -23,7 +23,10 @@ import {
   type FinAdminPageId,
   type FinAdminRegion,
 } from "../../../lib/common/fin-admin-surface.ts";
-import { diagnoseFinError, errorsFromSnapshot } from "./error-logs.ts";
+import { diagnoseFinError, readErrorLogEntries, type ErrorLogEntry } from "./error-logs.ts";
+
+/** Error log rows opened per read (each opens and closes one details dialog). */
+const ERROR_LOG_MAX_ROWS = 10;
 import type { WorkspaceProfile } from "./workspaces.ts";
 
 /** Same shared session SF Browser uses; SF Browser stays self-contained. */
@@ -254,17 +257,29 @@ async function visitPage(
   }
   const lines = summarizeAdminSnapshot(snapshot.stdout, PAGE_GUIDE[page].read);
   if (page === "error-logs") {
-    // Error entries and Fin's empty state are static text and table cells,
-    // which an interactive-only snapshot leaves out; read the full tree too.
-    const full = await run(["snapshot", "-c"], { timeoutMs: READ_TIMEOUT_MS });
-    const fullLines =
-      full.code === 0
-        ? maskFinSecrets(full.stdout)
-            .split(/\r?\n/u)
-            .map((line) => line.trim().replace(/^- /u, ""))
-            .filter((line) => /^(?:cell|StaticText) "/u.test(line))
-        : [];
-    return errorLogsResult(profile, region, base, lines, full.code === 0 ? fullLines : lines);
+    // Rows and Fin's empty state are table cells and static text, which an
+    // interactive-only snapshot leaves out, so read the full tree. Each row's
+    // code and object live in its "Error details" dialog: open, read, close.
+    const fullSnapshot = async () => {
+      const full = await run(["snapshot", "-c"], { timeoutMs: READ_TIMEOUT_MS });
+      return full.code === 0 ? maskFinSecrets(full.stdout) : "";
+    };
+    const listing = await fullSnapshot();
+    const entries = await readErrorLogEntries(
+      {
+        snapshot: fullSnapshot,
+        click: async (ref) => {
+          await run(["click", `@${ref}`], { timeoutMs: READ_TIMEOUT_MS });
+          await sleep(READY_POLL_MS);
+        },
+        close: async () => {
+          await run(["press", "Escape"], { timeoutMs: READ_TIMEOUT_MS });
+          await sleep(READY_POLL_MS);
+        },
+      },
+      { max: ERROR_LOG_MAX_ROWS },
+    );
+    return errorLogsResult(profile, region, base, lines, listing, entries);
   }
   return {
     ok: true,
@@ -383,12 +398,12 @@ function errorLogsResult(
   region: FinAdminRegion,
   base: Record<string, unknown>,
   lines: string[],
-  content: string[],
+  listing: string,
+  entries: ErrorLogEntry[],
 ): AdminResult {
   const header = `Error logs — workspace "${profile.name}" (${region}, app verified). Text masked.`;
-  const entries = errorsFromSnapshot(content);
   if (entries.length === 0) {
-    const empty = content.some((line) => line.includes("No API errors"));
+    const empty = listing.includes("No API errors");
     return {
       ok: true,
       text: [
@@ -400,19 +415,40 @@ function errorLogsResult(
       details: { ...base, lines, errorCount: 0, diagnoses: [] },
     };
   }
-  const diagnoses = entries.map((entry) => diagnoseFinError(entry));
+  // One diagnosis per distinct code/object; repeated failures are counted.
+  const groups = new Map<string, { entry: ErrorLogEntry; count: number; latest?: string }>();
+  for (const entry of entries) {
+    const key = `${entry.code ?? "?"}|${entry.object ?? ""}`;
+    const group = groups.get(key);
+    if (group) group.count += 1;
+    else groups.set(key, { entry, count: 1, latest: entry.when });
+  }
+  const diagnoses = [...groups.values()].map(({ entry, count, latest }) => ({
+    ...(entry.code
+      ? diagnoseFinError({ code: entry.code, object: entry.object })
+      : {
+          code: "UNREADABLE",
+          known: false,
+          fix: undefined,
+          advice: `Fin shows "${entry.message ?? "an error"}"; its details could not be read. Open it in Fin.`,
+        }),
+    count,
+    latest,
+    feature: entry.feature,
+    status: entry.status,
+  }));
   return {
     ok: true,
     text: [
       header,
-      `  ${diagnoses.length} error${diagnoses.length === 1 ? "" : "s"}:`,
+      `  ${entries.length} error${entries.length === 1 ? "" : "s"} read${entries.length >= ERROR_LOG_MAX_ROWS ? ` (first ${ERROR_LOG_MAX_ROWS})` : ""}:`,
       ...diagnoses.map(
         (d) =>
-          `  - ${d.code}${d.object ? ` on ${d.object}` : ""}: ${d.advice}${d.fix ? ` → sf_fin action='salesforce' operation='${d.fix}'` : ""}`,
+          `  - ${d.code}${d.object ? ` on ${d.object}` : ""} ×${d.count}${d.latest ? ` (latest ${d.latest})` : ""}: ${d.advice}${d.fix ? ` → sf_fin action='salesforce' operation='${d.fix}'` : ""}`,
       ),
-      "  Entries can hold record data: open one in Fin and use Copy all details only when needed.",
+      "  System error text can hold record data, so it is not shown; open the entry in Fin for it.",
     ].join("\n"),
-    details: { ...base, lines, errorCount: diagnoses.length, diagnoses },
+    details: { ...base, lines, errorCount: entries.length, diagnoses },
   };
 }
 
