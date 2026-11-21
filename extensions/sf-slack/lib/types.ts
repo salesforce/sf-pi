@@ -198,6 +198,8 @@ export interface SlackFile {
   created?: number | string;
   user?: string;
   url_private?: string;
+  /** Direct download URL; for a canvas this is the HTML body. */
+  url_private_download?: string;
   permalink?: string;
   channels?: string[];
 }
@@ -873,7 +875,7 @@ export interface SlackScheduleAuditEntry {
 export const SlackCanvasParams = Type.Object({
   action: StringEnum(["read", "create", "edit"] as const, {
     description:
-      "read: get canvas content or look up sections. create: create a new canvas. edit: modify an existing canvas.",
+      "read: get canvas metadata and its body as markdown, or (with criteria) look up section IDs. create: create a new canvas. edit: modify an existing canvas.",
   }),
   canvas_id: Type.Optional(
     Type.String({ description: "Canvas file ID, e.g. F01ABC... (required for read, edit)" }),
