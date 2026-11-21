@@ -113,6 +113,8 @@ export async function listAuthTokens(
   const listed = await call(credential, deps, ["auth-tokens", "list", "--json"], signal);
   if (listed.ok === false) return fail("auth-tokens list", listed.error);
   const connectors = await connectorsWithTokens(credential, deps, signal);
+  // A connector that could not be read is unknown, never "uses no token".
+  const unread = connectors.filter((c) => !c.read).map((c) => `${c.name} (${c.id})`);
   const tokens: TokenRow[] = asList(listed.json).map((t) => {
     const id = str(t.id) ?? "?";
     return {
@@ -128,11 +130,14 @@ export async function listAuthTokens(
       `Fin auth tokens: ${tokens.length}`,
       ...tokens.map(
         (t) =>
-          `- ${t.name} [${t.id}]${t.type ? ` · ${t.type}` : ""} · used by ${t.connectors.length ? t.connectors.join(", ") : "no connector"}`,
+          `- ${t.name} [${t.id}]${t.type ? ` · ${t.type}` : ""} · used by ${t.connectors.length ? t.connectors.join(", ") : unread.length ? "unknown (see below)" : "no connector"}`,
       ),
+      ...(unread.length
+        ? [`⚠️ could not read ${unread.join(", ")}; its token binding is unknown. Retry.`]
+        : []),
       "Secret values are never read. Bind a connector to a token with its `auth_token_id` in the connector JSON, then check it with sdk operation='agent_status'.",
     ].join("\n"),
-    details: { phase: "list", tokens },
+    details: { phase: "list", tokens, ...(unread.length ? { unreadConnectors: unread } : {}) },
   };
 }
 
@@ -415,8 +420,9 @@ export async function agentStatus(
           name,
           state: row.state,
           tokens: row.tokens.map((id) => tokenNames.get(id) || id),
+          read: row.read,
         }
-      : { id: undefined, name, state: "missing", tokens: [] as string[] };
+      : { id: undefined, name, state: "missing", tokens: [] as string[], read: true };
   });
   const wf = workflows.ok ? asList(workflows.json) : [];
   const procedure = {
@@ -433,7 +439,7 @@ export async function agentStatus(
     `Channels: ${channels.length ? channels.join(", ") : "all"}${channels.includes("fin_agent_api") ? " (Fin Agent API: run by procedure id or matched by intent; not run by channel workflows)" : ""}`,
     ...connectors.map(
       (c) =>
-        `Connector: ${c.name}${c.id ? ` (${c.id})` : ""} · ${c.state}${c.tokens.length ? ` · token ${c.tokens.join(", ")}` : c.state !== "missing" ? " · no auth token" : ""}`,
+        `Connector: ${c.name}${c.id ? ` (${c.id})` : ""} · ${c.state}${c.tokens.length ? ` · token ${c.tokens.join(", ")}` : !c.read ? " · token unknown (could not read the connector)" : c.state !== "missing" ? " · no auth token" : ""}`,
     ),
     `Simulations: ${simulations ?? "unknown"}`,
     ...(channels.includes("fin_agent_api")
@@ -536,7 +542,7 @@ async function connectorsWithTokens(
   credential: FinCredential,
   deps: SdkReadDeps,
   signal?: AbortSignal,
-): Promise<Array<{ id: string; name: string; state: string; tokens: string[] }>> {
+): Promise<Array<{ id: string; name: string; state: string; tokens: string[]; read: boolean }>> {
   const listed = await call(credential, deps, ["data-connectors", "list", "--json"], signal);
   if (listed.ok === false) return [];
   const rows = asList(listed.json).slice(0, 50);
@@ -549,6 +555,7 @@ async function connectorsWithTokens(
         name: str(row.name) ?? id,
         state: detail.ok ? detail.state : (str(row.state) ?? "unknown"),
         tokens: detail.ok ? detail.tokens : [],
+        read: detail.ok,
       };
     }),
   );
