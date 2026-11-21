@@ -1,8 +1,9 @@
 ---
 id: "0155"
-status: accepted
+status: superseded
 date: 2026-11-10
 supersedes: ["0151", "0152"]
+supersededBy: ["0156"]
 ---
 
 # Pi 1.5.1 floor and Pi 1.5.2 audit edge

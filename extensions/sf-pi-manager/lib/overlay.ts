@@ -628,7 +628,7 @@ export class SfPiOverlayComponent implements Focusable {
     return lines;
   }
 
-  private panelContentRows(innerWidth: number): string[] {
+  private panelContentRows(innerWidth: number): readonly string[] {
     const ext = this.getActiveExtension();
     if (!ext) return [];
     if (this.activePanel) {
