@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.365.4](https://github.com/salesforce/sf-pi/compare/v0.365.3...v0.365.4) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-docs:** recover a Help URL only to the same article ([#975](https://github.com/salesforce/sf-pi/issues/975)) ([697c618](https://github.com/salesforce/sf-pi/commit/697c61833810bbaf00e47bfd4f23e8f5a207e54e))
+
 ## [0.365.3](https://github.com/salesforce/sf-pi/compare/v0.365.2...v0.365.3) (2026-11-21)
 
 
