@@ -46,6 +46,48 @@ describe("deriveEvalVerdict", () => {
     expect(result.scenarios[0]?.verdict).toBe("passed");
   });
 
+  it("fails a generated action check on a turn that invoked no action", () => {
+    // The evaluation result below is the live Evaluation API's shape for a
+    // turn with no action: the name projection resolves to [] and
+    // includes_items scores 0, so a missing action is never a pass.
+    const generated = compileEvalScenario({
+      id: "scenario",
+      turns: [
+        {
+          utterance: "What can you help me with?",
+          action: { id: "eval_action", expected: "lookup_balance" },
+        },
+      ],
+    });
+    const check = generated.steps.find((step) => step.id === "eval_action");
+    expect(check).toMatchObject({
+      type: "evaluator.list_assertion",
+      operator: "includes_items",
+      expected: ["lookup_balance"],
+    });
+
+    const result = deriveEvalVerdict(
+      { tests: [generated] },
+      response([
+        {
+          id: "scenario",
+          evaluation_results: [
+            {
+              id: "eval_action",
+              type: "evaluator.list_assertion",
+              is_pass: false,
+              score: 0,
+              actual_value: [] as unknown as string,
+              expected_value: ["lookup_balance"] as unknown as string,
+            },
+          ],
+        },
+      ]),
+    );
+
+    expect(result.verdict).toBe("failed");
+  });
+
   it("marks missing scenario or evaluator evidence incomplete", () => {
     expect(deriveEvalVerdict(spec(), response([])).verdict).toBe("incomplete");
     expect(

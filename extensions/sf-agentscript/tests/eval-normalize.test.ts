@@ -165,6 +165,150 @@ describe("normalizeEvaluatorFields", () => {
     expect("metric_name" in out[0]).toBe(false);
   });
 
+  test("accepts each live operator for list, string, and numeric assertions", () => {
+    const listOps = [
+      "exact_match_with_order",
+      "exact_match_without_order",
+      "includes_items",
+      "superset",
+      "item_in",
+      "not_equals",
+      "not_contains",
+    ];
+    const stringOps = [
+      "equals",
+      "contains",
+      "startswith",
+      "endswith",
+      "regex_match",
+      "not_contains",
+      "not_equals",
+    ];
+    const numericOps = [
+      "equals",
+      "greater_than_or_equal",
+      "greater_than",
+      "less_than",
+      "less_than_or_equal",
+      "not_equals",
+    ];
+    const steps: EvalStep[] = [
+      ...listOps.map((operator) => ({
+        type: "evaluator.list_assertion",
+        id: `l_${operator}`,
+        actual: "x",
+        expected: ["y"],
+        operator: operator.toUpperCase(),
+      })),
+      ...stringOps.map((operator) => ({
+        type: "evaluator.string_assertion",
+        id: `s_${operator}`,
+        actual: "x",
+        expected: "y",
+        operator,
+      })),
+      ...numericOps.map((operator) => ({
+        type: "evaluator.numeric_assertion",
+        id: `n_${operator}`,
+        actual: "x",
+        expected: 1,
+        operator,
+      })),
+    ];
+    const out = normalizeEvaluatorFields(steps);
+    expect(out.map((step) => step.operator)).toEqual([...listOps, ...stringOps, ...numericOps]);
+  });
+
+  test("rejects list_assertion `contains` before a network call, naming the allowed operators", () => {
+    expect(() =>
+      normalizeEvaluatorFields([
+        {
+          type: "evaluator.list_assertion",
+          id: "eval_action_lookup",
+          actual: "x",
+          expected: ["lookup"],
+          operator: "contains",
+        },
+      ]),
+    ).toThrow(
+      'evaluator.list_assertion operator "contains" (step "eval_action_lookup") is not accepted by the live Evaluation API. ' +
+        "Allowed operators: exact_match_with_order, exact_match_without_order, includes_items, superset, item_in, not_equals, not_contains.",
+    );
+  });
+
+  test("rejects invalid string and numeric operators, and non-string operators", () => {
+    const assertion = (type: string, operator: unknown): EvalStep => ({
+      type,
+      id: "a",
+      actual: "x",
+      expected: "y",
+      operator,
+    });
+    expect(() =>
+      normalizeEvaluatorFields([assertion("evaluator.string_assertion", "includes_items")]),
+    ).toThrow(/string_assertion operator "includes_items".*Allowed operators: equals, contains,/);
+    expect(() =>
+      normalizeEvaluatorFields([assertion("evaluator.numeric_assertion", "contains")]),
+    ).toThrow(
+      /numeric_assertion operator "contains".*Allowed operators: equals, greater_than_or_equal,/,
+    );
+    expect(() => normalizeEvaluatorFields([assertion("evaluator.list_assertion", 1)])).toThrow(
+      /list_assertion operator 1 .*Allowed operators/,
+    );
+  });
+
+  test("trims surrounding whitespace from an operator, like the case fold", () => {
+    const [step] = normalizeEvaluatorFields([
+      {
+        type: "evaluator.string_assertion",
+        id: "a",
+        actual: "x",
+        expected: "y",
+        operator: "  Equals ",
+      },
+    ]);
+    expect(step.operator).toBe("equals");
+  });
+
+  test("rejects a bare assertion type before a network call, naming the evaluator form", () => {
+    // The live API accepts only the evaluator.-prefixed tag; a bare
+    // list_assertion fails the whole batch with HTTP 422.
+    for (const type of ["string_assertion", "numeric_assertion", "list_assertion"]) {
+      expect(() =>
+        normalizeEvaluatorFields([{ type, id: "bare", actual: "x", expected: "y" }]),
+      ).toThrow(
+        `"${type}" (step "bare") is not an Evaluation API step type. Use "evaluator.${type}".`,
+      );
+    }
+  });
+
+  test("leaves a missing operator for the API to report", () => {
+    const out = normalizeEvaluatorFields([
+      { type: "evaluator.list_assertion", id: "l", actual: "x", expected: ["y"] },
+    ]);
+    expect("operator" in out[0]).toBe(false);
+  });
+
+  test("normalizeSpec fails the whole spec locally on an invalid operator", () => {
+    const spec: EvalSpec = {
+      tests: [
+        {
+          id: "t",
+          steps: [
+            {
+              type: "evaluator.list_assertion",
+              id: "l",
+              actual: "x",
+              expected: ["y"],
+              operator: "contains",
+            },
+          ],
+        },
+      ],
+    };
+    expect(() => normalizeSpec(spec)).toThrow(/Allowed operators: exact_match_with_order/);
+  });
+
   test("unknown evaluator types are left alone (no metric_name injection)", () => {
     const step: EvalStep = {
       type: "evaluator.bot_response_rating",
