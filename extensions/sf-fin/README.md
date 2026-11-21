@@ -138,9 +138,16 @@ Messenger live chat (BYOC) is not covered.
 ### Fin admin pages
 
 Some Fin setup has no API: Agent API keys, Help Center sites, data connector
-publishing, and the Salesforce connection. `/sf-fin admin` opens these pages
-in the shared SF Pi browser. This release navigates and reads; it changes
-nothing in Fin.
+publishing, the Salesforce connection, and Fin's Error logs. `/sf-fin admin`
+opens these pages in the shared SF Pi browser, navigates, and reads; it
+changes nothing in Fin. `admin read error-logs` opens each error's details,
+reports Salesforce's error code and object with the SF Fin operation that
+fixes it, and never shows the system error text, which can hold record data.
+
+Two Salesforce operations drive Fin's admin pages for one exact change each,
+behind SF Guardrail: `connect` (Fin's Salesforce connection) and
+`token_transfer` (one Fin OAuth auth token from an External Client App's
+client credentials).
 
 1. Run `/login sf-fin-browser` once (`/sf-fin admin sign-in` prefills it). A
    browser window opens on your region's Fin sign-in page. Sign in yourself and
@@ -169,6 +176,12 @@ app. It refuses if it lands somewhere else.
   action, and removes them on every path, so the browser's own saved-state file
   never holds a Fin sign-in. Cookie values go to the browser on stdin, never on
   a command line, and never appear in tool output.
+- `token_transfer` runs only on non-production orgs. It turns on REST access
+  to consumer secrets only while it moves the credentials, hands them to Fin's
+  masked form over the browser's stdin, saves only after Fin's Test request
+  returns an access token, verifies the token in Fin's list, and then turns
+  the setting off again on every path. It confirms the org no longer returns
+  the secret. Nothing secret appears in tool output.
 - Fin admin pages: all browser text is masked before SF Pi sees it (secret-labelled
   values and key-shaped strings become `<masked>`). Pages that can show a key
   (Agent API, API tokens, workspace tokens), and any page with an open key
