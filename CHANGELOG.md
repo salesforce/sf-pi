@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.365.6](https://github.com/salesforce/sf-pi/compare/v0.365.5...v0.365.6) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-skills:** managed library update, shallow clones, Funnel conflicts, and doctor file entries ([#979](https://github.com/salesforce/sf-pi/issues/979)) ([c808c1c](https://github.com/salesforce/sf-pi/commit/c808c1c357ffee33c1f125d930f048ce4645547f)), closes [#920](https://github.com/salesforce/sf-pi/issues/920)
+
 ## [0.365.5](https://github.com/salesforce/sf-pi/compare/v0.365.4...v0.365.5) (2026-11-21)
 
 
