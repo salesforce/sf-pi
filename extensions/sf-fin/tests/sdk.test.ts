@@ -208,6 +208,16 @@ describe("summarizeManifest", () => {
     expect(summary.items.procedures).toEqual([{ id: "p1", name: "R", state: "live" }]);
   });
 
+  it("shows a procedure's workflow id: the id every procedure operation takes", () => {
+    // Found live: the manifest's own procedure id is a file id; sdk publish,
+    // pause, simulate, agent_status, and agent run all take the workflow id.
+    const summary = summarizeManifest({
+      ...MANIFEST,
+      procedures: [{ id: "90000001", workflow_id: "4242", name: "check_status" }],
+    });
+    expect(summary.items.procedures).toEqual([{ id: "4242", name: "check_status" }]);
+  });
+
   it("records state through the shared store without credentials", () => {
     writeFinSdkState({ state: "enabled", appId: "abc123de" });
     expect(JSON.stringify(readFinSdkState())).not.toContain(SENTINEL);

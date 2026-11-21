@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { SalesforceSession } from "../../../../lib/common/sf-conn/index.ts";
 import { deployPermissionSet } from "../../../sf-agentscript/lib/agent-user/deploy.ts";
+import type { TokenTransferOrg } from "./token-transfer.ts";
 import {
   FIN_ACCESS_PERMISSION_SET,
   FIN_AUDIT_PERMISSIONS,
@@ -761,7 +762,7 @@ interface ApiError {
 /** Deploy one single-field `<name>.settings` through SDR. */
 async function deploySettings(
   session: SalesforceSession,
-  name: "Security" | "Communities" | "EmailAdministration",
+  name: "Security" | "Communities" | "EmailAdministration" | "ExternalClientApp",
   xml: string,
   signal?: AbortSignal,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -835,8 +836,12 @@ function describeHttp(status: number, body: unknown): string {
 /** One boolean field of a Settings component; undefined when unreadable. */
 async function readSetting(
   session: SalesforceSession,
-  type: "SecuritySettings" | "CommunitiesSettings" | "EmailAdministrationSettings",
-  fullName: "Security" | "Communities" | "EmailAdministration",
+  type:
+    | "SecuritySettings"
+    | "CommunitiesSettings"
+    | "EmailAdministrationSettings"
+    | "ExternalClientAppSettings",
+  fullName: "Security" | "Communities" | "EmailAdministration" | "ExternalClientApp",
   field: string,
 ): Promise<boolean | undefined> {
   try {
@@ -887,4 +892,84 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       { once: true },
     );
   });
+}
+
+/** ExternalClientAppSettings field behind "Allow access to … consumer secrets via REST API". */
+const ECA_REST_SECRET_SETTING = "enableClientSecretInRestApiAccess";
+
+/**
+ * The org side of `token_transfer`. The consumer secret is returned only to
+ * the runbook, which hands it straight to the browser form; it is never
+ * logged, stored, or returned to a tool.
+ */
+export function createTokenTransferOrg(session: SalesforceSession): TokenTransferOrg {
+  const query = async <T>(soql: string, api: "rest" | "tooling" = "rest") =>
+    (await session.query<T>({ soql, api, maxRows: 5 })).records;
+  return {
+    host: new URL(session.target.instanceUrl).hostname,
+    async findApp(name) {
+      const app = (
+        await query<{ Id: string; DeveloperName: string }>(
+          `SELECT Id, DeveloperName FROM ExternalClientApplication WHERE DeveloperName = '${soql(name)}'`,
+        )
+      )[0];
+      if (!app) return undefined;
+      const metadata = session.connection.metadata as unknown as {
+        read(type: string, names: string[]): Promise<unknown>;
+      };
+      const policy = (await metadata
+        // The org-local policy component is named after the app.
+        .read("ExtlClntAppOauthConfigurablePolicies", [name])
+        .catch(() => undefined)) as
+        Record<string, unknown> | Array<Record<string, unknown>> | undefined;
+      const row = (Array.isArray(policy) ? policy[0] : policy) ?? {};
+      const enabled = row.isClientCredentialsFlowEnabled;
+      return {
+        id: app.Id,
+        name: app.DeveloperName,
+        clientCredentials: enabled === true || enabled === "true",
+        runAs:
+          typeof row.clientCredentialsFlowUser === "string"
+            ? row.clientCredentialsFlowUser
+            : undefined,
+      };
+    },
+    async restSecretSetting() {
+      return readSetting(
+        session,
+        "ExternalClientAppSettings",
+        "ExternalClientApp",
+        ECA_REST_SECRET_SETTING,
+      );
+    },
+    async setRestSecretSetting(value) {
+      return deploySettings(
+        session,
+        "ExternalClientApp",
+        [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          '<ExternalClientAppSettings xmlns="http://soap.sforce.com/2006/04/metadata">',
+          `    <${ECA_REST_SECRET_SETTING}>${value}</${ECA_REST_SECRET_SETTING}>`,
+          "</ExternalClientAppSettings>",
+          "",
+        ].join("\n"),
+      );
+    },
+    async readCredentials(appId) {
+      const listed = await session.request<{ consumers?: Array<{ id?: string }> }>({
+        method: "GET",
+        path: `/apps/oauth/credentials/${encodeURIComponent(appId)}`,
+      });
+      const consumer = listed.status < 300 ? listed.body?.consumers?.[0]?.id : undefined;
+      if (!consumer) return undefined;
+      const read = await session.request<{ key?: string; secret?: string }>({
+        method: "GET",
+        path: `/apps/oauth/credentials/${encodeURIComponent(appId)}/${encodeURIComponent(consumer)}`,
+        query: { part: "keyandsecret" },
+      });
+      const key = read.status < 300 ? read.body?.key : undefined;
+      const secret = read.status < 300 ? read.body?.secret : undefined;
+      return key && secret ? { key, secret } : undefined;
+    },
+  };
 }

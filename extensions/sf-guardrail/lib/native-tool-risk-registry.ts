@@ -332,6 +332,12 @@ const FIN_SALESFORCE_SETUP: Record<
     reason: (input) =>
       `Create one Case queue (${stringValue(input.queue_name) ?? "Fin Handoff"}) in the target org for Fin's handoff. It has no members, no member email, and no role-hierarchy access; an existing queue is never changed.`,
   },
+  token_transfer: {
+    title: "⚠ Move OAuth client credentials into Fin",
+    tier: "org_secret_transfer_exact",
+    reason: (input) =>
+      `Create Fin auth token "${stringValue(input.token_name) ?? "unnamed"}" from External Client App ${stringValue(input.app_name) ?? "unspecified"}'s client credentials in the target org. It temporarily turns on REST access to consumer secrets, moves the secret into Fin's masked form through the browser, saves only after Fin's Test request passes, then turns the setting off again.`,
+  },
   permissions_apply: {
     title: "⚠ Fin Salesforce permissions and user",
     tier: "org_user_provisioning_exact",
@@ -361,6 +367,8 @@ function classifySfFinSalesforceSetup(
   const username = stringValue(input.username);
   const environment = stringValue(input.environment);
   const queueName = stringValue(input.queue_name);
+  const appName = stringValue(input.app_name);
+  const tokenName = stringValue(input.token_name);
   const target =
     operation === "package_install"
       ? `package ${packageVersion ?? "unspecified version"}`
@@ -374,7 +382,9 @@ function classifySfFinSalesforceSetup(
               ? "enhanced email"
               : operation === "handoff_queue_create"
                 ? `queue ${queueName ?? "Fin Handoff"}`
-                : "audit fields";
+                : operation === "token_transfer"
+                  ? `app ${appName ?? "unspecified"} → token ${tokenName ?? "unnamed"}`
+                  : "audit fields";
   return {
     kind: "nativeTool",
     toolName,
@@ -385,7 +395,7 @@ function classifySfFinSalesforceSetup(
     promptTitle: spec.title,
     operationFamily: "fin salesforce setup",
     riskTier: spec.tier,
-    fingerprint: `sf_fin|salesforce-${operation}|${fingerprintText(JSON.stringify({ packageVersion, username, email: stringValue(input.email), environment, queueName, workspace: stringValue(input.workspace) }))}`,
+    fingerprint: `sf_fin|salesforce-${operation}|${fingerprintText(JSON.stringify({ packageVersion, username, email: stringValue(input.email), environment, queueName, appName, tokenName, workspace: stringValue(input.workspace) }))}`,
     approvalLabel: `${operation} ${target}`,
     approvalDetail: [
       `operation=${operation}`,
@@ -393,6 +403,8 @@ function classifySfFinSalesforceSetup(
       username ? `username=${username}` : undefined,
       environment ? `environment=${environment}` : undefined,
       queueName ? `queue_name=${queueName}` : undefined,
+      appName ? `app_name=${appName}` : undefined,
+      tokenName ? `token_name=${tokenName}` : undefined,
     ]
       .filter(Boolean)
       .join("; "),

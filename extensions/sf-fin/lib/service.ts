@@ -11,7 +11,7 @@ import {
   signinExpired,
   type SigninBrowser,
 } from "./browser-signin.ts";
-import type { FinAdminRegion } from "../../../lib/common/fin-admin-surface.ts";
+import { FIN_ADMIN_HOSTS, type FinAdminRegion } from "../../../lib/common/fin-admin-surface.ts";
 import { createSigninBrowser } from "./signin-browser.ts";
 import {
   createAdminRunner,
@@ -229,6 +229,9 @@ export interface FinServiceDeps {
   connectBrowser?: ConnectBrowser;
   /** Test seam: frontdoor URL builder for a Salesforce path. */
   frontdoor?: (input: { cwd: string; targetOrg: string; path: string }) => Promise<string>;
+  /** Test seams: token_transfer org and Fin browser sides. */
+  tokenTransferOrg?: import("./salesforce/token-transfer.ts").TokenTransferOrg;
+  tokenTransferBrowser?: import("./salesforce/token-transfer.ts").TokenTransferBrowser;
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
@@ -241,6 +244,108 @@ export function createFinService(deps: FinServiceDeps): FinService {
   const appIdFor = (profile: WorkspaceProfile) =>
     profile.appId ??
     (profile.name === DEFAULT_WORKSPACE ? statusStore.read().identity?.appId : undefined);
+  /**
+   * token_transfer: the org session, the saved Fin admin sign-in, and the
+   * browser runbook. The sign-in is restored only for the execute and always
+   * cleared afterwards.
+   */
+  const tokenTransfer = async (
+    ctx: ExtensionContext,
+    request: SalesforceRequest,
+    targetOrg: string,
+  ): Promise<ProcedureResponse> => {
+    const appName = request.appName?.trim();
+    const tokenName = request.tokenName?.trim();
+    if (!appName || !/^[A-Za-z][A-Za-z0-9_]{0,79}$/u.test(appName)) {
+      return {
+        ok: false,
+        text: "❌ token_transfer needs app_name: the External Client App API name (letters, digits, underscores).",
+        details: { phase: "input", code: "app_name_required" },
+      };
+    }
+    if (!tokenName || tokenName.length > 120) {
+      return {
+        ok: false,
+        text: "❌ token_transfer needs token_name: the Fin auth token name to create (up to 120 characters).",
+        details: { phase: "input", code: "token_name_required" },
+      };
+    }
+    const target = ws(request.workspace);
+    if (target.ok === false)
+      return { ok: false, text: target.message, details: { phase: "workspace" } };
+    const appId = appIdFor(target.profile);
+    const region = target.profile.region;
+    if (!appId || !region) {
+      return {
+        ok: false,
+        text: "❌ Run /sf-fin setup first (no Fin app bound).",
+        details: { phase: "workspace" },
+      };
+    }
+    const [
+      { connectSalesforce },
+      { createTokenTransferOrg },
+      { runTokenTransfer },
+      { createTokenTransferBrowser },
+    ] = await Promise.all([
+      import("../../../lib/common/sf-conn/index.ts"),
+      import("./salesforce/org.ts"),
+      import("./salesforce/token-transfer.ts"),
+      import("./salesforce/token-transfer-browser.ts"),
+    ]);
+    try {
+      const session = await connectSalesforce({ cwd: ctx.cwd, targetOrg, signal: ctx.signal });
+      const org = deps.tokenTransferOrg ?? createTokenTransferOrg(session);
+      const finBase = `https://${FIN_ADMIN_HOSTS[region]}/a/apps/${appId}`;
+      const input = {
+        appName,
+        tokenName,
+        targetOrg,
+        orgType: session.target.orgType,
+        finBase,
+        execute: request.execute === true,
+      };
+      if (!input.execute) {
+        return await runTokenTransfer(
+          org,
+          deps.tokenTransferBrowser ?? createTokenTransferBrowser(spawnAgentBrowser, finBase),
+          input,
+        );
+      }
+      const signin = createAdminSignin(
+        target.profile.name,
+        deps.signinBrowser ?? createSigninBrowser(),
+        deps.readSignin ?? ((name) => readStoredSignin(name)),
+      );
+      const restored = await signin.restore();
+      if (restored !== "restored") {
+        return {
+          ok: false,
+          text: `❌ ${restored === "expired" ? "The saved Fin sign-in has expired" : "No saved Fin sign-in"}. Run /login ${signin.loginId}, then retry.`,
+          details: {
+            phase: "signin",
+            code: restored === "expired" ? "signin_expired" : "signed_out",
+          },
+        };
+      }
+      try {
+        return await runTokenTransfer(
+          org,
+          deps.tokenTransferBrowser ?? createTokenTransferBrowser(spawnAgentBrowser, finBase),
+          input,
+        );
+      } finally {
+        await signin.finish();
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        text: `❌ token_transfer failed for ${targetOrg}: ${error instanceof Error ? error.message : String(error)}`,
+        details: { phase: "error" },
+      };
+    }
+  };
+
   const fetchRegistry = deps.fetchRegistry ?? fetchCliRegistryMetadata;
   const doctorDeps = deps.doctorDeps ?? { ...createDoctorDeps(deps.exec), fetchRegistry };
 
@@ -755,6 +860,9 @@ export function createFinService(deps: FinServiceDeps): FinService {
           details: { phase: "input", code: "target_org_required" },
         };
       }
+      if (request.operation === "token_transfer") {
+        return tokenTransfer(ctx, request, targetOrg);
+      }
       try {
         const org = await (deps.salesforceOrg ?? connectFinSalesforceOrg)({
           cwd: ctx.cwd,
@@ -977,6 +1085,9 @@ export interface SalesforceRequest {
   username?: string;
   email?: string;
   queueName?: string;
+  /** token_transfer: External Client App API name and Fin token name. */
+  appName?: string;
+  tokenName?: string;
   environment?: FinEnvironmentCard;
   workspace?: string;
   execute?: boolean;

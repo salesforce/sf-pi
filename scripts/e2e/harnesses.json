@@ -190,6 +190,16 @@
       "arguments": "--org <alias> [--version latest|x.y.z] [--baseline <file>] [--output-dir <dir>]"
     },
     {
+      "script": "e2e:sf-fin",
+      "entry": "scripts/e2e/sf-fin-sweep.ts",
+      "title": "SF Fin recursive live sweep",
+      "summary": "Drives the real sf_fin tool through every read-only action and every plan path for one Fin workspace and one Salesforce org, and checks Result Cards, bounded model packets, secret-free output, and that plans never change state.",
+      "target": "Explicit Fin workspace plus explicit non-production org",
+      "posture": "bounded-mutation",
+      "artifacts": "Mode-0600 JSON and Markdown reports in a temporary or caller-selected directory",
+      "arguments": "--target-org <alias> --workspace <name> [--procedure <id>] [--connector <id>] [--live-safe] [--output <dir>]"
+    },
+    {
       "script": "e2e:sf-soql",
       "entry": "scripts/e2e/sf-soql-e2e.ts",
       "title": "SF SOQL lifecycle harness",

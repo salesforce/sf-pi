@@ -100,6 +100,43 @@ export function validateProcedureFile(file: string, schemaPath: string): Procedu
  * The public Fin CLI accepts sets only; each test is checked against the
  * workspace `simulation.json` (which describes one `simulation_test`).
  */
+/**
+ * Plain scalars that YAML 1.2 (SF Fin, the Fin CLI) reads as strings or
+ * decimals but YAML 1.1 reads as dates, octal, sexagesimal, or booleans.
+ * Fin's server is not YAML 1.2-strict: an unquoted ISO timestamp in a mock
+ * body failed the upload with a bare "Server Error". Report each one with its
+ * path so the author quotes it; quoted values are never flagged.
+ */
+export function ambiguousScalarIssues(text: string): ValidationIssue[] {
+  const strict = parseDocument(text);
+  const loose = parseDocument(text, { version: "1.1" });
+  if (strict.errors.length > 0 || loose.errors.length > 0) return [];
+  const issues: ValidationIssue[] = [];
+  const walk = (a: unknown, b: unknown, at: string) => {
+    if (issues.length >= 20) return;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      a.forEach((item, i) => walk(item, b[i], `${at}/${i}`));
+      return;
+    }
+    if (a && typeof a === "object" && b && typeof b === "object" && !(b instanceof Date)) {
+      for (const [key, value] of Object.entries(a as Record<string, unknown>)) {
+        walk(value, (b as Record<string, unknown>)[key], `${at}/${key}`);
+      }
+      return;
+    }
+    const differs =
+      b instanceof Date || typeof a !== typeof b || (typeof a === "number" && a !== b);
+    if (differs) {
+      issues.push({
+        path: at || "/",
+        message: `Quote ${JSON.stringify(String(a))}: Fin's server reads this unquoted value as a ${b instanceof Date ? "date" : typeof b} (YAML 1.1), not as written.`,
+      });
+    }
+  };
+  walk(strict.toJS(), loose.toJS(), "");
+  return issues;
+}
+
 export function validateSimulationSetFile(file: string, schemaPath: string): ProcedureValidation {
   const set = validateYamlFile(file, undefined, simulationSetRuleIssues);
   if (!set.ok || !existsSync(schemaPath)) {
@@ -139,6 +176,7 @@ export function validateSimulationSetFile(file: string, schemaPath: string): Pro
       })),
     );
   });
+  issues.push(...ambiguousScalarIssues(readFileSync(file, "utf8")));
   return { ...set, ok: issues.length === 0, issues, schemaPath };
 }
 
