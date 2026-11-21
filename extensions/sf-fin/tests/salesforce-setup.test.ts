@@ -8,7 +8,9 @@ import {
   FIN_CASE_FIELDS,
   FIN_PACKAGE_PERMISSION_SET,
   parsePackageVersionId,
+  queueDeveloperName,
   renderAccessPermissionSet,
+  renderHandoffQueue,
   type SalesforceFacts,
 } from "../lib/salesforce/contract.ts";
 import type { FinCaseActivity, FinSalesforceOrg } from "../lib/salesforce/org.ts";
@@ -142,7 +144,7 @@ describe("go-live readiness (routing, email, handoff, effective access)", () => 
     expect(byId["email-to-case"]).toMatchObject({ state: "warn", fix: "human" });
     expect(byId["case-routing"]).toMatchObject({ state: "missing", fix: "human" });
     expect(byId["case-routing"]?.detail).toContain("sf_flow");
-    expect(byId["handoff-queue"]).toMatchObject({ state: "warn" });
+    expect(byId["handoff-queue"]).toMatchObject({ state: "warn", fix: "handoff_queue_create" });
     expect(byId["effective-access"]).toMatchObject({ state: "missing", fix: "permissions_apply" });
     expect(byId["effective-access"]?.title).toContain("Fin user: Case edit");
     expect(byId["effective-access"]?.title).toContain("integration user: Contact create");
@@ -233,6 +235,101 @@ describe("enhanced_email_enable", () => {
       execute: true,
     });
     expect(again.details).toMatchObject({ phase: "noop" });
+  });
+});
+
+describe("handoff_queue_create", () => {
+  it("derives a Salesforce-valid queue API name from the label", () => {
+    expect(queueDeveloperName("Fin Handoff")).toBe("Fin_Handoff");
+    expect(queueDeveloperName("  Tier 2 -- escalations! ")).toBe("Tier_2_escalations");
+    expect(queueDeveloperName("2nd line")).toBe("Q_2nd_line");
+    for (const bad of ["", "   ", "!!!", "x".repeat(41)]) {
+      expect(queueDeveloperName(bad)).toBeUndefined();
+    }
+  });
+
+  it("renders one Case queue with no members, no email, and no hierarchy access", () => {
+    const xml = renderHandoffQueue("Fin Handoff");
+    expect(xml).toContain("<name>Fin Handoff</name>");
+    expect(xml).toContain("<sobjectType>Case</sobjectType>");
+    expect(xml.match(/<queueSobject>/g)).toHaveLength(1);
+    expect(xml).toContain("<doesIncludeBosses>false</doesIncludeBosses>");
+    expect(xml).toContain("<doesSendEmailToMembers>false</doesSendEmailToMembers>");
+    expect(xml).not.toContain("queueMembers");
+    expect(renderHandoffQueue("R&D <team>")).toContain("<name>R&amp;D &lt;team&gt;</name>");
+  });
+
+  it("plans, executes, verifies, then is a no-op", async () => {
+    const org = fakeOrg({ installed: true, goLive: { caseQueues: [] } });
+    const plan = await runSalesforceSetup(org, {
+      operation: "handoff_queue_create",
+      targetOrg: "DevOrg",
+    });
+    expect(plan.details).toMatchObject({
+      phase: "plan",
+      queue: { name: "Fin Handoff", developerName: "Fin_Handoff", sobjectType: "Case" },
+    });
+    expect(plan.text).toContain("Fin_Handoff");
+    expect(plan.text).toContain("Salesforce cases workflow");
+    expect(org.writes).toEqual([]);
+
+    const run = await runSalesforceSetup(org, {
+      operation: "handoff_queue_create",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(run.ok).toBe(true);
+    expect(run.details).toMatchObject({ phase: "execute", verified: true });
+    expect(org.writes).toEqual(["queue:Fin_Handoff(Case)"]);
+    expect(run.text).toContain("Fin → Deploy → Salesforce cases");
+
+    const again = await runSalesforceSetup(org, {
+      operation: "handoff_queue_create",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(again.details).toMatchObject({ phase: "noop" });
+    expect(org.writes).toHaveLength(1);
+  });
+
+  it("uses a given queue name", async () => {
+    const org = fakeOrg({ installed: true, goLive: { caseQueues: [] } });
+    const run = await runSalesforceSetup(org, {
+      operation: "handoff_queue_create",
+      targetOrg: "DevOrg",
+      queueName: "Tier 2 Support",
+      execute: true,
+    });
+    expect(run.ok).toBe(true);
+    expect(org.writes).toEqual(["queue:Tier_2_Support(Case)"]);
+  });
+
+  it("never changes an existing queue that does not accept Cases", async () => {
+    const org = fakeOrg({
+      installed: true,
+      goLive: { caseQueues: [] },
+      queues: [{ developerName: "Fin_Handoff", name: "Fin Handoff", sobjectTypes: ["Lead"] }],
+    });
+    const run = await runSalesforceSetup(org, {
+      operation: "handoff_queue_create",
+      targetOrg: "DevOrg",
+      execute: true,
+    });
+    expect(run.ok).toBe(false);
+    expect(run.details).toMatchObject({ phase: "refused", code: "queue_exists_other_objects" });
+    expect(org.writes).toEqual([]);
+  });
+
+  it("refuses a name that cannot become a queue API name", async () => {
+    const org = fakeOrg({ installed: true });
+    const run = await runSalesforceSetup(org, {
+      operation: "handoff_queue_create",
+      targetOrg: "DevOrg",
+      queueName: "!!!",
+      execute: true,
+    });
+    expect(run.details).toMatchObject({ phase: "refused", code: "input" });
+    expect(org.writes).toEqual([]);
   });
 });
 
@@ -608,6 +705,7 @@ interface FakeOptions {
   digitalExperiences?: boolean;
   enhancedEmail?: boolean;
   goLive?: Pick<SalesforceFacts, "emailToCaseEnabled" | "caseRouting" | "caseQueues">;
+  queues?: Array<{ developerName: string; name: string; sobjectTypes: string[] }>;
   observe?: FinCaseActivity;
 }
 
@@ -630,6 +728,7 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
     accessHasAudit: options.accessHasAudit === true,
     digitalExperiences: options.digitalExperiences === true,
     enhancedEmail: options.enhancedEmail,
+    queues: [...(options.queues ?? [])],
   };
   return {
     writes,
@@ -673,7 +772,27 @@ function fakeOrg(options: FakeOptions = {}): FinSalesforceOrg & { writes: string
         feedVisibilityAvailable: state.digitalExperiences,
         enhancedEmailEnabled: state.enhancedEmail,
         ...options.goLive,
+        ...(options.goLive?.caseQueues
+          ? {
+              caseQueues: [
+                ...options.goLive.caseQueues,
+                ...state.queues.filter((q) => q.sobjectTypes.includes("Case")).map((q) => q.name),
+              ],
+            }
+          : {}),
       };
+    },
+    async findQueue(developerName) {
+      return state.queues.find((q) => q.developerName === developerName);
+    },
+    async deployQueue(input) {
+      writes.push(`queue:${input.developerName}(Case)`);
+      state.queues.push({
+        developerName: input.developerName,
+        name: input.name,
+        sobjectTypes: ["Case"],
+      });
+      return { ok: true };
     },
     async readFinCaseActivity() {
       return (
@@ -856,6 +975,30 @@ describe("observe (cases Fin worked)", () => {
 });
 
 describe("go-live next step", () => {
+  it("names handoff_queue_create once routing works and no Case queue exists", async () => {
+    const org = fakeOrg({
+      installed: true,
+      accessPs: true,
+      user: {
+        serviceCloudUser: true,
+        assigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+      },
+      auditFieldsEnabled: true,
+      accessHasAudit: true,
+      digitalExperiences: true,
+      oauthConnected: true,
+      integrationAssigned: [FIN_PACKAGE_PERMISSION_SET, FIN_ACCESS_PERMISSION_SET],
+      goLive: {
+        caseRouting: { activeFlows: ["Case_Assign_To_Fin"], casesOwnedByFin: 2 },
+        caseQueues: [],
+      },
+    });
+    const result = await runSalesforceSetup(org, { operation: "readiness", targetOrg: "DevOrg" });
+    expect(result.text.split("\n").at(-1)).toBe(
+      "Next: sf_fin action='salesforce' operation='handoff_queue_create' target_org='DevOrg'.",
+    );
+  });
+
   it("names routing before the handoff queue and Email-to-Case once Fin is connected", async () => {
     const org = fakeOrg({
       installed: true,

@@ -72,13 +72,14 @@ const Params = Type.Object({
         "audit_fields_enable",
         "digital_experiences_enable",
         "enhanced_email_enable",
+        "handoff_queue_create",
         "permissions_apply",
         "connect",
         "observe",
       ] as const,
       {
         description:
-          "salesforce only: readiness (read-only checklist: package, Fin Case fields, audit-field setting, Digital Experiences / FeedItem.Visibility, permission sets, Fin user, integration user, Fin OAuth connection), package_install (install the exact Fin for Salesforce package_version for all users), audit_fields_enable (deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true), digital_experiences_enable (deploy CommunitiesSettings with only enableNetworksEnabled=true so FeedItem.Visibility exists; one-way), enhanced_email_enable (deploy EmailAdministrationSettings with only enableEnhancedEmailEnabled=true; org-wide), permissions_apply (deploy the Fin access permission set, create the dedicated Fin user with Service Cloud User, assign both permission sets to the Fin user and the integration user), connect (run Fin's Connect flow in the shared browser: approve Fin for Salesforce as the CLI user, pick the Fin user, verify the OAuth token), observe (read-only: how Fin has worked Cases — involved, resolved, routed, by origin, recent cases). Each change plans first and executes with allow_mutation=true. sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (tests the draft by default; live=true tests the live version). publish / pause: publish a procedure's draft (draft, paused, or live with unpublished changes) or pause a live one; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). auth_tokens: list auth token metadata and which connectors use each (never secret values). connector_state: set connector_id live or draft through the public API (plans by default; allow_mutation=true executes; verified). connector_logs: recent runs of connector_id without bodies. simulations_delete: delete exactly one simulation (procedure_id, test_id; plans by default). agent_status: one procedure's chain (state, channels, connectors and tokens, simulations) and the next step. agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
+          "salesforce only: readiness (read-only checklist: package, Fin Case fields, audit-field setting, Digital Experiences / FeedItem.Visibility, permission sets, Fin user, integration user, Fin OAuth connection), package_install (install the exact Fin for Salesforce package_version for all users), audit_fields_enable (deploy SecuritySettings with only enableAuditFieldsInactiveOwner=true), digital_experiences_enable (deploy CommunitiesSettings with only enableNetworksEnabled=true so FeedItem.Visibility exists; one-way), enhanced_email_enable (deploy EmailAdministrationSettings with only enableEnhancedEmailEnabled=true; org-wide), handoff_queue_create (create one Case queue for Fin's handoff, queue_name default 'Fin Handoff'; no members, never changes an existing queue), permissions_apply (deploy the Fin access permission set, create the dedicated Fin user with Service Cloud User, assign both permission sets to the Fin user and the integration user), connect (run Fin's Connect flow in the shared browser: approve Fin for Salesforce as the CLI user, pick the Fin user, verify the OAuth token), observe (read-only: how Fin has worked Cases — involved, resolved, routed, by origin, recent cases). Each change plans first and executes with allow_mutation=true. sdk only. manifest: summarize resources. download: fetch and extract Fin SDK resources. validate: check a procedure.yaml against the workspace schema and draft rules (local). upload: upload a procedure.yaml as an unpublished draft with round-trip verify. upload_simulations: upload a simulation_set YAML (type, procedure_id, tests[]; each test validated against the workspace simulation schema; tests with an id update, others are added). simulate: optionally generate, then run simulations for a procedure_id (tests the draft by default; live=true tests the live version). publish / pause: publish a procedure's draft (draft, paused, or live with unpublished changes) or pause a live one; plans by default, executes with allow_mutation=true (SF Guardrail mediates). A procedure never returns to draft. validate/upload also accept guidance (type: guidance; uploads paused) and data connectors (type: data_connector; uploads draft). create_data_connector: create a named draft connector and return its id. guidance_state: set guidance_id live or paused (plans by default; allow_mutation=true executes). auth_tokens: list auth token metadata and which connectors use each (never secret values). connector_state: set connector_id live or draft through the public API (plans by default; allow_mutation=true executes; verified). connector_logs: recent runs of connector_id without bodies. simulations_delete: delete exactly one simulation (procedure_id, test_id; plans by default). agent_status: one procedure's chain (state, channels, connectors and tokens, simulations) and the next step. agent only: access (check Fin Agent API access), capabilities (list a test user's procedures), run (scripted conversation). workspace only: list, add (name, kind), use (name), remove (name). admin only: pages (list verified pages), open (page), read (page; masked compact summary), sign_in (hands off to /login sf-fin-browser, where the human signs in and Pi saves it).",
       },
     ),
   ),
@@ -218,6 +219,12 @@ const Params = Type.Object({
       description: "salesforce: dedicated Fin user's username. Default fin_agent@<org id>.ext.",
     }),
   ),
+  queue_name: Type.Optional(
+    Type.String({
+      description:
+        'salesforce handoff_queue_create: label of the Case queue Fin hands cases to. Default "Fin Handoff".',
+    }),
+  ),
   environment: Type.Optional(
     StringEnum(["live", "test"] as const, {
       description:
@@ -277,12 +284,14 @@ type Params = {
     | "audit_fields_enable"
     | "digital_experiences_enable"
     | "enhanced_email_enable"
+    | "handoff_queue_create"
     | "permissions_apply"
     | "connect"
     | "observe";
   target_org?: string;
   package_version?: string;
   username?: string;
+  queue_name?: string;
   email?: string;
   environment?: "live" | "test";
   page?: string;
@@ -342,7 +351,7 @@ export function registerSfFinTool(
       "Use sf_fin action='surfaces' to decide between the Fin CLI, the Intercom MCP, and the Fin Agent API for a capability.",
       "Use sf_fin action='admin' for Fin admin web pages: operation='pages' lists verified pages, 'open'/'read' take page=<id> and verify the browser is on the workspace's own app. Sign-in is human-only and saved by Pi: on signed_out, signin_expired, or signin_rejected, ask the user to run /login sf-fin-browser (named workspaces: sf-fin-browser-<name>). Never ask for a Fin password or verification code, and never try to reveal or copy a key; the human copies keys into the masked /login prompt.",
       "Use sf_fin action='agent' operation='access' before Fin Agent API runs; never ask for the Fin Agent API key in chat (use /login sf-fin-agent). Runs Fin resolves are billable outcomes.",
-      "For Fin for Salesforce, run sf_fin action='salesforce' operation='readiness' target_org=…, then package_install (package_version from Fin's Connect page), audit_fields_enable, digital_experiences_enable (one-way; confirm the user wants it), enhanced_email_enable, permissions_apply, and connect, in the order readiness's Next line names. After connect, readiness also checks go-live: case routing to the Fin user (build it with sf_flow), Email-to-Case, a Case handoff queue, and effective object access. Each plans first and executes with allow_mutation=true (SF Guardrail mediates). connect uses the saved Fin admin sign-in.",
+      "For Fin for Salesforce, run sf_fin action='salesforce' operation='readiness' target_org=…, then package_install (package_version from Fin's Connect page), audit_fields_enable, digital_experiences_enable (one-way; confirm the user wants it), enhanced_email_enable, permissions_apply, and connect, in the order readiness's Next line names. After connect, readiness also checks go-live: case routing to the Fin user (build it with sf_flow), Email-to-Case, a Case handoff queue (handoff_queue_create), and effective object access. Each plans first and executes with allow_mutation=true (SF Guardrail mediates). connect uses the saved Fin admin sign-in.",
     ],
     parameters: Params,
     renderCall: (args, theme) => {
@@ -414,6 +423,7 @@ export function registerSfFinTool(
           input.operation === "audit_fields_enable" ||
           input.operation === "digital_experiences_enable" ||
           input.operation === "enhanced_email_enable" ||
+          input.operation === "handoff_queue_create" ||
           input.operation === "permissions_apply" ||
           input.operation === "connect" ||
           input.operation === "observe"
@@ -425,6 +435,7 @@ export function registerSfFinTool(
           packageVersion: input.package_version,
           username: input.username,
           email: input.email,
+          queueName: input.queue_name,
           environment: input.environment,
           workspace,
           execute: input.allow_mutation === true,

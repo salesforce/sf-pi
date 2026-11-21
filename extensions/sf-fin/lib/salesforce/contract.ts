@@ -62,6 +62,45 @@ export const FIN_REQUIRED_ACCESS: Record<
   integration: { Case: ["create", "read", "edit"], Contact: ["create", "read"] },
 };
 
+/** Default label of the Case queue Fin hands cases to ("Routed to team"). */
+export const FIN_HANDOFF_QUEUE_DEFAULT = "Fin Handoff";
+
+/**
+ * Queue API name from a label: letters, digits, single underscores, starts
+ * with a letter, at most 40 characters (Salesforce's DeveloperName rules).
+ */
+export function queueDeveloperName(label: string): string | undefined {
+  const words = label.trim().match(/[A-Za-z0-9]+/gu);
+  if (!words || label.trim().length > 40) return undefined;
+  const joined = words.join("_");
+  const name = /^[A-Za-z]/u.test(joined) ? joined : `Q_${joined}`;
+  return name.length <= 40 ? name : undefined;
+}
+
+/**
+ * Queue source for Fin's handoff: Cases only, no members, no member email,
+ * and no role-hierarchy access, so creating it changes nobody's access.
+ */
+export function renderHandoffQueue(label: string): string {
+  const escaped = label
+    .trim()
+    .replace(/&/gu, "&amp;")
+    .replace(/</gu, "&lt;")
+    .replace(/>/gu, "&gt;");
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<Queue xmlns="http://soap.sforce.com/2006/04/metadata">',
+    "    <doesIncludeBosses>false</doesIncludeBosses>",
+    "    <doesSendEmailToMembers>false</doesSendEmailToMembers>",
+    `    <name>${escaped}</name>`,
+    "    <queueSobject>",
+    "        <sobjectType>Case</sobjectType>",
+    "    </queueSobject>",
+    "</Queue>",
+    "",
+  ].join("\n");
+}
+
 /** EmailAdministrationSettings.enableEnhancedEmailEnabled (Fin syncs case email history through it). */
 export const FIN_ENHANCED_EMAIL_SETTING = "enableEnhancedEmailEnabled";
 
@@ -247,6 +286,7 @@ export interface ReadinessCheck {
     | "audit_fields_enable"
     | "digital_experiences_enable"
     | "enhanced_email_enable"
+    | "handoff_queue_create"
     | "permissions_apply"
     | "connect"
     | "human";
@@ -560,8 +600,8 @@ function goLiveChecks(facts: SalesforceFacts): ReadinessCheck[] {
       detail:
         facts.caseQueues.length > 0
           ? undefined
-          : 'When Fin hands off ("Routed to team"), it assigns the case to a queue or user you pick in Fin. Create a Case queue in Setup, or pick a user.',
-      fix: facts.caseQueues.length > 0 ? undefined : "human",
+          : 'When Fin hands off ("Routed to team"), it assigns the case to a queue or user you pick in Fin. Create a Case queue (handoff_queue_create), or pick a user in Fin.',
+      fix: facts.caseQueues.length > 0 ? undefined : "handoff_queue_create",
     });
   }
   if (facts.effectiveAccess) {

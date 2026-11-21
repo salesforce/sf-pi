@@ -976,6 +976,7 @@ export interface SalesforceRequest {
   packageVersion?: string;
   username?: string;
   email?: string;
+  queueName?: string;
   environment?: FinEnvironmentCard;
   workspace?: string;
   execute?: boolean;

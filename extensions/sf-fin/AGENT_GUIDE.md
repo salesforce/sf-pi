@@ -67,6 +67,7 @@ Use `sf_fin` to check, install, and debug the Fin (formerly Intercom) workspace 
 - `connect` needs `/login sf-fin-browser`; on `signed_out` or `signin_expired`, ask the user to run it.
 - `operation='observe'` (read-only, never prompts) shows how Fin has worked Cases in the org: Fin-involved cases, resolved (Soft or Hard Resolution) and routed counts with a resolution rate, counts by origin, cases the Fin user owns now, and the most recent cases (no descriptions or email bodies). Use it after go-live, or after assigning a test case.
 - Case routing: when readiness reports no active Case Flow, build one with `sf_flow` (record-triggered, after-save, create, sets `OwnerId` to the Fin user found by username), activate it with `sf_flow`, then create one matching test case and run readiness again.
+- Handoff queue: when readiness reports no Case queue, `operation='handoff_queue_create'` (optional `queue_name`, default `Fin Handoff`) creates one Case queue with no members, no member email, and no role-hierarchy access, and verifies it. It never changes an existing queue; a same-named queue for other objects is refused. Then the human picks it as the handoff target in Fin's Salesforce cases workflow and adds teammates in Setup → Queues.
 - Email-to-Case stays guided: enabling it is one-way and Salesforce emails a verification link for each routing address. Not needed for Web-to-Case or manually created cases.
 - Fin Messenger live chat (BYOC) is out of scope; it needs Digital Engagement with Partner Messaging.
 

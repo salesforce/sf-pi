@@ -85,6 +85,17 @@ export interface FinSalesforceOrg {
   enableAuditFields(input: { signal?: AbortSignal }): Promise<{ ok: boolean; error?: string }>;
   /** Deploy EmailAdministrationSettings with only enableEnhancedEmailEnabled=true. */
   enableEnhancedEmail(input: { signal?: AbortSignal }): Promise<{ ok: boolean; error?: string }>;
+  /** A queue by API name, with the objects it accepts; undefined when none. */
+  findQueue(
+    developerName: string,
+  ): Promise<{ developerName: string; name: string; sobjectTypes: string[] } | undefined>;
+  /** Deploy one Queue component (Cases only, no members). */
+  deployQueue(input: {
+    developerName: string;
+    name: string;
+    xml: string;
+    signal?: AbortSignal;
+  }): Promise<{ ok: boolean; error?: string }>;
   /** Deploy CommunitiesSettings with only enableNetworksEnabled=true. */
   enableDigitalExperiences(input: {
     signal?: AbortSignal;
@@ -475,6 +486,37 @@ export function createFinSalesforceOrg(
       );
     },
 
+    async findQueue(developerName) {
+      const rows = await query<{
+        DeveloperName: string;
+        Name: string;
+        QueueSobjects?: { records?: Array<{ SobjectType?: string }> } | null;
+      }>(
+        `SELECT DeveloperName, Name, (SELECT SobjectType FROM QueueSobjects) FROM Group WHERE Type = 'Queue' AND DeveloperName = '${soql(developerName)}'`,
+        "rest",
+        1,
+      );
+      const row = rows[0];
+      if (!row) return undefined;
+      return {
+        developerName: row.DeveloperName,
+        name: row.Name,
+        sobjectTypes: (row.QueueSobjects?.records ?? [])
+          .map((r) => r.SobjectType)
+          .filter((t): t is string => Boolean(t)),
+      };
+    },
+
+    async deployQueue(input) {
+      return deploySource(
+        session,
+        "queues",
+        `${input.developerName}.queue-meta.xml`,
+        input.xml,
+        input.signal,
+      );
+    },
+
     async enableDigitalExperiences(input) {
       return deploySettings(
         session,
@@ -716,17 +758,28 @@ interface ApiError {
   errorCode?: string;
 }
 
-/** Deploy one single-field `<name>.settings` through SDR; temp dir always removed. */
+/** Deploy one single-field `<name>.settings` through SDR. */
 async function deploySettings(
   session: SalesforceSession,
   name: "Security" | "Communities" | "EmailAdministration",
   xml: string,
   signal?: AbortSignal,
 ): Promise<{ ok: boolean; error?: string }> {
-  const root = await mkdtemp(path.join(tmpdir(), "sf-fin-settings-"));
+  return deploySource(session, "settings", `${name}.settings-meta.xml`, xml, signal);
+}
+
+/** Deploy one source file through SDR; temp dir always removed. */
+async function deploySource(
+  session: SalesforceSession,
+  folder: "settings" | "queues",
+  file: string,
+  xml: string,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; error?: string }> {
+  const root = await mkdtemp(path.join(tmpdir(), "sf-fin-deploy-"));
   try {
-    await mkdir(path.join(root, "settings"), { recursive: true });
-    await writeFile(path.join(root, "settings", `${name}.settings-meta.xml`), xml, "utf8");
+    await mkdir(path.join(root, folder), { recursive: true });
+    await writeFile(path.join(root, folder, file), xml, "utf8");
     const { ComponentSet } = await import("@salesforce/source-deploy-retrieve");
     const components = ComponentSet.fromSource(root);
     components.apiVersion = session.target.apiVersion;
