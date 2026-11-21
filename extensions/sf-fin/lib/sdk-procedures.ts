@@ -950,7 +950,9 @@ function summarizeRun(
       : [];
     const failed = details.filter((d) => d.passed === false);
     if (failed.length === 0) {
-      failures.push(`${type} failed`);
+      // Outcome assertions explain themselves in global.reason.
+      const reason = stringValue(global.reason);
+      failures.push(`${type} failed${reason ? ` — ${reason.slice(0, 300)}` : ""}`);
       continue;
     }
     for (const d of failed) {
