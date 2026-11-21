@@ -1,6 +1,6 @@
 {
   "name": "sf-pi",
-  "version": "0.354.0",
+  "version": "0.364.2",
   "private": true,
   "type": "module",
   "description": "Opinionated Salesforce developer extensions for the pi coding agent — Apex/LWC LSP, Agent Script authoring, Slack research, and a TUI manager.",
@@ -120,6 +120,7 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
+    "e2e:sf-fin": "node node_modules/jiti/lib/jiti-cli.mjs scripts/e2e/sf-fin-sweep.ts",
     "e2e:sf-soql": "node --experimental-strip-types scripts/e2e/sf-soql-e2e.ts",
     "e2e:sf-lwc": "node --experimental-strip-types scripts/e2e/sf-lwc-e2e.ts",
     "e2e:sf-integrate": "node --experimental-strip-types scripts/e2e/sf-integrate-e2e.ts",
@@ -204,7 +205,7 @@
     "form-data": "^4.0.6",
     "csv-parse": "^7.0.2",
     "minimatch": "^11.0.3",
-    "basic-ftp": "^6.2.1",
+    "basic-ftp": "^6.2.4",
     "@earendil-works/pi-coding-agent": {
       "undici": "^8.12.2"
     },

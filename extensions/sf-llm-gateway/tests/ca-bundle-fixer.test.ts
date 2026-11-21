@@ -99,6 +99,29 @@ describePosix("validatePemBundle", () => {
     expect(result.reason).toContain("empty");
   });
 
+  it("does not treat a slow or hung openssl as a rejection", () => {
+    // The deeper openssl check is best effort. A timeout (for example a cold
+    // start on a slow CI runner) must not turn a valid header into "rejected".
+    const file = path.join(tmpDir, "valid.pem");
+    writeFileSync(file, SAMPLE_PEM_BODY);
+    const timedOut = Object.assign(new Error("spawnSync openssl ETIMEDOUT"), { code: "ETIMEDOUT" });
+    expect(
+      validatePemBundle(file, {
+        runOpenssl: () => {
+          throw timedOut;
+        },
+      }).ok,
+    ).toBe(true);
+    const rejected = Object.assign(new Error("unable to load certificate"), { status: 1 });
+    expect(
+      validatePemBundle(file, {
+        runOpenssl: () => {
+          throw rejected;
+        },
+      }).ok,
+    ).toBe(false);
+  });
+
   it("rejects a non-PEM file with missing header", () => {
     const file = path.join(tmpDir, "bogus.pem");
     writeFileSync(file, "this is not a certificate at all");

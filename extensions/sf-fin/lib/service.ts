@@ -11,7 +11,7 @@ import {
   signinExpired,
   type SigninBrowser,
 } from "./browser-signin.ts";
-import type { FinAdminRegion } from "../../../lib/common/fin-admin-surface.ts";
+import { FIN_ADMIN_HOSTS, type FinAdminRegion } from "../../../lib/common/fin-admin-surface.ts";
 import { createSigninBrowser } from "./signin-browser.ts";
 import {
   createAdminRunner,
@@ -22,7 +22,8 @@ import {
   type AdminSleep,
 } from "./admin.ts";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { parse as parseYaml } from "yaml";
 import { homedir } from "node:os";
 import path from "node:path";
 import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
@@ -99,6 +100,15 @@ import {
   uploadResource,
   validateResourceFile,
 } from "./sdk-resources.ts";
+import {
+  agentStatus,
+  deleteSimulation,
+  listAuthTokens,
+  readConnectorLogs,
+  referenceDir,
+  referenceIssues,
+  setConnectorState,
+} from "./sdk-workspace.ts";
 import { runFinCli } from "./cli-runner.ts";
 import {
   cliHelpRunner,
@@ -124,6 +134,19 @@ import {
   type SdkReadDeps,
   type SdkReadResult,
 } from "./sdk-reads.ts";
+import type { FinSalesforceOrg } from "./salesforce/org.ts";
+import {
+  runSalesforceSetup,
+  type FinConnectRunner,
+  type SalesforceOperation,
+} from "./salesforce/setup.ts";
+import {
+  runFinConnect,
+  type ConnectBrowser,
+  type FinEnvironmentCard,
+} from "./salesforce/connect.ts";
+import { createConnectBrowser } from "./salesforce/connect-browser.ts";
+import { spawnAgentBrowser } from "./signin-browser.ts";
 
 export interface FinService {
   doctor(ctx: ExtensionContext): Promise<{
@@ -161,6 +184,8 @@ export interface FinService {
   workspace(request: WorkspaceRequest): ProcedureResponse;
   /** Fin admin web pages in the shared SF Pi browser (navigate and read only). */
   admin(request: AdminRequest & { workspace?: string; cwd?: string }): Promise<ProcedureResponse>;
+  /** Fin for Salesforce: readiness, package install, permissions and Fin user (explicit org). */
+  salesforce(ctx: ExtensionContext, request: SalesforceRequest): Promise<ProcedureResponse>;
   /** Unified, read-only setup check for one workspace. */
   setup(
     ctx: ExtensionContext & {
@@ -194,6 +219,19 @@ export interface FinServiceDeps {
   readSignin?: (workspace: string) => ReturnType<typeof readStoredSignin>;
   /** Called after a workspace is added, so its Pi sign-ins can be registered. */
   onWorkspaceAdded?: (name: string) => void;
+  /** Test seam: Salesforce org adapter for the Fin for Salesforce setup. */
+  salesforceOrg?: (input: {
+    cwd: string;
+    targetOrg: string;
+    signal?: AbortSignal;
+  }) => Promise<FinSalesforceOrg>;
+  /** Test seam: browser for the Fin Connect runbook. */
+  connectBrowser?: ConnectBrowser;
+  /** Test seam: frontdoor URL builder for a Salesforce path. */
+  frontdoor?: (input: { cwd: string; targetOrg: string; path: string }) => Promise<string>;
+  /** Test seams: token_transfer org and Fin browser sides. */
+  tokenTransferOrg?: import("./salesforce/token-transfer.ts").TokenTransferOrg;
+  tokenTransferBrowser?: import("./salesforce/token-transfer.ts").TokenTransferBrowser;
 }
 
 export function createFinService(deps: FinServiceDeps): FinService {
@@ -206,6 +244,108 @@ export function createFinService(deps: FinServiceDeps): FinService {
   const appIdFor = (profile: WorkspaceProfile) =>
     profile.appId ??
     (profile.name === DEFAULT_WORKSPACE ? statusStore.read().identity?.appId : undefined);
+  /**
+   * token_transfer: the org session, the saved Fin admin sign-in, and the
+   * browser runbook. The sign-in is restored only for the execute and always
+   * cleared afterwards.
+   */
+  const tokenTransfer = async (
+    ctx: ExtensionContext,
+    request: SalesforceRequest,
+    targetOrg: string,
+  ): Promise<ProcedureResponse> => {
+    const appName = request.appName?.trim();
+    const tokenName = request.tokenName?.trim();
+    if (!appName || !/^[A-Za-z][A-Za-z0-9_]{0,79}$/u.test(appName)) {
+      return {
+        ok: false,
+        text: "❌ token_transfer needs app_name: the External Client App API name (letters, digits, underscores).",
+        details: { phase: "input", code: "app_name_required" },
+      };
+    }
+    if (!tokenName || tokenName.length > 120) {
+      return {
+        ok: false,
+        text: "❌ token_transfer needs token_name: the Fin auth token name to create (up to 120 characters).",
+        details: { phase: "input", code: "token_name_required" },
+      };
+    }
+    const target = ws(request.workspace);
+    if (target.ok === false)
+      return { ok: false, text: target.message, details: { phase: "workspace" } };
+    const appId = appIdFor(target.profile);
+    const region = target.profile.region;
+    if (!appId || !region) {
+      return {
+        ok: false,
+        text: "❌ Run /sf-fin setup first (no Fin app bound).",
+        details: { phase: "workspace" },
+      };
+    }
+    const [
+      { connectSalesforce },
+      { createTokenTransferOrg },
+      { runTokenTransfer },
+      { createTokenTransferBrowser },
+    ] = await Promise.all([
+      import("../../../lib/common/sf-conn/index.ts"),
+      import("./salesforce/org.ts"),
+      import("./salesforce/token-transfer.ts"),
+      import("./salesforce/token-transfer-browser.ts"),
+    ]);
+    try {
+      const session = await connectSalesforce({ cwd: ctx.cwd, targetOrg, signal: ctx.signal });
+      const org = deps.tokenTransferOrg ?? createTokenTransferOrg(session);
+      const finBase = `https://${FIN_ADMIN_HOSTS[region]}/a/apps/${appId}`;
+      const input = {
+        appName,
+        tokenName,
+        targetOrg,
+        orgType: session.target.orgType,
+        finBase,
+        execute: request.execute === true,
+      };
+      if (!input.execute) {
+        return await runTokenTransfer(
+          org,
+          deps.tokenTransferBrowser ?? createTokenTransferBrowser(spawnAgentBrowser, finBase),
+          input,
+        );
+      }
+      const signin = createAdminSignin(
+        target.profile.name,
+        deps.signinBrowser ?? createSigninBrowser(),
+        deps.readSignin ?? ((name) => readStoredSignin(name)),
+      );
+      const restored = await signin.restore();
+      if (restored !== "restored") {
+        return {
+          ok: false,
+          text: `❌ ${restored === "expired" ? "The saved Fin sign-in has expired" : "No saved Fin sign-in"}. Run /login ${signin.loginId}, then retry.`,
+          details: {
+            phase: "signin",
+            code: restored === "expired" ? "signin_expired" : "signed_out",
+          },
+        };
+      }
+      try {
+        return await runTokenTransfer(
+          org,
+          deps.tokenTransferBrowser ?? createTokenTransferBrowser(spawnAgentBrowser, finBase),
+          input,
+        );
+      } finally {
+        await signin.finish();
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        text: `❌ token_transfer failed for ${targetOrg}: ${error instanceof Error ? error.message : String(error)}`,
+        details: { phase: "error" },
+      };
+    }
+  };
+
   const fetchRegistry = deps.fetchRegistry ?? fetchCliRegistryMetadata;
   const doctorDeps = deps.doctorDeps ?? { ...createDoctorDeps(deps.exec), fetchRegistry };
 
@@ -342,11 +482,18 @@ export function createFinService(deps: FinServiceDeps): FinService {
         };
       }
       if (request.operation === "validate") {
-        const result = validateProcedureFile(resolveFile(ctx.cwd, request.file), schemaPath);
+        const result = withReferenceIssues(
+          validateProcedureFile(resolveFile(ctx.cwd, request.file), schemaPath),
+          referenceDir(sdkDir),
+        );
         return {
           ok: result.ok,
           text: formatValidation(result),
-          details: { phase: "validate", issues: result.issues },
+          details: {
+            phase: "validate",
+            issues: result.issues,
+            ...(result.warnings ? { warnings: result.warnings } : {}),
+          },
         };
       }
       const credential = await getFinCredential(ctx, target.profile.name);
@@ -364,6 +511,56 @@ export function createFinService(deps: FinServiceDeps): FinService {
             schemaPath: resourceSchemaPath(sdkDir, kind),
             note: request.note,
           },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "auth_tokens") {
+        return listAuthTokens(credential.credential, sdkDeps, ctx.signal);
+      }
+      if (request.operation === "connector_state") {
+        if (request.state !== "live" && request.state !== "draft") {
+          return {
+            ok: false,
+            text: "connector_state requires state='live' or state='draft'.",
+            details: { phase: "input" },
+          };
+        }
+        return setConnectorState(
+          credential.credential,
+          sdkDeps,
+          {
+            connectorId: request.connectorId ?? "",
+            target: request.state,
+            execute: request.execute === true,
+          },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "connector_logs") {
+        return readConnectorLogs(
+          credential.credential,
+          sdkDeps,
+          { connectorId: request.connectorId ?? "", sinceHours: request.sinceHours },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "simulations_delete") {
+        return deleteSimulation(
+          credential.credential,
+          sdkDeps,
+          {
+            procedureId: request.procedureId ?? "",
+            testId: request.testId ?? "",
+            execute: request.execute === true,
+          },
+          ctx.signal,
+        );
+      }
+      if (request.operation === "agent_status") {
+        return agentStatus(
+          credential.credential,
+          sdkDeps,
+          { procedureId: request.procedureId ?? "" },
           ctx.signal,
         );
       }
@@ -426,7 +623,7 @@ export function createFinService(deps: FinServiceDeps): FinService {
           ctx.signal,
         );
       }
-      if (!request.procedureId) {
+      if (request.operation !== "simulate" || !request.procedureId) {
         return {
           ok: false,
           text: "simulate requires procedure_id (from the upload result).",
@@ -436,7 +633,11 @@ export function createFinService(deps: FinServiceDeps): FinService {
       return simulateProcedure(
         credential.credential,
         sdkDeps,
-        { procedureId: request.procedureId, generate: request.generate !== false },
+        {
+          procedureId: request.procedureId,
+          generate: request.generate !== false,
+          live: request.live === true,
+        },
         ctx.signal,
       );
     },
@@ -557,6 +758,14 @@ export function createFinService(deps: FinServiceDeps): FinService {
             conversationId: result.conversationId,
             status: result.status,
             turns: result.transcript.length,
+            signals: result.signals,
+            ...(result.expectations ? { expectations: result.expectations } : {}),
+            procedureId: request.run.procedureId,
+            // Bounded per turn; the model text already carries the same turns.
+            transcript: result.transcript.map((t) => ({
+              role: t.role,
+              text: t.text.slice(0, 600),
+            })),
           },
         };
       } catch (error) {
@@ -640,6 +849,75 @@ export function createFinService(deps: FinServiceDeps): FinService {
         text: result.text,
         details: { workspace: target.profile.name, ...result.details },
       };
+    },
+
+    async salesforce(ctx, request) {
+      const targetOrg = request.targetOrg?.trim();
+      if (!targetOrg) {
+        return {
+          ok: false,
+          text: "❌ Pass target_org: the Salesforce org alias or username to set up. SF Fin never assumes the default org.",
+          details: { phase: "input", code: "target_org_required" },
+        };
+      }
+      if (request.operation === "token_transfer") {
+        return tokenTransfer(ctx, request, targetOrg);
+      }
+      try {
+        const org = await (deps.salesforceOrg ?? connectFinSalesforceOrg)({
+          cwd: ctx.cwd,
+          targetOrg,
+          signal: ctx.signal,
+        });
+        const connect: FinConnectRunner = async (input) => {
+          const target = ws(request.workspace);
+          if (target.ok === false) return { ok: false, code: "workspace", steps: [target.message] };
+          const appId = appIdFor(target.profile);
+          const region = target.profile.region;
+          if (!appId || !region) {
+            return { ok: false, code: "app_unbound", steps: ["Run /sf-fin setup first."] };
+          }
+          const signin = createAdminSignin(
+            target.profile.name,
+            deps.signinBrowser ?? createSigninBrowser(),
+            deps.readSignin ?? ((name) => readStoredSignin(name)),
+          );
+          const restored = await signin.restore();
+          if (restored !== "restored") {
+            return {
+              ok: false,
+              code: restored === "expired" ? "signin_expired" : "signed_out",
+              steps: [`Run /login ${signin.loginId} and sign in to Fin, then retry.`],
+            };
+          }
+          try {
+            return await runFinConnect(
+              deps.connectBrowser ?? createConnectBrowser(spawnAgentBrowser),
+              {
+                ...input,
+                appId,
+                region,
+                frontdoor: (path) =>
+                  (deps.frontdoor ?? frontdoorUrl)({ cwd: ctx.cwd, targetOrg, path }),
+              },
+            );
+          } finally {
+            await signin.finish();
+          }
+        };
+        return await runSalesforceSetup(org, {
+          ...request,
+          targetOrg,
+          signal: ctx.signal,
+          connect,
+        });
+      } catch (error) {
+        return {
+          ok: false,
+          text: `❌ Salesforce ${request.operation} failed for ${targetOrg}: ${error instanceof Error ? error.message : String(error)}`,
+          details: { phase: "error" },
+        };
+      }
     },
 
     async setup(ctx, request) {
@@ -775,7 +1053,7 @@ export type ProcedureRequest =
   | { operation: "validate"; file?: string }
   | { operation: "upload"; file?: string; note?: string }
   | { operation: "upload_simulations"; file?: string }
-  | { operation: "simulate"; procedureId?: string; generate?: boolean }
+  | { operation: "simulate"; procedureId?: string; generate?: boolean; live?: boolean }
   | { operation: "create_data_connector"; name?: string }
   | {
       operation: "guidance_state";
@@ -784,7 +1062,59 @@ export type ProcedureRequest =
       execute?: boolean;
     }
   | { operation: "publish"; procedureId?: string; execute?: boolean; note?: string }
-  | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string };
+  | { operation: "pause"; procedureId?: string; execute?: boolean; note?: string }
+  | {
+      operation:
+        | "auth_tokens"
+        | "connector_state"
+        | "connector_logs"
+        | "simulations_delete"
+        | "agent_status";
+      connectorId?: string;
+      procedureId?: string;
+      testId?: string;
+      state?: string;
+      sinceHours?: number;
+      execute?: boolean;
+    };
+
+export interface SalesforceRequest {
+  operation: SalesforceOperation;
+  targetOrg?: string;
+  packageVersion?: string;
+  username?: string;
+  email?: string;
+  queueName?: string;
+  /** token_transfer: External Client App API name and Fin token name. */
+  appName?: string;
+  tokenName?: string;
+  environment?: FinEnvironmentCard;
+  workspace?: string;
+  execute?: boolean;
+}
+
+async function frontdoorUrl(input: {
+  cwd: string;
+  targetOrg: string;
+  path: string;
+}): Promise<string> {
+  const { generateSalesforceFrontdoorUrl } = await import("../../../lib/common/sf-conn/index.ts");
+  return generateSalesforceFrontdoorUrl(input);
+}
+
+/** Lazily load the Salesforce SDK path so boot stays free of it. */
+async function connectFinSalesforceOrg(input: {
+  cwd: string;
+  targetOrg: string;
+  signal?: AbortSignal;
+}): Promise<FinSalesforceOrg> {
+  const [{ connectSalesforce }, { createFinSalesforceOrg }] = await Promise.all([
+    import("../../../lib/common/sf-conn/index.ts"),
+    import("./salesforce/org.ts"),
+  ]);
+  const session = await connectSalesforce(input);
+  return createFinSalesforceOrg(session);
+}
 
 export type WorkspaceRequest =
   | { operation: "list" }
@@ -831,6 +1161,25 @@ async function probeMcpIdentity(
   } catch {
     return { state: "not_configured" };
   }
+}
+
+/**
+ * Add `<use action>` / `<escalate to>` names the workspace does not have (from
+ * the downloaded `.fin/` rosters). Fin rejects such a save, so they are issues.
+ */
+function withReferenceIssues(
+  result: ReturnType<typeof validateProcedureFile>,
+  finDir: string,
+): ReturnType<typeof validateProcedureFile> {
+  if (!result.ok) return result;
+  let doc: unknown;
+  try {
+    doc = parseYaml(readFileSync(result.file, "utf8"));
+  } catch {
+    return result;
+  }
+  const issues = referenceIssues(doc, finDir);
+  return issues.length ? { ...result, ok: false, issues: [...result.issues, ...issues] } : result;
 }
 
 function resolveFile(cwd: string, file: string | undefined): string {

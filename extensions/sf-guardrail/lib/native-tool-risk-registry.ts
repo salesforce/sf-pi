@@ -42,10 +42,12 @@ export function classifyNativeToolRisk(
     classifySfMcpConfiguration(toolName, input) ??
     classifySfFlowLifecycle(toolName, input) ??
     classifySfFinInstall(toolName, input) ??
+    classifySfFinSalesforceSetup(toolName, input) ??
     withFinWorkspace(
       input,
       classifySfFinProcedureState(toolName, input) ??
         classifySfFinGuidanceState(toolName, input) ??
+        classifySfFinWorkspaceState(toolName, input) ??
         classifySfFinAgentRun(toolName, input) ??
         classifySfFinProcedureWrite(toolName, input) ??
         classifySfFinSdkEnable(toolName, input),
@@ -284,6 +286,137 @@ function classifySfFinInstall(
 }
 
 /**
+ * `sf_fin salesforce <operation>` with `allow_mutation=true` changes the
+ * target Salesforce org (and, for connect, Fin's connection to it):
+ * package_install (one managed package), audit_fields_enable (one
+ * SecuritySettings field), digital_experiences_enable (one
+ * CommunitiesSettings field; one-way), enhanced_email_enable (one
+ * EmailAdministrationSettings field; org-wide), handoff_queue_create (one
+ * Case queue with no members), permissions_apply (permission set, Fin user, and
+ * assignments), and connect (Fin OAuth consent as the CLI user plus Fin's
+ * Salesforce user choice). Readiness and plans stay prompt-free. Each
+ * execution is an exact, org-bound approval (no session grant), and
+ * production or unknown targets fail closed.
+ */
+const FIN_SALESFORCE_SETUP: Record<
+  string,
+  { title: string; tier: string; reason: (input: Record<string, unknown>) => string }
+> = {
+  package_install: {
+    title: "⚠ Install Fin for Salesforce package",
+    tier: "org_package_install_exact",
+    reason: (input) =>
+      `Install the Fin for Salesforce managed package (${stringValue(input.package_version) ?? "unspecified version"}) for all users in the target org.`,
+  },
+  audit_fields_enable: {
+    title: "⚠ Enable audit fields setting",
+    tier: "org_settings_change_exact",
+    reason: () =>
+      'Enable the org-wide setting behind "Set Audit Fields upon Record Creation" (SecuritySettings.enableAuditFieldsInactiveOwner) in the target org.',
+  },
+  digital_experiences_enable: {
+    title: "⚠ Enable Digital Experiences (one-way)",
+    tier: "org_settings_change_exact",
+    reason: () =>
+      "Enable Digital Experiences (CommunitiesSettings.enableNetworksEnabled) in the target org so FeedItem.Visibility exists for Fin. Salesforce does not allow turning it off again, and the org's Lightning Platform domain name can no longer be changed.",
+  },
+  enhanced_email_enable: {
+    title: "⚠ Enable Enhanced Email (org-wide)",
+    tier: "org_settings_change_exact",
+    reason: () =>
+      "Enable Enhanced Email (EmailAdministrationSettings.enableEnhancedEmailEnabled) in the target org so Fin can sync each case's email history. Emails are then stored as EmailMessage records for every user.",
+  },
+  handoff_queue_create: {
+    title: "⚠ Create Fin handoff queue",
+    tier: "org_queue_create_exact",
+    reason: (input) =>
+      `Create one Case queue (${stringValue(input.queue_name) ?? "Fin Handoff"}) in the target org for Fin's handoff. It has no members, no member email, and no role-hierarchy access; an existing queue is never changed.`,
+  },
+  token_transfer: {
+    title: "⚠ Move OAuth client credentials into Fin",
+    tier: "org_secret_transfer_exact",
+    reason: (input) =>
+      `Create Fin auth token "${stringValue(input.token_name) ?? "unnamed"}" from External Client App ${stringValue(input.app_name) ?? "unspecified"}'s client credentials in the target org. It temporarily turns on REST access to consumer secrets, moves the secret into Fin's masked form through the browser, saves only after Fin's Test request passes, then turns the setting off again.`,
+  },
+  permissions_apply: {
+    title: "⚠ Fin Salesforce permissions and user",
+    tier: "org_user_provisioning_exact",
+    reason: (input) =>
+      `Deploy the Fin access permission set, create or update the dedicated Fin user (${stringValue(input.username) ?? "default username"}), and assign both Fin permission sets to it and to the integration user in the target org.`,
+  },
+  connect: {
+    title: "⚠ Connect Fin to Salesforce",
+    tier: "org_oauth_consent_exact",
+    reason: (input) =>
+      `Connect Fin to the target org (${stringValue(input.environment) ?? "default"} environment): approve the Fin for Salesforce app for the CLI user in the browser and set Fin's Salesforce user.`,
+  },
+};
+
+function classifySfFinSalesforceSetup(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "salesforce" || input.allow_mutation !== true) {
+    return undefined;
+  }
+  const operation = stringValue(input.operation);
+  const spec = operation ? FIN_SALESFORCE_SETUP[operation] : undefined;
+  if (!operation || !spec) return undefined;
+  const targetOrg = stringValue(input.target_org);
+  const packageVersion = stringValue(input.package_version);
+  const username = stringValue(input.username);
+  const environment = stringValue(input.environment);
+  const queueName = stringValue(input.queue_name);
+  const appName = stringValue(input.app_name);
+  const tokenName = stringValue(input.token_name);
+  const target =
+    operation === "package_install"
+      ? `package ${packageVersion ?? "unspecified version"}`
+      : operation === "permissions_apply"
+        ? `Fin user ${username ?? "default"}`
+        : operation === "connect"
+          ? `environment ${environment ?? "default"}`
+          : operation === "digital_experiences_enable"
+            ? "digital experiences"
+            : operation === "enhanced_email_enable"
+              ? "enhanced email"
+              : operation === "handoff_queue_create"
+                ? `queue ${queueName ?? "Fin Handoff"}`
+                : operation === "token_transfer"
+                  ? `app ${appName ?? "unspecified"} → token ${tokenName ?? "unnamed"}`
+                  : "audit fields";
+  return {
+    kind: "nativeTool",
+    toolName,
+    action: `salesforce.${operation}`,
+    ruleId: "native-sf-fin-salesforce-setup",
+    subject: `sf_fin salesforce ${operation} ${target}`,
+    reason: spec.reason(input),
+    promptTitle: spec.title,
+    operationFamily: "fin salesforce setup",
+    riskTier: spec.tier,
+    fingerprint: `sf_fin|salesforce-${operation}|${fingerprintText(JSON.stringify({ packageVersion, username, email: stringValue(input.email), environment, queueName, appName, tokenName, workspace: stringValue(input.workspace) }))}`,
+    approvalLabel: `${operation} ${target}`,
+    approvalDetail: [
+      `operation=${operation}`,
+      packageVersion ? `package_version=${packageVersion}` : undefined,
+      username ? `username=${username}` : undefined,
+      environment ? `environment=${environment}` : undefined,
+      queueName ? `queue_name=${queueName}` : undefined,
+      appName ? `app_name=${appName}` : undefined,
+      tokenName ? `token_name=${tokenName}` : undefined,
+    ]
+      .filter(Boolean)
+      .join("; "),
+    usesSalesforceOrg: true,
+    targetOrg,
+    targetOrgExplicit: targetOrg !== undefined,
+    allowSession: false,
+    blockProductionOrUnknown: true,
+  };
+}
+
+/**
  * `sf_fin sdk upload` saves an unpublished procedure draft and `sdk simulate`
  * generates and runs simulations. Both write to the Fin workspace (drafts and
  * simulation sets, never publish). `validate`, `manifest`, and `download` are
@@ -375,6 +508,67 @@ function classifySfFinProcedureState(
     approvalDetail: `procedure=${procedureId}; state→${target}`,
     allowSession: false,
   };
+}
+
+/**
+ * `sf_fin sdk connector_state` sets a data connector live or draft through the
+ * public data connectors API (a live connector is callable from live
+ * procedures and workflows), and `sdk simulations_delete` removes exactly one
+ * simulation. Both are exact approvals with no session grant; planning and
+ * the read operations (auth_tokens, connector_logs, agent_status) stay
+ * prompt-free.
+ */
+function classifySfFinWorkspaceState(
+  toolName: string,
+  input: Record<string, unknown>,
+): NativeToolSafetySubject | undefined {
+  if (toolName !== "sf_fin" || input.action !== "sdk" || input.allow_mutation !== true) {
+    return undefined;
+  }
+  const operation = stringValue(input.operation);
+  if (operation === "connector_state") {
+    const connectorId = stringValue(input.connector_id) ?? "unspecified connector";
+    const target = stringValue(input.state) ?? "unspecified";
+    return {
+      kind: "nativeTool",
+      toolName,
+      action: "sdk.connector_state",
+      ruleId: "native-sf-fin-procedure-state",
+      subject: `sf_fin sdk connector_state ${connectorId} ${target}`,
+      reason:
+        target === "live"
+          ? `Set Fin data connector ${connectorId} live: live procedures and workflows can call it immediately.`
+          : `Set Fin data connector ${connectorId} to ${target}: Fin stops calling it.`,
+      promptTitle:
+        target === "live" ? "⚠ Set Fin data connector live" : "⚠ Take Fin data connector offline",
+      operationFamily: "fin procedure state",
+      riskTier: "fin_procedure_state_exact",
+      fingerprint: `sf_fin|sdk-connector_state|${fingerprintText(JSON.stringify({ connectorId, target }))}`,
+      approvalLabel: `connector ${connectorId} → ${target}`,
+      approvalDetail: `connector=${connectorId}; state→${target}`,
+      allowSession: false,
+    };
+  }
+  if (operation === "simulations_delete") {
+    const procedureId = stringValue(input.procedure_id) ?? "unspecified procedure";
+    const testId = stringValue(input.test_id) ?? "unspecified test";
+    return {
+      kind: "nativeTool",
+      toolName,
+      action: "sdk.simulations_delete",
+      ruleId: "native-sf-fin-procedure-state",
+      subject: `sf_fin sdk simulations_delete ${procedureId} ${testId}`,
+      reason: `Delete simulation ${testId} from Fin procedure ${procedureId}. It cannot be undone; re-upload the test to recreate it.`,
+      promptTitle: "⚠ Delete Fin simulation",
+      operationFamily: "fin procedure state",
+      riskTier: "fin_procedure_state_exact",
+      fingerprint: `sf_fin|sdk-simulations_delete|${fingerprintText(JSON.stringify({ procedureId, testId }))}`,
+      approvalLabel: `delete simulation ${testId} of ${procedureId}`,
+      approvalDetail: `procedure=${procedureId}; test=${testId}`,
+      allowSession: false,
+    };
+  }
+  return undefined;
 }
 
 /**

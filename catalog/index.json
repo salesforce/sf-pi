@@ -557,7 +557,7 @@
   {
     "id": "sf-fin",
     "name": "SF Fin",
-    "description": "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness.",
+    "description": "Connect SF Pi to a Fin (formerly Intercom) workspace: Pi-owned masked credentials, Guardrail-mediated Fin CLI install, doctor and debug, Fin-as-code authoring (procedures, simulations, guidance, data connectors), a CLI vs MCP surface comparison, and a Fin Agent API test harness, and end-to-end Fin for Salesforce setup (package install, audit-field setting, Digital Experiences, permission set, dedicated Fin user, and Fin's Connect flow) in an explicit org.",
     "category": "agent-tool",
     "maturity": "experimental",
     "defaultEnabled": true,
@@ -624,13 +624,14 @@
         "The Fin Agent API key is rejected at login when it is malformed or equals the personal token, and every Agent API request refuses a key equal to the active personal token (constant-time digest comparison); it is sent only as an HTTPS Authorization header to the fixed regional host with redirects refused.",
         "Personal-token login detects the region from /me on the fixed regional hosts and refuses a token every region rejects. Named workspaces have their own Pi sign-ins; environment fallbacks apply only to the default workspace. Setup binds a workspace to the app id its token proves and refuses a different app. SF Guardrail treats a prod (or unknown) Fin workspace like a production org: no session approvals, and Power Tool Mode needs the production opt-in.",
         "Fin admin pages (/sf-fin admin) open only verified pages for the workspace's verified app id in the shared SF Pi browser and navigate and read only. Sign-in is human-only in a visible window, with owner-only saved-login files. All browser text is masked, and pages that can show a key get no screenshots or editor reads. A committing click there is bound to the Fin workspace in SF Guardrail and is never session-approved.",
-        "The Fin admin sign-in (/login sf-fin-browser) is two Fin cookies persisted by Pi. They are restored into the shared browser only for one admin action and removed afterwards, so the browser's own state file never keeps them. Values go to the browser on stdin, never on a command line. Pi reports the sign-in as expired when Fin's remember cookie expires (about two weeks)."
+        "The Fin admin sign-in (/login sf-fin-browser) is two Fin cookies persisted by Pi. They are restored into the shared browser only for one admin action and removed afterwards, so the browser's own state file never keeps them. Values go to the browser on stdin, never on a command line. Pi reports the sign-in as expired when Fin's remember cookie expires (about two weeks).",
+        "Fin for Salesforce setup (sf_fin action='salesforce') needs an explicit target_org and reaches Salesforce only through the shared sf-conn module, loaded lazily. readiness is read-only. package_install installs exactly the given finai 04t for all users (name conflicts block) and verifies it in Installed Packages. audit_fields_enable deploys SecuritySettings with only enableAuditFieldsInactiveOwner=true. digital_experiences_enable deploys CommunitiesSettings with only enableNetworksEnabled=true (one-way, stated in its plan) and verifies FeedItem.Visibility exists. permissions_apply deploys SF_Fin_Salesforce_Access, creates or updates the dedicated Fin user, and assigns both permission sets to it and to the integration user. connect drives Fin's Connect page in the shared browser with the saved Fin sign-in, approves only the Fin for Salesforce app on the target org's own My Domain for the CLI user (OAuth/frontdoor URLs travel on stdin only), sets Fin's Salesforce user, and verifies Fin's OAuth token. Every execute is the exact SF Guardrail mutation native-sf-fin-salesforce-setup: org-bound, never session-approved, blocked on production or unknown orgs."
       ]
     },
     "entry": "extensions/sf-fin/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 7951
+    "srcLoc": 14224
   },
   {
     "id": "sf-flow",
@@ -756,7 +757,7 @@
     "entry": "extensions/sf-guardrail/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 6930
+    "srcLoc": 7122
   },
   {
     "id": "sf-herdr",
@@ -933,7 +934,7 @@
     "entry": "extensions/sf-llm-gateway/index.ts",
     "hasReadme": true,
     "hasTests": true,
-    "srcLoc": 11502
+    "srcLoc": 11518
   },
   {
     "id": "sf-lsp",

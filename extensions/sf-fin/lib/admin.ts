@@ -23,6 +23,10 @@ import {
   type FinAdminPageId,
   type FinAdminRegion,
 } from "../../../lib/common/fin-admin-surface.ts";
+import { diagnoseFinError, readErrorLogEntries, type ErrorLogEntry } from "./error-logs.ts";
+
+/** Error log rows opened per read (each opens and closes one details dialog). */
+const ERROR_LOG_MAX_ROWS = 10;
 import type { WorkspaceProfile } from "./workspaces.ts";
 
 /** Same shared session SF Browser uses; SF Browser stays self-contained. */
@@ -76,6 +80,10 @@ const PAGE_GUIDE: Record<FinAdminPageId, { useFor: string; read: string[] }> = {
   "data-connectors": {
     useFor: "Data connector drafts and their status",
     read: ["Draft", "Live", "Needs attention", "New"],
+  },
+  "error-logs": {
+    useFor: "Integration errors Fin hit in Salesforce, mapped to the SF Fin fix",
+    read: ["No API errors", "Webhook", "Conversation ID"],
   },
   "help-centers": {
     useFor: "Help Center sites and whether each is live",
@@ -248,6 +256,31 @@ async function visitPage(
     return fail("The page changed while it was being read; nothing was reported.", "page_changed");
   }
   const lines = summarizeAdminSnapshot(snapshot.stdout, PAGE_GUIDE[page].read);
+  if (page === "error-logs") {
+    // Rows and Fin's empty state are table cells and static text, which an
+    // interactive-only snapshot leaves out, so read the full tree. Each row's
+    // code and object live in its "Error details" dialog: open, read, close.
+    const fullSnapshot = async () => {
+      const full = await run(["snapshot", "-c"], { timeoutMs: READ_TIMEOUT_MS });
+      return full.code === 0 ? maskFinSecrets(full.stdout) : "";
+    };
+    const listing = await fullSnapshot();
+    const entries = await readErrorLogEntries(
+      {
+        snapshot: fullSnapshot,
+        click: async (ref) => {
+          await run(["click", `@${ref}`], { timeoutMs: READ_TIMEOUT_MS });
+          await sleep(READY_POLL_MS);
+        },
+        close: async () => {
+          await run(["press", "Escape"], { timeoutMs: READ_TIMEOUT_MS });
+          await sleep(READY_POLL_MS);
+        },
+      },
+      { max: ERROR_LOG_MAX_ROWS },
+    );
+    return errorLogsResult(profile, region, base, lines, listing, entries);
+  }
   return {
     ok: true,
     text: [
@@ -357,6 +390,66 @@ function pageRendered(snapshot: string): boolean {
   if (!title) return false;
   const body = snapshot.slice(title.index + title[0].length);
   return /(?:heading "[^"]+" \[level=[2-4]|button "[^"]+"|link "[^"]+")/u.test(body);
+}
+
+/** Error logs read: each listed Salesforce error with the fix SF Fin owns. */
+function errorLogsResult(
+  profile: WorkspaceProfile,
+  region: FinAdminRegion,
+  base: Record<string, unknown>,
+  lines: string[],
+  listing: string,
+  entries: ErrorLogEntry[],
+): AdminResult {
+  const header = `Error logs — workspace "${profile.name}" (${region}, app verified). Text masked.`;
+  if (entries.length === 0) {
+    const empty = listing.includes("No API errors");
+    return {
+      ok: true,
+      text: [
+        header,
+        empty
+          ? "  ✅ No API errors. Fin clears an entry once its retry succeeds."
+          : "  No error entries were recognised on the page; open it to check.",
+      ].join("\n"),
+      details: { ...base, lines, errorCount: 0, diagnoses: [] },
+    };
+  }
+  // One diagnosis per distinct code/object; repeated failures are counted.
+  const groups = new Map<string, { entry: ErrorLogEntry; count: number; latest?: string }>();
+  for (const entry of entries) {
+    const key = `${entry.code ?? "?"}|${entry.object ?? ""}`;
+    const group = groups.get(key);
+    if (group) group.count += 1;
+    else groups.set(key, { entry, count: 1, latest: entry.when });
+  }
+  const diagnoses = [...groups.values()].map(({ entry, count, latest }) => ({
+    ...(entry.code
+      ? diagnoseFinError({ code: entry.code, object: entry.object })
+      : {
+          code: "UNREADABLE",
+          known: false,
+          fix: undefined,
+          advice: `Fin shows "${entry.message ?? "an error"}"; its details could not be read. Open it in Fin.`,
+        }),
+    count,
+    latest,
+    feature: entry.feature,
+    status: entry.status,
+  }));
+  return {
+    ok: true,
+    text: [
+      header,
+      `  ${entries.length} error${entries.length === 1 ? "" : "s"} read${entries.length >= ERROR_LOG_MAX_ROWS ? ` (first ${ERROR_LOG_MAX_ROWS})` : ""}:`,
+      ...diagnoses.map(
+        (d) =>
+          `  - ${d.code}${d.object ? ` on ${d.object}` : ""} ×${d.count}${d.latest ? ` (latest ${d.latest})` : ""}: ${d.advice}${d.fix ? ` → sf_fin action='salesforce' operation='${d.fix}'` : ""}`,
+      ),
+      "  System error text can hold record data, so it is not shown; open the entry in Fin for it.",
+    ].join("\n"),
+    details: { ...base, lines, errorCount: entries.length, diagnoses },
+  };
 }
 
 function fail(text: string, code: string, extra: Record<string, unknown> = {}): AdminResult {

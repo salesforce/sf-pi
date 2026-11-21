@@ -327,6 +327,22 @@ export async function handleCommand(
     );
     return emit(ctx, `SF Fin SDK ${op}`, result.text, result.ok ? "info" : "warning", fromPanel);
   }
+  if (
+    sub === "sdk" &&
+    (parts[1] === "agent_status" || parts[1] === "auth_tokens" || parts[1] === "connector_logs")
+  ) {
+    const op = parts[1];
+    const arg = parts[2];
+    const result = await service.procedure(
+      ctx,
+      op === "agent_status"
+        ? { operation: op, procedureId: arg }
+        : op === "connector_logs"
+          ? { operation: op, connectorId: arg }
+          : { operation: op },
+    );
+    return emit(ctx, `SF Fin SDK ${op}`, result.text, result.ok ? "info" : "warning", fromPanel);
+  }
   if (sub === "sdk") {
     const operation = parts[1] === "download" ? "download" : "manifest";
     const result = await service.sdk(ctx, operation);

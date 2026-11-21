@@ -711,6 +711,147 @@ describe("Safety Kernel", () => {
     expect(apply?.approvalScope?.allowSession).toBe(false);
   });
 
+  it("mediates sf_fin Salesforce setup as exact org mutations; readiness and plans stay prompt-free", async () => {
+    mockedEnv = env("FinDev", "developer");
+    lookupOrg("FinDev", "developer");
+    const evaluate = (input: Record<string, unknown>) =>
+      evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+    const base = { action: "salesforce", target_org: "FinDev" };
+
+    expect(await evaluate({ ...base, operation: "readiness" })).toBeUndefined();
+    expect(
+      await evaluate({
+        ...base,
+        operation: "package_install",
+        package_version: "04t000000000001AAA",
+      }),
+    ).toBeUndefined();
+    expect(await evaluate({ ...base, operation: "permissions_apply" })).toBeUndefined();
+
+    const install = await evaluate({
+      ...base,
+      operation: "package_install",
+      package_version: "04t000000000001AAA",
+      allow_mutation: true,
+    });
+    const other = await evaluate({
+      ...base,
+      operation: "package_install",
+      package_version: "04t000000000002AAA",
+      allow_mutation: true,
+    });
+    const permissions = await evaluate({
+      ...base,
+      operation: "permissions_apply",
+      allow_mutation: true,
+    });
+    expect(install).toMatchObject({
+      action: "confirm",
+      feature: "nativeToolGate",
+      ruleId: "native-sf-fin-salesforce-setup",
+      orgType: "developer",
+      approvalScope: { operationFamily: "fin salesforce setup", allowSession: false },
+    });
+    expect(install?.approvalScope?.fingerprint).not.toBe(other?.approvalScope?.fingerprint);
+    expect(permissions).toMatchObject({
+      action: "confirm",
+      ruleId: "native-sf-fin-salesforce-setup",
+      approvalScope: { operationFamily: "fin salesforce setup" },
+    });
+    expect(shouldPowerToolAutoApprove(install!, { mode: "native", nativeFamilies: ["fin"] })).toBe(
+      true,
+    );
+  });
+
+  it("mediates sf_fin audit_fields_enable and connect as exact org mutations; plans stay prompt-free", async () => {
+    mockedEnv = env("FinDev", "developer");
+    lookupOrg("FinDev", "developer");
+    const evaluate = (input: Record<string, unknown>) =>
+      evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+    const base = { action: "salesforce", target_org: "FinDev" };
+    for (const operation of [
+      "audit_fields_enable",
+      "digital_experiences_enable",
+      "enhanced_email_enable",
+      "handoff_queue_create",
+      "token_transfer",
+      "connect",
+    ]) {
+      expect(await evaluate({ ...base, operation })).toBeUndefined();
+      expect(await evaluate({ ...base, operation, allow_mutation: true })).toMatchObject({
+        action: "confirm",
+        feature: "nativeToolGate",
+        ruleId: "native-sf-fin-salesforce-setup",
+        orgType: "developer",
+        approvalScope: { operationFamily: "fin salesforce setup", allowSession: false },
+      });
+    }
+    const live = await evaluate({
+      ...base,
+      operation: "connect",
+      environment: "live",
+      allow_mutation: true,
+    });
+    const test = await evaluate({
+      ...base,
+      operation: "connect",
+      environment: "test",
+      allow_mutation: true,
+    });
+    expect(live?.approvalScope?.fingerprint).not.toBe(test?.approvalScope?.fingerprint);
+  });
+
+  it("never prompts for sf_fin salesforce observe, which only reads", async () => {
+    mockedEnv = env("FinDev", "developer");
+    lookupOrg("FinDev", "developer");
+    for (const allow_mutation of [false, true]) {
+      expect(
+        await evaluateSafety({
+          toolName: "sf_fin",
+          input: {
+            action: "salesforce",
+            operation: "observe",
+            target_org: "FinDev",
+            allow_mutation,
+          },
+          cwd: "/project",
+          config: readBundledConfig(),
+        }),
+      ).toBeUndefined();
+    }
+  });
+
+  it("blocks sf_fin Salesforce setup on production and unknown orgs", async () => {
+    mockedEnv = env("FinProd", "production");
+    lookupOrg("FinProd", "production");
+    for (const target_org of ["FinProd", "UnresolvedFinOrg"]) {
+      for (const operation of [
+        "package_install",
+        "audit_fields_enable",
+        "digital_experiences_enable",
+        "enhanced_email_enable",
+        "handoff_queue_create",
+        "token_transfer",
+        "permissions_apply",
+        "connect",
+      ]) {
+        const decision = await evaluateSafety({
+          toolName: "sf_fin",
+          input: {
+            action: "salesforce",
+            operation,
+            target_org,
+            package_version: "04t000000000001AAA",
+            allow_mutation: true,
+          },
+          cwd: "/project",
+          config: readBundledConfig(),
+        });
+        expect(decision).toMatchObject({ action: "block", feature: "nativeToolGate" });
+      }
+    }
+  });
+
   it("mediates sf_fin procedure draft upload and simulate; validate stays prompt-free", async () => {
     const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-proc-"));
     const previous = process.env.PI_CODING_AGENT_DIR;
@@ -739,6 +880,69 @@ describe("Safety Kernel", () => {
         ).toBe(true);
       }
       expect(validate).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
+  it("mediates sf_fin connector_state and simulations_delete as exact Fin state changes; reads stay prompt-free", async () => {
+    const agentDir = mkdtempSync(path.join(tmpdir(), "guardrail-fin-ws-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    try {
+      writeFinSdkState({ state: "enabled", appId: "example" });
+      const evaluate = (input: Record<string, unknown>) =>
+        evaluateSafety({ toolName: "sf_fin", input, cwd: "/project", config: readBundledConfig() });
+      const live = await evaluate({
+        action: "sdk",
+        operation: "connector_state",
+        connector_id: "77",
+        state: "live",
+        allow_mutation: true,
+      });
+      const draft = await evaluate({
+        action: "sdk",
+        operation: "connector_state",
+        connector_id: "77",
+        state: "draft",
+        allow_mutation: true,
+      });
+      const del = await evaluate({
+        action: "sdk",
+        operation: "simulations_delete",
+        procedure_id: "4242",
+        test_id: "9",
+        allow_mutation: true,
+      });
+      for (const decision of [live, draft, del]) {
+        expect(decision).toMatchObject({
+          action: "confirm",
+          ruleId: "native-sf-fin-procedure-state",
+          approvalScope: { operationFamily: "fin procedure state", allowSession: false },
+        });
+        expect(
+          shouldPowerToolAutoApprove(decision!, { mode: "native", nativeFamilies: ["fin"] }),
+        ).toBe(true);
+      }
+      expect(live?.approvalScope?.fingerprint).not.toBe(draft?.approvalScope?.fingerprint);
+      for (const operation of ["connector_state", "simulations_delete"]) {
+        expect(
+          await evaluate({
+            action: "sdk",
+            operation,
+            connector_id: "77",
+            procedure_id: "1",
+            test_id: "2",
+          }),
+        ).toBeUndefined();
+      }
+      for (const operation of ["auth_tokens", "connector_logs", "agent_status"]) {
+        expect(
+          await evaluate({ action: "sdk", operation, connector_id: "77", procedure_id: "1" }),
+        ).toBeUndefined();
+      }
     } finally {
       if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
       else process.env.PI_CODING_AGENT_DIR = previous;

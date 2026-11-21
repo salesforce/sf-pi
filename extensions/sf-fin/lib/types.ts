@@ -13,7 +13,11 @@ export const ENV_APP_ID = "INTERCOM_APP_ID";
 /** CLI binary and the oldest version whose flags and output shapes SF Fin relies on. */
 export const CLI_BINARY = "intercom";
 export const CLI_PACKAGE = "@intercom/cli";
-export const MIN_CLI_VERSION = "0.14.0";
+/**
+ * 0.15.4 simulates drafts, publishes a live procedure's draft, pauses through
+ * the editor's endpoint, and adds the public REST commands SF Fin builds on.
+ */
+export const MIN_CLI_VERSION = "0.15.4";
 
 export const FIN_REGIONS = ["us", "eu", "au"] as const;
 export type FinRegion = (typeof FIN_REGIONS)[number];

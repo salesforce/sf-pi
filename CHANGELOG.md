@@ -7,6 +7,130 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.364.2](https://github.com/salesforce/sf-pi/compare/v0.364.1...v0.364.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-fin:** document Error logs diagnosis and token_transfer safety in the README ([#961](https://github.com/salesforce/sf-pi/issues/961)) ([5af62ee](https://github.com/salesforce/sf-pi/commit/5af62eeeaa58cd79a56f2038684d4a3272045475))
+
+## [0.364.1](https://github.com/salesforce/sf-pi/compare/v0.364.0...v0.364.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-fin:** token_transfer and Error logs, hardened against live runs ([#959](https://github.com/salesforce/sf-pi/issues/959)) ([d0bdb4d](https://github.com/salesforce/sf-pi/commit/d0bdb4d7967e6ee1af36fa09134ff38258bb702d))
+
+## [0.364.0](https://github.com/salesforce/sf-pi/compare/v0.363.1...v0.364.0) (2026-11-21)
+
+
+### Features
+
+* **sf-fin:** live-connector edits, token transfer, error-log diagnosis, and a recursive live sweep ([#957](https://github.com/salesforce/sf-pi/issues/957)) ([a14bb52](https://github.com/salesforce/sf-pi/commit/a14bb5249896b246720fd9e99bd248712da2dfdf))
+
+## [0.363.1](https://github.com/salesforce/sf-pi/compare/v0.363.0...v0.363.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **sf-fin:** simulation outcome reasons, and unreadable connectors reported as unknown ([#954](https://github.com/salesforce/sf-pi/issues/954)) ([6d4e2c8](https://github.com/salesforce/sf-pi/commit/6d4e2c89b78e3714e5ea2100fa4ebef082b33914))
+
+## [0.363.0](https://github.com/salesforce/sf-pi/compare/v0.362.2...v0.363.0) (2026-11-21)
+
+
+### Features
+
+* **sf-fin:** create a Case handoff queue for Fin (handoff_queue_create) ([#953](https://github.com/salesforce/sf-pi/issues/953)) ([c5d0f2c](https://github.com/salesforce/sf-pi/commit/c5d0f2c9032d96b0b35bc045db14da4a1cb31413))
+
+## [0.362.2](https://github.com/salesforce/sf-pi/compare/v0.362.1...v0.362.2) (2026-11-21)
+
+
+### Security
+
+* **deps:** raise the basic-ftp override to the fixed 6.2.4 ([#951](https://github.com/salesforce/sf-pi/issues/951)) ([1b15e02](https://github.com/salesforce/sf-pi/commit/1b15e02e508a68f85f58478a1e9db0cbea1a9510))
+
+## [0.362.1](https://github.com/salesforce/sf-pi/compare/v0.362.0...v0.362.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sf-fin:** observe counts Fin's stored resolution values, and explains channel timing ([#949](https://github.com/salesforce/sf-pi/issues/949)) ([803bbbb](https://github.com/salesforce/sf-pi/commit/803bbbb799d42f75e94efe657a16b9ba0967025d))
+
+## [0.362.0](https://github.com/salesforce/sf-pi/compare/v0.361.0...v0.362.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** conversation tests with expectations, and observe for Fin on Salesforce Cases ([#947](https://github.com/salesforce/sf-pi/issues/947)) ([f26757a](https://github.com/salesforce/sf-pi/commit/f26757a9c3848cae6141adb29ed0d6d60f89a326))
+
+## [0.361.0](https://github.com/salesforce/sf-pi/compare/v0.360.0...v0.361.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** connector lifecycle, auth tokens, agent status, and reference checks ([#945](https://github.com/salesforce/sf-pi/issues/945)) ([06a583e](https://github.com/salesforce/sf-pi/commit/06a583ea7271012d36d9507dbb0b67bf7e2190d9))
+
+## [0.360.0](https://github.com/salesforce/sf-pi/compare/v0.359.0...v0.360.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** go-live readiness for Fin for Salesforce Cases and Enhanced Email ([#942](https://github.com/salesforce/sf-pi/issues/942)) ([a398e36](https://github.com/salesforce/sf-pi/commit/a398e366304bfb130bd70966c85533529a1b0dc4))
+
+
+### Bug Fixes
+
+* **sf-llm-gateway:** a slow openssl check no longer rejects a valid CA bundle ([#944](https://github.com/salesforce/sf-pi/issues/944)) ([d7d8fad](https://github.com/salesforce/sf-pi/commit/d7d8fad11eb5ab5a7a6aa1276f52286f334ed0d4))
+
+## [0.359.0](https://github.com/salesforce/sf-pi/compare/v0.358.0...v0.359.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** Result Cards for every sf_fin call, with live progress ([#940](https://github.com/salesforce/sf-pi/issues/940)) ([7bc68bb](https://github.com/salesforce/sf-pi/commit/7bc68bb5fbe48917cf9a9257dbb9abf3b17cbf94))
+
+## [0.358.0](https://github.com/salesforce/sf-pi/compare/v0.357.1...v0.358.0) (2026-11-20)
+
+
+### Features
+
+* **sf-fin:** adopt Fin CLI 0.16 — draft simulations, draft publish, full surface map ([#938](https://github.com/salesforce/sf-pi/issues/938)) ([7be10d9](https://github.com/salesforce/sf-pi/commit/7be10d9ef0c3383524d2f7b45063f5a6f409d531))
+
+## [0.357.1](https://github.com/salesforce/sf-pi/compare/v0.357.0...v0.357.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sf-fin:** accurate procedure round-trip, safe simulation re-uploads, and publish trigger guidance ([#936](https://github.com/salesforce/sf-pi/issues/936)) ([802658f](https://github.com/salesforce/sf-pi/commit/802658ffade71bfaaff06b9ae23539205da6a9dd))
+
+## [0.357.0](https://github.com/salesforce/sf-pi/compare/v0.356.0...v0.357.0) (2026-11-19)
+
+
+### Features
+
+* **sf-fin:** enable Digital Experiences and check FeedItem.Visibility in readiness ([#934](https://github.com/salesforce/sf-pi/issues/934)) ([94a1b8a](https://github.com/salesforce/sf-pi/commit/94a1b8a3426a4727da61d5293bdc0a0994f262c8))
+
+## [0.356.0](https://github.com/salesforce/sf-pi/compare/v0.355.1...v0.356.0) (2026-11-19)
+
+
+### Features
+
+* **sf-fin:** automate the audit-field setting and Fin's Connect flow ([#932](https://github.com/salesforce/sf-pi/issues/932)) ([7c3b1cb](https://github.com/salesforce/sf-pi/commit/7c3b1cbcdebfd26819d0bdace0c2d315662b051c))
+
+## [0.355.1](https://github.com/salesforce/sf-pi/compare/v0.355.0...v0.355.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **sf-fin:** confirm package installs from Installed Packages ([#930](https://github.com/salesforce/sf-pi/issues/930)) ([bc91155](https://github.com/salesforce/sf-pi/commit/bc9115514994268f69bece7f9f3b923fc712f6ca))
+
+## [0.355.0](https://github.com/salesforce/sf-pi/compare/v0.354.0...v0.355.0) (2026-11-19)
+
+
+### Features
+
+* **sf-fin:** set up Fin for Salesforce in an explicit org ([#927](https://github.com/salesforce/sf-pi/issues/927)) ([4be6695](https://github.com/salesforce/sf-pi/commit/4be66954b50ad487123d18d6fe4b92d56701f0f2))
+
 ## [0.354.0](https://github.com/salesforce/sf-pi/compare/v0.353.0...v0.354.0) (2026-11-11)
 
 

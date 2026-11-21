@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   accessText,
+  checkExpectations,
   createAgentApiClient,
   probeAgentApiAccess,
   runScriptedConversation,
@@ -16,6 +17,7 @@ import {
 } from "../lib/surfaces.ts";
 import { INTERCOM_MCP_TOOLS } from "../../sf-mcp/lib/tool-contracts-intercom.ts";
 import { createFinService } from "../lib/service.ts";
+import { CLI_0_16_4 } from "./fixtures/cli-0.16.4-commands.ts";
 
 const ROOT_HELP = `Usage: intercom [options] [command]
 
@@ -100,7 +102,7 @@ describe("surfaces", () => {
     const pagesFor = (extra: string[]) => {
       const all = [...leaves, ...extra];
       return async (p: string[]) => {
-        if (p[0] === "--version") return "0.14.1\n";
+        if (p[0] === "--version") return "0.16.1\n";
         const prefix = p.join(" ");
         const children = [
           ...new Set(
@@ -115,13 +117,37 @@ describe("surfaces", () => {
     };
     const clean = await createFinService({ exec: vi.fn(), helpRunner: pagesFor([]) }).surfaces();
     expect(clean.ok).toBe(true);
-    expect(clean.details).toMatchObject({ cliVersion: "0.14.1", cliCommands: leaves.length });
+    expect(clean.details).toMatchObject({ cliVersion: "0.16.1", cliCommands: leaves.length });
     const drift = await createFinService({
       exec: vi.fn(),
       helpRunner: pagesFor(["fin brand-new"]),
     }).surfaces();
     expect(drift.ok).toBe(false);
     expect(drift.text).toContain("New CLI commands: fin brand-new");
+  });
+
+  it("maps the reviewed Fin CLI 0.16.4 command set with no drift", () => {
+    // Leaf commands crawled from `intercom --help` on 0.16.4 (local, no token).
+    const report = compareSurfaces({ cliCommands: [...CLI_0_16_4], cliVersion: "0.16.4" });
+    expect(report.unmappedCli).toEqual([]);
+    expect(report.missingCli).toEqual([]);
+  });
+
+  it("names the 0.16 capabilities SF Fin builds on", () => {
+    const byId = new Map(CAPABILITIES.map((c) => [c.id, c]));
+    expect(byId.get("auth-token")?.cli).toEqual(
+      expect.arrayContaining(["auth-tokens list", "auth-tokens get"]),
+    );
+    expect(byId.get("data-connector")?.cli).toEqual(
+      expect.arrayContaining(["data-connectors update", "data-connectors list-execution-results"]),
+    );
+    expect(byId.get("simulation")?.cli).toContain("fin simulations delete");
+    expect(byId.get("handoff-target")?.cli).toEqual(
+      expect.arrayContaining(["teams list", "admins list"]),
+    );
+    expect(byId.get("fin-runtime")?.cli).toEqual(
+      expect.arrayContaining(["fin-agent start", "fin-agent reply"]),
+    );
   });
 
   it("gives every capability an SF Fin decision", () => {
@@ -284,6 +310,64 @@ describe("Fin Agent API harness", () => {
     );
     expect(result).toMatchObject({ ok: false, status: "timed_out" });
     expect(f.mock.calls.length).toBe(1 + 30);
+  });
+
+  it("checks expected phrases in Fin's replies, case-insensitively, and reports misses", () => {
+    const transcript = [
+      { role: "user" as const, text: "Status of case 1024?" },
+      { role: "fin" as const, text: "Case 00001024 is New. Subject: Design issue [1]" },
+      { role: "fin" as const, text: "Anything else?" },
+    ];
+    // Matching is on Fin's turns only, case-insensitive, whitespace-normalized.
+    expect(checkExpectations(transcript, ["case 00001024 IS new", "anything  else"])).toEqual({
+      passed: true,
+      results: [
+        { expect: "case 00001024 IS new", found: true },
+        { expect: "anything  else", found: true },
+      ],
+    });
+    // The user's own words never satisfy an expectation.
+    expect(checkExpectations(transcript, ["case 1024?"]).passed).toBe(false);
+    expect(checkExpectations(transcript, []).passed).toBe(true);
+  });
+
+  it("marks citations and handoffs it can see in Fin's reply text", async () => {
+    const f = rpcFetch((_m, params) =>
+      params?.name === "ask_fin"
+        ? { body: text("<p>Reset it from the sign-in page [1].</p>") }
+        : { body: text("unexpected") },
+    );
+    const client = createAgentApiClient({ key: KEY, region: "us", deps: deps(f) });
+    const cited = await runScriptedConversation(
+      client,
+      deps(f),
+      { message: "Reset password?", expect: ["sign-in page"] },
+      { conversationId: "c", userId: "u" },
+    );
+    expect(cited).toMatchObject({
+      ok: true,
+      signals: { citations: 1, handoff: false },
+      expectations: { passed: true },
+    });
+    const handoff = rpcFetch((_m, params) =>
+      params?.name === "ask_fin"
+        ? { body: text("Connecting you to an agent now.") }
+        : { body: text("unexpected") },
+    );
+    const routed = await runScriptedConversation(
+      createAgentApiClient({ key: KEY, region: "us", deps: deps(handoff) }),
+      deps(handoff),
+      { message: "Talk to a human", expect: ["refund"] },
+      { conversationId: "c2", userId: "u" },
+    );
+    expect(routed.signals).toMatchObject({ handoff: true });
+    // An expectation miss fails the run even though Fin answered.
+    expect(routed).toMatchObject({
+      ok: false,
+      status: "answered",
+      expectations: { passed: false },
+    });
+    expect(routed.text).toContain('✗ expected "refund"');
   });
 
   it("surfaces a real tool error instead of polling forever", async () => {

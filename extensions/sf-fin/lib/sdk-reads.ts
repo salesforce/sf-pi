@@ -98,7 +98,10 @@ export function summarizeManifest(raw: unknown): ManifestSummary {
       const str = (v: unknown) =>
         typeof v === "string" || typeof v === "number" ? String(v) : undefined;
       return {
-        id: str(record.id),
+        // A procedure's manifest id is its file id; every procedure operation
+        // (publish, pause, simulate, agent_status, agent run) takes the
+        // workflow id, so show that one.
+        id: str(key === "procedures" ? (record.workflow_id ?? record.id) : record.id),
         name: str(record.name ?? record.title),
         state: str(record.state),
       };

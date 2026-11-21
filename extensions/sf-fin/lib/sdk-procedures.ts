@@ -48,7 +48,28 @@ export interface ProcedureValidation {
   name?: string;
   id?: string | number;
   issues: ValidationIssue[];
+  /** Non-blocking findings: the file is valid but a later step needs attention. */
+  warnings?: ValidationIssue[];
   schemaPath?: string;
+}
+
+/**
+ * Discrete trigger kinds that Fin refuses to publish until their "Fin
+ * behavior" settings exist. Those settings are configured only in the Fin web
+ * UI (procedure → Triggers → the trigger), not through Fin-as-code.
+ */
+const UI_CONFIGURED_TRIGGERS = new Set(["api", "inbox", "button_click"]);
+
+function uiConfiguredTriggers(record: Record<string, unknown> | undefined): string[] {
+  const triggers = Array.isArray(record?.triggers) ? record.triggers : [];
+  return triggers
+    .map((t) => (t && typeof t === "object" ? (t as { type?: unknown }).type : undefined))
+    .filter((type): type is string => typeof type === "string" && UI_CONFIGURED_TRIGGERS.has(type));
+}
+
+function uiTriggerAdvice(types: string[]): string {
+  const list = [...new Set(types)].join(", ");
+  return `Fin publishes a procedure with an ${list} trigger only after that trigger's Fin behavior settings exist, and those are set only in the Fin web UI (procedure → Triggers → ${list}). Configure them there, or remove the trigger: the Fin Agent API still runs the procedure by id, and procedures targeting \`fin_agent_api\` still match by intent.`;
 }
 
 /** Locate the downloaded workspace schema: `<sdk dir>/resources/.fin/schema/procedure.json`. */
@@ -61,7 +82,17 @@ export function simulationSchemaPath(sdkDir: string): string {
 }
 
 export function validateProcedureFile(file: string, schemaPath: string): ProcedureValidation {
-  return validateYamlFile(file, schemaPath, draftRuleIssues);
+  const result = validateYamlFile(file, schemaPath, draftRuleIssues);
+  if (!result.ok || !existsSync(file)) return result;
+  const record = parseYamlSafe(readFileSync(file, "utf8")) as Record<string, unknown> | undefined;
+  const triggers = Array.isArray(record?.triggers) ? record.triggers : [];
+  const warnings = triggers.flatMap((t, index) => {
+    const type = t && typeof t === "object" ? (t as { type?: unknown }).type : undefined;
+    return typeof type === "string" && UI_CONFIGURED_TRIGGERS.has(type)
+      ? [{ path: `/triggers/${index}`, message: uiTriggerAdvice([type]) }]
+      : [];
+  });
+  return warnings.length > 0 ? { ...result, warnings } : result;
 }
 
 /**
@@ -69,6 +100,43 @@ export function validateProcedureFile(file: string, schemaPath: string): Procedu
  * The public Fin CLI accepts sets only; each test is checked against the
  * workspace `simulation.json` (which describes one `simulation_test`).
  */
+/**
+ * Plain scalars that YAML 1.2 (SF Fin, the Fin CLI) reads as strings or
+ * decimals but YAML 1.1 reads as dates, octal, sexagesimal, or booleans.
+ * Fin's server is not YAML 1.2-strict: an unquoted ISO timestamp in a mock
+ * body failed the upload with a bare "Server Error". Report each one with its
+ * path so the author quotes it; quoted values are never flagged.
+ */
+export function ambiguousScalarIssues(text: string): ValidationIssue[] {
+  const strict = parseDocument(text);
+  const loose = parseDocument(text, { version: "1.1" });
+  if (strict.errors.length > 0 || loose.errors.length > 0) return [];
+  const issues: ValidationIssue[] = [];
+  const walk = (a: unknown, b: unknown, at: string) => {
+    if (issues.length >= 20) return;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      a.forEach((item, i) => walk(item, b[i], `${at}/${i}`));
+      return;
+    }
+    if (a && typeof a === "object" && b && typeof b === "object" && !(b instanceof Date)) {
+      for (const [key, value] of Object.entries(a as Record<string, unknown>)) {
+        walk(value, (b as Record<string, unknown>)[key], `${at}/${key}`);
+      }
+      return;
+    }
+    const differs =
+      b instanceof Date || typeof a !== typeof b || (typeof a === "number" && a !== b);
+    if (differs) {
+      issues.push({
+        path: at || "/",
+        message: `Quote ${JSON.stringify(String(a))}: Fin's server reads this unquoted value as a ${b instanceof Date ? "date" : typeof b} (YAML 1.1), not as written.`,
+      });
+    }
+  };
+  walk(strict.toJS(), loose.toJS(), "");
+  return issues;
+}
+
 export function validateSimulationSetFile(file: string, schemaPath: string): ProcedureValidation {
   const set = validateYamlFile(file, undefined, simulationSetRuleIssues);
   if (!set.ok || !existsSync(schemaPath)) {
@@ -108,6 +176,7 @@ export function validateSimulationSetFile(file: string, schemaPath: string): Pro
       })),
     );
   });
+  issues.push(...ambiguousScalarIssues(readFileSync(file, "utf8")));
   return { ...set, ok: issues.length === 0, issues, schemaPath };
 }
 
@@ -151,6 +220,18 @@ export function simulationTestRuleIssues(
   const assertions = Array.isArray(record.assertions) ? record.assertions : [];
   if (assertions.length === 0)
     issues.push({ path: "/assertions", message: "Add at least one assertion." });
+  else {
+    // Fin requires exactly one outcome assertion (`outcome:` or `escalated_to:`).
+    const outcomes = assertions.filter(
+      (a) => a && typeof a === "object" && ("outcome" in a || "escalated_to" in a),
+    ).length;
+    if (outcomes !== 1) {
+      issues.push({
+        path: "/assertions",
+        message: `Fin requires exactly one outcome assertion per test (\`outcome:\` or \`escalated_to:\`); found ${outcomes}.`,
+      });
+    }
+  }
   assertions.forEach((assertion, index) => {
     const attr = (assertion as { attribute?: unknown })?.attribute;
     if (typeof attr === "string" && attr.startsWith("temporary.")) {
@@ -279,7 +360,10 @@ function schemaIssues(
 
 export function formatValidation(result: ProcedureValidation): string {
   if (result.ok) {
-    return `✅ ${result.name ?? path.basename(result.file)} is valid against the workspace schema and SF Fin rules.`;
+    return [
+      `✅ ${result.name ?? path.basename(result.file)} is valid against the workspace schema and SF Fin rules.`,
+      ...(result.warnings ?? []).map((w) => `⚠ ${w.path} — ${w.message}`),
+    ].join("\n");
   }
   return [
     `❌ ${result.issues.length} issue${result.issues.length === 1 ? "" : "s"} in ${result.file}`,
@@ -381,6 +465,7 @@ export async function uploadProcedureDraft(
       savedVersion
         ? `Next edit: set \`id: ${procedureId}\` and \`version: ${savedVersion}\` in the file.`
         : undefined,
+      ...(validation.warnings ?? []).map((w) => `⚠ ${w.path} — ${w.message}`),
       ensured.enabledNow ? `🔓 ${ensured.message}` : undefined,
     ]
       .filter(Boolean)
@@ -420,7 +505,44 @@ export async function uploadSimulationSet(
   }
   const ensured = await ensureFinSdkEnabled(credential, deps, signal);
   if (!ensured.ok) return { ok: false, text: ensured.message, details: { phase: "enable" } };
-  // Tests carrying an `id` update that test; tests without one are added.
+  // Tests carrying an `id` update that test; tests without one are added. Fin
+  // saves tests one by one, so an upload that fails partway can leave earlier
+  // tests saved. Refuse id-less tests whose name already exists so a retry
+  // updates them instead of adding duplicates.
+  const doc = parse(readFileSync(input.file, "utf8")) as {
+    procedure_id?: unknown;
+    tests?: Array<{ id?: unknown; name?: unknown }>;
+  };
+  const existing = await listSimulationTests(credential, deps, String(doc.procedure_id), signal);
+  if (existing.ok === false) {
+    return {
+      ok: false,
+      text: `❌ Could not read the procedure's current simulations before upload: ${existing.error}`,
+      details: { phase: "list" },
+    };
+  }
+  const matches = (doc.tests ?? [])
+    .filter((t) => t.id === undefined || t.id === null)
+    .map((t) => ({
+      name: stringValue(t.name) ?? "",
+      ids: existing.tests.filter((e) => e.name === stringValue(t.name)).map((e) => e.id),
+    }))
+    .filter((m) => m.name && m.ids.length > 0);
+  if (matches.length > 0) {
+    return {
+      ok: false,
+      text: [
+        `❌ Not uploaded: ${matches.length} test${matches.length === 1 ? "" : "s"} without an \`id\` already exist${matches.length === 1 ? "s" : ""} on procedure ${String(doc.procedure_id)}, so uploading would add duplicates. Add the existing id to each test to update it in place:`,
+        ...matches.map((m) => `  • ${m.name} → id: ${m.ids.join(" or id: ")}`),
+        matches.some((m) => m.ids.length > 1)
+          ? "Tests listed with several ids are already duplicated; keep one id and delete the extras in Fin (procedure → Test)."
+          : undefined,
+      ]
+        .filter((line): line is string => Boolean(line))
+        .join("\n"),
+      details: { phase: "duplicates", matches },
+    };
+  }
   const result = await deps.run(
     ["fin", "simulations", "upload", realpathSync(input.file), "--json"],
     {
@@ -465,6 +587,34 @@ export async function uploadSimulationSet(
   };
 }
 
+/** Current tests on a procedure (`simulations list` prints the YAML set). */
+async function listSimulationTests(
+  credential: FinCredential,
+  deps: SdkReadDeps,
+  procedureId: string,
+  signal?: AbortSignal,
+): Promise<
+  { ok: true; tests: Array<{ id: string; name?: string }> } | { ok: false; error: string }
+> {
+  const listed = await deps.run(["fin", "simulations", "list", procedureId], {
+    credential,
+    signal,
+    timeoutMs: 60_000,
+  });
+  if (classifyCliResult(listed) !== "ok") {
+    return { ok: false, error: readCliErrorMessage(listed) ?? "simulations list failed." };
+  }
+  const set = parseYamlSafe(listed.stdout) as { tests?: unknown } | null | undefined;
+  const tests = Array.isArray(set?.tests) ? (set.tests as Array<Record<string, unknown>>) : [];
+  return {
+    ok: true,
+    tests: tests.flatMap((t) => {
+      const id = stringId(t?.id);
+      return id ? [{ id, name: stringValue(t.name) }] : [];
+    }),
+  };
+}
+
 export interface SimulationRunSummary {
   runId: string;
   testId?: string;
@@ -484,7 +634,14 @@ export interface SimulateResult {
 export async function simulateProcedure(
   credential: FinCredential,
   deps: SdkReadDeps & { sleep?: (ms: number) => Promise<void> },
-  input: { procedureId: string; generate: boolean; maxWaitMs?: number; generateSettleMs?: number },
+  input: {
+    procedureId: string;
+    generate: boolean;
+    /** Test the live version even when an unpublished draft exists. */
+    live?: boolean;
+    maxWaitMs?: number;
+    generateSettleMs?: number;
+  },
   signal?: AbortSignal,
 ): Promise<SimulateResult> {
   if (!/^[A-Za-z0-9_-]+$/.test(input.procedureId)) {
@@ -520,18 +677,27 @@ export async function simulateProcedure(
     }
   };
 
-  // Fin only runs live procedures in simulations. A draft (never published)
-  // produces "no procedure instructions" runs, so warn before spending runs.
+  // Since CLI 0.15.4, runs and generation test the procedure's draft by
+  // default; a procedure with no unpublished draft is tested as it is live.
   const state = await readProcedureState(credential, deps, input.procedureId, signal);
-  if (state.state === "draft") {
-    lines.push(
-      `⚠ Procedure ${input.procedureId} is a draft. Fin only runs live procedures in simulations, so these runs will not follow its steps. Publish it with sdk operation='publish' (and pause it again afterwards) to test it.`,
-    );
-  }
+  const hasDraft = state.state === "draft" || state.unpublished === true;
+  const tested = input.live || !hasDraft ? "live" : "draft";
+  lines.push(
+    tested === "draft"
+      ? `🧪 Tested the draft of procedure ${input.procedureId} (unpublished changes; nothing goes live).`
+      : `🧪 Tested the live version of procedure ${input.procedureId}${input.live && hasDraft ? " (its unpublished draft was not tested)" : ""}.`,
+  );
+  const liveFlag = input.live ? ["--live"] : [];
 
   const before = await countTests();
   if (input.generate) {
-    const generated = await call(["fin", "simulations", "generate", input.procedureId]);
+    const generated = await call([
+      "fin",
+      "simulations",
+      "generate",
+      input.procedureId,
+      ...liveFlag,
+    ]);
     if (classifyCliResult(generated) !== "ok") {
       return failure("generate", generated, lines);
     }
@@ -553,7 +719,7 @@ export async function simulateProcedure(
     );
   }
 
-  const started = await call(["fin", "simulations", "run", input.procedureId]);
+  const started = await call(["fin", "simulations", "run", input.procedureId, ...liveFlag]);
   if (classifyCliResult(started) !== "ok") return failure("run", started, lines);
   const startedJson = parseJson(started.stdout) ?? {};
   const enqueued = Array.isArray(startedJson.enqueued)
@@ -618,6 +784,9 @@ export async function simulateProcedure(
       passed,
       total: runs.length,
       procedureState: state.state,
+      tested,
+      // Per-run results (names, status, failed assertions) for the card and the model.
+      runs,
     },
   };
 }
@@ -636,6 +805,9 @@ export async function readProcedureState(
   state?: ProcedureState;
   version?: string;
   name?: string;
+  uiConfiguredTriggers?: string[];
+  /** True when the procedure has a saved draft that is not live yet. */
+  unpublished?: boolean;
   error?: string;
 }> {
   const result = await deps.run(["fin", "procedures", "get", procedureId], {
@@ -656,6 +828,8 @@ export async function readProcedureState(
     state: state === "draft" || state === "live" || state === "paused" ? state : undefined,
     version: stringId(doc?.version),
     name: stringValue(doc?.name),
+    uiConfiguredTriggers: uiConfiguredTriggers(doc),
+    unpublished: doc?.has_unpublished_changes === true,
   };
 }
 
@@ -699,7 +873,8 @@ export async function setProcedureState(
   }
   const label = `"${current.name ?? input.procedureId}" (${input.procedureId})`;
   const base = { procedureId: input.procedureId, from: current.state, to: input.target };
-  if (current.state === input.target) {
+  const publishesDraft = input.target === "live" && current.unpublished === true;
+  if (current.state === input.target && !publishesDraft) {
     return {
       ok: true,
       text: `Procedure ${label} is already ${current.state}; nothing to change.`,
@@ -715,34 +890,60 @@ export async function setProcedureState(
   }
   const effect =
     input.target === "live"
-      ? "Fin will start using it for matching customer conversations on its targeted channels."
+      ? publishesDraft && current.state === "live"
+        ? "Fin will replace the live version with the unpublished draft for matching customer conversations on its targeted channels."
+        : "Fin will start using it for matching customer conversations on its targeted channels."
       : "Fin will stop using it for customer conversations. It can be published again later; it cannot return to draft.";
   if (!input.execute) {
     return {
       ok: true,
       text: [
-        `Plan: ${verb} procedure ${label} — ${current.state} → ${input.target}.`,
+        publishesDraft && current.state === "live"
+          ? `Plan: ${verb} the unpublished draft of procedure ${label} (live → live with the draft's changes).`
+          : `Plan: ${verb} procedure ${label} — ${current.state} → ${input.target}.`,
         effect,
         `To proceed, call sf_fin action='sdk' operation='${verb}' procedure_id='${input.procedureId}' allow_mutation=true (SF Guardrail mediates it).`,
       ].join("\n"),
-      details: { phase: "plan", ...base, version: current.version },
+      details: {
+        phase: "plan",
+        ...base,
+        version: current.version,
+        ...(publishesDraft ? { unpublished: true } : {}),
+      },
     };
   }
 
+  // CLI 0.16 publish/pause call the editor's own endpoints. Pausing saves no
+  // version, so it takes no note.
   const args = ["fin", "procedures", verb, input.procedureId, "--json"];
-  if (input.note?.trim()) args.push("--note", input.note.trim());
+  if (verb === "publish" && input.note?.trim()) args.push("--note", input.note.trim());
   const result = await deps.run(args, { credential, signal, timeoutMs: 120_000 });
   if (classifyCliResult(result) !== "ok") {
+    // On a server validation failure the CLI reports only a generic message
+    // (the reason is in the HTTP body, shown only with --verbose). The publish
+    // is never retried; explain the known cause from the procedure itself.
+    const triggers = input.target === "live" ? (current.uiConfiguredTriggers ?? []) : [];
     return {
       ok: false,
-      text: `❌ ${verb} failed: ${readCliErrorMessage(result) ?? `intercom fin procedures ${verb} failed.`}`,
-      details: { phase: "execute", ...base },
+      text: [
+        `❌ ${verb} failed: ${readCliErrorMessage(result) ?? `intercom fin procedures ${verb} failed.`}`,
+        triggers.length > 0
+          ? `Likely cause: the procedure has an ${[...new Set(triggers)].join(", ")} trigger. ${uiTriggerAdvice(triggers)}`
+          : undefined,
+      ]
+        .filter((line): line is string => Boolean(line))
+        .join("\n"),
+      details: {
+        phase: "execute",
+        ...base,
+        ...(triggers.length > 0 ? { uiConfiguredTriggers: triggers } : {}),
+      },
     };
   }
-  const saved = parseYamlSafe(stringValue(parseJson(result.stdout)?.new_file_content) ?? "") as
-    Record<string, unknown> | undefined;
-  const after = stringValue(saved?.state);
-  const version = stringId(saved?.version);
+  // The response carries no saved file in CLI 0.16; read the state back.
+  const reread = await readProcedureState(credential, deps, input.procedureId, signal);
+  const after = reread.state;
+  const version = reread.version;
   if (after !== input.target) {
     return {
       ok: false,
@@ -787,7 +988,9 @@ function summarizeRun(
       : [];
     const failed = details.filter((d) => d.passed === false);
     if (failed.length === 0) {
-      failures.push(`${type} failed`);
+      // Outcome assertions explain themselves in global.reason.
+      const reason = stringValue(global.reason);
+      failures.push(`${type} failed${reason ? ` — ${reason.slice(0, 300)}` : ""}`);
       continue;
     }
     for (const d of failed) {

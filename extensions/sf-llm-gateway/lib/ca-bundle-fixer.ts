@@ -168,7 +168,10 @@ function probeOne(candidate: string): BundleProbeResult {
  * \u2014 we never hard-require it because the probe must work in CI without
  * extra dependencies.
  */
-export function validatePemBundle(filePath: string): PemValidation {
+export function validatePemBundle(
+  filePath: string,
+  options: { runOpenssl?: (filePath: string) => void } = {},
+): PemValidation {
   let bytes: Buffer;
   try {
     bytes = readFileSync(filePath);
@@ -184,15 +187,28 @@ export function validatePemBundle(filePath: string): PemValidation {
   }
   // Optional deeper check via openssl. Best-effort: not failing on a
   // missing binary keeps this portable across CI runners.
+  const runOpenssl =
+    options.runOpenssl ??
+    ((file: string) =>
+      execFileSync("openssl", ["x509", "-in", file, "-noout"], {
+        stdio: ["ignore", "ignore", "pipe"],
+        timeout: 4_000,
+      }));
   try {
-    execFileSync("openssl", ["x509", "-in", filePath, "-noout"], {
-      stdio: ["ignore", "ignore", "pipe"],
-      timeout: 4_000,
-    });
+    runOpenssl(filePath);
   } catch (error) {
-    // ENOENT means openssl isn't installed \u2014 not a hard failure.
+    // Only an openssl verdict rejects the bundle. A missing binary (ENOENT)
+    // or a timeout (ETIMEDOUT, for example a cold start on a slow runner)
+    // means the deeper check could not run, so the header check stands.
     const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes("ENOENT") && !message.includes("not found")) {
+    const code = (error as { code?: unknown } | undefined)?.code;
+    const couldNotRun =
+      code === "ENOENT" ||
+      code === "ETIMEDOUT" ||
+      message.includes("ENOENT") ||
+      message.includes("ETIMEDOUT") ||
+      message.includes("not found");
+    if (!couldNotRun) {
       return { ok: false, reason: `openssl rejected the bundle: ${message}` };
     }
   }

@@ -42,6 +42,9 @@ For Fin as code, SF Fin authors and tests procedures (validation, draft upload, 
 | `/sf-fin sdk publish <id>`                          | Set a procedure live after confirmation                                        |
 | `/sf-fin sdk pause <id>`                            | Take a live procedure offline after confirmation                               |
 | `/sf-fin sdk create_data_connector <name>`          | Create a named draft data connector                                            |
+| `/sf-fin sdk agent_status <procedure_id>`           | One agent's chain: procedure, connectors and tokens, simulations, next step    |
+| `/sf-fin sdk auth_tokens`                           | Auth token metadata and which connectors use each (never secret values)        |
+| `/sf-fin sdk connector_logs <connector_id>`         | Recent data connector runs, without request or response bodies                 |
 | `/sf-fin sdk guidance_state <id> live\|paused`      | Set guidance live or paused after confirmation                                 |
 | `/sf-fin surfaces`                                  | Compare Fin CLI, Intercom MCP, and Fin Agent API                               |
 | `/sf-fin agent`                                     | Check Fin Agent API access                                                     |
@@ -50,13 +53,21 @@ For Fin as code, SF Fin authors and tests procedures (validation, draft upload, 
 | `/sf-fin admin [sign-in\|open <page>\|read <page>]` | Verified Fin admin pages in the SF Pi browser (masked, navigate and read only) |
 | `/sf-fin help`                                      | Print setup guidance                                                           |
 
+In the TUI, every `sf_fin` result renders as a Result Card: readiness as a
+grouped checklist with one next step, plans with their scope, reversibility
+(↩ reversible, ⚠ one-way, 🌐 org-wide) and SF Guardrail rule, verified
+results, simulation tables, Fin Agent API conversations, and the workspace
+manifest with each resource's state. Package installs, connect, simulations,
+and Fin Agent API runs show live progress. The model receives a separate,
+bounded text without session URLs or secrets.
+
 The agent uses the same operations through `sf_fin`. `sf_fin action='install'`
 returns a plan; executing it requires `allow_mutation=true` and is mediated by
 SF Guardrail (see below).
 
 ## Configuration
 
-1. Run `/sf-fin install`, or `npm install -g @intercom/cli` (0.14.0 or later).
+1. Run `/sf-fin install`, or `npm install -g @intercom/cli` (0.15.4 or later).
 2. In Fin, open **Settings → Personal → API tokens** and create a token. The
    token acts with your teammate permissions, including your conversation
    access.
@@ -97,12 +108,46 @@ For Fin Agent API runs (optional):
 `FIN_AGENT_API_KEY` is the automation fallback for the Fin Agent API key.
 `INTERCOM_APP_ID` is forwarded only for legacy Basic-auth API keys.
 
+### Fin for Salesforce
+
+The agent sets up Fin for Salesforce Cases end to end with
+`sf_fin action='salesforce'` in one explicit `target_org`. `readiness` names
+the next operation:
+
+| Operation                    | What it does                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readiness`                  | Read-only checklist: Fin package (`finai`), Fin Case fields, audit-field setting, Digital Experiences (`FeedItem.Visibility`), Enhanced Email, both permission sets, Fin External Client App, dedicated Fin user, integration user, Fin's OAuth connection, and go-live checks: Email-to-Case, case routing to the Fin user, a Case handoff queue, and effective object access against Fin's permission matrix |
+| `package_install`            | Installs the exact package version from Fin's Connect page (`package_version`: the `04t` id or the install link) for all users, then verifies it in Installed Packages                                                                                                                                                                                                                                         |
+| `audit_fields_enable`        | Deploys SecuritySettings with only `enableAuditFieldsInactiveOwner=true` (the "Set Audit Fields upon Record Creation" org setting Fin asks for) and verifies it                                                                                                                                                                                                                                                |
+| `digital_experiences_enable` | Deploys CommunitiesSettings with only `enableNetworksEnabled=true` so `FeedItem.Visibility` exists for Fin, and verifies the field. One-way: Digital Experiences cannot be turned off again                                                                                                                                                                                                                    |
+| `enhanced_email_enable`      | Deploys EmailAdministrationSettings with only `enableEnhancedEmailEnabled=true` so Fin can sync each case's email history, and verifies it. Org-wide                                                                                                                                                                                                                                                           |
+| `handoff_queue_create`       | Creates one Case queue for Fin's handoff ("Routed to team"; `queue_name`, default `Fin Handoff`) with no members, no member email, and no role-hierarchy access, and verifies it. Never changes an existing queue                                                                                                                                                                                              |
+| `token_transfer`             | Non-production only. Creates a Fin OAuth auth token (`token_name`) from External Client App `app_name`'s client credentials: turns on REST access to consumer secrets only for the transfer, fills Fin's Add token form through the browser, saves only after Fin's Test request passes, then turns the setting off again and verifies the secret is no longer readable. The secret never reaches tool output  |
+| `permissions_apply`          | Deploys `SF_Fin_Salesforce_Access` from Fin's documented requirements, creates the dedicated Fin user (Service Cloud User), and assigns both permission sets to it and to the integration user, then verifies them                                                                                                                                                                                             |
+| `connect`                    | Runs Fin's Connect flow in the shared SF Pi browser: approves Fin for Salesforce on the org's own My Domain as the CLI user, sets the Fin user in Fin, and verifies Fin's OAuth token                                                                                                                                                                                                                          |
+| `observe`                    | Read-only: Fin-involved cases, resolved and routed counts with a resolution rate, counts by origin, cases the Fin user owns now, and recent cases (no descriptions or email bodies)                                                                                                                                                                                                                            |
+
+Each change plans first and runs only with `allow_mutation=true`. `connect`
+uses the Fin admin sign-in saved by `/login sf-fin-browser`. Case routing is
+built with SF Flow (a record-triggered Case Flow that sets Owner to the Fin
+user); readiness verifies an active Case Flow exists and that cases reach the
+Fin user. Email-to-Case and its routing address stay guided, because enabling
+it cannot be undone and Salesforce emails a verification link to a human. Fin
+Messenger live chat (BYOC) is not covered.
+
 ### Fin admin pages
 
 Some Fin setup has no API: Agent API keys, Help Center sites, data connector
-publishing, and the Salesforce connection. `/sf-fin admin` opens these pages
-in the shared SF Pi browser. This release navigates and reads; it changes
-nothing in Fin.
+publishing, the Salesforce connection, and Fin's Error logs. `/sf-fin admin`
+opens these pages in the shared SF Pi browser, navigates, and reads; it
+changes nothing in Fin. `admin read error-logs` opens each error's details,
+reports Salesforce's error code and object with the SF Fin operation that
+fixes it, and never shows the system error text, which can hold record data.
+
+Two Salesforce operations drive Fin's admin pages for one exact change each,
+behind SF Guardrail: `connect` (Fin's Salesforce connection) and
+`token_transfer` (one Fin OAuth auth token from an External Client App's
+client credentials).
 
 1. Run `/login sf-fin-browser` once (`/sf-fin admin sign-in` prefills it). A
    browser window opens on your region's Fin sign-in page. Sign in yourself and
@@ -131,6 +176,12 @@ app. It refuses if it lands somewhere else.
   action, and removes them on every path, so the browser's own saved-state file
   never holds a Fin sign-in. Cookie values go to the browser on stdin, never on
   a command line, and never appear in tool output.
+- `token_transfer` runs only on non-production orgs. It turns on REST access
+  to consumer secrets only while it moves the credentials, hands them to Fin's
+  masked form over the browser's stdin, saves only after Fin's Test request
+  returns an access token, verifies the token in Fin's list, and then turns
+  the setting off again on every path. It confirms the org no longer returns
+  the secret. Nothing secret appears in tool output.
 - Fin admin pages: all browser text is masked before SF Pi sees it (secret-labelled
   values and key-shaped strings become `<masked>`). Pages that can show a key
   (Agent API, API tokens, workspace tokens), and any page with an open key
@@ -159,9 +210,21 @@ app. It refuses if it lands somewhere else.
   `state`, so it keeps a procedure's current state. Upload, simulation-set
   upload, and simulate are SF Guardrail mutations
   (`native-sf-fin-procedure-write`); `validate` is local.
-- Fin simulates **live** procedures only. A draft runs without its steps, and
-  `sdk simulate` warns about it. Publish the procedure to test it, then pause it
-  again. A procedure never returns to draft.
+- Upload compares the copy Fin saved with the file, in either of Fin's two
+  saved forms, and reports only real changes.
+- Simulation-set upload reads the procedure's current tests first and refuses
+  id-less tests whose name already exists. Fin saves tests one by one, so a
+  failed upload can leave some saved, and re-uploading without ids would add
+  duplicates. Each test needs exactly one outcome assertion.
+- Fin publishes a procedure with an `api`, `inbox`, or `button_click` trigger
+  only after that trigger's Fin behavior settings are configured in the Fin
+  web UI. `validate` warns about it, and a failed `publish` names it.
+- `sdk simulate` tests the procedure's **draft** by default, so an uploaded
+  edit can be checked before anything goes live. A procedure with no
+  unpublished draft is tested as it is live; `live=true` tests the live version.
+- `sdk publish` makes the procedure's draft live: a draft, a paused procedure,
+  or a live procedure with unpublished changes. `sdk pause` takes a live
+  procedure out of use and saves no version. A procedure never returns to draft.
 - `sdk publish|pause` only plans unless you pass `allow_mutation=true`. Executing
   it is an exact SF Guardrail mutation (`native-sf-fin-procedure-state`, Power
   Tool family **Fin CLI and Operator**) that is never session-approved, because
@@ -170,8 +233,9 @@ app. It refuses if it lands somewhere else.
 - Guidance uploads are always saved `paused`, because live guidance changes
   every answer at once. `sdk guidance_state` plans by default; executing it is
   an exact SF Guardrail mutation that is never session-approved. Data
-  connectors upload only as drafts, and publishing them stays in the Intercom
-  web UI.
+  connectors upload as drafts; `sdk connector_state` sets one live or back to
+  draft through the public data connectors API (an exact SF Guardrail
+  approval, never session-approved) and verifies the result.
 - The Fin Agent API key is a separate Pi credential (`sf-fin-agent`). Pi alone
   persists it, in `~/.pi/agent/auth.json` (owner-only), and SF Fin writes no
   second copy.
@@ -188,10 +252,20 @@ app. It refuses if it lands somewhere else.
     source and last access result, never its value.
   - `/sf-fin disconnect agent` prepares `/logout sf-fin-agent`. Revoke or
     regenerate the key in Fin if it may have been exposed.
+- `agent run` takes optional `expect=[…]` phrases, so a run works as a test:
+  any phrase missing from Fin's replies fails it. Its card shows the
+  conversation turn by turn, expectations, citations, and handoffs.
 - `agent run` is an SF Guardrail mutation (`native-sf-fin-agent-run`), because a
   conversation Fin resolves is a billable outcome. Access checks and capability
   listing create no conversation.
 - `surfaces` runs only local `--help` commands, with no token and no network.
+- `salesforce package_install`, `audit_fields_enable`, `digital_experiences_enable`,
+  `enhanced_email_enable`, `handoff_queue_create`, `token_transfer`, `permissions_apply`, and `connect` are SF Guardrail mutations (`native-sf-fin-salesforce-setup`). Each approval covers exactly
+  one org, package version, or username, is never granted for the session,
+  and production or unknown orgs are blocked. Salesforce calls go through SF
+  Pi's shared connection module. The package install never renames or
+  overwrites components on a name conflict, and SF Fin refuses any package
+  outside the `finai` namespace.
 - Agent-initiated installs are SF Guardrail native mutations in the
   **Fin CLI install** family. They ask for approval by default and are
   auto-approved only when Guardrail Power Tool Mode includes that family (or
