@@ -575,6 +575,39 @@ tests:
     expect(run.mock.calls.map((c) => (c[0] as string[])[2])).toEqual(["list", "upload"]);
   });
 
+  it("refuses unquoted scalars Fin's YAML 1.1 server reads differently (dates, octal, yes/no)", async () => {
+    // Found live: an unquoted ISO timestamp in a mock body became a date on Fin's
+    // side and the upload failed with a bare "Server Error".
+    const risky = SET.replace(
+      "    assertions:\n",
+      [
+        "    data_connector_mocks:",
+        "      Lookup:",
+        "        response_code: 200",
+        "        response_body:",
+        "          lastModified: 2026-02-26T18:42:05.000Z",
+        "          caseNumber: 00001024",
+        '          quoted: "2026-02-26T18:42:05.000Z"',
+        "          active: yes",
+        "    assertions:",
+        "",
+      ].join("\n"),
+    );
+    const run = vi.fn(async () => cli("{}"));
+    const result = await uploadSimulationSet(credential, deps(run), {
+      file: file("risky.yaml", risky),
+      schemaPath: SIM_SCHEMA,
+    });
+    expect(result.ok).toBe(false);
+    expect(run).not.toHaveBeenCalled();
+    const text = result.text;
+    expect(text).toContain("data_connector_mocks/Lookup/response_body/lastModified");
+    expect(text).toContain("caseNumber");
+    expect(text).toContain("active");
+    expect(text).not.toContain("/quoted");
+    expect(text).toContain("quote");
+  });
+
   it("requires exactly one outcome assertion per test", () => {
     const base = { type: "simulation_test", procedure_id: 1 };
     const none = simulationTestRuleIssues({ ...base, assertions: [{ agent_response: "x" }] }, 1);

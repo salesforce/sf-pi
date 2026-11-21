@@ -189,6 +189,20 @@ describe("setConnectorState", () => {
     expect(update).toEqual(["data-connectors", "update", "77", "-f", "state=live", "--json"]);
   });
 
+  it("explains that connector_state cannot publish unpublished changes on a live connector", async () => {
+    const run = stateRun("live");
+    const result = await setConnectorState(credential, deps(run), {
+      connectorId: "77",
+      target: "live",
+      execute: true,
+    });
+    expect(result.details).toMatchObject({ phase: "noop" });
+    expect(result.text).toContain("already live");
+    expect(result.text).toContain("Set changes live");
+    expect(result.text).toContain("data-connectors/77");
+    expect(run.mock.calls.some((c) => (c[0] as string[])[1] === "update")).toBe(false);
+  });
+
   it("refuses to set live a connector with no auth token unless it is a public API", async () => {
     const run = stateRun("draft", "live", []);
     const plan = await setConnectorState(credential, deps(run), {

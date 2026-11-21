@@ -24,6 +24,7 @@ import path from "node:path";
 // typebox/value is aliased by Pi's extension loader; typebox/schema is not.
 import * as JsonSchema from "typebox/value";
 import { parse, parseDocument, stringify } from "yaml";
+import { finAdminConnectorUrl } from "../../../lib/common/fin-admin-surface.ts";
 import type { FinCredential } from "./auth.ts";
 import { classifyCliResult, readCliErrorMessage } from "./cli-runner.ts";
 import type { ProcedureValidation, ValidationIssue } from "./sdk-procedures.ts";
@@ -222,7 +223,10 @@ export async function uploadResource(
     const id = String(response?.id ?? saved?.id ?? "?");
     const state = typeof saved?.state === "string" ? saved.state : undefined;
     const expected = input.kind === "guidance" ? "paused" : "draft";
-    if (state && state !== expected) {
+    // A connector that is already live stays live: Fin saves the upload as
+    // unpublished changes and keeps serving the previous version.
+    const pendingOnLive = input.kind === "data_connector" && state === "live";
+    if (state && state !== expected && !pendingOnLive) {
       return {
         ok: false,
         text: `⚠ Uploaded ${input.kind} ${id}, but Fin reports state ${state} instead of ${expected}. Check it in Fin.`,
@@ -230,6 +234,7 @@ export async function uploadResource(
       };
     }
     const label = validation.name ?? path.basename(input.file);
+    const editor = connectorEditorLink(credential, deps.appId, id);
     // Verify the server-processed copy in the upload response. Fin rewrites it
     // on save (input syntax, inferred outputs), so it is evidence of the save.
     // `data-connectors get` returns only the published version and does not
@@ -247,6 +252,20 @@ export async function uploadResource(
           details: { phase: "verify", kind: input.kind, id, mismatch },
         };
       }
+    }
+    if (pendingOnLive) {
+      return {
+        ok: true,
+        text: [
+          `✅ Uploaded data connector "${label}" (${id}): saved as unpublished changes on a live connector.`,
+          "Fin still serves the previous version until the changes are published. sdk connector_state cannot publish them (the connector is already live).",
+          `To publish: test the edit in Fin's connector editor, then click "Set changes live"${editor ? ` (${editor})` : " (Settings → Data connectors → this connector)"}. Check the result with sdk operation='agent_status'.`,
+          ensured.enabledNow ? `🔓 ${ensured.message}` : undefined,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        details: { phase: "upload", kind: input.kind, id, state, pending: true, editor },
+      };
     }
     return {
       ok: true,
@@ -409,6 +428,20 @@ export async function setGuidanceState(
 }
 
 /** Fields that must survive a data connector upload, compared with the read-back. */
+/** Fin editor URL for one connector, when the workspace's app id is known. */
+function connectorEditorLink(
+  credential: FinCredential,
+  appId: string | undefined,
+  id: string,
+): string | undefined {
+  if (!appId || !/^\d+$/u.test(id)) return undefined;
+  try {
+    return finAdminConnectorUrl(credential.region, appId, id);
+  } catch {
+    return undefined;
+  }
+}
+
 function connectorMismatch(
   sent: Record<string, unknown>,
   stored: Record<string, unknown> | undefined,

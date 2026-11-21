@@ -21,6 +21,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parse } from "yaml";
+import { finAdminConnectorUrl } from "../../../lib/common/fin-admin-surface.ts";
 import type { FinCredential } from "./auth.ts";
 import { classifyCliResult, readCliErrorMessage } from "./cli-runner.ts";
 import { ensureFinSdkEnabled, type SdkReadDeps } from "./sdk-reads.ts";
@@ -163,10 +164,21 @@ export async function setConnectorState(
   const label = `"${before.name}" (${input.connectorId})`;
   const base = { connectorId: input.connectorId, from: before.state, to: input.target };
   if (before.state === input.target) {
+    const editor =
+      input.target === "live" && deps.appId
+        ? safeConnectorUrl(credential, deps.appId, input.connectorId)
+        : undefined;
     return {
       ok: true,
-      text: `✅ Data connector ${label} is already ${before.state}. Nothing to do.`,
-      details: { phase: "noop", ...base },
+      text: [
+        `✅ Data connector ${label} is already ${before.state}. Nothing to do.`,
+        input.target === "live"
+          ? `If it has unpublished changes (for example from sdk upload), the public API cannot publish them: test the edit in Fin's connector editor and click "Set changes live"${editor ? ` (${editor})` : " (Settings → Data connectors → this connector)"}.`
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      details: { phase: "noop", ...base, ...(editor ? { editor } : {}) },
     };
   }
   if (input.target === "live" && !before.url) {
@@ -496,6 +508,18 @@ function nextAgentStep(
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+
+function safeConnectorUrl(
+  credential: FinCredential,
+  appId: string,
+  connectorId: string,
+): string | undefined {
+  try {
+    return finAdminConnectorUrl(credential.region, appId, connectorId);
+  } catch {
+    return undefined;
+  }
+}
 
 async function call(
   credential: FinCredential,

@@ -205,6 +205,57 @@ describe("uploadResource", () => {
   });
 });
 
+describe("upload to a connector that is already live", () => {
+  it("keeps the live version, reports unpublished changes, and names the exact publish step", async () => {
+    const run = vi.fn(async (_args: string[]) =>
+      cli(
+        JSON.stringify({
+          id: 77,
+          new_file_content: JSON.stringify({
+            ...CONNECTOR,
+            state: "live",
+            request: {
+              method: "GET",
+              url: 'https://api.example.com/status?email=<read attr="input.email" />',
+            },
+          }),
+        }),
+      ),
+    );
+    const result = await uploadResource(credential, deps(run), {
+      file: file("c.json", JSON.stringify(CONNECTOR)),
+      kind: "data_connector",
+      schemaPath: DC_SCHEMA,
+    });
+    // Not a failure: Fin saved the edit as unpublished changes on the live connector.
+    expect(result.ok).toBe(true);
+    expect(result.details).toMatchObject({
+      phase: "upload",
+      id: "77",
+      state: "live",
+      pending: true,
+    });
+    expect(result.text).toContain("unpublished changes");
+    expect(result.text).toContain("still serves the previous version");
+    // connector_state cannot publish pending changes on an already-live connector.
+    expect(result.text).not.toContain("operation='connector_state' connector_id='77' state='live'");
+    expect(result.text).toContain("Set changes live");
+    expect(result.text).toContain("settings/app-settings/data-connectors/77");
+  });
+
+  it("still fails closed when a guidance upload comes back live", async () => {
+    const run = vi.fn(async () =>
+      cli(JSON.stringify({ id: 9, new_file_content: "type: guidance\nid: 9\nstate: live\n" })),
+    );
+    const result = await uploadResource(credential, deps(run), {
+      file: file("g.yaml", GUIDANCE),
+      kind: "guidance",
+      schemaPath: GUIDANCE_SCHEMA,
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
 describe("data connector save verification", () => {
   it("fails closed when Fin's saved draft does not match the file", async () => {
     const run = vi.fn(async (_args: string[]) =>

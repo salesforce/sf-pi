@@ -53,6 +53,7 @@ export type SalesforceOperation =
   | "digital_experiences_enable"
   | "enhanced_email_enable"
   | "handoff_queue_create"
+  | "token_transfer"
   | "permissions_apply"
   | "connect"
   | "observe";
@@ -138,6 +139,10 @@ export async function runSalesforceSetup(
     return handoffQueueCreate(org, facts, request, read);
   }
   if (request.operation === "connect") return connect(facts, request, read);
+  if (request.operation === "token_transfer") {
+    // Routed by the service before an org adapter is built; never reached here.
+    return fail("token_transfer runs through the SF Fin service.", "internal");
+  }
   return permissionsApply(org, facts, request, username, read);
 }
 

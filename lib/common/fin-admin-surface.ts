@@ -43,6 +43,11 @@ export const FIN_ADMIN_PAGES = {
     path: "settings/app-settings/data-connectors",
     secret: false,
   },
+  "error-logs": {
+    label: "Error logs",
+    path: "settings/standalone/error-logs",
+    secret: false,
+  },
   "help-centers": {
     label: "All Help Centers",
     path: "settings/helpcenter/all",
@@ -115,6 +120,22 @@ export function finAdminPageUrl(
 ): string {
   if (!APP_ID_PATTERN.test(appId)) throw new Error("Invalid Fin app id.");
   return `https://${FIN_ADMIN_HOSTS[region]}/a/apps/${appId}/${FIN_ADMIN_PAGES[page].path}`;
+}
+
+/**
+ * Editor page for one data connector, where a live connector's saved
+ * changes are published ("Set changes live"). Fin's public API sets a
+ * connector's state but cannot publish changes saved on a connector that is
+ * already live, so that last step is a human click on this page.
+ */
+export function finAdminConnectorUrl(
+  region: FinAdminRegion,
+  appId: string,
+  connectorId: string,
+): string {
+  if (!APP_ID_PATTERN.test(appId)) throw new Error("Invalid Fin app id.");
+  if (!/^\d+$/u.test(connectorId)) throw new Error("Invalid data connector id.");
+  return `https://${FIN_ADMIN_HOSTS[region]}/a/apps/${appId}/${FIN_ADMIN_PAGES["data-connectors"].path}/${connectorId}`;
 }
 
 export function finAdminSignInUrl(region: FinAdminRegion): string {

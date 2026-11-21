@@ -23,6 +23,7 @@ import {
   type FinAdminPageId,
   type FinAdminRegion,
 } from "../../../lib/common/fin-admin-surface.ts";
+import { diagnoseFinError, errorsFromSnapshot } from "./error-logs.ts";
 import type { WorkspaceProfile } from "./workspaces.ts";
 
 /** Same shared session SF Browser uses; SF Browser stays self-contained. */
@@ -76,6 +77,10 @@ const PAGE_GUIDE: Record<FinAdminPageId, { useFor: string; read: string[] }> = {
   "data-connectors": {
     useFor: "Data connector drafts and their status",
     read: ["Draft", "Live", "Needs attention", "New"],
+  },
+  "error-logs": {
+    useFor: "Integration errors Fin hit in Salesforce, mapped to the SF Fin fix",
+    read: ["No API errors", "Webhook", "Conversation ID"],
   },
   "help-centers": {
     useFor: "Help Center sites and whether each is live",
@@ -248,6 +253,19 @@ async function visitPage(
     return fail("The page changed while it was being read; nothing was reported.", "page_changed");
   }
   const lines = summarizeAdminSnapshot(snapshot.stdout, PAGE_GUIDE[page].read);
+  if (page === "error-logs") {
+    // Error entries and Fin's empty state are static text and table cells,
+    // which an interactive-only snapshot leaves out; read the full tree too.
+    const full = await run(["snapshot", "-c"], { timeoutMs: READ_TIMEOUT_MS });
+    const fullLines =
+      full.code === 0
+        ? maskFinSecrets(full.stdout)
+            .split(/\r?\n/u)
+            .map((line) => line.trim().replace(/^- /u, ""))
+            .filter((line) => /^(?:cell|StaticText) "/u.test(line))
+        : [];
+    return errorLogsResult(profile, region, base, lines, full.code === 0 ? fullLines : lines);
+  }
   return {
     ok: true,
     text: [
@@ -357,6 +375,45 @@ function pageRendered(snapshot: string): boolean {
   if (!title) return false;
   const body = snapshot.slice(title.index + title[0].length);
   return /(?:heading "[^"]+" \[level=[2-4]|button "[^"]+"|link "[^"]+")/u.test(body);
+}
+
+/** Error logs read: each listed Salesforce error with the fix SF Fin owns. */
+function errorLogsResult(
+  profile: WorkspaceProfile,
+  region: FinAdminRegion,
+  base: Record<string, unknown>,
+  lines: string[],
+  content: string[],
+): AdminResult {
+  const header = `Error logs — workspace "${profile.name}" (${region}, app verified). Text masked.`;
+  const entries = errorsFromSnapshot(content);
+  if (entries.length === 0) {
+    const empty = content.some((line) => line.includes("No API errors"));
+    return {
+      ok: true,
+      text: [
+        header,
+        empty
+          ? "  ✅ No API errors. Fin clears an entry once its retry succeeds."
+          : "  No error entries were recognised on the page; open it to check.",
+      ].join("\n"),
+      details: { ...base, lines, errorCount: 0, diagnoses: [] },
+    };
+  }
+  const diagnoses = entries.map((entry) => diagnoseFinError(entry));
+  return {
+    ok: true,
+    text: [
+      header,
+      `  ${diagnoses.length} error${diagnoses.length === 1 ? "" : "s"}:`,
+      ...diagnoses.map(
+        (d) =>
+          `  - ${d.code}${d.object ? ` on ${d.object}` : ""}: ${d.advice}${d.fix ? ` → sf_fin action='salesforce' operation='${d.fix}'` : ""}`,
+      ),
+      "  Entries can hold record data: open one in Fin and use Copy all details only when needed.",
+    ].join("\n"),
+    details: { ...base, lines, errorCount: diagnoses.length, diagnoses },
+  };
 }
 
 function fail(text: string, code: string, extra: Record<string, unknown> = {}): AdminResult {

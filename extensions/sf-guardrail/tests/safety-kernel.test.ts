@@ -774,6 +774,7 @@ describe("Safety Kernel", () => {
       "digital_experiences_enable",
       "enhanced_email_enable",
       "handoff_queue_create",
+      "token_transfer",
       "connect",
     ]) {
       expect(await evaluate({ ...base, operation })).toBeUndefined();
@@ -830,6 +831,7 @@ describe("Safety Kernel", () => {
         "digital_experiences_enable",
         "enhanced_email_enable",
         "handoff_queue_create",
+        "token_transfer",
         "permissions_apply",
         "connect",
       ]) {
