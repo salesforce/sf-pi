@@ -21,6 +21,43 @@ describe("indexedHelpArticleUrl", () => {
     ).toBe(INDEXED);
   });
 
+  it("keeps a release-notes URL's own pasted release instead of the current one", () => {
+    // Release notes are versioned: the Winter notes stay the Winter notes.
+    expect(
+      indexedHelpArticleUrl(
+        "https://help.salesforce.com/s/articleView?id=release-notes.rn_sample.htm&release=262.0.0&type=5&language=en_US",
+        "264.0.0",
+      ),
+    ).toBe(
+      "https://help.salesforce.com/s/articleView?id=release-notes.rn_sample.htm&release=262.0.0&type=5",
+    );
+    // Without a pasted release there is no version to keep, so no refetch.
+    expect(
+      indexedHelpArticleUrl(
+        "https://help.salesforce.com/s/articleView?id=release-notes.rn_sample.htm&type=5",
+        "264.0.0",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("rewrites an explicit older release on a normal article to the current one", () => {
+    expect(
+      indexedHelpArticleUrl(
+        "https://help.salesforce.com/s/articleView?id=ai.sample_action_ref.htm&release=258.0.0&type=5",
+        "264.0.0",
+      ),
+    ).toBe(INDEXED);
+  });
+
+  it("decodes a percent-encoded article id and re-encodes it once", () => {
+    expect(
+      indexedHelpArticleUrl(
+        "https://help.salesforce.com/s/articleView?id=ai.sample%5Faction%5Fref.htm&type=5",
+        "264.0.0",
+      ),
+    ).toBe(INDEXED);
+  });
+
   it("returns undefined for an already indexed URL, a non-Help URL, or a non-release value", () => {
     expect(indexedHelpArticleUrl(INDEXED, "264.0.0")).toBeUndefined();
     expect(indexedHelpArticleUrl("https://developer.salesforce.com/docs/x", "264.0.0")).toBe(

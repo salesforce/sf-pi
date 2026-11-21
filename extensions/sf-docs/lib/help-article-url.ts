@@ -28,13 +28,24 @@ function helpArticleUrl(value: string): URL | undefined {
   return url.searchParams.get("id")?.trim() ? url : undefined;
 }
 
+function isReleaseNotesId(id: string | null | undefined): boolean {
+  return Boolean(id?.trim().toLowerCase().startsWith("release-notes."));
+}
+
 /**
  * The indexed form of a Help article URL for `release`, or undefined when the
  * input isn't a Help article URL or is already in that exact form.
+ *
+ * Release-notes pages are versioned: a pasted release-notes URL keeps its own
+ * `release=`, and without one there is no version to refetch.
  */
 export function indexedHelpArticleUrl(value: string, release: string): string | undefined {
   const url = helpArticleUrl(value);
-  if (!url || !RELEASE_PATTERN.test(release)) return undefined;
+  if (!url) return undefined;
+  if (isReleaseNotesId(url.searchParams.get("id"))) {
+    release = url.searchParams.get("release")?.trim() ?? "";
+  }
+  if (!RELEASE_PATTERN.test(release)) return undefined;
   const id = url.searchParams.get("id")?.trim() ?? "";
   const type = url.searchParams.get("type")?.trim() || "5";
   const indexed = `https://${HELP_HOST}/s/articleView?id=${encodeURIComponent(id)}&release=${release}&type=${encodeURIComponent(type)}`;
@@ -52,7 +63,7 @@ export function releaseFromSearchResults(
   const counts = new Map<string, number>();
   for (const result of results ?? []) {
     const url = result.url ? helpArticleUrl(result.url) : undefined;
-    if (!url || url.searchParams.get("id")?.toLowerCase().startsWith("release-notes.")) continue;
+    if (!url || isReleaseNotesId(url.searchParams.get("id"))) continue;
     const release = url.searchParams.get("release")?.trim();
     if (release && RELEASE_PATTERN.test(release)) {
       counts.set(release, (counts.get(release) ?? 0) + 1);

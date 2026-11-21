@@ -608,6 +608,59 @@ describe("sf_docs deterministic ground workflow", () => {
     });
   });
 
+  it("refetches a pasted release-notes URL in its own release, not the current one", async () => {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const requestedUrl =
+      "https://help.salesforce.com/s/articleView?id=release-notes.rn_sample.htm&release=262.0.0&type=5&language=en_US";
+    const sameReleaseUrl =
+      "https://help.salesforce.com/s/articleView?id=release-notes.rn_sample.htm&release=262.0.0&type=5";
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      const name = String(body.params.name);
+      const args = body.params.arguments as Record<string, unknown>;
+      calls.push({ name, args });
+      if (name === "list") return docsResponse(catalog());
+      if (name === "fetch" && (args.urls as string[] | undefined)?.[0] === requestedUrl) {
+        return docsResponse({ documents: [{ url: requestedUrl, error: "not_found" }] });
+      }
+      if (name === "search") {
+        return docsResponse({
+          results: [
+            {
+              id: "unrelated",
+              title: "Unrelated Article",
+              url: "https://help.salesforce.com/s/articleView?id=ind.unrelated.htm&release=264.0.0&type=5",
+            },
+          ],
+          totalCount: 1,
+        });
+      }
+      if (name === "fetch" && (args.urls as string[] | undefined)?.[0] === sameReleaseUrl) {
+        return docsResponse({
+          documents: [
+            {
+              id: "rn",
+              title: "Sample Release Notes",
+              url: sameReleaseUrl,
+              content: "# Sample Release Notes\n\nRelease 262 evidence.",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected call: ${name} ${JSON.stringify(args.urls)}`);
+    }) as unknown as typeof fetch;
+    const tool = await loadTool(fetchMock);
+
+    const result = await execute(tool, { action: "ground", query: requestedUrl });
+
+    expect(calls.map((call) => call.name)).toEqual(["list", "fetch", "search", "fetch"]);
+    expect(calls[3]?.args).toMatchObject({ urls: [sameReleaseUrl] });
+    expect(result.details).toMatchObject({
+      ok: true,
+      resolution: { method: "indexed_help_url", resolvedUrl: sameReleaseUrl },
+    });
+  });
+
   it("does not refetch when the URL is not a Help article or search carries no release", async () => {
     const calls: string[] = [];
     const requestedUrl =
