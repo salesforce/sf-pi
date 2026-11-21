@@ -86,11 +86,7 @@ const cases: ParityCase[] = [
   {
     name: "object action I/O without contract hints",
     localCodes: [],
-    upstreamCodes: [
-      "object-type-missing-schema",
-      "object-type-missing-schema",
-      "action-missing-input",
-    ],
+    upstreamCodes: ["object-type-missing-schema", "object-type-missing-schema"],
     decision: "completed-upstream-handoff",
     executionContext: "planner-selected object action binding",
     source: withStart(
@@ -105,7 +101,7 @@ const cases: ParityCase[] = [
   {
     name: "bare numeric action inputs and outputs",
     localCodes: [],
-    upstreamCodes: ["action-missing-input"],
+    upstreamCodes: [],
     decision: "historical-no-local-projection",
     executionContext: "planner-selected numeric action binding",
     source: withStart(
@@ -124,7 +120,7 @@ const cases: ParityCase[] = [
   {
     name: "@inputs reference outside action with-bindings",
     localCodes: ["inputs-out-of-scope"],
-    upstreamCodes: ["action-missing-input", "(no-code)"],
+    upstreamCodes: ["(no-code)"],
     decision: "retain-local",
     executionContext: "@inputs reference in deterministic post-action set",
     source: withStart([

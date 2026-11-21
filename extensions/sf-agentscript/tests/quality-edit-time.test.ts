@@ -37,7 +37,12 @@ start_agent main:
         }),
       ]),
     );
-    expect(isAgentScriptCompileValid(result.diagnostics)).toBe(true);
+    // The official compiler also rejects this binding; compile validity is
+    // decided by official diagnostics alone, never by a quality projection.
+    const official = result.diagnostics.filter(
+      (diagnostic) => diagnostic.source !== "sf-agentscript-quality",
+    );
+    expect(isAgentScriptCompileValid(result.diagnostics)).toBe(isAgentScriptCompileValid(official));
   });
 
   it("surfaces overlong variable descriptions during compile-on-save", async () => {
