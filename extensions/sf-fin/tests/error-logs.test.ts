@@ -71,34 +71,169 @@ describe("error-logs admin page", () => {
     expect(result.text).toContain("No API errors");
   });
 
-  it("diagnoses each listed Salesforce error with the fix SF Fin owns", async () => {
+  it("opens each row's details and diagnoses the fix SF Fin owns, grouped by code", async () => {
+    const LIST = [
+      '- heading "Settings Error logs" [level=1, ref=e1]',
+      '- button "Webhook" [ref=e2]',
+      '- cell "10:00 – January 2, 2026" [ref=e10]',
+      '- cell "example-org" [ref=e11]',
+      '- cell "Invalid request." [ref=e12]',
+      '- cell "09:59 – January 2, 2026" [ref=e13]',
+      '- cell "example-org" [ref=e14]',
+      '- cell "Invalid request." [ref=e15]',
+      '- cell "09:58 – January 2, 2026" [ref=e16]',
+      '- cell "example-org" [ref=e17]',
+      '- cell "Invalid request." [ref=e18]',
+    ].join("\n");
+    const details: Record<string, [string, string]> = {
+      e12: ["INVALID_FIELD", "CaseFeed"],
+      e15: ["INVALID_FIELD", "CaseFeed"],
+      e18: ["INVALID_TYPE", "Emails"],
+    };
+    let open: string | undefined;
+    const run: AdminRunner = async (args) => {
+      if (args[0] === "open") return { stdout: "", stderr: "", code: 0 };
+      if (args[0] === "get")
+        return {
+          stdout: `https://app.intercom.com/a/apps/${APP}/settings/standalone/error-logs\n`,
+          stderr: "",
+          code: 0,
+        };
+      if (args[0] === "click") {
+        open = args[1]?.replace("@", "");
+        return { stdout: "", stderr: "", code: 0 };
+      }
+      if (args[0] === "press") {
+        open = undefined;
+        return { stdout: "", stderr: "", code: 0 };
+      }
+      if (args[0] === "snapshot") {
+        const d = open ? details[open] : undefined;
+        const out = d
+          ? `${LIST}\n- dialog "Error details"\n- cell "Error code" [ref=e90]\n- cell "${d[0]}" [ref=e91]\n- cell "Object type" [ref=e92]\n- cell "${d[1]}" [ref=e93]`
+          : LIST;
+        return { stdout: out, stderr: "", code: 0 };
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
     const result = await runAdmin(
       { operation: "read", page: "error-logs" },
       BOUND,
-      runner(
-        [
-          '- heading "Settings Error logs" [level=1, ref=e1]',
-          '- button "Webhook" [ref=e2]',
-          '- cell "INVALID_FIELD" [ref=e3]',
-          '- cell "CaseFeed" [ref=e4]',
-          '- cell "INVALID_TYPE" [ref=e5]',
-          '- cell "Emails" [ref=e6]',
-          '- cell "UNABLE_TO_LOCK_ROW" [ref=e7]',
-          '- cell "Case" [ref=e8]',
-        ].join("\n"),
-      ),
+      run,
       async () => undefined,
       SIGNED_IN,
     );
     expect(result.ok).toBe(true);
-    const diagnoses = result.details.diagnoses as Array<{ code: string; fix?: string }>;
-    expect(diagnoses.map((d) => [d.code, d.fix])).toEqual([
-      ["INVALID_FIELD", "digital_experiences_enable"],
-      ["INVALID_TYPE", "enhanced_email_enable"],
-      ["UNABLE_TO_LOCK_ROW", undefined],
+    expect(result.details.errorCount).toBe(3);
+    const diagnoses = result.details.diagnoses as Array<{
+      code: string;
+      fix?: string;
+      count: number;
+    }>;
+    expect(diagnoses.map((d) => [d.code, d.fix, d.count])).toEqual([
+      ["INVALID_FIELD", "digital_experiences_enable", 2],
+      ["INVALID_TYPE", "enhanced_email_enable", 1],
     ]);
+    expect(result.text).toContain("×2");
     expect(result.text).toContain("digital_experiences_enable");
-    expect(result.text).toContain("Fin retries");
+  });
+});
+
+describe("Fin's real Error logs layout (observed live)", () => {
+  // List rows carry only a date, the org, and a generic message; the code and
+  // object appear in each row's "Error details" dialog as label/value cells.
+  const LIST = [
+    '- heading "Settings Error logs" [level=1, ref=e1]',
+    '- button "Webhook" [expanded=false, ref=e2]',
+    '- textbox "Conversation ID" [ref=e3]',
+    '- columnheader "Date and time (EST)" [ref=e4]',
+    '- columnheader "Organization" [ref=e5]',
+    '- columnheader "Error" [ref=e6]',
+    '- cell "10:00 – January 2, 2026" [ref=e10]',
+    '- cell "example-org" [ref=e11]',
+    '- cell "Invalid request. There was a problem with the payload or parameters." [ref=e12]',
+    '- cell "09:59 – January 2, 2026" [ref=e13]',
+    '- cell "example-org" [ref=e14]',
+    '- cell "Invalid request. There was a problem with the payload or parameters." [ref=e15]',
+  ].join("\n");
+  const detail = (code: string, object: string) =>
+    [
+      LIST,
+      '- dialog "Error details"',
+      '- heading "Error details" [level=2, ref=e20]',
+      '- button "Close" [ref=e21]',
+      '- cell "Organization" [ref=e22]',
+      '- cell "example-org" [ref=e23]',
+      '- cell "Error code" [ref=e24]',
+      `- cell "${code}" [ref=e25]`,
+      '- cell "System error" [ref=e26]',
+      '- cell "A validation rule rejected the update." [ref=e27]',
+      '- cell "Request method" [ref=e28]',
+      '- cell "PATCH" [ref=e29]',
+      '- cell "Status code" [ref=e30]',
+      '- cell "400" [ref=e31]',
+      '- cell "Product feature" [ref=e32]',
+      '- cell "Salesforce Cases" [ref=e33]',
+      '- cell "Object type" [ref=e34]',
+      `- cell "${object}" [ref=e35]`,
+    ].join("\n");
+
+  it("opens each row's details and diagnoses the code and object from them", async () => {
+    const { readErrorLogEntries } = await import("../lib/error-logs.ts");
+    const opened: string[] = [];
+    let current = LIST;
+    const codes = ["FIELD_CUSTOM_VALIDATION_EXCEPTION", "INVALID_TYPE"];
+    const objects = ["Case", "Emails"];
+    const browser = {
+      snapshot: async () => current,
+      click: async (ref: string) => {
+        opened.push(ref);
+        const i = opened.length - 1;
+        current = detail(codes[i]!, objects[i]!);
+      },
+      close: async () => {
+        current = LIST;
+      },
+    };
+    const entries = await readErrorLogEntries(browser, { max: 5 });
+    expect(opened).toEqual(["e12", "e15"]);
+    expect(entries).toEqual([
+      expect.objectContaining({
+        code: "FIELD_CUSTOM_VALIDATION_EXCEPTION",
+        object: "Case",
+        when: "10:00 – January 2, 2026",
+        feature: "Salesforce Cases",
+        status: "400",
+      }),
+      expect.objectContaining({ code: "INVALID_TYPE", object: "Emails" }),
+    ]);
+    // System error text can carry record data; it is never part of an entry.
+    expect(JSON.stringify(entries)).not.toContain("validation rule rejected");
+  });
+
+  it("counts rows even when a details dialog cannot be read", async () => {
+    const { readErrorLogEntries } = await import("../lib/error-logs.ts");
+    const browser = {
+      snapshot: async () => LIST,
+      click: async () => undefined,
+      close: async () => undefined,
+    };
+    const entries = await readErrorLogEntries(browser, { max: 5 });
+    expect(entries).toHaveLength(2);
+    expect(entries[0]?.code).toBeUndefined();
+    expect(entries[0]?.message).toContain("Invalid request");
+  });
+
+  it("stops at max rows", async () => {
+    const { readErrorLogEntries } = await import("../lib/error-logs.ts");
+    const clicks: string[] = [];
+    const browser = {
+      snapshot: async () => LIST,
+      click: async (ref: string) => void clicks.push(ref),
+      close: async () => undefined,
+    };
+    await readErrorLogEntries(browser, { max: 1 });
+    expect(clicks).toEqual(["e12"]);
   });
 });
 

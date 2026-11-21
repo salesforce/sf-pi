@@ -121,6 +121,8 @@ export async function runTokenTransfer(
 
   const steps: string[] = [];
   const wasOn = (await org.restSecretSetting()) === true;
+  // True once SF Fin has *asked* to turn the setting on, even if the request
+  // failed or timed out: a queued deploy can still apply it later.
   let turnedOn = false;
   let saved = false;
   let test: { ok: boolean; message: string } | undefined;
@@ -129,9 +131,9 @@ export async function runTokenTransfer(
     if (wasOn) {
       steps.push("ℹ️ REST access to consumer secrets was already on; SF Fin leaves it on.");
     } else {
+      turnedOn = true;
       const on = await org.setRestSecretSetting(true);
       if (!on.ok) throw new Error(`Could not turn on REST access to consumer secrets: ${on.error}`);
-      turnedOn = true;
       steps.push("✅ Turned on REST access to consumer secrets (temporarily).");
     }
     const credentials = await org.readCredentials(app.id);
@@ -150,9 +152,12 @@ export async function runTokenTransfer(
     test = await fin.testRequest();
     if (!test.ok) throw new Error(`Fin's Test request did not pass: ${test.message}`);
     steps.push(`✅ Fin Test request: ${test.message}`);
-    saved = await fin.save();
-    if (!saved) throw new Error("Fin did not save the token.");
-    steps.push(`✅ Saved Fin auth token "${input.tokenName}".`);
+    await fin.save();
+    // Fin lands on the new token's own page after saving, so the page alone
+    // proves nothing; the token list is the evidence.
+    saved = (await fin.listTokenNames()).includes(input.tokenName);
+    if (!saved) throw new Error(`"${input.tokenName}" is not in Fin's token list after Save.`);
+    steps.push(`✅ Saved Fin auth token "${input.tokenName}" (verified in Fin's token list).`);
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   } finally {
@@ -162,8 +167,10 @@ export async function runTokenTransfer(
   let settingRestored = !turnedOn;
   if (turnedOn) {
     const off = await org.setRestSecretSetting(false);
-    const stillReadable = off.ok ? (await org.readCredentials(app.id)) !== undefined : true;
-    settingRestored = off.ok && !stillReadable;
+    // Verify by what the org does now, not by the deploy's own report.
+    const stillOn = (await org.restSecretSetting().catch(() => undefined)) !== false;
+    const stillReadable = (await org.readCredentials(app.id).catch(() => undefined)) !== undefined;
+    settingRestored = off.ok && !stillOn && !stillReadable;
     steps.push(
       settingRestored
         ? "✅ Turned REST access to consumer secrets off again; the API no longer returns the secret."
