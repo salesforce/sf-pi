@@ -224,7 +224,7 @@ function normalizeAssertionEvaluator(out: Record<string, unknown>, evalType: str
       delete out[src];
     }
   }
-  if (typeof out.operator === "string") out.operator = out.operator.toLowerCase();
+  if (typeof out.operator === "string") out.operator = out.operator.trim().toLowerCase();
   assertAllowedOperator(out, evalType);
   // string_assertion is the only live-proven assertion that accepts metric_name.
   if (evalType === "evaluator.string_assertion" && !("metric_name" in out)) {
@@ -249,9 +249,21 @@ function assertAllowedOperator(out: Record<string, unknown>, evalType: string): 
   );
 }
 
+/** Assertion types the live API accepts only with the `evaluator.` prefix. */
+const BARE_ASSERTION_TYPES = new Set(
+  [...ASSERTION_EVALUATORS].map((type) => type.slice("evaluator.".length)),
+);
+
 export function normalizeEvaluatorFields(steps: EvalStep[]): EvalStep[] {
   return steps.map((step) => {
     const evalType = step.type ?? "";
+    if (BARE_ASSERTION_TYPES.has(evalType)) {
+      // The live API rejects the bare tag with HTTP 422, failing the batch.
+      const stepId = typeof step.id === "string" && step.id ? ` (step "${step.id}")` : "";
+      throw new Error(
+        `"${evalType}"${stepId} is not an Evaluation API step type. Use "evaluator.${evalType}".`,
+      );
+    }
     if (!evalType.startsWith("evaluator.")) return step;
 
     if (evalType === "evaluator.json_assertion") {

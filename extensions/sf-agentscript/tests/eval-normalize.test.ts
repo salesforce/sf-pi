@@ -257,6 +257,31 @@ describe("normalizeEvaluatorFields", () => {
     );
   });
 
+  test("trims surrounding whitespace from an operator, like the case fold", () => {
+    const [step] = normalizeEvaluatorFields([
+      {
+        type: "evaluator.string_assertion",
+        id: "a",
+        actual: "x",
+        expected: "y",
+        operator: "  Equals ",
+      },
+    ]);
+    expect(step.operator).toBe("equals");
+  });
+
+  test("rejects a bare assertion type before a network call, naming the evaluator form", () => {
+    // The live API accepts only the evaluator.-prefixed tag; a bare
+    // list_assertion fails the whole batch with HTTP 422.
+    for (const type of ["string_assertion", "numeric_assertion", "list_assertion"]) {
+      expect(() =>
+        normalizeEvaluatorFields([{ type, id: "bare", actual: "x", expected: "y" }]),
+      ).toThrow(
+        `"${type}" (step "bare") is not an Evaluation API step type. Use "evaluator.${type}".`,
+      );
+    }
+  });
+
   test("leaves a missing operator for the API to report", () => {
     const out = normalizeEvaluatorFields([
       { type: "evaluator.list_assertion", id: "l", actual: "x", expected: ["y"] },
