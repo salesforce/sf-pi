@@ -350,7 +350,13 @@ describe("simulateProcedure", () => {
                 ],
               },
             },
-            { assertion_type: "outcome", global: { status: "failed" } },
+            {
+              assertion_type: "outcome",
+              global: {
+                status: "failed",
+                reason: "Customer aborted conversation: Fin kept asking for the same number.",
+              },
+            },
           ],
         },
       ],
@@ -400,7 +406,10 @@ describe("simulateProcedure", () => {
     expect(result.text).toContain("1/2 passed");
     expect(result.text).toContain("Generated 2 simulations");
     expect(result.text).toContain('agent_response "reset" failed — Agent never mentioned a reset.');
-    expect(result.text).toContain("outcome failed");
+    // Fin explains an outcome failure in global.reason; surface it.
+    expect(result.text).toContain(
+      "outcome failed — Customer aborted conversation: Fin kept asking for the same number.",
+    );
     // Runs are structured in details so failures can be read without re-running.
     expect((result.details.runs as Array<{ name: string }>).map((r) => r.name)).toEqual([
       "Happy path",

@@ -122,6 +122,25 @@ describe("listAuthTokens", () => {
   });
 });
 
+describe("listAuthTokens with an unreadable connector", () => {
+  it("says a connector could not be read instead of claiming no connector uses the token", async () => {
+    const run = vi.fn(async (args: string[]) => {
+      if (args[0] === "auth-tokens")
+        return cli(
+          JSON.stringify({ data: [{ id: "11", name: "Example OAuth", token_type: "oauth" }] }),
+        );
+      if (args[0] === "data-connectors" && args[1] === "list")
+        return cli(JSON.stringify({ data: [{ id: "77", name: "Lookup", state: "live" }] }));
+      if (args[0] === "data-connectors" && args[1] === "get") return cli("", 1);
+      return cli("{}", 1);
+    });
+    const result = await listAuthTokens(credential, deps(run));
+    expect(result.text).not.toContain("used by no connector");
+    expect(result.text).toContain("could not read Lookup (77)");
+    expect(result.details.unreadConnectors).toEqual(["Lookup (77)"]);
+  });
+});
+
 describe("setConnectorState", () => {
   function stateRun(initial: string, after = initial, tokens: string[] = ["11"]) {
     let state = initial;
@@ -342,5 +361,23 @@ describe("agentStatus", () => {
     // fin_agent_api procedures are not run by channel workflows.
     expect(result.text).toContain("Fin Agent API");
     expect(result.text).toContain("Next");
+  });
+
+  it("reports an unreadable connector's token as unknown, not missing", async () => {
+    const procedure = `id: 4242\nname: Order status\nstate: paused\nprocedure:\n  main:\n  - Look it up with <use action="Find order" />\n`;
+    const run = vi.fn(async (args: string[]) => {
+      const key = args.slice(0, 3).join(" ");
+      if (key === "fin procedures get") return cli(procedure);
+      if (key === "fin simulations list") return cli("tests: []\n");
+      if (args[0] === "data-connectors" && args[1] === "list")
+        return cli(JSON.stringify({ data: [{ id: "77", name: "Find order", state: "live" }] }));
+      if (args[0] === "data-connectors" && args[1] === "get") return cli("", 1);
+      if (args[0] === "auth-tokens") return cli(JSON.stringify({ data: [] }));
+      if (key === "fin workflows list") return cli("[]");
+      return cli("{}", 1);
+    });
+    const result = await agentStatus(credential, deps(run), { procedureId: "4242" });
+    expect(result.text).not.toContain("no auth token");
+    expect(result.text).toContain("token unknown (could not read the connector)");
   });
 });
