@@ -166,7 +166,7 @@
     "string-argv": "^0.4.0",
     "typebox": "^1.4.7",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.1",
+    "typescript-eslint": "^8.73.0",
     "vite": "^8.3.8",
     "vitepress": "2.0.0-alpha.21",
     "vitest": "^5.1.1"
