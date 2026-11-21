@@ -390,6 +390,29 @@ describe("handleDefaults unlink", () => {
   });
 });
 
+describe("handleDefaults status", () => {
+  it("reports the shared global clone as wired in the project it is enabled in", async () => {
+    const home = makeHome();
+    process.env.HOME = home;
+    const cwd = makeCwd();
+    await installDefaults({ scope: "project", cwd, spawn: fakeGit });
+    let body = "";
+
+    await handleDefaults(
+      { cwd, isProjectTrusted: () => true, ui: { notify: () => undefined } } as never,
+      { action: "status", scope: "project", target: undefined, deleteOnDisk: false },
+      async (_title, text) => {
+        body = text;
+      },
+    );
+
+    const project = body.slice(body.indexOf("PROJECT"), body.indexOf("Commands:"));
+    expect(project).not.toContain("not installed");
+    expect(project).toContain("managed · wired");
+    expect(project).toContain(path.join(home, ".pi", "agent", "sf-skills", "forcedotcom"));
+  });
+});
+
 describe("legacy afv-library detection", () => {
   it("warns with explicit settings scope and does not recommend deleting an absent clone", () => {
     const home = makeHome();

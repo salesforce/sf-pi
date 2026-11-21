@@ -492,7 +492,9 @@ function findStaleSkillPaths(settings: Record<string, unknown>, home: string): S
   for (const raw of skills) {
     if (typeof raw !== "string") continue;
     const resolved = resolvePath(raw, home);
-    if (resolved && !isDirectory(resolved)) stale.push({ raw, resolved });
+    // Pi's skills setting holds skill files or directories, so an entry is
+    // stale only when nothing exists at its path.
+    if (resolved && !existsSync(resolved)) stale.push({ raw, resolved });
   }
   return stale;
 }

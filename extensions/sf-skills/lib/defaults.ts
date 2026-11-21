@@ -10,7 +10,8 @@
  * that lifecycle:
  *
  *   install : git clone the repo into a managed dir + wire it into settings
- *   update  : git pull --ff-only on managed dirs only (sentinel-gated)
+ *   update  : fetch the upstream tip at depth 1 and reset the shared global
+ *             clone to it (sentinel-gated; refuses hand-edited tracked files)
  *   link    : wire a user-owned checkout (e.g. ~/work/sf-skills) into settings
  *   unlink  : remove a wired entry; --delete only valid on managed dirs
  *   status  : report every known managed/linked checkout
@@ -349,6 +350,12 @@ export function rewireCloneToEffective(cwd?: string): void {
   }
 }
 
+/** Is the managed effective skill tree wired in the given scope's settings? */
+export function isEffectiveTreeWired(scope: SkillSourceScope, cwd?: string): boolean {
+  if (scope === "project" && !cwd) return false;
+  return isManagedWired(scope, cwd, managedEffectiveSkillsPath());
+}
+
 /** Is the managed skills dir wired in the given scope's settings? */
 function isManagedWired(
   scope: SkillSourceScope,
@@ -399,11 +406,14 @@ export interface UpdateOptions {
 }
 
 /**
- * Fast-forward update on a managed clone. Refuses to touch a non-managed
- * checkout (no sentinel) — those are the user's working tree.
+ * Update the managed clone. Refuses to touch a non-managed checkout (no
+ * sentinel) — those are the user's working tree.
+ *
+ * Like install, the content is always the one GLOBAL clone shared across
+ * projects; `scope` only chooses which settings get the effective-tree wiring.
  */
 export async function updateDefaults(options: UpdateOptions): Promise<UpdateResult> {
-  const clone = inspectManagedClone(options.scope, options.cwd);
+  const clone = inspectManagedClone("global");
   if (!clone.exists) {
     return {
       ok: false,
@@ -420,10 +430,7 @@ export async function updateDefaults(options: UpdateOptions): Promise<UpdateResu
       output: "",
     };
   }
-  const result = await runGit(["pull", "--ff-only"], {
-    cwd: clone.rootPath,
-    spawn: options.spawn,
-  });
+  const result = await moveCloneToUpstream(clone.rootPath, options.spawn);
   if (result.success) {
     syncEffectiveSkills(clone.skillsPath);
     updateSkillSources({
@@ -437,9 +444,54 @@ export async function updateDefaults(options: UpdateOptions): Promise<UpdateResu
     ok: result.success,
     clone: { ...inspectManagedClone("global"), scope: options.scope },
     message: result.success
-      ? "Pulled latest forcedotcom/sf-skills and restamped the effective skill tree."
-      : `git pull failed: ${result.stderr || result.stdout || "unknown error"}`,
+      ? "Updated forcedotcom/sf-skills to the latest upstream and restamped the effective skill tree."
+      : (result.refusal ??
+        `git update failed: ${result.stderr || result.stdout || "unknown error"}`),
     output: `${result.stdout}${result.stderr ? `\n${result.stderr}` : ""}`,
+  };
+}
+
+/**
+ * Move a managed clone to the tip of its upstream branch.
+ *
+ * The clone is shallow (`clone --depth 1`) and hands-off: per-user changes
+ * live in the effective tree. A fast-forward pull fails as soon as upstream
+ * rewrites history, so fetch the branch tip at depth 1 and reset to it. Hand
+ * edits to tracked files are never discarded silently: the update refuses and
+ * names them. Untracked files, such as the sentinel, are left alone.
+ */
+async function moveCloneToUpstream(
+  rootPath: string,
+  spawn?: SpawnFn,
+): Promise<SpawnResult & { refusal?: string }> {
+  const status = await runGit(["status", "--porcelain", "--untracked-files=no"], {
+    cwd: rootPath,
+    spawn,
+  });
+  if (!status.success) return status;
+  const edited = status.stdout
+    .split(/\r?\n/u)
+    .map((line) => line.slice(3).trim())
+    .filter(Boolean);
+  if (edited.length > 0) {
+    return {
+      ...status,
+      success: false,
+      refusal:
+        `Refusing to update ${rootPath}: it has local changes to ${edited.join(", ")}. ` +
+        "The managed clone is replaced on update; per-user changes belong in the effective tree. " +
+        "Revert the changes (git checkout -- .) and run the update again.",
+    };
+  }
+  const branch = await runGit(["rev-parse", "--abbrev-ref", "HEAD"], { cwd: rootPath, spawn });
+  const name = branch.success && branch.stdout.trim() !== "HEAD" ? branch.stdout.trim() : "main";
+  const fetched = await runGit(["fetch", "--depth", "1", "origin", name], { cwd: rootPath, spawn });
+  if (!fetched.success) return fetched;
+  const reset = await runGit(["reset", "--hard", "FETCH_HEAD"], { cwd: rootPath, spawn });
+  return {
+    ...reset,
+    stdout: `${fetched.stdout}${reset.stdout}`,
+    stderr: `${fetched.stderr}${reset.stderr}`,
   };
 }
 

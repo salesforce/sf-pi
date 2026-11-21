@@ -54,6 +54,12 @@ export interface CatalogSourceInput {
   gate: "seen" | "off";
   /** True for `~/.pi/agent/skills`, `.pi/skills`, `.agents/skills` roots. */
   autoDefault: boolean;
+  /**
+   * Set on a managed clone whose effective tree is wired: the id of the
+   * effective-tree source stamped from it. Its skills are that tree's origin,
+   * not competing copies, so they stay in the catalog but out of conflicts.
+   */
+  originOf?: string;
   skills: ScannedSkill[];
 }
 
@@ -204,7 +210,8 @@ export function buildSkillCatalog(input: SkillCatalogInput): SkillCatalog {
   }
   const collisionLoserPaths = new Set(input.collisions.map((c) => norm(c.loserPath)));
 
-  const isParticipant = (copy: RawCopy): boolean => isSeen(copy) || collisionPaths.has(copy.key);
+  const isParticipant = (copy: RawCopy): boolean =>
+    !copy.source?.originOf && (isSeen(copy) || collisionPaths.has(copy.key));
 
   // 2. Which names have at least one loaded/winning copy (for shadow detection)?
   const loadedNames = new Set<string>();

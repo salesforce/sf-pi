@@ -82,6 +82,33 @@ describe("runDoctorDiagnostics", () => {
   );
 
   it(
+    "keeps existing SKILL.md file entries, which Pi accepts, and prunes only missing paths",
+    () => {
+      const home = makeHome();
+      const cwd = mkdtempSync(path.join(tmpdir(), "sf-pi-doctor-cwd-"));
+      tempDirs.push(cwd);
+      // Pi's skills setting holds skill files or directories; SF Skills writes
+      // per-file entries when it rescopes or disables one skill of a directory.
+      writeSkill(path.join(home, "library"), "sf-apex");
+      writeSettings(home, {
+        skills: ["~/library/sf-apex/SKILL.md", "~/library/missing/SKILL.md", "~/library"],
+      });
+
+      const report = runDoctorDiagnostics({ cwd, home });
+      expect(report.staleSkillPaths.map((entry) => entry.raw)).toEqual([
+        "~/library/missing/SKILL.md",
+      ]);
+
+      applyDoctorFixes({ fixStaleSkillPaths: true, home, cwd });
+      const settings = JSON.parse(
+        readFileSync(path.join(home, ".pi", "agent", "settings.json"), "utf8"),
+      ) as { skills: string[] };
+      expect(settings.skills).toEqual(["~/library/sf-apex/SKILL.md", "~/library"]);
+    },
+    DOCTOR_TEST_TIMEOUT_MS,
+  );
+
+  it(
     "accepts Pi's header-only startup mode without warning about the overlay",
     () => {
       const home = makeHome();
