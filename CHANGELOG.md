@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.363.0](https://github.com/salesforce/sf-pi/compare/v0.362.2...v0.363.0) (2026-11-21)
+
+
+### Features
+
+* **sf-fin:** create a Case handoff queue for Fin (handoff_queue_create) ([#953](https://github.com/salesforce/sf-pi/issues/953)) ([c5d0f2c](https://github.com/salesforce/sf-pi/commit/c5d0f2c9032d96b0b35bc045db14da4a1cb31413))
+
 ## [0.362.2](https://github.com/salesforce/sf-pi/compare/v0.362.1...v0.362.2) (2026-11-21)
 
 
