@@ -295,6 +295,39 @@ subagent gather:
     );
   });
 
+  test("accepts additional_configs in a nested voice block (issue #919)", async () => {
+    // additional_configs is shared by the legacy and nested voice formats, so
+    // a nested block that sets it is not mixing formats.
+    const nested = await checkAgentScriptSource(`${HEAD}modality voice:
+  outbound:
+    persona_id: "example_persona"
+    model:
+      id: "eleven_flash_v2"
+  additional_configs:
+    endpointing_config:
+      max_wait_time_ms: 1000
+start_agent main:
+  description: "Main"
+`);
+    expect(nested.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain(
+      "voice-version-mixing",
+    );
+    expect(isAgentScriptCompileValid(nested.diagnostics)).toBe(true);
+
+    // Mixing a legacy field with a nested one is still a compile error.
+    const mixed = await checkAgentScriptSource(`${HEAD}modality voice:
+  voice_id: "example_persona"
+  outbound:
+    persona_id: "example_persona"
+start_agent main:
+  description: "Main"
+`);
+    expect(mixed.diagnostics.map((diagnostic) => diagnostic.code)).toContain(
+      "voice-version-mixing",
+    );
+    expect(isAgentScriptCompileValid(mixed.diagnostics)).toBe(false);
+  });
+
   test("accepts else-if syntax through sf-pi's lazy package adapter", async () => {
     const result = await checkAgentScriptSource(`${HEAD}variables:
   route: mutable string = "a"
