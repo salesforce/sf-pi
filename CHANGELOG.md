@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.365.0](https://github.com/salesforce/sf-pi/compare/v0.364.5...v0.365.0) (2026-11-21)
+
+
+### Features
+
+* **runtime:** audit Pi 1.6.0 and treat component render output as read-only ([#970](https://github.com/salesforce/sf-pi/issues/970)) ([4028ecb](https://github.com/salesforce/sf-pi/commit/4028ecba7e0871c1452eb9359eafcbf2d765e17e))
+
 ## [0.364.5](https://github.com/salesforce/sf-pi/compare/v0.364.4...v0.364.5) (2026-11-21)
 
 
