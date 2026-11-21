@@ -126,9 +126,11 @@ Slack id or email. Headless low-confidence matches fail with candidates.
 
 **Canvas read cannot find content:** Verify the canvas id and access. A read
 without criteria needs `files:read`: it calls `files.info` and downloads the
-canvas body from `url_private_download` (sent only to `files.slack.com`). Section
-lookup needs `canvases:read` and returns section IDs only, never text; use the
-IDs for targeted edits.
+canvas body from `url_private_download` (sent only to `files.slack.com`). The
+body is returned as markdown with headings, lists, tables, links, and code
+blocks; a download that is not the canvas (for example a sign-in page) is
+reported as not available. Section lookup needs `canvases:read` and returns
+section IDs only, never text; use the IDs for targeted edits.
 
 **Scheduled delivery is absent from the Slack client Scheduled tab:** API queue
 items are exposed by `chat.scheduledMessages.list`, not the client draft UI.

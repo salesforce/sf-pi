@@ -177,4 +177,126 @@ describe("slack_canvas read", () => {
       "Canvas body not available: download failed (http_403)",
     );
   });
+
+  it("does not present a Slack page that is not the canvas as its body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/files.info")) {
+          return jsonResponse({
+            ok: true,
+            file: { id: CANVAS_ID, name: "Project plan", url_private_download: DOWNLOAD_URL },
+          });
+        }
+        return new Response(
+          "<html><head><title>Slack</title></head><body><h1>Sign in to Slack</h1><p>Use your work email.</p></body></html>",
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        );
+      }),
+    );
+
+    const result = await runRead();
+    expect(result.details.ok).toBe(true);
+    expect(result.details.bodyIncluded).toBe(false);
+    expect(result.content[0].text).not.toContain("Sign in to Slack");
+    expect(result.content[0].text).toContain(
+      "Canvas body not available: Slack returned a page that is not the canvas",
+    );
+  });
+});
+
+describe("canvasHtmlToMarkdown keeps structure Slack exports", () => {
+  // Shapes below mirror Slack's canvas export: links are <lnk>, code blocks
+  // are <p class="prettyprint line"> with <br> line breaks, and a line can
+  // hold several <br>-separated lines.
+  it("renders Slack <lnk> links as markdown links", () => {
+    expect(
+      canvasHtmlToMarkdown(
+        '<p class="line">See <lnk href="https://example.com/doc">the doc</lnk>.</p>',
+      ),
+    ).toBe("See [the doc](https://example.com/doc).");
+  });
+
+  it("renders prettyprint lines as a fenced code block with their line breaks", () => {
+    expect(
+      canvasHtmlToMarkdown(
+        '<p class="prettyprint line">npm install<br>npm run build &amp;&amp; npm test<br><br>done</p>',
+      ),
+    ).toBe("```\nnpm install\nnpm run build && npm test\n\ndone\n```");
+  });
+
+  it("keeps <br> line breaks inside a paragraph", () => {
+    expect(canvasHtmlToMarkdown('<p class="line"><b>Steps:</b> one<br>two<br>three</p>')).toBe(
+      "**Steps:** one\ntwo\nthree",
+    );
+  });
+
+  it("keeps nested list items as indented items", () => {
+    const markdown = canvasHtmlToMarkdown(
+      "<ul><li>Parent<ul><li>Child A</li><li>Child B</li></ul></li><li>Second</li></ul>",
+    );
+    expect(markdown).toBe("- Parent\n  - Child A\n  - Child B\n- Second");
+  });
+
+  it("keeps text in div lines and loose text outside block elements", () => {
+    const markdown = canvasHtmlToMarkdown(
+      '<div class="line">First line</div><div>Second <b>line</b></div>Loose <span>text</span>',
+    );
+    expect(markdown).toBe("First line\n\nSecond **line**\n\nLoose text");
+  });
+
+  it("keeps paragraph breaks inside quotes, list items, and table cells", () => {
+    expect(canvasHtmlToMarkdown("<blockquote><p>line one</p><p>line two</p></blockquote>")).toBe(
+      "> line one\n> line two",
+    );
+    expect(
+      canvasHtmlToMarkdown(
+        "<table><tr><th>H</th></tr><tr><td><ul><li>x</li><li>y</li></ul></td></tr></table>",
+      ),
+    ).toBe("| H |\n| --- |\n| x; y |");
+  });
+
+  it("bounds list nesting so hostile input cannot exhaust the stack", () => {
+    const markdown = canvasHtmlToMarkdown(
+      "<ul>".repeat(2000) + "<li>deep</li>" + "</ul>".repeat(2000),
+    );
+    expect(markdown).toContain("deep");
+  });
+
+  it("stays linear on unclosed block tags", () => {
+    const started = performance.now();
+    const markdown = canvasHtmlToMarkdown("<p>".repeat(80_000) + "tail");
+    expect(markdown).toBe("tail");
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("stays linear on unclosed inline tags", () => {
+    const started = performance.now();
+    canvasHtmlToMarkdown(
+      "<p>" + '<lnk href="https://example.com">x'.repeat(40_000) + "<b>y".repeat(40_000) + "</p>",
+    );
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("keeps an image's element text but never its placeholder alt or blob path", () => {
+    const markdown = canvasHtmlToMarkdown(
+      '<div class="quip-canvas-content"><img src="/collab-slack-blob/x/F0EXAMPLE02" alt="_SLACK_FILE_ALT_PLACEHOLDER_F0EXAMPLE02">Diagram</img><p class="line">after</p></div>',
+    );
+    expect(markdown).toBe("Diagram\n\nafter");
+  });
+
+  it("decodes common named entities", () => {
+    expect(canvasHtmlToMarkdown("<p>a &hellip; b &mdash; c &ndash; d &rsquo;s &copy;</p>")).toBe(
+      "a … b — c – d ’s ©",
+    );
+  });
+
+  it("drops link targets that are not http(s) or mailto and keeps the label", () => {
+    expect(
+      canvasHtmlToMarkdown(
+        '<p><a href="javascript:alert(1)">click</a> <a href="mailto:a@example.com">mail</a> <a href="data:text/html,x">data</a></p>',
+      ),
+    ).toBe("click [mail](mailto:a@example.com) data");
+  });
 });

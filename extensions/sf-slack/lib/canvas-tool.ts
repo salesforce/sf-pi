@@ -530,10 +530,17 @@ async function readCanvasBody(
       reason: `unexpected content type (${download.data.contentType || "none"})`,
     };
   }
+  // Slack's canvas export wraps the body in this root. Any other HTML, such as
+  // a sign-in page served with 200, is not the canvas and must not pass for it.
+  if (!CANVAS_EXPORT_ROOT.test(download.data.text)) {
+    return { ok: false, reason: "Slack returned a page that is not the canvas" };
+  }
   const markdown = canvasHtmlToMarkdown(download.data.text);
   if (!markdown) return { ok: false, reason: "the canvas body is empty" };
   return { ok: true, markdown };
 }
+
+const CANVAS_EXPORT_ROOT = /class=["'][^"']*\bquip-canvas-content\b/i;
 
 function buildCanvasEditChange(
   operation: string,
