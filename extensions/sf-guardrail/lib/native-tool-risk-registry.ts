@@ -291,7 +291,8 @@ function classifySfFinInstall(
  * package_install (one managed package), audit_fields_enable (one
  * SecuritySettings field), digital_experiences_enable (one
  * CommunitiesSettings field; one-way), enhanced_email_enable (one
- * EmailAdministrationSettings field; org-wide), permissions_apply (permission set, Fin user, and
+ * EmailAdministrationSettings field; org-wide), handoff_queue_create (one
+ * Case queue with no members), permissions_apply (permission set, Fin user, and
  * assignments), and connect (Fin OAuth consent as the CLI user plus Fin's
  * Salesforce user choice). Readiness and plans stay prompt-free. Each
  * execution is an exact, org-bound approval (no session grant), and
@@ -325,6 +326,12 @@ const FIN_SALESFORCE_SETUP: Record<
     reason: () =>
       "Enable Enhanced Email (EmailAdministrationSettings.enableEnhancedEmailEnabled) in the target org so Fin can sync each case's email history. Emails are then stored as EmailMessage records for every user.",
   },
+  handoff_queue_create: {
+    title: "⚠ Create Fin handoff queue",
+    tier: "org_queue_create_exact",
+    reason: (input) =>
+      `Create one Case queue (${stringValue(input.queue_name) ?? "Fin Handoff"}) in the target org for Fin's handoff. It has no members, no member email, and no role-hierarchy access; an existing queue is never changed.`,
+  },
   permissions_apply: {
     title: "⚠ Fin Salesforce permissions and user",
     tier: "org_user_provisioning_exact",
@@ -353,6 +360,7 @@ function classifySfFinSalesforceSetup(
   const packageVersion = stringValue(input.package_version);
   const username = stringValue(input.username);
   const environment = stringValue(input.environment);
+  const queueName = stringValue(input.queue_name);
   const target =
     operation === "package_install"
       ? `package ${packageVersion ?? "unspecified version"}`
@@ -364,7 +372,9 @@ function classifySfFinSalesforceSetup(
             ? "digital experiences"
             : operation === "enhanced_email_enable"
               ? "enhanced email"
-              : "audit fields";
+              : operation === "handoff_queue_create"
+                ? `queue ${queueName ?? "Fin Handoff"}`
+                : "audit fields";
   return {
     kind: "nativeTool",
     toolName,
@@ -375,13 +385,14 @@ function classifySfFinSalesforceSetup(
     promptTitle: spec.title,
     operationFamily: "fin salesforce setup",
     riskTier: spec.tier,
-    fingerprint: `sf_fin|salesforce-${operation}|${fingerprintText(JSON.stringify({ packageVersion, username, email: stringValue(input.email), environment, workspace: stringValue(input.workspace) }))}`,
+    fingerprint: `sf_fin|salesforce-${operation}|${fingerprintText(JSON.stringify({ packageVersion, username, email: stringValue(input.email), environment, queueName, workspace: stringValue(input.workspace) }))}`,
     approvalLabel: `${operation} ${target}`,
     approvalDetail: [
       `operation=${operation}`,
       packageVersion ? `package_version=${packageVersion}` : undefined,
       username ? `username=${username}` : undefined,
       environment ? `environment=${environment}` : undefined,
+      queueName ? `queue_name=${queueName}` : undefined,
     ]
       .filter(Boolean)
       .join("; "),

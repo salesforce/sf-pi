@@ -213,6 +213,7 @@ const MUTATIONS: Record<
   audit_fields_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "org-wide" },
   digital_experiences_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "one-way" },
   enhanced_email_enable: { rule: "native-sf-fin-salesforce-setup", reversible: "org-wide" },
+  handoff_queue_create: { rule: "native-sf-fin-salesforce-setup", reversible: "reversible" },
   connector_state: { rule: "native-sf-fin-procedure-state", reversible: "reversible" },
   simulations_delete: { rule: "native-sf-fin-procedure-state", reversible: "one-way" },
   permissions_apply: { rule: "native-sf-fin-salesforce-setup", reversible: "reversible" },

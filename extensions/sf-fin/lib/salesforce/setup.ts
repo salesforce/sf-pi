@@ -29,13 +29,16 @@ import {
   FIN_AUDIT_SETTING,
   FIN_DIGITAL_EXPERIENCES_SETTING,
   FIN_ENHANCED_EMAIL_SETTING,
+  FIN_HANDOFF_QUEUE_DEFAULT,
   FIN_FEED_VISIBILITY_FIELD,
   FIN_PACKAGE_NAMESPACE,
   FIN_PACKAGE_PERMISSION_SET,
   FIN_USER_PROFILE,
   isValidUsername,
   parsePackageVersionId,
+  queueDeveloperName,
   renderAccessPermissionSet,
+  renderHandoffQueue,
   type ReadinessCheck,
   type ReadinessReport,
   type SalesforceFacts,
@@ -49,6 +52,7 @@ export type SalesforceOperation =
   | "audit_fields_enable"
   | "digital_experiences_enable"
   | "enhanced_email_enable"
+  | "handoff_queue_create"
   | "permissions_apply"
   | "connect"
   | "observe";
@@ -68,6 +72,8 @@ export interface SalesforceSetupRequest {
   packageVersion?: string;
   username?: string;
   email?: string;
+  /** handoff_queue_create: queue label (default "Fin Handoff"). */
+  queueName?: string;
   /** connect: which Fin environment card to use (default from org type). */
   environment?: FinEnvironmentCard;
   execute?: boolean;
@@ -127,6 +133,9 @@ export async function runSalesforceSetup(
     return auditFieldsEnable(org, facts, request, read);
   if (request.operation === "enhanced_email_enable") {
     return enhancedEmailEnable(org, facts, request, read);
+  }
+  if (request.operation === "handoff_queue_create") {
+    return handoffQueueCreate(org, facts, request, read);
   }
   if (request.operation === "connect") return connect(facts, request, read);
   return permissionsApply(org, facts, request, username, read);
@@ -382,6 +391,87 @@ async function enhancedEmailEnable(
       error: deployed.error,
     },
   };
+}
+
+async function handoffQueueCreate(
+  org: FinSalesforceOrg,
+  facts: SalesforceFacts,
+  request: SalesforceSetupRequest,
+  read: () => Promise<SalesforceFacts>,
+): Promise<SalesforceSetupResult> {
+  const name = (request.queueName ?? FIN_HANDOFF_QUEUE_DEFAULT).trim();
+  const developerName = queueDeveloperName(name);
+  if (!developerName) {
+    return fail(
+      "queue_name needs letters or digits and at most 40 characters (it becomes the queue API name).",
+      "input",
+    );
+  }
+  const queue = { name, developerName, sobjectType: "Case" };
+  const existing = await org.findQueue(developerName);
+  if (existing?.sobjectTypes.includes("Case")) {
+    return {
+      ok: true,
+      text: [
+        `✅ Queue ${existing.name} (${developerName}) already accepts Cases in ${request.targetOrg}. Nothing to do.`,
+        handoffNext(existing.name),
+      ].join("\n"),
+      details: { phase: "noop", queue },
+    };
+  }
+  if (existing) {
+    return fail(
+      `Queue ${developerName} already exists in ${request.targetOrg} for ${existing.sobjectTypes.join(", ") || "no objects"}. SF Fin does not change an existing queue; pass a different queue_name, or add Case to it in Setup → Queues.`,
+      "queue_exists_other_objects",
+      { queue },
+    );
+  }
+  if (request.execute !== true) {
+    return {
+      ok: true,
+      text: [
+        `Plan: create the Case queue "${name}" in ${request.targetOrg} (${facts.orgType}) for Fin's handoff ("Routed to team").`,
+        `- Deploy one Queue ${developerName} that accepts Cases only.`,
+        "- No members, no member emails, and no role-hierarchy access: creating it changes nobody's access. Add your team in Setup → Queues.",
+        "- ↩ Reversible: delete the queue in Setup → Queues.",
+        "- Then pick it as the handoff target in Fin's Salesforce cases workflow (Fin → Deploy → Salesforce cases).",
+        PRODUCTION_LIKE.has(facts.orgType)
+          ? "⚠️ Production or unknown org: SF Guardrail decides whether this may run."
+          : undefined,
+        "",
+        `To execute: sf_fin action='salesforce' operation='handoff_queue_create' target_org='${request.targetOrg}'${request.queueName ? ` queue_name='${name}'` : ""} allow_mutation=true (SF Guardrail mediates it).`,
+      ]
+        .filter((line): line is string => line !== undefined)
+        .join("\n"),
+      details: { phase: "plan", queue },
+    };
+  }
+  const deployed = await org.deployQueue({
+    developerName,
+    name,
+    xml: renderHandoffQueue(name),
+    signal: request.signal,
+  });
+  const created = await org.findQueue(developerName);
+  const verified = created?.sobjectTypes.includes("Case") === true;
+  const report = evaluateSalesforceReadiness(await read());
+  return {
+    ok: verified,
+    text: [
+      verified
+        ? `✅ Queue ${name} (${developerName}) created in ${request.targetOrg} and accepts Cases (verified).`
+        : `❌ Queue ${developerName} did not verify as a Case queue in ${request.targetOrg}.`,
+      ...(verified || deployed.ok ? [] : [`  - ${deployed.error ?? "deploy failed"}`]),
+      ...(verified ? [handoffNext(name)] : []),
+      "",
+      ...renderChecks(report),
+    ].join("\n"),
+    details: { phase: "execute", queue, verified, error: deployed.error },
+  };
+}
+
+function handoffNext(name: string): string {
+  return `Next (in Fin): Fin → Deploy → Salesforce cases → your workflow's handoff step → assign to queue "${name}". Add the teammates who work handed-off cases in Setup → Queues.`;
 }
 
 /**
@@ -792,6 +882,7 @@ function nextSteps(report: ReadinessReport, targetOrg: string): string[] {
     .map((id) => report.checks.find((check) => check.id === id))
     .find((check) => check !== undefined && check.state !== "ok");
   if (goLive?.fix === "permissions_apply") return [op("permissions_apply")];
+  if (goLive?.fix === "handoff_queue_create") return [op("handoff_queue_create")];
   if (goLive) {
     return [
       `⏳ Fin is connected. Before go-live: ${goLive.title}.${goLive.detail ? ` ${goLive.detail}` : ""}`,
