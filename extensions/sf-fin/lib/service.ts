@@ -54,6 +54,12 @@ import {
 } from "./install/detect.ts";
 import { planCliInstall, runCliInstall, type InstallPlan } from "./install/installer.ts";
 import { buildStatusText, createFinStatusStore } from "./status.ts";
+import {
+  loadFinSalesforceOrg,
+  loadSfConn,
+  loadTokenTransfer,
+  loadTokenTransferBrowser,
+} from "./lazy-imports.ts";
 import { COMMAND_NAME, type FinOutcomeKind, type FinStatusSnapshot } from "./types.ts";
 import { detectRegion, detectTokenSource, getFinAgentApiKey, getFinCredential } from "./auth.ts";
 import type { StateStore } from "../../../lib/common/state-store.ts";
@@ -293,10 +299,10 @@ export function createFinService(deps: FinServiceDeps): FinService {
       { runTokenTransfer },
       { createTokenTransferBrowser },
     ] = await Promise.all([
-      import("../../../lib/common/sf-conn/index.ts"),
-      import("./salesforce/org.ts"),
-      import("./salesforce/token-transfer.ts"),
-      import("./salesforce/token-transfer-browser.ts"),
+      loadSfConn(),
+      loadFinSalesforceOrg(),
+      loadTokenTransfer(),
+      loadTokenTransferBrowser(),
     ]);
     try {
       const session = await connectSalesforce({ cwd: ctx.cwd, targetOrg, signal: ctx.signal });
@@ -1112,7 +1118,7 @@ async function frontdoorUrl(input: {
   targetOrg: string;
   path: string;
 }): Promise<string> {
-  const { generateSalesforceFrontdoorUrl } = await import("../../../lib/common/sf-conn/index.ts");
+  const { generateSalesforceFrontdoorUrl } = await loadSfConn();
   return generateSalesforceFrontdoorUrl(input);
 }
 
@@ -1123,8 +1129,8 @@ async function connectFinSalesforceOrg(input: {
   signal?: AbortSignal;
 }): Promise<FinSalesforceOrg> {
   const [{ connectSalesforce }, { createFinSalesforceOrg }] = await Promise.all([
-    import("../../../lib/common/sf-conn/index.ts"),
-    import("./salesforce/org.ts"),
+    loadSfConn(),
+    loadFinSalesforceOrg(),
   ]);
   const session = await connectSalesforce(input);
   return createFinSalesforceOrg(session);
