@@ -307,7 +307,16 @@ function listPages(profile: WorkspaceProfile, signin: AdminSignin): AdminResult 
         : `Run /sf-fin setup first so the workspace's app id is verified.`,
       `Sign-in: saved by Pi under /login ${signin.loginId}.`,
     ].join("\n"),
-    details: { pages: FIN_ADMIN_PAGE_IDS, appBound: Boolean(profile.appId) },
+    details: {
+      pages: FIN_ADMIN_PAGE_IDS,
+      pageGuide: FIN_ADMIN_PAGE_IDS.map((id) => ({
+        id,
+        useFor: PAGE_GUIDE[id].useFor,
+        secret: FIN_ADMIN_PAGES[id].secret,
+      })),
+      appBound: Boolean(profile.appId),
+      loginId: signin.loginId,
+    },
   };
 }
 

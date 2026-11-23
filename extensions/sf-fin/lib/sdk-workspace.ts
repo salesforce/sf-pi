@@ -497,11 +497,13 @@ function nextAgentStep(
   }
   if (!simulations)
     return "write a simulation set and run sdk upload_simulations, then sdk simulate.";
+  // Simulations already exist: run them without generating more (generate
+  // defaults to true and would add near-duplicates of the saved tests).
   if (procedure.state !== "live") {
-    return `run sdk simulate procedure_id='${procedure.id}' (tests the draft); publish only when the user wants it live.`;
+    return `run sdk simulate procedure_id='${procedure.id}' generate=false (tests the draft); publish only when the user wants it live.`;
   }
   if (procedure.unpublished)
-    return `simulate the draft, then sdk publish procedure_id='${procedure.id}' to release it.`;
+    return `run sdk simulate procedure_id='${procedure.id}' generate=false on the draft, then sdk publish procedure_id='${procedure.id}' to release it.`;
   return channels.includes("fin_agent_api")
     ? `test it end to end with sf_fin agent run procedure_id='${procedure.id}'.`
     : "watch it in production conversations.";

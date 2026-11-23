@@ -51,11 +51,22 @@ export interface SetupStep {
   command?: string;
 }
 
+export interface SetupCredentialRow {
+  id: "personal" | "mcp" | "agent" | "cli";
+  label: string;
+  /** Where the person saves or signs in to it. */
+  via?: string;
+  state: "ok" | "missing" | "rejected" | "signed_out";
+  detail: string;
+}
+
 export interface SetupReport {
   ready: Record<Capability, boolean>;
   appId?: string;
   mismatches: string[];
   steps: SetupStep[];
+  /** Structured credential rows for the Result Card (the text table says the same). */
+  credentials: SetupCredentialRow[];
   lines: string[];
 }
 
@@ -181,7 +192,63 @@ export function evaluateSetup(facts: SetupFacts, wanted: Capability[]): SetupRep
   } else if (mismatches.length === 0) {
     lines.push("", "✅ Nothing missing for the requested capabilities.");
   }
-  return { ready, appId, mismatches, steps, lines };
+  const credentials: SetupCredentialRow[] = [
+    {
+      id: "personal",
+      label: "Personal token",
+      via: `/login ${p.personal}`,
+      state:
+        facts.personal.state === "ok"
+          ? "ok"
+          : facts.personal.state === "rejected"
+            ? "rejected"
+            : "missing",
+      detail:
+        facts.personal.state === "ok"
+          ? `valid · proven for app ${facts.personal.identity.appId}`
+          : facts.personal.state === "rejected"
+            ? "rejected"
+            : "not saved",
+    },
+    {
+      id: "agent",
+      label: "Agent API key",
+      via: `/login ${p.agent}`,
+      state: facts.agent.state === "missing" ? "missing" : agentGranted ? "ok" : "rejected",
+      detail:
+        facts.agent.state === "missing"
+          ? "not saved"
+          : agentGranted
+            ? "access granted"
+            : facts.agent.access.state.replace(/_/g, " "),
+    },
+    {
+      id: "mcp",
+      label: "Intercom MCP",
+      via: `/mcp login ${p.mcpConnection}`,
+      state:
+        facts.mcp.state === "signed_in"
+          ? "ok"
+          : facts.mcp.state === "signed_out"
+            ? "signed_out"
+            : "missing",
+      detail:
+        facts.mcp.state === "signed_in"
+          ? facts.mcp.appId
+            ? `signed in · proven for app ${facts.mcp.appId}`
+            : "signed in"
+          : facts.mcp.state === "signed_out"
+            ? "signed out"
+            : "not configured",
+    },
+    {
+      id: "cli",
+      label: "Fin CLI",
+      state: facts.cliInstalled ? "ok" : "missing",
+      detail: facts.cliInstalled ? "installed" : "not installed",
+    },
+  ];
+  return { ready, appId, mismatches, steps, credentials, lines };
 }
 
 /** Read the workspace id from Intercom MCP `list_articles` output (untrusted text). */
