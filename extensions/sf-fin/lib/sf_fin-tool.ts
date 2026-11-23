@@ -15,7 +15,7 @@ import { Type } from "typebox";
 import { buildFinCard, modelPacket } from "./cards.ts";
 import { renderFinResult } from "./render.ts";
 import type { FinService } from "./service.ts";
-import { statusText } from "./service.ts";
+import { statusDetails, statusText } from "./service.ts";
 import { COMMAND_NAME, PROVIDER_NAME, TOOL_NAME } from "./types.ts";
 
 const Params = Type.Object({
@@ -484,6 +484,7 @@ export function registerSfFinTool(
           details: {
             action: "doctor",
             outcome: result.outcome,
+            checks: result.checks,
             identity: result.snapshot.identity,
             cliVersion: result.snapshot.cliVersion,
             latestVersion: result.snapshot.latestVersion,
@@ -690,7 +691,7 @@ export function registerSfFinTool(
 
       return done({
         content: [{ type: "text", text: statusText() }],
-        details: { action: "status" },
+        details: { action: "status", ...statusDetails() },
       });
     },
   });

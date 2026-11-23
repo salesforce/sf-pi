@@ -26,7 +26,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { parse as parseYaml } from "yaml";
 import { homedir } from "node:os";
 import path from "node:path";
-import type { ExtensionDoctorReport } from "../../../lib/common/doctor/registry.ts";
+import type {
+  ExtensionDoctorCheck,
+  ExtensionDoctorReport,
+} from "../../../lib/common/doctor/registry.ts";
 import type { ExecFn } from "../../../lib/common/sf-environment/detect.ts";
 import {
   armVerbose,
@@ -52,7 +55,7 @@ import {
 import { planCliInstall, runCliInstall, type InstallPlan } from "./install/installer.ts";
 import { buildStatusText, createFinStatusStore } from "./status.ts";
 import { COMMAND_NAME, type FinOutcomeKind, type FinStatusSnapshot } from "./types.ts";
-import { getFinAgentApiKey, getFinCredential } from "./auth.ts";
+import { detectRegion, detectTokenSource, getFinAgentApiKey, getFinCredential } from "./auth.ts";
 import type { StateStore } from "../../../lib/common/state-store.ts";
 import { discoverRegion } from "./region.ts";
 import {
@@ -153,6 +156,8 @@ export interface FinService {
     outcome: FinOutcomeKind;
     text: string;
     snapshot: FinStatusSnapshot;
+    /** The same checks as the text, for the Result Card. */
+    checks?: ExtensionDoctorCheck[];
     tracePath?: string;
   }>;
   planInstall(version?: string): Promise<InstallPlan>;
@@ -374,7 +379,13 @@ export function createFinService(deps: FinServiceDeps): FinService {
       ]
         .filter((line) => line !== undefined)
         .join("\n");
-      return { outcome: report.outcome, text, snapshot: report.snapshot, tracePath };
+      return {
+        outcome: report.outcome,
+        text,
+        snapshot: report.snapshot,
+        checks: report.checks,
+        tracePath,
+      };
     },
 
     async planInstall(version) {
@@ -1013,9 +1024,12 @@ export function createFinService(deps: FinServiceDeps): FinService {
           workspace: name,
           kind: profile.kind,
           appId: report.appId,
+          workspaceName: profile.workspaceName,
+          wants,
           ready: report.ready,
           mismatches: allMismatches,
           steps: report.steps,
+          credentials: report.credentials,
         },
       };
     },
@@ -1198,6 +1212,32 @@ export function statusText(): string {
     buildStatusText(createFinStatusStore().read()),
     ...agentKeyStatusLines(createAgentKeyStatusStore().read()),
   ].join("\n");
+}
+
+/**
+ * The same cached facts as {@link statusText}, structured for the Result Card.
+ * No secret values: only where each credential comes from and the last outcome.
+ */
+export function statusDetails(): Record<string, unknown> {
+  const snapshot = createFinStatusStore().read();
+  const agent = createAgentKeyStatusStore().read();
+  return {
+    phase: "status",
+    credential: detectTokenSource(),
+    region: detectRegion().region,
+    lastCheckedAt: snapshot.lastCheckedAt,
+    lastOutcome: snapshot.lastOutcome,
+    lastMessage: snapshot.lastOutcome === "ok" ? undefined : snapshot.lastMessage,
+    cliVersion: snapshot.cliVersion,
+    latestVersion: snapshot.latestVersion,
+    installSource: snapshot.installSource,
+    workspaceName: snapshot.identity?.workspaceName,
+    appId: snapshot.identity?.appId,
+    adminName: snapshot.identity?.adminName,
+    agentKey: detectAgentKeySource(),
+    agentAccess: agent.lastAccess,
+    agentCheckedAt: agent.lastCheckedAt,
+  };
 }
 
 function recordAgentStatus(
