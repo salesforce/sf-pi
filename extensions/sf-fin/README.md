@@ -53,13 +53,17 @@ For Fin as code, SF Fin authors and tests procedures (validation, draft upload, 
 | `/sf-fin admin [sign-in\|open <page>\|read <page>]` | Verified Fin admin pages in the SF Pi browser (masked, navigate and read only) |
 | `/sf-fin help`                                      | Print setup guidance                                                           |
 
-In the TUI, every `sf_fin` result renders as a Result Card: readiness as a
-grouped checklist with one next step, plans with their scope, reversibility
-(↩ reversible, ⚠ one-way, 🌐 org-wide) and SF Guardrail rule, verified
-results, simulation tables, Fin Agent API conversations, and the workspace
-manifest with each resource's state. Package installs, connect, simulations,
-and Fin Agent API runs show live progress. The model receives a separate,
-bounded text without session URLs or secrets.
+In the TUI, every `sf_fin` result renders as a flat Result Card on Pi's tool
+tile: one status line, the answer in a sentence, and one plain next step.
+Collapsed, a card shows only what needs you; expand it (ctrl+o) for every
+detail. Readiness shows a progress bar, its stages, and the open items. Case
+activity shows Fin's outcomes in plain words with recent cases and local times.
+An agent's status shows its channel, procedure, connector, and token as a
+chain. Plans show the state change, what happens, how to undo it (↩ reversible,
+⚠ one-way, 🌐 org-wide), and the SF Guardrail rule. Simulations and Fin Agent
+API conversations read as test results and a chat. Package installs, connect,
+simulations, and Fin Agent API runs show live progress. The model receives a
+separate, bounded text without session URLs or secrets.
 
 The agent uses the same operations through `sf_fin`. `sf_fin action='install'`
 returns a plan; executing it requires `allow_mutation=true` and is mediated by

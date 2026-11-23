@@ -1,14 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/** Human-facing SF Fin Result Card rendering (model text stays in `content`). */
-
+/**
+ * Human-facing SF Fin Result Card rendering (model text stays in `content`).
+ *
+ * The card is drawn flat on Pi's own tool tile (no inner box), like the Apex,
+ * SOQL, and Flow cards. See fin-card.ts for the card shape and layout.
+ */
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Text, type Component } from "@earendil-works/pi-tui";
 import {
   renderSfPiProgressText,
-  renderSfPiResultCardPanel,
   type SfPiProgress,
-  type SfPiResultCard,
 } from "../../../lib/common/display/result-card.ts";
+import { isFinCard, renderFinCard } from "./fin-card.ts";
 
 interface FinToolResult {
   content: Array<{ type: string; text?: string }>;
@@ -30,23 +33,13 @@ export function renderFinResult(
       0,
     );
   }
-  const card = asCard(result.details?.card);
-  if (!card) return new Text(firstText(result), 0, 0);
-  return renderSfPiResultCardPanel(card, { expanded: options.expanded }, theme);
+  const card = result.details?.card;
+  if (!isFinCard(card)) return new Text(firstText(result), 0, 0);
+  return renderFinCard(card, options.expanded === true, theme);
 }
 
 function firstText(result: FinToolResult): string {
   return result.content.find((item) => item.type === "text")?.text ?? "";
-}
-
-function asCard(value: unknown): SfPiResultCard | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const candidate = value as Partial<SfPiResultCard>;
-  if (!candidate.tool || typeof candidate.title !== "string") return undefined;
-  if (typeof candidate.summary !== "string" || typeof candidate.status !== "string") {
-    return undefined;
-  }
-  return candidate as SfPiResultCard;
 }
 
 function asProgress(value: unknown): SfPiProgress | undefined {

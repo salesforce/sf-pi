@@ -1,0 +1,1463 @@
+{
+  "status": {
+    "ok": true,
+    "isError": false,
+    "text": "# SF Fin status\n\n- Credential: saved by /login sf-fin\n- Region: US (pi-auth)\n- Last doctor: ok at 2026-11-23T16:02:58.888Z\n- Fin CLI: 0.16.4 \u00b7 npm-global\n- Workspace: Example Workspace \u00b7 app id abcd1234\n- Signed in as: Example Admin \u00b7 admin@example.com\n- Fin Agent API key: saved by /login sf-fin-agent\n- Fin Agent API access: granted at 2026-11-23T16:24:28.176Z",
+    "details": {
+      "action": "status",
+      "phase": "status",
+      "credential": "pi-auth",
+      "region": "us",
+      "lastCheckedAt": "2026-11-23T16:02:58.888Z",
+      "lastOutcome": "ok",
+      "cliVersion": "0.16.4",
+      "latestVersion": "0.16.4",
+      "installSource": "npm-global",
+      "workspaceName": "Example Workspace",
+      "appId": "abcd1234",
+      "adminName": "Example Admin",
+      "agentKey": "pi-auth",
+      "agentAccess": "granted",
+      "agentCheckedAt": "2026-11-23T16:24:28.176Z"
+    }
+  },
+  "doctor": {
+    "ok": true,
+    "isError": false,
+    "text": "Connected to Example Workspace \u00b7 app id abcd1234 (US).\n\n\u2705 Node 26.13.1\n   Fin CLI requires Node >=20.6.0.\n\u2705 Fin CLI found (npm-global)\n   /usr/local/bin/intercom\n\u2705 Fin CLI 0.16.4\n   Latest published: 0.16.4.\n\u2705 Credential: saved by /login sf-fin\n   Region US (pi-auth).\n\u2705 Workspace reachable\n   Connected to Example Workspace \u00b7 app id abcd1234 (US).\n\u2139\ufe0f No personal CLI login\n   SF Fin uses its private CLI config plus the /login sf-fin credential.",
+    "details": {
+      "action": "doctor",
+      "outcome": "ok",
+      "checks": [
+        {
+          "id": "fin.node",
+          "severity": "ok",
+          "title": "Node 26.13.1",
+          "detail": "Fin CLI requires Node >=20.6.0."
+        },
+        {
+          "id": "fin.cli",
+          "severity": "ok",
+          "title": "Fin CLI found (npm-global)",
+          "detail": "/usr/local/bin/intercom"
+        },
+        {
+          "id": "fin.cli-version",
+          "severity": "ok",
+          "title": "Fin CLI 0.16.4",
+          "detail": "Latest published: 0.16.4."
+        },
+        {
+          "id": "fin.credential",
+          "severity": "ok",
+          "title": "Credential: saved by /login sf-fin",
+          "detail": "Region US (pi-auth)."
+        },
+        {
+          "id": "fin.workspace",
+          "severity": "ok",
+          "title": "Workspace reachable",
+          "detail": "Connected to Example Workspace \u00b7 app id abcd1234 (US)."
+        },
+        {
+          "id": "fin.user-cli-config",
+          "severity": "info",
+          "title": "No personal CLI login",
+          "detail": "SF Fin uses its private CLI config plus the /login sf-fin credential."
+        }
+      ],
+      "identity": {
+        "appId": "abcd1234",
+        "workspaceName": "Example Workspace",
+        "adminName": "Example Admin",
+        "adminEmail": "admin@example.com",
+        "region": "us"
+      },
+      "cliVersion": "0.16.4",
+      "latestVersion": "0.16.4"
+    }
+  },
+  "setup": {
+    "ok": false,
+    "isError": true,
+    "text": "Fin workspace \"default\" (test) \u00b7 app abcd1234 \u00b7 US \u00b7 Example Workspace\n\nCredential | Status | Workspace\nPersonal token (/login sf-fin) | \u2705 valid | app abcd1234 (proven)\nIntercom MCP (intercom) | \u2014 signed out | \u2014\nFin Agent API key (/login sf-fin-agent) | \u2705 access granted | not provable (the Agent API exposes no workspace id)\nFin CLI | \u2705 installed | \u2014\n\nCapability | Ready\nBuild in Fin (procedures, guidance, connectors, simulations, publish) | \u2705\nRead data and use Fin Operator (Intercom MCP) | \u2014\nTest the deployed Fin end to end (Fin Agent API) | \u2705\n\nNext steps (only for what you asked for):\n1. Sign in to the Intercom MCP connection intercom. \u2192 /mcp login intercom",
+    "details": {
+      "action": "setup",
+      "ok": false,
+      "phase": "setup",
+      "workspace": "default",
+      "kind": "test",
+      "appId": "abcd1234",
+      "workspaceName": "Example Workspace",
+      "wants": ["build", "operator", "test"],
+      "ready": {
+        "build": true,
+        "operator": false,
+        "test": true
+      },
+      "mismatches": [],
+      "steps": [
+        {
+          "capability": "operator",
+          "text": "Sign in to the Intercom MCP connection intercom.",
+          "command": "/mcp login intercom"
+        }
+      ],
+      "credentials": [
+        {
+          "id": "personal",
+          "label": "Personal token",
+          "via": "/login sf-fin",
+          "state": "ok",
+          "detail": "valid \u00b7 proven for app abcd1234"
+        },
+        {
+          "id": "agent",
+          "label": "Agent API key",
+          "via": "/login sf-fin-agent",
+          "state": "ok",
+          "detail": "access granted"
+        },
+        {
+          "id": "mcp",
+          "label": "Intercom MCP",
+          "via": "/mcp login intercom",
+          "state": "signed_out",
+          "detail": "signed out"
+        },
+        {
+          "id": "cli",
+          "label": "Fin CLI",
+          "state": "ok",
+          "detail": "installed"
+        }
+      ]
+    }
+  },
+  "surfaces": {
+    "ok": true,
+    "isError": false,
+    "text": "Fin surfaces \u2014 CLI 0.16.4 (344 commands) \u00b7 Intercom MCP (19 tools) \u00b7 Fin Agent API (documented)\n\u2705 Every CLI command and MCP tool maps to a capability.\n\nCapability | CLI | MCP | Agent API | SF Fin uses\nWorkspace identity and health | 2 | \u2014 | \u2014 | Fin CLI: sf_fin doctor\nCLI authentication | 8 | \u2014 | \u2014 | \u2014: /login sf-fin\nCLI configuration and help | 11 | \u2014 | \u2014 | \u2014: \u2014\nWorkspace provisioning | 3 | \u2014 | \u2014 | \u2014: \u2014\nRaw REST request | 1 | \u2014 | \u2014 | \u2014: \u2014\nFind and read conversations | 8 | 4 | \u2014 | Intercom MCP: Intercom MCP preset\nReply to or act on conversations | 16 | 1 | \u2014 | Intercom MCP: Intercom MCP add_internal_note\nContacts | 39 | 2 | \u2014 | Intercom MCP: Intercom MCP preset\nCompanies | 12 | 2 | \u2014 | Intercom MCP: Intercom MCP preset\nHelp Center articles | 13 | 5 | \u2014 | Intercom MCP: Intercom MCP preset\nInternal articles | 11 | \u2014 | \u2014 | \u2014: \u2014\nHelp Center collections | 11 | \u2014 | \u2014 | \u2014: \u2014\nMessenger settings | 4 | \u2014 | \u2014 | \u2014: \u2014\nFin-as-code snapshot | 2 | \u2014 | \u2014 | Fin CLI: sf_fin sdk manifest|download\nProcedures: read and author | 3 | \u2014 | 1 | Fin CLI: sf_fin sdk validate|upload\nProcedures: publish and pause | 2 | \u2014 | \u2014 | Fin CLI: sf_fin sdk publish|pause\nProcedure version history | 1 | \u2014 | \u2014 | \u2014: direct read\nSimulations | 6 | \u2014 | \u2014 | Fin CLI: sf_fin sdk upload_simulations|simulate\nGuidance | 3 | \u2014 | \u2014 | Fin CLI: sf_fin sdk validate|upload (type: guidance)\nData connectors | 14 | \u2014 | \u2014 | Fin CLI: sf_fin sdk validate|upload (type: data_connector)\nWorkflows | 6 | \u2014 | \u2014 | \u2014: \u2014\nAttributes and audiences | 24 | \u2014 | \u2014 | \u2014: \u2014\nQA monitors | 1 | \u2014 | \u2014 | \u2014: \u2014\nFin Operator (natural-language changes) | \u2014 | 5 | \u2014 | Intercom MCP: Intercom MCP Operator tools\nTalk to a deployed Fin | 7 | \u2014 | 4 | Fin Agent API: sf_fin agent\nData connector auth tokens (metadata) | 4 | \u2014 | \u2014 | \u2014: \u2014\nTeams, teammates, and roles (handoff targets) | 13 | \u2014 | \u2014 | \u2014: \u2014\nKnowledge Hub content | 34 | \u2014 | \u2014 | \u2014: \u2014\nTickets | 19 | \u2014 | \u2014 | \u2014: \u2014\nWorkspace reference and settings | 24 | \u2014 | \u2014 | \u2014: \u2014\nOutbound messages, news, and data events | 21 | \u2014 | \u2014 | \u2014: \u2014\nFin Voice and calls | 11 | \u2014 | \u2014 | \u2014: \u2014\nReporting and exports | 10 | \u2014 | \u2014 | \u2014: \u2014",
+    "details": {
+      "action": "surfaces",
+      "ok": true,
+      "phase": "surfaces",
+      "cliVersion": "0.16.4",
+      "cliCommands": 344,
+      "mcpTools": 19,
+      "unmappedCli": [],
+      "missingCli": [],
+      "unmappedMcp": [],
+      "missingMcp": [],
+      "capabilities": [
+        {
+          "id": "identity",
+          "cli": 2,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "cli",
+            "via": "sf_fin doctor",
+            "why": "Only the CLI identifies the admin and workspace; doctor uses it to prove the token's workspace."
+          }
+        },
+        {
+          "id": "auth",
+          "cli": 8,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "/login sf-fin",
+            "why": "Pi owns the token; SF Fin never uses the CLI's own login or keychain."
+          }
+        },
+        {
+          "id": "cli-local",
+          "cli": 11,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Local CLI settings; SF Fin runs the CLI with a private config directory."
+          }
+        },
+        {
+          "id": "provisioning",
+          "cli": 3,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Out of scope: these create or activate a workspace and need email/password sessions."
+          }
+        },
+        {
+          "id": "raw-api",
+          "cli": 1,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Unscoped; SF Fin exposes only named, reviewed operations."
+          }
+        },
+        {
+          "id": "conversation-read",
+          "cli": 8,
+          "mcp": 4,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "mcp",
+            "via": "Intercom MCP preset",
+            "why": "Reviewed read tools with OAuth; no token handling in SF Fin."
+          }
+        },
+        {
+          "id": "conversation-write",
+          "cli": 16,
+          "mcp": 1,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "mcp",
+            "via": "Intercom MCP add_internal_note",
+            "why": "Teammate-only notes are the safe write; SF Fin does not send customer-visible replies."
+          }
+        },
+        {
+          "id": "contact",
+          "cli": 39,
+          "mcp": 2,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "mcp",
+            "via": "Intercom MCP preset",
+            "why": "Reads only; contact writes are customer data and stay out of scope."
+          }
+        },
+        {
+          "id": "company",
+          "cli": 12,
+          "mcp": 2,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "mcp",
+            "via": "Intercom MCP preset",
+            "why": "Reviewed MCP reads cover companies; company writes are customer data and stay out of scope."
+          }
+        },
+        {
+          "id": "article",
+          "cli": 13,
+          "mcp": 5,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "mcp",
+            "via": "Intercom MCP preset",
+            "why": "Reviewed article tools (create defaults to draft); deletion stays in the UI."
+          }
+        },
+        {
+          "id": "internal-article",
+          "cli": 11,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "CLI only; not needed for agent building yet."
+          }
+        },
+        {
+          "id": "help-center",
+          "cli": 11,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "CLI only; not needed for agent building yet."
+          }
+        },
+        {
+          "id": "messenger",
+          "cli": 4,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Customer-facing install settings; out of scope."
+          }
+        },
+        {
+          "id": "sdk-snapshot",
+          "cli": 2,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "cli",
+            "via": "sf_fin sdk manifest|download",
+            "why": "Only the CLI exports Fin-as-code; SF Fin enables the SDK explicitly first."
+          }
+        },
+        {
+          "id": "procedure-author",
+          "cli": 3,
+          "mcp": 0,
+          "agentApi": 1,
+          "sfFin": {
+            "surface": "cli",
+            "via": "sf_fin sdk validate|upload",
+            "why": "Deterministic YAML with schema validation and a semantic round-trip check."
+          }
+        },
+        {
+          "id": "procedure-state",
+          "cli": 2,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "cli",
+            "via": "sf_fin sdk publish|pause",
+            "why": "Exact, Guardrail-mediated state change with verification."
+          }
+        },
+        {
+          "id": "procedure-history",
+          "cli": 1,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "direct read",
+            "why": "Separately gated; the CLI command would trip its silent SDK auto-enable on a 403."
+          }
+        },
+        {
+          "id": "simulation",
+          "cli": 6,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "cli",
+            "via": "sf_fin sdk upload_simulations|simulate",
+            "why": "Only the CLI runs simulations; since 0.15.4 runs test the procedure's draft by default."
+          }
+        },
+        {
+          "id": "guidance",
+          "cli": 3,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "cli",
+            "via": "sf_fin sdk validate|upload (type: guidance)",
+            "why": "YAML upload keeps guidance paused; going live is a separate Guardrail step."
+          }
+        },
+        {
+          "id": "data-connector",
+          "cli": 14,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "cli",
+            "via": "sf_fin sdk validate|upload (type: data_connector)",
+            "why": "JSON upload saves a draft; the public data-connectors API (CLI 0.15.4+) reads state and execution logs and can set a connector live."
+          }
+        },
+        {
+          "id": "workflow",
+          "cli": 6,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Not built yet; workflows route live conversations."
+          }
+        },
+        {
+          "id": "attribute",
+          "cli": 24,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Not built yet; read for reference validation later."
+          }
+        },
+        {
+          "id": "qa-monitor",
+          "cli": 1,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Not built yet."
+          }
+        },
+        {
+          "id": "operator",
+          "cli": 0,
+          "mcp": 5,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "mcp",
+            "via": "Intercom MCP Operator tools",
+            "why": "Only the MCP has Operator; apply is an exact Guardrail approval."
+          }
+        },
+        {
+          "id": "fin-runtime",
+          "cli": 7,
+          "mcp": 0,
+          "agentApi": 4,
+          "sfFin": {
+            "surface": "agent-api",
+            "via": "sf_fin agent",
+            "why": "End-to-end tests against live Fin; needs Fin Agent API access and its own key."
+          }
+        },
+        {
+          "id": "auth-token",
+          "cli": 4,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Planned: list token metadata to bind a connector's auth token. Secret values are never read; OAuth tokens need human consent in Fin."
+          }
+        },
+        {
+          "id": "handoff-target",
+          "cli": 13,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Planned reads: validate `<escalate to>` names. Teammate changes stay out of scope."
+          }
+        },
+        {
+          "id": "knowledge",
+          "cli": 34,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Knowledge Fin answers from; not needed for procedure building yet."
+          }
+        },
+        {
+          "id": "tickets",
+          "cli": 19,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Intercom Helpdesk tickets; Fin for Salesforce Cases uses Salesforce Cases instead."
+          }
+        },
+        {
+          "id": "workspace-reference",
+          "cli": 24,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Workspace settings; sender emails and tags are planned reads for setup checks."
+          }
+        },
+        {
+          "id": "messaging",
+          "cli": 21,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Customer-facing sends and customer data; out of scope."
+          }
+        },
+        {
+          "id": "voice",
+          "cli": 11,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Voice channel; out of scope for Salesforce Cases."
+          }
+        },
+        {
+          "id": "reporting",
+          "cli": 10,
+          "mcp": 0,
+          "agentApi": 0,
+          "sfFin": {
+            "surface": "none",
+            "via": "\u2014",
+            "why": "Later: resolution metrics for observing a live agent."
+          }
+        }
+      ]
+    }
+  },
+  "workspace.list": {
+    "ok": true,
+    "isError": false,
+    "text": "Fin workspaces (\u25b6 active):\n\u25b6 default (test) \u00b7 app abcd1234 \u00b7 US \u00b7 /login sf-fin \u00b7 /login sf-fin-agent \u00b7 MCP intercom",
+    "details": {
+      "action": "workspace",
+      "operation": "list",
+      "ok": true,
+      "phase": "list",
+      "active": "default",
+      "workspaces": {
+        "default": {
+          "name": "default",
+          "kind": "test",
+          "appId": "abcd1234",
+          "region": "us",
+          "workspaceName": "Example Workspace",
+          "verifiedAt": "2026-11-23T17:59:43.924Z"
+        }
+      }
+    }
+  },
+  "admin.pages": {
+    "ok": true,
+    "isError": false,
+    "text": "Verified Fin admin pages for workspace \"default\":\n  agent-api          Fin Agent API status and key management (secret page: masked, no screenshots)\n  api-tokens         Personal API tokens (the token /login sf-fin uses) (secret page: masked, no screenshots)\n  data-connectors    Data connector drafts and their status\n  error-logs         Integration errors Fin hit in Salesforce, mapped to the SF Fin fix\n  help-centers       Help Center sites and whether each is live\n  salesforce-cases   Fin for Salesforce cases: connection checklist\n  workspace-tokens   Workspace authentication tokens used by integrations (secret page: masked, no screenshots)\n\nOpen one with sf_fin action='admin' operation='open' page=<id>.\nSign-in: saved by Pi under /login sf-fin-browser.",
+    "details": {
+      "action": "admin",
+      "operation": "pages",
+      "ok": true,
+      "workspace": "default",
+      "pages": [
+        "agent-api",
+        "api-tokens",
+        "data-connectors",
+        "error-logs",
+        "help-centers",
+        "salesforce-cases",
+        "workspace-tokens"
+      ],
+      "pageGuide": [
+        {
+          "id": "agent-api",
+          "useFor": "Fin Agent API status and key management",
+          "secret": true
+        },
+        {
+          "id": "api-tokens",
+          "useFor": "Personal API tokens (the token /login sf-fin uses)",
+          "secret": true
+        },
+        {
+          "id": "data-connectors",
+          "useFor": "Data connector drafts and their status",
+          "secret": false
+        },
+        {
+          "id": "error-logs",
+          "useFor": "Integration errors Fin hit in Salesforce, mapped to the SF Fin fix",
+          "secret": false
+        },
+        {
+          "id": "help-centers",
+          "useFor": "Help Center sites and whether each is live",
+          "secret": false
+        },
+        {
+          "id": "salesforce-cases",
+          "useFor": "Fin for Salesforce cases: connection checklist",
+          "secret": false
+        },
+        {
+          "id": "workspace-tokens",
+          "useFor": "Workspace authentication tokens used by integrations",
+          "secret": true
+        }
+      ],
+      "appBound": true,
+      "loginId": "sf-fin-browser"
+    }
+  },
+  "install.plan": {
+    "ok": true,
+    "isError": false,
+    "text": "Fin CLI 0.16.4 is already installed.",
+    "details": {
+      "action": "install",
+      "phase": "plan",
+      "plan": {
+        "kind": "noop",
+        "version": "0.16.4",
+        "reason": "Fin CLI 0.16.4 is already installed."
+      }
+    }
+  },
+  "agent.access": {
+    "ok": true,
+    "isError": false,
+    "text": "\u2705 Fin Agent API access granted (5 tools: ask_fin, reply_to_fin_conversation, get_fin_response, run_fin_procedure, list_fin_capabilities).",
+    "details": {
+      "action": "agent",
+      "operation": "access",
+      "ok": true,
+      "phase": "access",
+      "access": "granted"
+    }
+  },
+  "readiness": {
+    "ok": true,
+    "isError": false,
+    "text": "Fin for Salesforce readiness \u2014 ExampleOrg (developer)\n\n\u2705 Fin for Salesforce package installed (finai 0.8.0.1)\n\u2705 Fin Case fields present\n\u2705 Permission set finai__Fin_for_Salesforce_permissions present\n\u2705 Fin External Client App present\n\u2705 Permission set SF_Fin_Salesforce_Access present\n\u2705 Audit fields on record creation enabled\n\u2705 FeedItem.Visibility available (Digital Experiences enabled)\n\u2705 SF_Fin_Salesforce_Access grants Set Audit Fields upon Record Creation\n\u2705 Fin user fin_agent@example.ext exists (Salesforce)\n\u2705 Fin user has both permission sets\n\u2705 Fin user is a Service Cloud User\n\u2705 Integration user integration@example.com has both permission sets\n   Fin checks the permission sets of the user that authorized its connection.\n\u2705 Fin is connected to this org (Fin for Salesforce OAuth token present)\n\u2705 Enhanced Email enabled\n\u26a0\ufe0f Email-to-Case is off (Fin replies to cases over email only with it)\n   Not needed for Web-to-Case or manually created cases. To reply by email: enable Email-to-Case, add and verify a routing address in Setup (Salesforce emails a confirmation link), then select it in Fin. Enabling it cannot be undone.\n\u2705 Cases reach the Fin user (Route_Web_Cases_To_Fin; 3 owned)\n\u2705 Case queues available for Fin's handoff: Fin Handoff\n\u2705 Object access matches Fin's permission matrix\n\n\u23f3 Fin is connected. Before go-live: Email-to-Case is off (Fin replies to cases over email only with it). Not needed for Web-to-Case or manually created cases. To reply by email: enable Email-to-Case, add and verify a routing address in Setup (Salesforce emails a confirmation link), then select it in Fin. Enabling it cannot be undone.",
+    "details": {
+      "action": "salesforce",
+      "operation": "readiness",
+      "ok": true,
+      "phase": "readiness",
+      "orgType": "developer",
+      "packageReady": true,
+      "permissionsReady": true,
+      "readyToConnect": true,
+      "orgFeaturesReady": true,
+      "connected": true,
+      "goLiveReady": false,
+      "checks": [
+        {
+          "id": "package",
+          "state": "ok",
+          "title": "Fin for Salesforce package installed (finai 0.8.0.1)"
+        },
+        {
+          "id": "case-fields",
+          "state": "ok",
+          "title": "Fin Case fields present"
+        },
+        {
+          "id": "package-permission-set",
+          "state": "ok",
+          "title": "Permission set finai__Fin_for_Salesforce_permissions present"
+        },
+        {
+          "id": "external-client-app",
+          "state": "ok",
+          "title": "Fin External Client App present"
+        },
+        {
+          "id": "access-permission-set",
+          "state": "ok",
+          "title": "Permission set SF_Fin_Salesforce_Access present"
+        },
+        {
+          "id": "audit-fields",
+          "state": "ok",
+          "title": "Audit fields on record creation enabled"
+        },
+        {
+          "id": "feed-visibility",
+          "state": "ok",
+          "title": "FeedItem.Visibility available (Digital Experiences enabled)"
+        },
+        {
+          "id": "access-audit-permission",
+          "state": "ok",
+          "title": "SF_Fin_Salesforce_Access grants Set Audit Fields upon Record Creation"
+        },
+        {
+          "id": "fin-user",
+          "state": "ok",
+          "title": "Fin user fin_agent@example.ext exists (Salesforce)"
+        },
+        {
+          "id": "fin-user-assignments",
+          "state": "ok",
+          "title": "Fin user has both permission sets"
+        },
+        {
+          "id": "service-cloud-user",
+          "state": "ok",
+          "title": "Fin user is a Service Cloud User"
+        },
+        {
+          "id": "integration-user-assignments",
+          "state": "ok",
+          "title": "Integration user integration@example.com has both permission sets",
+          "detail": "Fin checks the permission sets of the user that authorized its connection."
+        },
+        {
+          "id": "oauth-connection",
+          "state": "ok",
+          "title": "Fin is connected to this org (Fin for Salesforce OAuth token present)"
+        },
+        {
+          "id": "enhanced-email",
+          "state": "ok",
+          "title": "Enhanced Email enabled"
+        },
+        {
+          "id": "email-to-case",
+          "state": "warn",
+          "title": "Email-to-Case is off (Fin replies to cases over email only with it)",
+          "detail": "Not needed for Web-to-Case or manually created cases. To reply by email: enable Email-to-Case, add and verify a routing address in Setup (Salesforce emails a confirmation link), then select it in Fin. Enabling it cannot be undone.",
+          "fix": "human"
+        },
+        {
+          "id": "case-routing",
+          "state": "ok",
+          "title": "Cases reach the Fin user (Route_Web_Cases_To_Fin; 3 owned)"
+        },
+        {
+          "id": "handoff-queue",
+          "state": "ok",
+          "title": "Case queues available for Fin's handoff: Fin Handoff"
+        },
+        {
+          "id": "effective-access",
+          "state": "ok",
+          "title": "Object access matches Fin's permission matrix"
+        }
+      ],
+      "targetOrg": "ExampleOrg"
+    }
+  },
+  "observe": {
+    "ok": true,
+    "isError": false,
+    "text": "Fin on Salesforce Cases \u2014 ExampleOrg\n\nFin-involved cases: 2 \u00b7 resolved 2 (100%) \u00b7 routed to team 0 \u00b7 owned by Fin now 3\nBy resolution: Soft Resolution 2\nBy origin: Web 2\n\n\u26a0 1 case(s) owned by the Fin user have no Fin activity. Fin works a case only when it is assigned while Fin's Salesforce cases channel is live; reassign such a case (or create a new one) to have Fin pick it up.\n\nRecent:\n- 00001461 \u00b7 Closed \u00b7 Soft Resolution \u00b7 owned by Fin \u00b7 Web \u00b7 Billing question\n- 00001460 \u00b7 New \u00b7 Soft Resolution \u00b7 owned by Fin \u00b7 Web \u00b7 Password reset\n- 00001459 \u00b7 New \u00b7 no Fin state \u00b7 owned by Fin \u00b7 Web \u00b7 Order status",
+    "details": {
+      "action": "salesforce",
+      "operation": "observe",
+      "ok": true,
+      "phase": "observe",
+      "involved": 2,
+      "finUserOwned": 3,
+      "resolved": 2,
+      "routed": 0,
+      "resolutionRate": 1,
+      "byResolution": {
+        "Soft Resolution": 2
+      },
+      "byOrigin": {
+        "Web": 2
+      },
+      "recent": [
+        {
+          "caseNumber": "00001461",
+          "subject": "Billing question",
+          "status": "Closed",
+          "origin": "Web",
+          "resolution": "Soft Resolution",
+          "ownedByFin": true,
+          "lastModified": "2026-11-22T04:39:59.000+0000"
+        },
+        {
+          "caseNumber": "00001460",
+          "subject": "Password reset",
+          "status": "New",
+          "origin": "Web",
+          "resolution": "Soft Resolution",
+          "ownedByFin": true,
+          "lastModified": "2026-11-20T21:04:55.000+0000"
+        },
+        {
+          "caseNumber": "00001459",
+          "subject": "Order status",
+          "status": "New",
+          "origin": "Web",
+          "ownedByFin": true,
+          "lastModified": "2026-11-20T20:54:43.000+0000"
+        }
+      ],
+      "targetOrg": "ExampleOrg"
+    }
+  },
+  "plan.handoff": {
+    "ok": true,
+    "isError": false,
+    "text": "\u2705 Queue Fin Handoff (Fin_Handoff) already accepts Cases in ExampleOrg. Nothing to do.\nNext (in Fin): Fin \u2192 Deploy \u2192 Salesforce cases \u2192 your workflow's handoff step \u2192 assign to queue \"Fin Handoff\". Add the teammates who work handed-off cases in Setup \u2192 Queues.",
+    "details": {
+      "action": "salesforce",
+      "operation": "handoff_queue_create",
+      "ok": true,
+      "phase": "noop",
+      "queue": {
+        "name": "Fin Handoff",
+        "developerName": "Fin_Handoff",
+        "sobjectType": "Case"
+      },
+      "targetOrg": "ExampleOrg"
+    }
+  },
+  "plan.audit": {
+    "ok": true,
+    "isError": false,
+    "text": "\u2705 \"Set Audit Fields upon Record Creation\" is already enabled in ExampleOrg. Nothing to do.",
+    "details": {
+      "action": "salesforce",
+      "operation": "audit_fields_enable",
+      "ok": true,
+      "phase": "noop",
+      "setting": "enableAuditFieldsInactiveOwner",
+      "targetOrg": "ExampleOrg"
+    }
+  },
+  "agent_status": {
+    "ok": true,
+    "isError": false,
+    "text": "Agent: Check Salesforce Case Status (procedure 4242) \u00b7 paused\nChannels: fin_agent_api (Fin Agent API: run by procedure id or matched by intent; not run by channel workflows)\nConnector: Get Salesforce case status (77) \u00b7 live \u00b7 token Salesforce - Case Status API (client credentials)\nSimulations: 7\nNext: run sdk simulate procedure_id='4242' generate=false (tests the draft); publish only when the user wants it live.",
+    "details": {
+      "action": "sdk",
+      "operation": "agent_status",
+      "ok": true,
+      "phase": "status",
+      "procedure": {
+        "id": "4242",
+        "name": "Check Salesforce Case Status",
+        "state": "paused",
+        "unpublished": false,
+        "version": "9"
+      },
+      "channels": ["fin_agent_api"],
+      "connectors": [
+        {
+          "id": "77",
+          "name": "Get Salesforce case status",
+          "state": "live",
+          "tokens": ["Salesforce - Case Status API (client credentials)"],
+          "read": true
+        }
+      ],
+      "simulations": 7,
+      "workflows": [
+        {
+          "id": "51",
+          "title": "Fin Messenger",
+          "state": "live"
+        },
+        {
+          "id": "52",
+          "title": "Salesforce cases",
+          "state": "live",
+          "trigger": "new_salesforce_case"
+        }
+      ],
+      "next": "run sdk simulate procedure_id='4242' generate=false (tests the draft); publish only when the user wants it live."
+    }
+  },
+  "agent_status.bad": {
+    "ok": false,
+    "isError": true,
+    "text": "\u274c procedures get: Error: Procedure not found: 1",
+    "details": {
+      "action": "sdk",
+      "operation": "agent_status",
+      "ok": false,
+      "phase": "read"
+    }
+  },
+  "auth_tokens": {
+    "ok": true,
+    "isError": false,
+    "text": "Fin auth tokens: 1\n- Salesforce - Case Status API (client credentials) [11] \u00b7 oauth \u00b7 used by Get Salesforce case status (77)\nSecret values are never read. Bind a connector to a token with its `auth_token_id` in the connector JSON, then check it with sdk operation='agent_status'.",
+    "details": {
+      "action": "sdk",
+      "operation": "auth_tokens",
+      "ok": true,
+      "phase": "list",
+      "tokens": [
+        {
+          "id": "11",
+          "name": "Salesforce - Case Status API (client credentials)",
+          "type": "oauth",
+          "connectors": ["Get Salesforce case status (77)"]
+        }
+      ]
+    }
+  },
+  "connector_logs": {
+    "ok": true,
+    "isError": false,
+    "text": "Data connector 77: 4 runs in the last 168h, 0 failed.\n\u2705 2026-11-21T02:11:11Z \u00b7 200 \u00b7 128ms \u00b7 fin 4242\n\u2705 2026-11-21T02:11:10Z \u00b7 200 \u00b7 482ms \u00b7 fin 4242\n\u2705 2026-11-20T14:37:29Z \u00b7 200 \u00b7 196ms \u00b7 fin 4242\n\u2705 2026-11-20T14:37:00Z \u00b7 200 \u00b7 222ms \u00b7 fin 4242",
+    "details": {
+      "action": "sdk",
+      "operation": "connector_logs",
+      "ok": true,
+      "phase": "logs",
+      "connectorId": "77",
+      "hours": 168,
+      "total": 4,
+      "failed": 0,
+      "runs": [
+        {
+          "id": "9001",
+          "success": true,
+          "status": 200,
+          "method": "get",
+          "url": "https://example.my.salesforce.com/services/apexrest/fin/case-status/99999999",
+          "ms": 128,
+          "source": "fin 4242",
+          "at": "2026-11-21T02:11:11Z"
+        },
+        {
+          "id": "9001",
+          "success": true,
+          "status": 200,
+          "method": "get",
+          "url": "https://example.my.salesforce.com/services/apexrest/fin/case-status/00001028",
+          "ms": 482,
+          "source": "fin 4242",
+          "at": "2026-11-21T02:11:10Z"
+        },
+        {
+          "id": "1388056858",
+          "success": true,
+          "status": 200,
+          "method": "get",
+          "url": "https://example.my.salesforce.com/services/data/v68.0/query/ [query params redacted]",
+          "ms": 196,
+          "source": "fin 4242",
+          "at": "2026-11-20T14:37:29Z"
+        },
+        {
+          "id": "1388055999",
+          "success": true,
+          "status": 200,
+          "method": "get",
+          "url": "https://example.my.salesforce.com/services/data/v68.0/query/ [query params redacted]",
+          "ms": 222,
+          "source": "fin 4242",
+          "at": "2026-11-20T14:37:00Z"
+        }
+      ]
+    }
+  },
+  "plan.connector_state": {
+    "ok": false,
+    "isError": true,
+    "text": "\u274c Data connector \"Untitled\" (76) has no request URL, so it is an incomplete draft. Upload its JSON (sdk upload) before setting it live.",
+    "details": {
+      "action": "sdk",
+      "operation": "connector_state",
+      "ok": false,
+      "phase": "refused",
+      "connectorId": "76",
+      "from": "draft",
+      "to": "live"
+    }
+  },
+  "manifest": {
+    "ok": true,
+    "isError": false,
+    "text": "Fin SDK manifest \u2014 Example Workspace\n- procedures: 2\n- tasks: 0\n- data_connectors: 2\n- guidance: 2\n- workflows: 2\n\nprocedures:\n  \u2022 help_customer_regain_account_access [4241]\n  \u2022 check_salesforce_case_status [4242]\n\ndata_connectors:\n  \u2022 demo_account_lookup [76] \u00b7 draft\n  \u2022 get_salesforce_case_status [77] \u00b7 live\n\nguidance:\n  \u2022 clear,_friendly_tone [31]\n  \u2022 protect_credentials_and_hand_off_when_stuck [32]\n\nworkflows:\n  \u2022 Fin Messenger [51] \u00b7 live\n  \u2022 Salesforce cases [52] \u00b7 live",
+    "details": {
+      "action": "sdk",
+      "operation": "manifest",
+      "ok": true,
+      "enabledNow": false,
+      "phase": "manifest",
+      "summary": {
+        "workspace": {
+          "name": "Example Workspace",
+          "appIdCode": "abcd1234"
+        },
+        "counts": {
+          "procedures": 2,
+          "tasks": 0,
+          "data_connectors": 2,
+          "guidance": 2,
+          "workflows": 2
+        },
+        "items": {
+          "procedures": [
+            {
+              "id": "4241",
+              "name": "help_customer_regain_account_access"
+            },
+            {
+              "id": "4242",
+              "name": "check_salesforce_case_status"
+            }
+          ],
+          "tasks": [],
+          "data_connectors": [
+            {
+              "id": "76",
+              "name": "demo_account_lookup",
+              "state": "draft"
+            },
+            {
+              "id": "77",
+              "name": "get_salesforce_case_status",
+              "state": "live"
+            }
+          ],
+          "guidance": [
+            {
+              "id": "31",
+              "name": "clear,_friendly_tone"
+            },
+            {
+              "id": "32",
+              "name": "protect_credentials_and_hand_off_when_stuck"
+            }
+          ],
+          "workflows": [
+            {
+              "id": "51",
+              "name": "Fin Messenger",
+              "state": "live"
+            },
+            {
+              "id": "52",
+              "name": "Salesforce cases",
+              "state": "live"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "plan.publish": {
+    "ok": true,
+    "isError": false,
+    "text": "Plan: publish procedure \"Check Salesforce Case Status\" (4242) \u2014 paused \u2192 live.\nFin will start using it for matching customer conversations on its targeted channels.\nTo proceed, call sf_fin action='sdk' operation='publish' procedure_id='4242' allow_mutation=true (SF Guardrail mediates it).",
+    "details": {
+      "action": "sdk",
+      "operation": "publish",
+      "ok": true,
+      "phase": "plan",
+      "procedureId": "4242",
+      "from": "paused",
+      "to": "live",
+      "version": "9"
+    }
+  },
+  "simulate": {
+    "ok": false,
+    "isError": true,
+    "text": "Simulations: 1/2 passed.",
+    "details": {
+      "action": "sdk",
+      "operation": "simulate",
+      "phase": "result",
+      "procedureId": "4242",
+      "passed": 1,
+      "total": 2,
+      "tested": "draft",
+      "runs": [
+        {
+          "runId": "r1",
+          "name": "Happy path",
+          "status": "passed",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "runId": "r2",
+          "name": "Not found",
+          "status": "failed",
+          "passed": false,
+          "failures": ["outcome failed"]
+        }
+      ]
+    }
+  },
+  "agent.run": {
+    "ok": false,
+    "isError": true,
+    "text": "\u26a0 Fin answered, but an expectation failed",
+    "details": {
+      "action": "agent",
+      "operation": "run",
+      "phase": "run",
+      "conversationId": "sf-pi-x",
+      "status": "answered",
+      "transcript": [
+        {
+          "role": "user",
+          "text": "Talk to a human"
+        },
+        {
+          "role": "fin",
+          "text": "Connecting you to an agent now [1]."
+        }
+      ],
+      "signals": {
+        "citations": 1,
+        "handoff": true
+      },
+      "expectations": {
+        "passed": false,
+        "results": [
+          {
+            "expect": "agent",
+            "found": true
+          },
+          {
+            "expect": "refund",
+            "found": false
+          }
+        ]
+      }
+    }
+  },
+  "admin.read": {
+    "ok": true,
+    "isError": false,
+    "text": "Data connectors \u2014 workspace \"default\" (us, app verified). Text masked.\n  combobox \"Switch release\": Fin Main Live\n  button \"Chat to sales\"\n  heading \"Data connectors\"\n  button \"New\"\n  heading \"Add MCP data connectors\"\n  button \"Custom MCP Connect your own MCP server to add custom connectors.\"\n  button \"Snowflake Snowflake Connect Fin to your own Snowflake data via a managed MCP server.\"\n  button \"Status is any\"\n  button \"Audience is any\"\n  button \"Health is any\"\n  button \"Toggle columns\"\n  heading \"Data connectors (2)\"\n  button \"Data connectors (2)\" [expanded=true]\n  button hint=\"data-testid:tooltip-trigger; in:Name Status Health Security Used by Fin Last \"\n  cell \"Get Salesforce case status\"\n  link \"Get Salesforce case status\"\n  cell \"Live\"\n  cell \"Healthy\"\n  cell \"Needs attention\"\n  link \"Needs attention\" hint=\"data-testid:security-warn; in:Get Salesforce case status Live Healthy - Dis\"\n  cell \"-\"\n  cell \"Disabled\"\n  cell \"3 days ago\"\n  cell\n  cell \"Demo account lookup\"\n  link \"Demo account lookup\"\n  cell \"Draft\"\n  link \"Needs attention\" hint=\"data-testid:security-warn; in:Demo account lookup Draft - - Disabled 19 day\"\n  cell \"19 days ago\"\n  button \"New data connector\"",
+    "details": {
+      "action": "admin",
+      "operation": "read",
+      "ok": true,
+      "workspace": "default",
+      "page": "data-connectors",
+      "label": "Data connectors",
+      "secretPage": false,
+      "appId": "abcd1234",
+      "region": "us",
+      "lines": [
+        "combobox \"Switch release\": Fin Main Live",
+        "button \"Chat to sales\"",
+        "heading \"Data connectors\"",
+        "button \"New\"",
+        "heading \"Add MCP data connectors\"",
+        "button \"Custom MCP Connect your own MCP server to add custom connectors.\"",
+        "button \"Snowflake Snowflake Connect Fin to your own Snowflake data via a managed MCP server.\"",
+        "button \"Status is any\"",
+        "button \"Audience is any\"",
+        "button \"Health is any\"",
+        "button \"Toggle columns\"",
+        "heading \"Data connectors (2)\"",
+        "button \"Data connectors (2)\" [expanded=true]",
+        "button hint=\"data-testid:tooltip-trigger; in:Name Status Health Security Used by Fin Last \"",
+        "cell \"Get Salesforce case status\"",
+        "link \"Get Salesforce case status\"",
+        "cell \"Live\"",
+        "cell \"Healthy\"",
+        "cell \"Needs attention\"",
+        "link \"Needs attention\" hint=\"data-testid:security-warn; in:Get Salesforce case status Live Healthy - Dis\"",
+        "cell \"-\"",
+        "cell \"Disabled\"",
+        "cell \"3 days ago\"",
+        "cell",
+        "cell \"Demo account lookup\"",
+        "link \"Demo account lookup\"",
+        "cell \"Draft\"",
+        "link \"Needs attention\" hint=\"data-testid:security-warn; in:Demo account lookup Draft - - Disabled 19 day\"",
+        "cell \"19 days ago\"",
+        "button \"New data connector\""
+      ]
+    }
+  },
+  "sdk.download": {
+    "ok": true,
+    "isError": false,
+    "text": "Downloaded Fin SDK resources: 79 files\nZIP: /home/example/.pi/agent/sf-pi/sf-fin/sdk/abcd1234/fin-resources.zip\nExtracted: /home/example/.pi/agent/sf-pi/sf-fin/sdk/abcd1234/resources\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/references/attribute-upload-format.md (3869 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/references/data-connector-mocking.md (2716 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/references/dependency-scanning.md (3951 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/references/troubleshooting.md (2455 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/scripts/find_proc.py (836 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_attrs.py (2595 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_connectors.py (1234 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_proc.py (2525 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_sim.py (5066 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/scripts/print_stubs.py (608 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/scripts/scan_deps.py (3589 B)\n  \u2022 .claude/skills/fin-procedure-copy-to-test-app/SKILL.md (7660 B)\n  \u2022 .claude/skills/fin-procedure-generator/references/chat-procedure-best-practices.md (8748 B)\n  \u2022 .claude/skills/fin-procedure-generator/references/common-pitfalls-catalog.md (9962 B)\n  \u2022 .claude/skills/fin-procedure-generator/references/condition-and-connector-patterns.md (7305 B)\n  \u2022 .claude/skills/fin-procedure-generator/references/trigger-design-guide.md (5988 B)\n  \u2022 .claude/skills/fin-procedure-generator/SKILL.md (29200 B)\n  \u2022 .claude/skills/guidance-generator/SKILL.md (11989 B)\n  \u2022 .claude/skills/simulation-generator/SKILL.md (9061 B)\n  \u2022 .claude/skills/voice-procedure-sdk/evals/evals.json (9764 B)\n  \u2022 .claude/skills/voice-procedure-sdk/evals/files/broken_appointment_procedure.yaml (4005 B)\n  \u2022 .claude/skills/voice-procedure-sdk/evals/files/pizza_order_requirements.md (1204 B)\n  \u2022 .claude/skills/voice-procedure-sdk/evals/files/sim_debug_output.txt (1022 B)\n  \u2022 .claude/skills/voice-procedure-sdk/evals/files/vet_clinic_chain.yaml (4173 B)\n  \u2022 .claude/skills/voice-procedure-sdk/references/data-connectors.md (10208 B)\n  \u2022 .claude/skills/voice-procedure-sdk/references/examples.md (27544 B)\n  \u2022 .claude/skills/voice-procedure-sdk/references/limitations-and-sandbox.md (11535 B)\n  \u2022 .claude/skills/voice-procedure-sdk/references/pitfalls.md (19338 B)\n  \u2022 .claude/skills/voice-procedure-sdk/references/simulations.md (12516 B)\n  \u2022 .claude/skills/voice-procedure-sdk/references/yaml-schema.md (20624 B)\n  \u2022 .claude/skills/voice-procedure-sdk/SKILL.md (16167 B)\n  \u2022 .fin/actions.txt (254 B)\n  \u2022 .fin/admins.json (173 B)\n  \u2022 .fin/AGENTS.md (1816 B)\n  \u2022 .fin/api_url.txt (23 B)\n  \u2022 .fin/attributes.json (4042 B)\n  \u2022 .fin/audiences.json (2 B)\n  \u2022 .fin/procedures.json (2 B)\n  \u2022 .fin/schema/data-connector.json (4212 B)\n  \u2022 .fin/schema/guidance.json (2104 B)\n  \u2022 .fin/schema/monitor.json (2523 B)\n  \u2022 .fin/schema/procedure.json (51040 B)\n  \u2022 .fin/schema/scorecard.json (2237 B)\n  \u2022 .fin/schema/simulation.json (10001 B)\n  \u2022 .fin/tags.txt (0 B)\n  \u2022 .fin/teams.json (2 B)\n  \u2022 .fin/workspace.txt (8 B)\n  \u2022 .vscode/extensions.json (55 B)\n  \u2022 .vscode/settings.json (492 B)\n  \u2022 AGENTS.md (3862 B)\n  \u2026 29 more",
+    "details": {
+      "action": "sdk",
+      "operation": "download",
+      "ok": true,
+      "enabledNow": false,
+      "phase": "download",
+      "zipPath": "/home/example/.pi/agent/sf-pi/sf-fin/sdk/abcd1234/fin-resources.zip",
+      "extractDir": "/home/example/.pi/agent/sf-pi/sf-fin/sdk/abcd1234/resources",
+      "files": [
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/references/attribute-upload-format.md",
+          "bytes": 3869
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/references/data-connector-mocking.md",
+          "bytes": 2716
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/references/dependency-scanning.md",
+          "bytes": 3951
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/references/troubleshooting.md",
+          "bytes": 2455
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/scripts/find_proc.py",
+          "bytes": 836
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_attrs.py",
+          "bytes": 2595
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_connectors.py",
+          "bytes": 1234
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_proc.py",
+          "bytes": 2525
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/scripts/prepare_sim.py",
+          "bytes": 5066
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/scripts/print_stubs.py",
+          "bytes": 608
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/scripts/scan_deps.py",
+          "bytes": 3589
+        },
+        {
+          "path": ".claude/skills/fin-procedure-copy-to-test-app/SKILL.md",
+          "bytes": 7660
+        },
+        {
+          "path": ".claude/skills/fin-procedure-generator/references/chat-procedure-best-practices.md",
+          "bytes": 8748
+        },
+        {
+          "path": ".claude/skills/fin-procedure-generator/references/common-pitfalls-catalog.md",
+          "bytes": 9962
+        },
+        {
+          "path": ".claude/skills/fin-procedure-generator/references/condition-and-connector-patterns.md",
+          "bytes": 7305
+        },
+        {
+          "path": ".claude/skills/fin-procedure-generator/references/trigger-design-guide.md",
+          "bytes": 5988
+        },
+        {
+          "path": ".claude/skills/fin-procedure-generator/SKILL.md",
+          "bytes": 29200
+        },
+        {
+          "path": ".claude/skills/guidance-generator/SKILL.md",
+          "bytes": 11989
+        },
+        {
+          "path": ".claude/skills/simulation-generator/SKILL.md",
+          "bytes": 9061
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/evals/evals.json",
+          "bytes": 9764
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/evals/files/broken_appointment_procedure.yaml",
+          "bytes": 4005
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/evals/files/pizza_order_requirements.md",
+          "bytes": 1204
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/evals/files/sim_debug_output.txt",
+          "bytes": 1022
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/evals/files/vet_clinic_chain.yaml",
+          "bytes": 4173
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/references/data-connectors.md",
+          "bytes": 10208
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/references/examples.md",
+          "bytes": 27544
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/references/limitations-and-sandbox.md",
+          "bytes": 11535
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/references/pitfalls.md",
+          "bytes": 19338
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/references/simulations.md",
+          "bytes": 12516
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/references/yaml-schema.md",
+          "bytes": 20624
+        },
+        {
+          "path": ".claude/skills/voice-procedure-sdk/SKILL.md",
+          "bytes": 16167
+        },
+        {
+          "path": ".fin/actions.txt",
+          "bytes": 254
+        },
+        {
+          "path": ".fin/admins.json",
+          "bytes": 173
+        },
+        {
+          "path": ".fin/AGENTS.md",
+          "bytes": 1816
+        },
+        {
+          "path": ".fin/api_url.txt",
+          "bytes": 23
+        },
+        {
+          "path": ".fin/attributes.json",
+          "bytes": 4042
+        },
+        {
+          "path": ".fin/audiences.json",
+          "bytes": 2
+        },
+        {
+          "path": ".fin/procedures.json",
+          "bytes": 2
+        },
+        {
+          "path": ".fin/schema/data-connector.json",
+          "bytes": 4212
+        },
+        {
+          "path": ".fin/schema/guidance.json",
+          "bytes": 2104
+        }
+      ]
+    }
+  },
+  "agent_status.draft": {
+    "ok": true,
+    "isError": false,
+    "text": "Agent: Help Customer Regain Account Access (procedure 4241) \u00b7 paused + unpublished draft\nChannels: web, ios, android\nSimulations: 5\nWorkflow: Fin Messenger (51) \u00b7 live \u00b7 ?\nWorkflow: Salesforce cases (52) \u00b7 live \u00b7 new_salesforce_case\nNext: run sdk simulate procedure_id='4241' generate=false (tests the draft); publish only when the user wants it live.",
+    "details": {
+      "action": "sdk",
+      "operation": "agent_status",
+      "ok": true,
+      "phase": "status",
+      "procedure": {
+        "id": "4241",
+        "name": "Help Customer Regain Account Access",
+        "state": "paused",
+        "unpublished": true,
+        "version": "8"
+      },
+      "channels": ["web", "ios", "android"],
+      "connectors": [],
+      "simulations": 5,
+      "workflows": [
+        {
+          "id": "51",
+          "title": "Fin Messenger",
+          "state": "live"
+        },
+        {
+          "id": "52",
+          "title": "Salesforce cases",
+          "state": "live",
+          "trigger": "new_salesforce_case"
+        }
+      ],
+      "next": "run sdk simulate procedure_id='4241' generate=false (tests the draft); publish only when the user wants it live."
+    }
+  },
+  "admin.read.error-logs": {
+    "ok": true,
+    "isError": false,
+    "text": "Error logs \u2014 workspace \"default\" (us, app verified). Text masked.\n  4 errors read:\n  - FIELD_CUSTOM_VALIDATION_EXCEPTION on Case \u00d74 (latest 23:40 \u2013 November 20, 2026): A validation rule rejected Fin's change. Make the rule allow the Fin user (for example by excluding it), or give Fin the values the rule needs; the rule is outside SF Fin.\n  System error text can hold record data, so it is not shown; open the entry in Fin for it.",
+    "details": {
+      "action": "admin",
+      "operation": "read",
+      "ok": true,
+      "workspace": "default",
+      "page": "error-logs",
+      "label": "Error logs",
+      "secretPage": false,
+      "appId": "abcd1234",
+      "region": "us",
+      "lines": [
+        "combobox \"Switch release\": Fin Main Live",
+        "button \"Chat to sales\"",
+        "heading \"Settings Error logs\"",
+        "heading \"Settings\"",
+        "button \"Webhook\"",
+        "textbox \"Conversation ID\"",
+        "cell \"23:40 \u2013 November 20, 2026\"",
+        "cell \"example-org\"",
+        "cell \"Invalid request. There was a problem with the payload or parameters.\"",
+        "cell \"23:39 \u2013 November 20, 2026\""
+      ],
+      "errorCount": 4,
+      "diagnoses": [
+        {
+          "code": "FIELD_CUSTOM_VALIDATION_EXCEPTION",
+          "object": "Case",
+          "known": true,
+          "advice": "A validation rule rejected Fin's change. Make the rule allow the Fin user (for example by excluding it), or give Fin the values the rule needs; the rule is outside SF Fin.",
+          "count": 4,
+          "latest": "23:40 \u2013 November 20, 2026",
+          "feature": "Salesforce Cases",
+          "status": "400"
+        }
+      ]
+    }
+  },
+  "plan.permissions": {
+    "ok": true,
+    "isError": false,
+    "text": "Plan: Fin for Salesforce permissions and dedicated Fin user in ExampleOrg (developer).\n- Deploy permission set SF_Fin_Salesforce_Access: Case create/read/edit; Contact create/read/edit; Account read/edit; 12 field permissions; system permissions ApiEnabled, CanInsertFeedSystemFields, CreateAuditFields, EditTask, ViewAllUsers, ViewRoles, ViewSetup. No delete, no View All / Modify All.\n- Fin user fin_agent@example.ext exists.\n- Fin user already has both permission sets.\n- Integration user integration@example.com already has both permission sets.\n\nTo execute: sf_fin action='salesforce' operation='permissions_apply' target_org='ExampleOrg' allow_mutation=true (SF Guardrail mediates it).",
+    "details": {
+      "action": "salesforce",
+      "operation": "permissions_apply",
+      "ok": true,
+      "phase": "plan",
+      "username": "fin_agent@example.ext",
+      "permissionSet": "SF_Fin_Salesforce_Access",
+      "fields": [
+        "Case.ContactId",
+        "Case.Description",
+        "Case.Origin",
+        "Case.SourceId",
+        "Case.Subject",
+        "Case.SuppliedEmail",
+        "Case.SuppliedName",
+        "Contact.Email",
+        "Task.ActivityDate",
+        "Task.Description",
+        "Task.WhatId",
+        "Task.WhoId"
+      ],
+      "skippedFields": [],
+      "userPermissions": [
+        "ApiEnabled",
+        "CanInsertFeedSystemFields",
+        "CreateAuditFields",
+        "EditTask",
+        "ViewAllUsers",
+        "ViewRoles",
+        "ViewSetup"
+      ],
+      "createUser": false,
+      "assign": [],
+      "integrationUser": "integration@example.com",
+      "integrationAssign": [],
+      "targetOrg": "ExampleOrg"
+    }
+  }
+}

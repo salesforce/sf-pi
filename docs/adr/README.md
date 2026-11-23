@@ -125,6 +125,7 @@ ADRs preserve durable architectural rationale. Runtime code and Behavior Proofs 
 - [0153: SF Fin uses a Pi-owned token and the installed Fin CLI](./0153-sf-fin-pi-owned-token-and-installed-cli.md) — 2026-11-03
 - [0154: SF MCP Intercom preset and Fin Operator mediation](./0154-sf-mcp-intercom-preset-and-fin-operator-mediation.md) — 2026-11-03
 - [0156: Pi 1.6.0 audit edge and read-only component render](./0156-pi-160-audit-edge-and-read-only-render.md) — 2026-11-21
+- [0157: SF Fin cards are flat and answer first](./0157-sf-fin-cards-are-flat-and-answer-first.md) — 2026-11-23
 
 ## Proposed
 

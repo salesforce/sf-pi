@@ -28,8 +28,11 @@ import path from "node:path";
 import { readStoredCredential } from "@earendil-works/pi-coding-agent";
 import { maskFinSecrets } from "../../lib/common/fin-admin-surface.ts";
 import { getPiAuthStorePath } from "../../lib/common/pi-auth-status.ts";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { createFinService } from "../../extensions/sf-fin/lib/service.ts";
 import { registerSfFinTool } from "../../extensions/sf-fin/lib/sf_fin-tool.ts";
+import { renderFinResult } from "../../extensions/sf-fin/lib/render.ts";
+import { isFinCard } from "../../extensions/sf-fin/lib/fin-card.ts";
 
 interface Args {
   targetOrg?: string;
@@ -90,6 +93,42 @@ interface ToolResult {
   isError?: boolean;
 }
 
+/** Plain theme: the rendered card is exactly the text a person reads. */
+const PLAIN_THEME = {
+  fg: (_color: string, text: string) => text,
+  bold: (text: string) => text,
+  bg: (_color: string, text: string) => text,
+} as never;
+
+/**
+ * The card a person sees must fit Pi's tile at common widths, keep the flat
+ * layout (no Summary/Scope/Execution scaffolding), and never fall back to
+ * numbered rows.
+ */
+function cardProblems(result: ToolResult): string[] {
+  const problems: string[] = [];
+  if (!isFinCard(result.details.card)) return ["card is not a Fin card"];
+  for (const width of [92, 60]) {
+    for (const expanded of [false, true]) {
+      const lines = renderFinResult(result, { expanded }, PLAIN_THEME).render(width);
+      const wide = lines.find((line) => visibleWidth(line) > width);
+      if (wide) problems.push(`card line wider than ${width} columns`);
+      const headings = lines.map((line) => line.trim());
+      for (const scaffold of ["Summary", "Scope", "Execution"]) {
+        if (headings.includes(scaffold)) problems.push(`card shows the ${scaffold} heading`);
+      }
+      // The old generic card numbered every text line: "1", "2", "3" in a column.
+      const numbered = lines.map((line) => /^\s+(\d+)\s{2,}\S/u.exec(line)?.[1]);
+      if (
+        numbered.some((n, i) => n === "1" && numbered[i + 1] === "2" && numbered[i + 2] === "3")
+      ) {
+        problems.push("card falls back to numbered rows");
+      }
+    }
+  }
+  return [...new Set(problems)];
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.targetOrg || !args.workspace) {
@@ -145,6 +184,7 @@ async function main(): Promise<void> {
       const text = result.content.map((c) => c.text).join("\n");
       const problems: string[] = [];
       if (!result.details.card?.title) problems.push("no Result Card");
+      else problems.push(...cardProblems(result));
       if (text.length > 6_500) problems.push(`model packet too long (${text.length})`);
       for (const shape of SECRET_SHAPES) {
         if (shape.test(text)) problems.push(`secret-shaped text (${shape.source.slice(0, 20)}…)`);
