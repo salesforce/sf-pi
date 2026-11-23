@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.366.1](https://github.com/salesforce/sf-pi/compare/v0.366.0...v0.366.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **sf-fin:** load Salesforce modules once for parallel calls ([#984](https://github.com/salesforce/sf-pi/issues/984)) ([ee7e4ca](https://github.com/salesforce/sf-pi/commit/ee7e4ca47ae0169a34ab4c1a78e7ca4b31f9752b))
+
 ## [0.366.0](https://github.com/salesforce/sf-pi/compare/v0.365.6...v0.366.0) (2026-11-23)
 
 
