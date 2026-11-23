@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+## [0.366.0](https://github.com/salesforce/sf-pi/compare/v0.365.6...v0.366.0) (2026-11-23)
+
+
+### Features
+
+* **sf-fin:** flat, answer-first Result Cards ([#982](https://github.com/salesforce/sf-pi/issues/982)) ([6f815f8](https://github.com/salesforce/sf-pi/commit/6f815f8d7caa44aee660622e36891f7b773460d2))
+
 ## [0.365.6](https://github.com/salesforce/sf-pi/compare/v0.365.5...v0.365.6) (2026-11-21)
 
 
