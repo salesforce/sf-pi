@@ -375,6 +375,9 @@ describe("agentStatus", () => {
     // fin_agent_api procedures are not run by channel workflows.
     expect(result.text).toContain("Fin Agent API");
     expect(result.text).toContain("Next");
+    // With tests saved, the next step runs them without generating more
+    // (generate defaults to true and would add duplicates of the saved tests).
+    expect(result.details.next).toContain("generate=false");
   });
 
   it("reports an unreadable connector's token as unknown, not missing", async () => {
